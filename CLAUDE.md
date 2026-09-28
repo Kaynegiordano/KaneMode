@@ -154,4 +154,5 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.0.1 : navigation, Select/Start, modes de performance ;
   - 1.0.2 : son synthétisé, mesures en direct, KanePlay se ferme ;
   - 1.1.0 : premier widget Game Bar ;
-  - 1.2.0 : widget façon Winhanced via le tube nommé, KanePlay au premier plan, démarrage plus rapide, effets allégés, mises à jour signalées dans le menu, B = menu sur l'accueil, son de démarrage grave.
+  - 1.2.0 : widget façon Winhanced via le tube nommé, KanePlay au premier plan, démarrage plus rapide, effets allégés, mises à jour signalées dans le menu, B = menu sur l'accueil, son de démarrage grave ;
+  - 1.3.0 : widget Game Bar retiré, boutons Command Center / Armoury Crate de l'Ally, sortie du mode Xbox avant de quitter, KanePlay au premier plan même à la relance, mises à jour officielles ASUS (BIOS, pilotes).
