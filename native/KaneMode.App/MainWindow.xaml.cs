@@ -55,6 +55,7 @@ public partial class MainWindow : Window
             Status.Text = "Démarrage de KaneMode…";
             await Task.Run(Paths.ImportPrototypeData);
             await _host.StartAsync();
+            try { Paths.PublishHostUrl(_host.Url); } catch (Exception ex) { Log.Write("Adresse pour le widget : " + ex.Message); }
 
             if (Web.CoreWebView2 == null)
             {

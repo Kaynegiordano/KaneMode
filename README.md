@@ -85,6 +85,7 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **KanePlay (streaming)** : une carte avec sa jaquette parmi les jeux récents ouvre l'application KanePlay complète, intégrée à KaneMode et à ses couleurs : PC trouvés automatiquement, appairage, bibliothèque de chaque PC, réglages et profils, pause (LB+RB+Select+Y) et reprise de session ; **B** revient à KaneMode. Moteur compilé depuis le sous-module `engine/KanePlay`.
 - **Veille façon SteamOS** : veille immédiate, fondu au noir, réveil avec logo et carillon, manettes vérifiées ; atténuation et veille automatiques (batterie / secteur) ; veille moderne (S0) gérée sur les consoles portables.
 - **Consoles portables** : ROG Ally / Ally X / Xbox Ally, Legion Go / Go S / Go 2, MSI Claw, Steam Deck, ZOTAC Zone, AYANEO, OneXPlayer, GPD, AOKZOE reconnues ; interface agrandie au premier lancement, logiciel constructeur, pilotes graphiques, mises à jour de pilotes via Windows Update (installation avec accord administrateur).
+- **Widget Game Bar** (touche Xbox ou Windows + G) : modes de performance avec leurs watts, mesures en direct, puissance (TDP), limite et turbo du processeur, fréquence de l'écran, luminosité et volume, par-dessus n'importe quel jeu, sans Armoury Crate. Application UWP en C++/WinRT (`native/KaneMode.Widget`, compilée par `build-widget.ps1`) qui passe par l'API de l'hôte.
 - **Modes de performance** Économie / Équilibré / Performance : chacun règle d'un coup le mode d'alimentation de Windows, la limite et le turbo du processeur et le profil du constructeur (ROG Ally, Legion Go), avec sa puissance en watts ; l'accès rapide affiche en direct la consommation sur batterie, la fréquence réelle du processeur et la limite de puissance.
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
@@ -131,5 +132,6 @@ KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il 
 - [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
 - [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming (sous-module `engine/KanePlay`) ;
 - Node.js (licence MIT), embarqué dans le paquet.
+- Xbox Game Bar SDK de Microsoft (`Microsoft.Gaming.XboxGameBar.dll`, licence du SDK), téléchargé à la compilation et embarqué pour le widget.
 
 Visuels : [SteamGridDB](https://www.steamgriddb.com) et la boutique Steam.

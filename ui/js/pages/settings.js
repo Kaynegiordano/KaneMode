@@ -556,6 +556,19 @@ const BUILDERS = {
     }
     s.append(grid);
     await updatesBlock(s);
+    // Widget Game Bar : réglages de la console par-dessus les jeux (touche Xbox ou Windows + G)
+    const w = await api.get('/api/widget').catch(() => null);
+    if (w && w.packaged) {
+      h2(s, 'i-grid', 'Widget Game Bar');
+      s.append(el('div', 'notice', 'Dans la Game Bar (touche Xbox ou Windows + G), le widget <b>KaneMode</b> règle la console par-dessus n’importe quel jeu : modes de performance, puissance, processeur, fréquence de l’écran, luminosité et volume.'));
+      if (w.allowed) infoRow(s, 'Widget autorisé', 'Il peut joindre KaneMode');
+      else actionRow(s, 'i-check', 'Autoriser le widget', 'Windows demande une fois l’accord de l’administrateur, pour que le widget puisse joindre KaneMode', async () => {
+        busy('Autorisation du widget…');
+        try { await api.post('/api/widget/allow'); toast('Widget Game Bar autorisé'); rerender('reload'); }
+        catch (e) { toast(e.message, { error: true }); }
+        finally { busy(null); }
+      }, 'widget-allow');
+    }
     h2(s, 'i-cpu', 'Interface');
     actionRow(s, 'i-restart', 'Redémarrer l’interface', 'Recharge KaneMode sans quitter', () => location.reload(), 'reload');
     actionRow(s, 'i-exit', 'Quitter vers le bureau Windows', 'Ferme KaneMode', exitToDesktop, 'exit');
