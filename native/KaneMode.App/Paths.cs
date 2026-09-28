@@ -18,6 +18,21 @@ public static class Paths
     [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int GetCurrentPackageFullName(ref int length, System.Text.StringBuilder? name);
 
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetCurrentApplicationUserModelId(ref int length, System.Text.StringBuilder? id);
+
+    /// <summary>Identifiant d'application du paquet (famille!App), si l'app est installée.</summary>
+    public static string? AppUserModelId
+    {
+        get
+        {
+            int length = 0;
+            if (GetCurrentApplicationUserModelId(ref length, null) != 122) return null;
+            var sb = new System.Text.StringBuilder(length);
+            return GetCurrentApplicationUserModelId(ref length, sb) == 0 ? sb.ToString() : null;
+        }
+    }
+
     private static bool HasPackageIdentity()
     {
         int length = 0;

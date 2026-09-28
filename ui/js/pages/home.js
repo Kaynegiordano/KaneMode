@@ -2,7 +2,7 @@
 import { el, esc, icon, lib, fmt, sourceOf, settings } from '../core.js';
 import { definePage, nav, go } from '../nav.js';
 import { gameCard } from '../cards.js';
-import { openGame, openLauncher, setBackground, heroUrl, exitToDesktop } from './game.js';
+import { openGame, openLauncher, openStreaming, setBackground, heroUrl, exitToDesktop } from './game.js';
 
 const byRecent = (a, b) => b.lastPlayed - a.lastPlayed || a.name.localeCompare(b.name, 'fr');
 
@@ -47,21 +47,17 @@ definePage('home', {
       root.append(rrow);
     }
 
-    // Streaming intégré : jeux des PC appairés, et accès à la page Streaming (PC, appairage, qualité)
-    const streams = vis.filter(g => g.source === 'kaneplay').sort(byRecent);
+    // Streaming intégré : jeux des PC appairés, et l'écran de streaming (PC trouvés
+    // automatiquement, appairage, bibliothèque de chaque PC, réglages, reprise d'une session)
     const st = lib.stream || { engine: false, hosts: [] };
-    if (streams.length || st.hosts.length) {
+    if (st.engine) {
+      const streams = vis.filter(g => g.source === 'kaneplay').sort(byRecent);
       const paired = st.hosts.filter(h => h.paired).map(h => h.name);
-      const waiting = st.hosts.filter(h => !h.paired);
-      root.append(el('h2', 'row-title', `Streaming <small>${paired.length ? esc(paired.join(', ')) : 'aucun PC appairé'}</small>`));
+      root.append(el('h2', 'row-title', `Streaming <small>${paired.length ? esc(paired.join(', ')) : 'jouez aux jeux de vos autres PC'}</small>`));
       const srow = el('div', 'row');
       streams.slice(0, 14).forEach(g => srow.append(gameCard(g, 'capsule', openGame)));
-      for (const h of waiting) {
-        const t = el('div', 'card capsule more-card', `${icon('i-link')}<div>Appairer ${esc(h.name)}</div><small>Pour jouer à ses jeux ici</small>`);
-        srow.append(nav(t, () => go('stream', { focus: 'pair:' + h.uuid }), 'pair:' + h.uuid));
-      }
-      const all = el('div', 'card capsule more-card', `${icon('i-wifi')}<div>Streaming</div><small>Vos PC · qualité</small>`);
-      srow.append(nav(all, () => go('stream'), 'more-stream'));
+      const all = el('div', 'card capsule more-card', `${icon('i-wifi')}<div>Streaming</div><small>${paired.length ? 'Vos PC · reprendre une session' : 'Trouver et appairer un PC'}</small>`);
+      srow.append(nav(all, openStreaming, 'more-stream'));
       root.append(srow);
     }
 

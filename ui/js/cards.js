@@ -61,10 +61,26 @@ export function art(g, urls, opts) {
   img.alt = g.name;
   img.decoding = 'async';
   let i = 0;
+  // Apparaît en fondu une fois chargée (tout de suite si elle est déjà en cache)
+  img.onload = () => img.classList.add('ready');
   img.onerror = () => { i++; if (i < list.length) img.src = list[i]; else img.replaceWith(generated(g, opts)); };
   img.src = list[0];
+  if (img.complete && img.naturalWidth) img.classList.add('ready', 'instant');
   wrap.append(img);
   return wrap;
+}
+
+const cardUrls = (g, card) => card.classList.contains('capsule') ? [g.art.portrait] : [g.art.header, g.art.hero];
+
+/** Visuel d'une carte changé (SteamGridDB, choix de l'utilisateur) : remplacé sur place, sans à-coup. */
+export function swapArt(card, g) {
+  const old = card.querySelector(':scope > img, :scope > .gen');
+  const urls = cardUrls(g, card).filter(Boolean);
+  if (!old || !urls.length) return;
+  // On garde l'ancien visuel jusqu'à ce que le nouveau soit prêt
+  const probe = new Image();
+  probe.onload = () => { if (old.isConnected) old.replaceWith(art(g, urls)); };
+  probe.src = urls[0];
 }
 
 export function badges(card, g) {
@@ -87,8 +103,7 @@ export function gameCard(g, kind, onOpen) {
   const c = el('div', `card ${kind}`);
   nav(c, () => onOpen(g), g.id);
   c.dataset.id = g.id;
-  const urls = kind === 'capsule' ? [g.art.portrait] : [g.art.header, g.art.hero];
-  c.append(art(g, urls));
+  c.append(art(g, cardUrls(g, c)));
   badges(c, g);
   return c;
 }

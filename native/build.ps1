@@ -62,6 +62,8 @@ Copy-Item (Join-Path $root 'ui') (Join-Path $app 'ui') -Recurse
 Copy-Item (Join-Path $root 'host') (Join-Path $app 'host') -Recurse
 New-Item -ItemType Directory -Force (Join-Path $app 'setup') | Out-Null
 Copy-Item (Join-Path $root 'VERSION') $app
+# Icône de KaneMode pour la fenêtre du streaming
+Copy-Item (Join-Path $root 'setup\kanemode.ico') $app
 # Développement : au premier lancement, l'app reprend les données du prototype depuis ce dépôt.
 if (-not $Release) { Set-Content (Join-Path $app 'source-root.txt') $root -Encoding UTF8 }
 $node = (Get-Command node -ErrorAction SilentlyContinue).Source

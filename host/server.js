@@ -162,12 +162,26 @@ function enqueueMeta(entries) {
   }
   pump();
 }
+// Les métadonnées arrivent en arrière-plan, sans que l'interface ne s'en aperçoive : leurs
+// changements sont signalés par paquets (au plus toutes les 8 s), pas un par jeu.
+let metaDirty = false, metaFlush = null;
+function metaChanged() {
+  metaDirty = true;
+  if (metaFlush) return;
+  metaFlush = setTimeout(() => {
+    metaFlush = null;
+    if (!metaDirty) return;
+    metaDirty = false;
+    writeJson(FILES.meta, meta);
+    version++;
+  }, 8000);
+}
 async function pump() {
   if (busy) return;
   busy = true;
   while (queue.length) {
     const e = queue.shift();
-    try { meta[e.id] = await fetchMeta(e); version++; writeJson(FILES.meta, meta); }
+    try { meta[e.id] = await fetchMeta(e); metaChanged(); }
     catch { /* hors ligne ou limite atteinte : on réessaiera plus tard */ }
     await new Promise(r => setTimeout(r, 400)); // reste poli avec l'API Steam
   }
@@ -266,19 +280,20 @@ const driverJobs = device.drivers(DATA);
 const KANEPLAY_BUNDLED = path.join(ROOT, '..', 'kaneplay', 'KanePlay.exe');
 // Développement : moteur compilé depuis le sous-module (engine\build-engine.ps1)
 const KANEPLAY_DEV = path.join(ROOT, 'engine', 'out', 'KanePlay.exe');
-const kp = { exe: null, entries: [], hosts: [], pairing: null };
+// Icône de KaneMode pour la fenêtre du streaming (paquet : app\kanemode.ico)
+const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup', 'kanemode.ico')].find(isFile) || null;
+const kp = { exe: null, entries: [], hosts: [] };
 async function refreshKanePlay() {
   try {
     const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
-    const entries = await kaneplay.entries(exe, hosts);
+    const entries = kaneplay.entries(exe, hosts, KANEMODE_ICON);
     const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
     const changed = sig(exe, hosts, entries) !== sig(kp.exe, kp.hosts, kp.entries);
     Object.assign(kp, { exe, hosts, entries });
     if (changed) version++;
   } catch (e) { console.error('Streaming :', e.message); }
 }
-const streamPrefs = () => kaneplay.prefs(config().stream);
 
 // ---------------------------------------------------------------- visuels : surcharges, Steam, SteamGridDB
 let sgdbCache = readJson(FILES.sgdb, {});
@@ -740,9 +755,8 @@ const routes = {
     if (!e) return json(res, 404, { ok: false, error: 'Entrée inconnue' });
     if (e.demo) return json(res, 200, { ok: false, demo: true, error: 'Entrée de démonstration' });
     if (e.source === 'rom' && !e.launch) return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
-    // Streaming : qualité choisie dans KaneMode, passée au moteur à chaque session
-    const launch = e.source === 'kaneplay' ? { ...e.launch, args: [e.launch.args, ...kaneplay.streamFlags(config().stream)].join(' ') } : e.launch;
-    const r = await run(launch, { dry: !!b.dry, onExit: m => m > 0.2 && addMinutes(id, m) });
+    // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
+    const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) recordPlay(id);
     json(res, 200, r);
   },
@@ -832,61 +846,18 @@ const routes = {
     json(res, 200, { ok: true });
   },
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
+  // --- Streaming : l'application KanePlay intégrée (voir lib/kaneplay.js)
   'GET /api/stream': async (req, res, q) => {
     if (q.get('refresh') === '1') await refreshKanePlay();
-    const status = await Promise.all(kp.hosts.map(h => kaneplay.online(h)));
-    const p = kp.pairing;
     json(res, 200, {
-      engine: !!kp.exe, bundled: kp.exe === KANEPLAY_BUNDLED, dev: kp.exe === KANEPLAY_DEV, prefs: streamPrefs(),
-      pairing: p ? { host: p.host, pin: p.pin, done: p.done, ok: p.ok, error: p.error } : null,
-      hosts: kp.hosts.map((h, i) => ({
-        uuid: h.uuid, name: h.name, paired: h.paired, online: !!status[i], address: status[i] || h.addresses[0] || null,
-        apps: h.apps.filter(a => !a.hidden).map(a => `kaneplay:${h.uuid}:${a.id}`),
-      })),
+      engine: !!kp.exe, bundled: kp.exe === KANEPLAY_BUNDLED, dev: kp.exe === KANEPLAY_DEV,
+      hosts: kp.hosts.map(h => ({ uuid: h.uuid, name: h.name, paired: h.paired, apps: h.apps.filter(a => !a.hidden).length })),
     });
   },
-  // Appairage : KaneMode choisit le code, l'affiche, et le moteur attend qu'il soit saisi sur l'hôte
-  'POST /api/stream/pair': async (req, res) => {
-    const b = await readBody(req);
-    const host = String(b.host || '').trim();
-    if (!kp.exe) return json(res, 400, { error: 'Moteur de streaming absent' });
-    if (!/^[\w.:\-[\]]{1,255}$/.test(host)) return json(res, 400, { error: 'Adresse invalide' });
-    if (kp.pairing && !kp.pairing.done) return json(res, 409, { error: 'Appairage déjà en cours' });
-    const pin = String(require('crypto').randomInt(0, 10000)).padStart(4, '0');
-    const job = kp.pairing = { host, pin, done: false };
-    kaneplay.pair(kp.exe, host, pin).then(async r => {
-      Object.assign(job, { done: true, ok: r.ok, error: r.error || null });
-      await refreshKanePlay();
-    });
-    json(res, 200, { ok: true, pin });
-  },
-  'POST /api/stream/quit': async (req, res) => {
-    const b = await readBody(req);
-    const h = kp.hosts.find(x => x.uuid === b.uuid);
-    if (!h || !kp.exe) return json(res, 404, { error: 'PC inconnu' });
-    json(res, 200, await kaneplay.quit(kp.exe, h.uuid));
-  },
-  'POST /api/stream/apps': async (req, res) => {
-    const b = await readBody(req);
-    const h = kp.hosts.find(x => x.uuid === b.uuid);
-    if (!h || !kp.exe) return json(res, 404, { error: 'PC inconnu' });
-    const r = await kaneplay.refreshApps(kp.exe, h.uuid);
-    await refreshKanePlay();
-    json(res, 200, r);
-  },
-  'POST /api/stream/prefs': async (req, res) => {
-    const b = await readBody(req);
-    const c = config();
-    const cur = kaneplay.prefs(c.stream);
-    const ok = {
-      resolution: v => ['auto', '720', '1080', '1440', '4K'].includes(v), fps: v => v === 'auto' || [30, 60, 90, 120, 144].includes(+v),
-      bitrate: v => +v >= 0 && +v <= 500000, codec: v => ['auto', 'h264', 'hevc', 'av1'].includes(v),
-      hdr: v => typeof v === 'boolean', overlay: v => typeof v === 'boolean', audioOnHost: v => typeof v === 'boolean', quitAfter: v => typeof v === 'boolean',
-    };
-    for (const [k, test] of Object.entries(ok)) if (k in b && test(b[k])) cur[k] = b[k];
-    c.stream = cur;
-    writeJson(FILES.config, c);
-    json(res, 200, { ok: true, prefs: cur });
+  // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
+  'POST /api/stream/open': async (req, res) => {
+    if (!kp.exe) return json(res, 404, { error: 'Moteur de streaming absent' });
+    json(res, 200, await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', KANEMODE_ICON) }));
   },
   'POST /api/drivers/search': async (req, res) => { await driverJobs.search(); json(res, 200, driverJobs.status()); },
   'POST /api/drivers/install': async (req, res) => {

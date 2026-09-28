@@ -156,12 +156,32 @@ export const fmt = {
 };
 
 // ---------- Bibliothèque ----------
+// Ce qui change la mise en page (jeux ajoutés ou retirés, noms, rangées, onglets…) : le reste
+// (descriptions, temps de jeu, visuels) se met à jour sur place, sans redessiner la page.
+const layoutSig = d => JSON.stringify([
+  d.games.map(g => [g.id, g.name, g.type, g.hidden, g.installed, g.source, g.lastPlayed, g.system]),
+  d.launchers.map(l => [l.id, l.installed]), d.collections, d.stream,
+]);
+
 export const lib = {
-  games: [], launchers: [], collections: [], version: 0, generated: null,
-  async load() {
+  games: [], launchers: [], collections: [], version: 0, generated: null, layout: '',
+  /**
+   * Recharge la bibliothèque. background : rechargement de fond (métadonnées, retour d'un jeu),
+   * appliqué sans gêner la navigation.
+   */
+  async load({ background = false } = {}) {
     const d = await api.get('/api/library' + (settings.demo ? '?demo=1' : ''));
+    const old = new Map(this.games.map(g => [g.id, g]));
+    const layout = layoutSig(d);
+    const first = !this.games.length;
     Object.assign(this, { games: d.games, launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });
-    emit('library');
+    if (first || layout !== this.layout) {
+      this.layout = layout;
+      emit('library', { background });
+    } else {
+      const art = d.games.filter(g => old.has(g.id) && JSON.stringify(old.get(g.id).art) !== JSON.stringify(g.art));
+      emit('library-soft', { art });
+    }
     return this;
   },
   byId(id) { return this.games.find(g => g.id === id); },

@@ -1,10 +1,11 @@
 // Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
 import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native } from './core.js';
-import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory } from './nav.js';
+import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input } from './nav.js';
+import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
-import { exitToDesktop } from './pages/game.js';
+import { exitToDesktop, openStreaming } from './pages/game.js';
 import './pages/home.js';
 import './pages/library.js';
 import './pages/search.js';
@@ -13,12 +14,12 @@ import './pages/settings.js';
 import './pages/artpicker.js';
 import './pages/media.js';
 import './pages/emulation.js';
-import './pages/stream.js';
 
 applyTheme();
 // L'écran de démarrage couvre tout dès le chargement.
 if (settings.bootMode !== 'none') $('#boot').hidden = false;
 actions.exit = () => { closeLayer(); exitToDesktop(); };
+actions['stream-open'] = () => { closeLayer(); openStreaming(); };
 
 // ---------- Menu principal ----------
 hooks.menu = () => openLayer({
@@ -57,7 +58,7 @@ actions.system = async t => {
 };
 
 // Retour sur KaneMode (fin d'un jeu, alt-tab) : la bibliothèque se met à jour (temps de jeu, installations…).
-native.on(m => { if (m.type === 'resume' && !document.hidden) lib.load().catch(() => {}); });
+native.on(m => { if (m.type === 'resume' && !document.hidden) lib.load({ background: true }).catch(() => {}); });
 if (native.available) document.documentElement.classList.add('native');
 
 // ---------- Accès rapide ----------
@@ -147,21 +148,46 @@ function paintMenuFoot() {
   const games = lib.visible().filter(g => g.type === 'game').length;
   $('#menu-foot').innerHTML = `${games} jeux · ${lib.visible().length - games} applis<br>${lib.launchers.filter(l => l.installed).length} boutiques détectées${settings.demo ? '<br>Bibliothèque de démonstration active' : ''}`;
 }
-on('library', () => {
+// Bibliothèque modifiée. Une action de l'utilisateur redessine tout de suite ; une mise à jour de
+// fond attend qu'il ne navigue plus et qu'aucun menu ne soit ouvert, pour ne jamais saccader.
+let fullTimer = 0;
+function applyLibrary() {
+  clearTimeout(fullTimer);
+  if (Date.now() - input.last < 1500 || topLayer()) { fullTimer = setTimeout(applyLibrary, 700); return; }
+  paintMenuFoot();
+  const p = currentPage();
+  if (p && p.libBound) refresh();
+}
+on('library', ({ background } = {}) => {
+  if (background) return applyLibrary();
+  clearTimeout(fullTimer);
   paintMenuFoot();
   const p = currentPage();
   if (p && p.libBound) refresh();
 });
 
-// Les métadonnées arrivent en arrière-plan : on recharge quand l'hôte signale du nouveau.
+// Données seules (métadonnées, temps de jeu, visuels) : mises à jour sur place, sans redessiner
+on('library-soft', ({ art = [] } = {}) => {
+  for (const g of art) {
+    $$(`.card[data-id="${CSS.escape(g.id)}"]`).forEach(c => swapArt(c, g));
+  }
+  // Panneau d'information de l'élément sélectionné (description, genres, temps de jeu…)
+  const p = currentPage();
+  if (p && p.soft) p.soft();
+  else if (p && p.onFocus && !topLayer()) {
+    const f = p.el.querySelector('.focused[data-id]');
+    if (f) p.onFocus(f);
+  }
+});
+
+// Les métadonnées arrivent en arrière-plan, sans indicateur : on relit quand l'hôte signale du nouveau.
 setInterval(async () => {
-  if (document.hidden) return;
+  if (document.hidden || !document.hasFocus()) return;
   try {
     const s = await api.get('/api/status');
-    if ($('#busy span').textContent.startsWith('Métadonnées') || s.pending) busy(s.pending ? `Métadonnées… ${s.pending}` : null);
-    if (s.version !== lib.version && !topLayer()) await lib.load();
+    if (s.version !== lib.version) await lib.load({ background: true });
   } catch { /* hôte injoignable */ }
-}, 3000);
+}, 4000);
 
 // ---------- Démarrage ----------
 (async () => {

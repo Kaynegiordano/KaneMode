@@ -3,7 +3,7 @@ import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy,
 import { definePage, nav, padLive, focusIn, go } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog } from '../widgets.js';
 import { pickFile } from './add.js';
-import { exitToDesktop, openGame } from './game.js';
+import { exitToDesktop, openGame, openStreaming } from './game.js';
 import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
 
@@ -240,13 +240,14 @@ const BUILDERS = {
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, '<span class="dot-ko"></span>Moteur de streaming absent', 'L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1');
-    } else {
-      infoRow(s, `<span class="dot-ok"></span>Streaming intégré${d.dev ? ' (moteur compilé : engine\\out)' : ''}`, 'Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran');
-      for (const h of d.hosts) {
-        infoRow(s, `<span class="${h.online ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? 'Appairé' : 'Non appairé'} · ${h.online ? 'en ligne' : 'hors ligne'} · ${h.apps.length} application${h.apps.length > 1 ? 's' : ''}`);
-      }
+      return;
     }
-    actionRow(s, 'i-wifi', 'Ouvrir la page Streaming', 'Ajouter et appairer un PC, applications, qualité (résolution, images/s, débit, HDR)', () => go('stream'), 'go-stream');
+    infoRow(s, `<span class="dot-ok"></span>Streaming intégré${d.dev ? ' (moteur compilé : engine\\out)' : ''}`, 'Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran');
+    for (const h of d.hosts) {
+      infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? 'Appairé' : 'Non appairé'} · ${h.apps} application${h.apps > 1 ? 's' : ''}`);
+    }
+    actionRow(s, 'i-wifi', 'Ouvrir le streaming', 'PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils', openStreaming, 'open-stream');
+    s.append(el('div', 'notice', 'Les jeux de vos PC appairés sont aussi dans la bibliothèque de KaneMode (onglet <b>KanePlay</b>) : <b>A</b> les lance directement. Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.'));
   },
   async look(s) {
     h2(s, 'i-palette', 'Apparence');

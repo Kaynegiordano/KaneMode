@@ -23,7 +23,13 @@ function Step($t) { Write-Host "== $t" -ForegroundColor Cyan }
 
 # ---------------------------------------------------------------- 1. Sources
 Step 'Sources du moteur (sous-module engine\KanePlay)'
-git -C $root submodule update --init --recursive -- engine/KanePlay
+# Première fois : récupère le sous-module. Ensuite, on compile ce qui est dans engine\KanePlay
+# (éventuellement en cours de modification) sans le remettre sur la version enregistrée.
+if (-not (Test-Path (Join-Path $src 'moonlight-qt.pro'))) {
+    git -C $root submodule update --init --recursive -- engine/KanePlay
+} else {
+    git -C $src submodule update --init --recursive
+}
 if ($LASTEXITCODE -ne 0) { throw 'Récupération du sous-module impossible' }
 
 # ---------------------------------------------------------------- 2. Bibliothèques précompilées

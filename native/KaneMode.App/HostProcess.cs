@@ -38,6 +38,8 @@ public sealed class HostProcess : IDisposable
         // Version de l'app installée : l'hôte la compare aux versions publiées (mises à jour)
         psi.Environment["KANEMODE_VERSION"] = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
         psi.Environment["KANEMODE_PACKAGED"] = Paths.Packaged ? "1" : "0";
+        // Identité de l'app : l'écran de streaming s'y rattache (barre des tâches, Alt+Tab)
+        if (Paths.AppUserModelId is string aumid) psi.Environment["KANEMODE_AUMID"] = aumid;
 
         Log.Write($"Hôte : {node} {server} (port {Port})");
         _process = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de démarrer l'hôte");

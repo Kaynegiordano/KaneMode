@@ -53,13 +53,14 @@ export async function launch(g) {
     img.src = g.art.logo;
   }
   const status = $('#launch-status');
-  status.textContent = !g.installed ? `Ouverture de Steam pour installer ${g.name}…`
+  status.textContent = g.streamHost ? `Connexion à ${g.streamHost}…`
+    : !g.installed ? `Ouverture de Steam pour installer ${g.name}…`
     : g.emulator ? `Lancement de ${g.name} avec ${g.emulator}…` : `Lancement de ${g.name}…`;
   const layer = openLayer({ el: L, name: 'launch', noGlobal: true, hints: () => [['b', 'Fermer']] });
   try {
     const r = await api.post('/api/launch', { id: g.id });
     status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
-    if (r.ok) lib.load();
+    if (r.ok) lib.load({ background: true });
   } catch (e) {
     status.textContent = `Impossible de lancer : ${e.message}`;
   }
@@ -77,6 +78,19 @@ export async function exitToDesktop() {
   setTimeout(() => window.close(), 600);
 }
 
+/**
+ * Écran de streaming (KanePlay intégré) : un fondu au noir, puis il prend le relais en plein écran.
+ * B sur son accueil ramène ici ; une session en pause y reste prête à reprendre.
+ */
+export async function openStreaming() {
+  document.body.classList.add('handoff');
+  setTimeout(() => document.body.classList.remove('handoff'), 2500);
+  try { await api.post('/api/stream/open'); }
+  catch (e) {
+    document.body.classList.remove('handoff');
+    toast(e.message, { error: true });
+  }
+}
 export async function openLauncher(l) {
   if (!l.installed) return toast(`${l.name} n’est pas installé sur ce PC`, { error: true });
   toast(`Ouverture de ${l.name}…`);

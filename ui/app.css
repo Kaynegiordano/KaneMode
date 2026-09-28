@@ -42,10 +42,15 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* ---------- Fond ---------- */
 #bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+/* Flou calculé sur une image 4 fois plus petite puis agrandie : même rendu, 16 fois moins de
+   pixels à flouter à chaque fondu (fluide même en 4K) */
 .bg-layer {
-  position: absolute; inset: -60px; background: center / cover no-repeat;
-  filter: blur(38px) saturate(1.25) brightness(0.45);
-  opacity: 0; transition: opacity 700ms ease;
+  position: absolute; left: -60px; top: -60px;
+  width: calc((100% + 120px) / 4); height: calc((100% + 120px) / 4);
+  transform: scale(4); transform-origin: 0 0;
+  background: center / cover no-repeat;
+  filter: blur(9.5px) saturate(1.25) brightness(0.45);
+  opacity: 0; transition: opacity 700ms ease; will-change: opacity;
 }
 .bg-layer.show { opacity: 1; }
 .bg-shade {
@@ -110,7 +115,11 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   transition: transform 220ms var(--ease), box-shadow 220ms ease;
 }
-.card > img { width: 100%; height: 100%; object-fit: cover; }
+.card > img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 280ms ease; }
+.card > img.ready { opacity: 1; }
+.card > img.instant { transition: none; }
+/* Chaque carte se met en page seule : ajouter ou changer une carte ne recalcule pas les autres */
+.card { contain: layout style; }
 .focused.card {
   transform: scale(1.06); z-index: 2;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--focus), 0 0 28px color-mix(in srgb, var(--accent) 45%, transparent);
@@ -631,7 +640,7 @@ body.night::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer
 body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 body.high-contrast { --muted: #c4cad3; --line: rgba(255, 255, 255, 0.28); }
 body.high-contrast .focused { outline: 4px solid #ffd84a !important; outline-offset: 3px; }
-body.high-contrast .bg-layer { filter: blur(38px) brightness(0.25); }
+body.high-contrast .bg-layer { filter: blur(9.5px) brightness(0.25); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
@@ -691,11 +700,6 @@ body.high-contrast .bg-layer { filter: blur(38px) brightness(0.25); }
 #boot.sleeping::after { content: attr(data-hint); position: absolute; bottom: 40px; left: 0; right: 0; text-align: center; color: #5b6472; font-size: 15px; }
 #dim-veil { position: fixed; inset: 0; z-index: 105; pointer-events: none; background: rgba(0, 0, 0, 0); transition: background 1.2s ease; display: grid; place-items: end center; padding-bottom: 60px; color: #cfd5dd; font-size: 18px; }
 body.dimmed #dim-veil { background: rgba(0, 0, 0, 0.72); }
-/* ---------- Streaming ---------- */
-#page-stream .row-title { gap: 10px; align-items: center; }
-#page-stream .row-ico { width: 22px; height: 22px; fill: var(--muted); }
-.pill.off { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
-.pill.warn { background: rgba(255, 170, 60, 0.16); color: #ffb45c; }
-.stream-quality { margin-top: 18px; }
-.pair-pin { display: block; margin: 6px 0 16px; font-size: 64px; font-weight: 700; letter-spacing: 0.25em; color: #fff; text-align: center; font-variant-numeric: tabular-nums; }
-.pair-status { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; color: var(--muted); }
+/* Passage à l'écran de streaming : fondu au noir le temps qu'il prenne le relais */
+body.handoff::after { content: ""; position: fixed; inset: 0; z-index: 120; background: #000; animation: handoff 220ms ease both; pointer-events: none; }
+@keyframes handoff { from { opacity: 0; } to { opacity: 1; } }

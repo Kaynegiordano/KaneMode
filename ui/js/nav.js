@@ -166,7 +166,10 @@ export function activate(t) {
 
 // ---------- Dispatch des boutons ----------
 export const inputLock = { on: false }; // vrai pendant la vidéo de démarrage
+// Dernière action de l'utilisateur : les mises à jour de fond attendent qu'il ne navigue plus
+export const input = { last: 0 };
 export function press(k) {
+  input.last = Date.now();
   if (inputLock.on) return;
   const L = topLayer(), P = currentPage();
   const owner = L || P;
