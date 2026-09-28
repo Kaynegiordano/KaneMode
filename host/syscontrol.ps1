@@ -1,0 +1,291 @@
+﻿# Reglages systeme pour KaneMode (acces rapide, energie) : un processus qui reste ouvert et recoit
+# des commandes JSON, une par ligne, sur l'entree standard ; il repond une ligne JSON par commande.
+#   {"id":1,"cmd":"state"}                     etat de tout (volume, luminosite, energie, ecran, radios, constructeur)
+#   {"id":2,"cmd":"volume","value":40}         volume principal (0-100)
+#   {"id":3,"cmd":"mute","value":true}
+#   {"id":4,"cmd":"brightness","value":70}     ecran integre (consoles, portables)
+#   {"id":5,"cmd":"powermode","value":"performance"}   efficiency | balanced | performance (mode d'alimentation de Windows)
+#   {"id":6,"cmd":"refresh","value":120}       frequence de l'ecran principal
+#   {"id":7,"cmd":"radio","kind":"WiFi","value":true}  WiFi | Bluetooth
+#   {"id":8,"cmd":"vendor","value":"turbo"}    profil du constructeur (ROG Ally, Legion Go)
+#   {"id":9,"cmd":"tdp","value":15}            limite de puissance en watts (ROG Ally, experimental)
+#   {"id":10,"cmd":"chargelimit","value":80}   limite de charge de la batterie (ROG Ally)
+param([string]$Vendor = '')
+
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace KaneMode {
+  // ---- Volume (Core Audio)
+  [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumeratorCom { }
+  [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDeviceEnumerator {
+    int NotImpl1();
+    [PreserveSig] int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
+  }
+  [Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IMMDevice {
+    [PreserveSig] int Activate(ref Guid iid, int clsCtx, IntPtr activationParams, [MarshalAs(UnmanagedType.IUnknown)] out object iface);
+  }
+  [Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface IAudioEndpointVolume {
+    int RegisterControlChangeNotify(IntPtr notify);
+    int UnregisterControlChangeNotify(IntPtr notify);
+    int GetChannelCount(out int count);
+    int SetMasterVolumeLevel(float level, ref Guid context);
+    int SetMasterVolumeLevelScalar(float level, ref Guid context);
+    int GetMasterVolumeLevel(out float level);
+    int GetMasterVolumeLevelScalar(out float level);
+    int SetChannelVolumeLevel(uint channel, float level, ref Guid context);
+    int SetChannelVolumeLevelScalar(uint channel, float level, ref Guid context);
+    int GetChannelVolumeLevel(uint channel, out float level);
+    int GetChannelVolumeLevelScalar(uint channel, out float level);
+    int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, ref Guid context);
+    int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+  }
+
+  public static class Audio {
+    static IAudioEndpointVolume Endpoint() {
+      IMMDeviceEnumerator e = (IMMDeviceEnumerator)new MMDeviceEnumeratorCom();
+      IMMDevice dev;
+      Marshal.ThrowExceptionForHR(e.GetDefaultAudioEndpoint(0, 1, out dev)); // rendu, multimedia
+      Guid iid = typeof(IAudioEndpointVolume).GUID;
+      object o;
+      Marshal.ThrowExceptionForHR(dev.Activate(ref iid, 23, IntPtr.Zero, out o));
+      return (IAudioEndpointVolume)o;
+    }
+    public static int GetVolume() { float v; Endpoint().GetMasterVolumeLevelScalar(out v); return (int)Math.Round(v * 100); }
+    public static void SetVolume(int v) { Guid g = Guid.Empty; Endpoint().SetMasterVolumeLevelScalar(Math.Max(0, Math.Min(100, v)) / 100f, ref g); }
+    public static bool GetMute() { bool m; Endpoint().GetMute(out m); return m; }
+    public static void SetMute(bool m) { Guid g = Guid.Empty; Endpoint().SetMute(m, ref g); }
+  }
+
+  // ---- Mode d'alimentation de Windows (curseur « Mode d'alimentation » des Parametres)
+  public static class PowerMode {
+    [DllImport("powrprof.dll")] static extern uint PowerGetEffectiveOverlayScheme(out Guid scheme);
+    [DllImport("powrprof.dll")] static extern uint PowerSetActiveOverlayScheme(Guid scheme);
+    public static readonly Guid Efficiency = new Guid("961cc777-2547-4f9d-8174-7d86181b8a7a");
+    public static readonly Guid Balanced = Guid.Empty;
+    public static readonly Guid Performance = new Guid("ded574b5-45a0-4f42-8737-46345c09c238");
+    public static string Get() {
+      Guid g;
+      if (PowerGetEffectiveOverlayScheme(out g) != 0) return null;
+      if (g == Efficiency) return "efficiency";
+      if (g == Performance) return "performance";
+      if (g == Balanced) return "balanced";
+      return g.ToString();
+    }
+    public static uint Set(string mode) {
+      Guid g = mode == "efficiency" ? Efficiency : mode == "performance" ? Performance : Balanced;
+      return PowerSetActiveOverlayScheme(g);
+    }
+  }
+
+  // ---- Frequence de l'ecran principal
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public struct DEVMODE {
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+    public short dmSpecVersion, dmDriverVersion, dmSize, dmDriverExtra;
+    public int dmFields, dmPositionX, dmPositionY, dmDisplayOrientation, dmDisplayFixedOutput;
+    public short dmColor, dmDuplex, dmYResolution, dmTTOption, dmCollate;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+    public short dmLogPixels;
+    public int dmBitsPerPel, dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency;
+    public int dmICMMethod, dmICMIntent, dmMediaType, dmDitherType, dmReserved1, dmReserved2, dmPanningWidth, dmPanningHeight;
+  }
+  public static class Display {
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool EnumDisplaySettings(string device, int mode, ref DEVMODE dm);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int ChangeDisplaySettingsEx(string device, ref DEVMODE dm, IntPtr hwnd, int flags, IntPtr param);
+    static DEVMODE Current() { DEVMODE d = new DEVMODE(); d.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE)); EnumDisplaySettings(null, -1, ref d); return d; }
+    public static int CurrentHz() { return Current().dmDisplayFrequency; }
+    public static int[] Rates() {
+      DEVMODE cur = Current();
+      System.Collections.Generic.SortedSet<int> set = new System.Collections.Generic.SortedSet<int>();
+      DEVMODE d = new DEVMODE(); d.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+      for (int i = 0; EnumDisplaySettings(null, i, ref d); i++) {
+        if (d.dmPelsWidth == cur.dmPelsWidth && d.dmPelsHeight == cur.dmPelsHeight && d.dmBitsPerPel == cur.dmBitsPerPel && d.dmDisplayFrequency > 1) set.Add(d.dmDisplayFrequency);
+      }
+      int[] a = new int[set.Count]; set.CopyTo(a); return a;
+    }
+    public static int SetHz(int hz) {
+      DEVMODE d = Current();
+      d.dmDisplayFrequency = hz;
+      d.dmFields = 0x400000; // DM_DISPLAYFREQUENCY
+      return ChangeDisplaySettingsEx(null, ref d, IntPtr.Zero, 1 /* CDS_UPDATEREGISTRY */, IntPtr.Zero);
+    }
+  }
+
+  // ---- ASUS (ROG Ally, Ally X, Xbox Ally) : peripherique ACPI « ATKACPI », comme G-Helper
+  public static class Asus {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr sec, uint disposition, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool DeviceIoControl(IntPtr h, uint code, byte[] inBuf, uint inSize, byte[] outBuf, uint outSize, ref uint returned, IntPtr overlapped);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    const uint DEVS = 0x53564544, DSTS = 0x53545344, IOCTL = 0x0022240C;
+    public const int ThrottlePolicy = 0x00120075;   // 0 performance, 1 turbo, 2 silencieux
+    public const int PptSpl = 0x001200A3, PptSppt = 0x001200A0, PptFppt = 0x001200C1;
+    public const int ChargeLimit = 0x00120057;
+    static int Call(uint method, byte[] args) {
+      IntPtr h = CreateFile(@"\\.\ATKACPI", 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
+      if (h == new IntPtr(-1)) throw new InvalidOperationException("ATKACPI introuvable (pilote ASUS System Control Interface)");
+      try {
+        byte[] input = new byte[8 + args.Length];
+        BitConverter.GetBytes(method).CopyTo(input, 0);
+        BitConverter.GetBytes(args.Length).CopyTo(input, 4);
+        args.CopyTo(input, 8);
+        byte[] output = new byte[16];
+        uint n = 0;
+        if (!DeviceIoControl(h, IOCTL, input, (uint)input.Length, output, (uint)output.Length, ref n, IntPtr.Zero)) throw new InvalidOperationException("ATKACPI a refuse la commande");
+        return BitConverter.ToInt32(output, 0);
+      } finally { CloseHandle(h); }
+    }
+    public static bool Available() {
+      IntPtr h = CreateFile(@"\\.\ATKACPI", 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
+      if (h == new IntPtr(-1)) return false;
+      CloseHandle(h); return true;
+    }
+    public static int Get(int device) { return Call(DSTS, BitConverter.GetBytes(device)) - 65536; }
+    public static int Set(int device, int value) {
+      byte[] a = new byte[8];
+      BitConverter.GetBytes(device).CopyTo(a, 0);
+      BitConverter.GetBytes(value).CopyTo(a, 4);
+      return Call(DEVS, a);
+    }
+  }
+}
+'@
+
+# ---- Radios (Wi-Fi, Bluetooth) : API Windows.Devices.Radios
+$radioReady = $false
+function Init-Radios {
+    if ($script:radioReady) { return }
+    Add-Type -AssemblyName System.Runtime.WindowsRuntime
+    $script:asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]
+    [Windows.Devices.Radios.Radio, Windows.System.Devices, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Devices.Radios.RadioAccessStatus, Windows.System.Devices, ContentType = WindowsRuntime] | Out-Null
+    $null = Await ([Windows.Devices.Radios.Radio]::RequestAccessAsync()) ([Windows.Devices.Radios.RadioAccessStatus])
+    $script:radioReady = $true
+}
+function Await($op, [Type]$type) {
+    $t = $script:asTask.MakeGenericMethod($type).Invoke($null, @($op))
+    $null = $t.Wait(5000)
+    $t.Result
+}
+function Get-Radios {
+    Init-Radios
+    $list = Await ([Windows.Devices.Radios.Radio]::GetRadiosAsync()) ([System.Collections.Generic.IReadOnlyList[Windows.Devices.Radios.Radio]])
+    @($list | Where-Object { "$($_.Kind)" -in 'WiFi', 'Bluetooth' })
+}
+
+# ---- Lenovo (Legion Go, Go S, Go 2) : WMI « LENOVO_GAMEZONE_DATA », comme Legion Space
+function Lenovo-Mode([int]$set = -1) {
+    $wmi = Get-CimInstance -Namespace root/WMI -ClassName LENOVO_GAMEZONE_DATA -ErrorAction Stop | Select-Object -First 1
+    if ($set -ge 0) { $null = Invoke-CimMethod -InputObject $wmi -MethodName SetSmartFanMode -Arguments @{ Data = [uint32]$set } }
+    (Invoke-CimMethod -InputObject $wmi -MethodName GetSmartFanMode).Data
+}
+
+$asusModes = @{ performance = 0; turbo = 1; silent = 2 }
+$lenovoModes = @{ quiet = 1; balanced = 2; performance = 3; custom = 255 }
+
+function Vendor-State {
+    if ($Vendor -eq 'asus' -and [KaneMode.Asus]::Available()) {
+        $m = [KaneMode.Asus]::Get([KaneMode.Asus]::ThrottlePolicy)
+        $name = ($asusModes.GetEnumerator() | Where-Object { $_.Value -eq $m } | Select-Object -First 1).Key
+        $limit = [KaneMode.Asus]::Get([KaneMode.Asus]::ChargeLimit)
+        return [ordered]@{ vendor = 'asus'; modes = @('silent', 'performance', 'turbo'); mode = $name; tdp = @{ min = 7; max = 30 }; chargeLimit = if ($limit -ge 20 -and $limit -le 100) { $limit } else { $null } }
+    }
+    if ($Vendor -eq 'lenovo') {
+        try {
+            $m = Lenovo-Mode
+            $name = ($lenovoModes.GetEnumerator() | Where-Object { $_.Value -eq $m } | Select-Object -First 1).Key
+            return [ordered]@{ vendor = 'lenovo'; modes = @('quiet', 'balanced', 'performance'); mode = $name; tdp = $null; chargeLimit = $null }
+        } catch { return [ordered]@{ vendor = 'lenovo'; error = $_.Exception.Message } }
+    }
+    $null
+}
+
+function Get-State {
+    $s = [ordered]@{}
+    try { $s.volume = [KaneMode.Audio]::GetVolume(); $s.muted = [KaneMode.Audio]::GetMute() } catch { $s.volume = $null }
+    try { $s.brightness = [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { $s.brightness = $null }
+    try { $s.powerMode = [KaneMode.PowerMode]::Get() } catch { $s.powerMode = $null }
+    try { $s.refresh = [ordered]@{ current = [KaneMode.Display]::CurrentHz(); available = @([KaneMode.Display]::Rates()) } } catch { $s.refresh = $null }
+    try { $s.radios = @(Get-Radios | ForEach-Object { [ordered]@{ kind = "$($_.Kind)"; on = "$($_.State)" -eq 'On' } }) } catch { $s.radios = @() }
+    try { $s.vendor = Vendor-State } catch { $s.vendor = $null }
+    $s
+}
+
+function Run($c) {
+    switch ($c.cmd) {
+        'state' { return Get-State }
+        'volume' { [KaneMode.Audio]::SetVolume([int]$c.value); return @{ volume = [KaneMode.Audio]::GetVolume() } }
+        'mute' { [KaneMode.Audio]::SetMute([bool]$c.value); return @{ muted = [KaneMode.Audio]::GetMute() } }
+        'brightness' {
+            $m = Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods -ErrorAction Stop | Select-Object -First 1
+            $null = Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{ Timeout = [uint32]0; Brightness = [byte][Math]::Max(0, [Math]::Min(100, [int]$c.value)) }
+            return @{ brightness = [int]$c.value }
+        }
+        'powermode' {
+            if ($c.value -notin 'efficiency', 'balanced', 'performance') { throw 'Mode inconnu' }
+            $r = [KaneMode.PowerMode]::Set($c.value)
+            if ($r -ne 0) { throw "Windows a refusé le mode d'alimentation (code $r) : il n'existe qu'avec le mode de gestion « Utilisation normale »" }
+            return @{ powerMode = [KaneMode.PowerMode]::Get() }
+        }
+        'refresh' {
+            $hz = [int]$c.value
+            if ($hz -notin [KaneMode.Display]::Rates()) { throw "Fréquence non proposée par l'écran : $hz Hz" }
+            $r = [KaneMode.Display]::SetHz($hz)
+            if ($r -ne 0) { throw "Windows a refusé la fréquence (code $r)" }
+            return @{ refresh = [KaneMode.Display]::CurrentHz() }
+        }
+        'radio' {
+            $radio = Get-Radios | Where-Object { "$($_.Kind)" -eq $c.kind } | Select-Object -First 1
+            if (-not $radio) { throw "$($c.kind) introuvable" }
+            $state = if ($c.value) { [Windows.Devices.Radios.RadioState]::On } else { [Windows.Devices.Radios.RadioState]::Off }
+            $r = Await ($radio.SetStateAsync($state)) ([Windows.Devices.Radios.RadioAccessStatus])
+            if ("$r" -ne 'Allowed') { throw "Windows a refusé ($r)" }
+            return @{ kind = $c.kind; on = [bool]$c.value }
+        }
+        'vendor' {
+            if ($Vendor -eq 'asus') {
+                if (-not $asusModes.ContainsKey($c.value)) { throw 'Profil inconnu' }
+                $null = [KaneMode.Asus]::Set([KaneMode.Asus]::ThrottlePolicy, $asusModes[$c.value])
+            } elseif ($Vendor -eq 'lenovo') {
+                if (-not $lenovoModes.ContainsKey($c.value)) { throw 'Profil inconnu' }
+                $null = Lenovo-Mode $lenovoModes[$c.value]
+            } else { throw 'Pas de profil constructeur sur cet appareil' }
+            return Vendor-State
+        }
+        'tdp' {
+            if ($Vendor -ne 'asus') { throw 'Limite de puissance réglable seulement sur ROG Ally pour l''instant' }
+            $w = [Math]::Max(7, [Math]::Min(30, [int]$c.value))
+            foreach ($id in [KaneMode.Asus]::PptSpl, [KaneMode.Asus]::PptSppt, [KaneMode.Asus]::PptFppt) { $null = [KaneMode.Asus]::Set($id, $w) }
+            return @{ tdp = $w }
+        }
+        'chargelimit' {
+            if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }
+            $p = [Math]::Max(40, [Math]::Min(100, [int]$c.value))
+            $null = [KaneMode.Asus]::Set([KaneMode.Asus]::ChargeLimit, $p)
+            return @{ chargeLimit = $p }
+        }
+        default { throw "Commande inconnue : $($c.cmd)" }
+    }
+}
+
+[Console]::Out.WriteLine('{"ready":true}')
+while ($null -ne ($line = [Console]::In.ReadLine())) {
+    $req = $null
+    try {
+        $req = $line | ConvertFrom-Json
+        $data = Run $req
+        $out = @{ id = $req.id; ok = $true; data = $data }
+    } catch {
+        $out = @{ id = if ($req) { $req.id } else { $null }; ok = $false; error = $_.Exception.Message }
+    }
+    [Console]::Out.WriteLine(($out | ConvertTo-Json -Depth 6 -Compress))
+}

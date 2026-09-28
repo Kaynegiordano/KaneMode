@@ -5,6 +5,7 @@ import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
+import { renderQam } from './qam.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
 import './pages/home.js';
 import './pages/library.js';
@@ -64,6 +65,7 @@ if (native.available) document.documentElement.classList.add('native');
 // ---------- Accès rapide ----------
 let sysTimer;
 async function pollSystem() {
+  if (!$('#cpu-bar')) return; // section « Moniteur » masquée
   try {
     const s = await api.get('/api/system');
     $('#cpu-bar').style.width = s.cpu + '%';
@@ -74,52 +76,13 @@ async function pollSystem() {
 }
 hooks.qam = () => openLayer({
   el: $('#qam'), name: 'qam', scrim: true,
-  onOpen: () => { pollSystem(); sysTimer = setInterval(pollSystem, 1500); },
+  onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); },
   onClose: () => clearInterval(sysTimer),
-  hints: () => [['a', 'Sélectionner'], ['b', 'Fermer']],
+  hints: () => [['a', 'Sélectionner'], [['left', 'right'], 'Régler'], ['b', 'Fermer']],
 });
-
-function renderSlider(s) {
-  const v = +settings[s.dataset.slider];
-  $('.fill', s).style.width = v + '%';
-  $('.knob', s).style.left = v + '%';
-  $('output', s).textContent = v;
-}
-function setSlider(s, v) {
-  v = Math.max(0, Math.min(100, Math.round(v / 5) * 5));
-  if (v === +settings[s.dataset.slider]) return;
-  settings[s.dataset.slider] = v;
-  saveSettings();
-  renderSlider(s);
-  sfx('move');
-}
-$$('#qam .slider').forEach(s => {
-  s._dir = dir => {
-    if (dir !== 'left' && dir !== 'right') return false;
-    setSlider(s, +settings[s.dataset.slider] + (dir === 'right' ? 5 : -5));
-    return true;
-  };
-  s._click = e => {
-    const r = $('.track', s).getBoundingClientRect();
-    setSlider(s, 100 * (e.clientX - r.left) / r.width);
-  };
-  renderSlider(s);
-});
-$$('#qam .toggle').forEach(t => t.classList.toggle('on', !!settings[t.dataset.key]));
-$$('#qam .segmented').forEach(g => $$('button', g).forEach(b => b.classList.toggle('active', b.dataset.value === String(settings[g.dataset.group]))));
-actions.toggle = t => {
-  t.classList.toggle('on');
-  settings[t.dataset.key] = t.classList.contains('on');
-  saveSettings();
-};
-actions.seg = t => {
-  const g = t.closest('.segmented');
-  $$('button', g).forEach(b => b.classList.toggle('active', b === t));
-  settings[g.dataset.group] = t.dataset.value;
-  saveSettings();
-};
 
 on('notifications', list => {
+  if (!$('#notifs')) return;
   $('#notifs').className = list.length ? '' : 'notif-empty';
   $('#notifs').innerHTML = list.length
     ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
@@ -127,9 +90,15 @@ on('notifications', list => {
 });
 
 // ---------- Barre d'état ----------
-const tick = () => { $('#clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
+// Horloge : 24 h ou 12 h, secondes au choix (Paramètres → Apparence)
+const tick = () => {
+  $('#clock').textContent = new Date().toLocaleTimeString(settings.clock24 ? 'fr-FR' : 'en-US', {
+    hour: settings.clock24 ? '2-digit' : 'numeric', minute: '2-digit', ...(settings.clockSeconds ? { second: '2-digit' } : {}), hour12: !settings.clock24,
+  });
+  $('#battery span').hidden = !settings.batteryPct;
+};
 tick();
-setInterval(tick, 10000);
+setInterval(tick, 1000);
 if (navigator.getBattery) {
   navigator.getBattery().then(b => {
     const upd = () => {

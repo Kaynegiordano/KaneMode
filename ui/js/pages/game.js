@@ -27,7 +27,8 @@ export function setBackground(src) {
 export const heroUrl = g => g.art.hero || g.art.header || g.art.portrait || null;
 
 // ---------- Actions ----------
-export const openGame = g => go('game', { id: g.id });
+// KanePlay s'ouvre directement ; les autres entrées ouvrent leur fiche
+export const openGame = g => (g.source === 'kaneplay' ? openStreaming() : go('game', { id: g.id }));
 
 export function toggleFav(g) {
   favs.has(g.id) ? favs.delete(g.id) : favs.add(g.id);

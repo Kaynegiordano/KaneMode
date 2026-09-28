@@ -28,12 +28,21 @@ export const store = {
 
 export const settings = Object.assign({
   wifi: true, bluetooth: false, night: false, sounds: true, brightness: 70, volume: 45, fps: '0', overlay: 'off',
-  accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
+  accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, cardSize: 'm', corners: 'soft', solidPanels: false, font: 'segoe', clock24: true, clockSeconds: false, batteryPct: true, homeRows: ['recent', 'emulation', 'apps', 'stores'], qamOrder: null, qamHidden: [], tdp: 0, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', notifications: true, homeApps: true, homeStores: true,
 }, store.get('settings', {}));
 export const favs = new Set(store.get('favs', []));
 
-export function saveSettings() { store.set('settings', settings); applyTheme(); }
+export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); }
+
+// KanePlay reprend la couleur d'accent de KaneMode : l'hôte la lui transmet au lancement
+let sentAccent = null;
+function syncAccent() {
+  if (settings.accent === sentAccent) return;
+  sentAccent = settings.accent;
+  api.post('/api/config', { accent: settings.accent }).catch(() => { sentAccent = null; });
+}
+setTimeout(syncAccent, 0);
 export function saveFavs() { store.set('favs', [...favs]); }
 export function applyTheme() {
   document.documentElement.style.setProperty('--accent', settings.accent);
@@ -44,6 +53,12 @@ export function applyTheme() {
   document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
   document.body.classList.toggle('high-contrast', !!settings.highContrast);
   document.body.style.zoom = settings.uiScale && settings.uiScale !== 100 ? settings.uiScale / 100 : '';
+  // Personnalisation : taille des jaquettes, arrondis, transparence, police
+  const cap = { s: 'clamp(180px, 30vh, 340px)', m: '', l: 'clamp(250px, 44vh, 520px)' }[settings.cardSize] || '';
+  document.documentElement.style.setProperty('--capsule-h', cap || 'clamp(210px, 36vh, 420px)');
+  document.documentElement.style.setProperty('--radius', { square: '2px', soft: '6px', round: '14px' }[settings.corners] || '6px');
+  document.body.classList.toggle('solid', !!settings.solidPanels);
+  document.body.classList.toggle('font-system', settings.font === 'system');
 }
 
 // ---------- Sons d'interface ----------

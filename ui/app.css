@@ -703,3 +703,14 @@ body.dimmed #dim-veil { background: rgba(0, 0, 0, 0.72); }
 /* Passage à l'écran de streaming : fondu au noir le temps qu'il prenne le relais */
 body.handoff::after { content: ""; position: fixed; inset: 0; z-index: 120; background: #000; animation: handoff 220ms ease both; pointer-events: none; }
 @keyframes handoff { from { opacity: 0; } to { opacity: 1; } }
+/* ---------- Accès rapide : compléments ---------- */
+.qam-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 4px 0 8px; }
+.qam-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; }
+.qam-battery .meter { margin-bottom: 6px; }
+/* ---------- Personnalisation ---------- */
+body.font-system { font-family: system-ui, sans-serif; }
+body.solid .panel, body.solid #topbar, body.solid .layer .dialog-box { backdrop-filter: none !important; background-color: var(--panel) !important; }
+/* ---------- Listes ordonnables (paramètres) ---------- */
+.order-row { grid-template-columns: 1fr auto auto auto !important; }
+.order-row .chip-btn { min-width: 44px; justify-content: center; }
+.order-row.off .txt { opacity: 0.5; }

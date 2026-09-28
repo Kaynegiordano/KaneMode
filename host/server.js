@@ -14,6 +14,7 @@ const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
 const update = require('./lib/update');
+const syscontrol = require('./lib/syscontrol');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -237,7 +238,7 @@ function findEntry(id) {
 }
 
 // Pas de recherche SteamGridDB pour le bureau à distance de KanePlay (aucun jeu de ce nom)
-const noSgdb = e => e.source === 'kaneplay' && e.type === 'app';
+const noSgdb = e => e.source === 'kaneplay';
 
 function publicEntry(g, st, cfg) {
   const m = meta[g.id] || {};
@@ -272,6 +273,20 @@ function publicEntry(g, st, cfg) {
   };
 }
 
+// ---------------------------------------------------------------- réglages système, profils d'énergie
+const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.info()).handheld));
+const PROFILE_FIELDS = {
+  powerMode: v => ['efficiency', 'balanced', 'performance'].includes(v),
+  vendor: v => /^[a-z]{3,12}$/.test(v),
+  tdp: v => Number.isInteger(v) && v >= 5 && v <= 40,
+  refresh: v => Number.isInteger(v) && v >= 30 && v <= 500,
+  brightness: v => Number.isInteger(v) && v >= 0 && v <= 100,
+};
+const powerProfiles = () => {
+  const p = config().powerProfiles || {};
+  // Par défaut rien n'est changé : l'utilisateur choisit ce que chaque profil règle
+  return { auto: p.auto !== false, battery: p.battery || {}, ac: p.ac || {} };
+};
 // ---------------------------------------------------------------- pilotes (Windows Update)
 const driverJobs = device.drivers(DATA);
 
@@ -282,12 +297,14 @@ const KANEPLAY_BUNDLED = path.join(ROOT, '..', 'kaneplay', 'KanePlay.exe');
 const KANEPLAY_DEV = path.join(ROOT, 'engine', 'out', 'KanePlay.exe');
 // Icône de KaneMode pour la fenêtre du streaming (paquet : app\kanemode.ico)
 const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup', 'kanemode.ico')].find(isFile) || null;
+const KANEPLAY_COVER = path.join(UI, 'media', 'kaneplay.png');
 const kp = { exe: null, entries: [], hosts: [] };
 async function refreshKanePlay() {
   try {
     const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
-    const entries = kaneplay.entries(exe, hosts, KANEMODE_ICON);
+    const one = kaneplay.entry(exe, KANEPLAY_COVER, { icon: KANEMODE_ICON, accent: config().accent });
+    const entries = one ? [one] : [];
     const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
     const changed = sig(exe, hosts, entries) !== sig(kp.exe, kp.hosts, kp.entries);
     Object.assign(kp, { exe, hosts, entries });
@@ -570,6 +587,8 @@ const routes = {
     if ('bootSound' in b) c.bootSound = str(b.bootSound) && AUDIO_EXT.includes(path.extname(b.bootSound).toLowerCase()) && isFile(b.bootSound) ? b.bootSound : null;
     if ('bootVideo' in b) c.bootVideo = str(b.bootVideo) && VIDEO_EXT.includes(path.extname(b.bootVideo).toLowerCase()) && isFile(b.bootVideo) ? b.bootVideo : null;
     if ('sgdbAuto' in b) c.sgdbAuto = !!b.sgdbAuto;
+    // Couleur d'accent de l'interface, reprise par KanePlay
+    if ('accent' in b && /^#[0-9a-f]{6}$/i.test(String(b.accent))) { c.accent = b.accent; setTimeout(refreshKanePlay, 0); }
     if ('sgdbPreferSteam' in b) c.sgdbPreferSteam = !!b.sgdbPreferSteam;
     if ('sgdbStyle' in b) c.sgdbStyle = ['', 'alternate', 'blurred', 'white_logo', 'material', 'no_logo'].includes(b.sgdbStyle) ? b.sgdbStyle : '';
     if (Array.isArray(b.romRoots)) c.romRoots = [...new Set(b.romRoots.filter(r => str(r) && fs.existsSync(r)))];
@@ -846,6 +865,40 @@ const routes = {
     json(res, 200, { ok: true });
   },
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
+  // --- Réglages système (accès rapide) et profils d'énergie (voir lib/syscontrol.js)
+  'GET /api/sys': async (req, res, q) => {
+    try { json(res, 200, await sysctl.state(q.get('refresh') === '1')); }
+    catch (e) { json(res, 500, { error: e.message }); }
+  },
+  'POST /api/sys': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await sysctl.call(String(b.cmd || ''), { value: b.value, kind: b.kind })); }
+    catch (e) { json(res, 400, { error: e.message }); }
+  },
+  'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
+  'POST /api/power/profiles': async (req, res) => {
+    const b = await readBody(req);
+    const c = config();
+    const p = powerProfiles();
+    if (typeof b.auto === 'boolean') p.auto = b.auto;
+    for (const src of ['battery', 'ac']) {
+      if (!b[src] || typeof b[src] !== 'object') continue;
+      const v = b[src], out = { ...p[src] };
+      for (const [k, test] of Object.entries(PROFILE_FIELDS)) if (k in v) { if (v[k] === null) delete out[k]; else if (test(v[k])) out[k] = v[k]; }
+      p[src] = out;
+    }
+    c.powerProfiles = p;
+    writeJson(FILES.config, c);
+    json(res, 200, p);
+  },
+  // Branchement ou débranchement du chargeur : le profil de la source d'alimentation s'applique
+  'POST /api/power/apply': async (req, res) => {
+    const b = await readBody(req);
+    const p = powerProfiles();
+    const src = b.source === 'battery' ? 'battery' : 'ac';
+    if (!p.auto && !b.force) return json(res, 200, { skipped: true });
+    json(res, 200, await sysctl.apply(p[src]));
+  },
   // --- Streaming : l'application KanePlay intégrée (voir lib/kaneplay.js)
   'GET /api/stream': async (req, res, q) => {
     if (q.get('refresh') === '1') await refreshKanePlay();
@@ -857,7 +910,9 @@ const routes = {
   // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
   'POST /api/stream/open': async (req, res) => {
     if (!kp.exe) return json(res, 404, { error: 'Moteur de streaming absent' });
-    json(res, 200, await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', KANEMODE_ICON) }));
+    const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', { icon: KANEMODE_ICON, accent: config().accent }) });
+    if (r.ok) recordPlay('kaneplay');
+    json(res, 200, r);
   },
   'POST /api/drivers/search': async (req, res) => { await driverJobs.search(); json(res, 200, driverJobs.status()); },
   'POST /api/drivers/install': async (req, res) => {

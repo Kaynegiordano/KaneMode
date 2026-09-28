@@ -6,13 +6,16 @@ import { pickFile } from './add.js';
 import { exitToDesktop, openGame, openStreaming } from './game.js';
 import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
+import { QAM_SECTIONS } from '../qam.js';
+import { HOME_ROWS } from './home.js';
 
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L3', 'R3', '↑', '↓', '←', '→', 'Guide'];
 const SECTIONS = [
-  ['library', 'i-library', 'Bibliothèque'], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', 'Émulation'], ['stream', 'i-wifi', 'Streaming'],
+  ['library', 'i-library', 'Bibliothèque'], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', 'Émulation'], ['stream', 'i-wifi', 'KanePlay'],
   ['look', 'i-palette', 'Apparence'], ['boot', 'i-media', 'Démarrage'], ['pad', 'i-gamepad', 'Manette'],
-  ['access', 'i-info', 'Accessibilité'], ['power', 'i-moon', 'Veille'], ['device', 'i-battery', 'Console portable'],
+  ['qam', 'i-grid', 'Accès rapide'], ['access', 'i-info', 'Accessibilité'], ['power', 'i-moon', 'Veille'], ['energy', 'i-power', 'Énergie'],
+  ['device', 'i-battery', 'Console portable'],
   ['storage', 'i-drive', 'Stockage'], ['xbox', 'i-desktop', 'Mode Xbox'], ['system', 'i-cpu', 'Système'],
 ];
 // Réglage demandé par une autre page → catégorie à afficher
@@ -43,6 +46,54 @@ function infoRow(s, title, desc, control) {
   return r;
 }
 const toggle = (s, key, title, desc) => s.append(switchRow({ title, desc, on: settings[key], key, onToggle: v => { settings[key] = v; saveSettings(); } }));
+
+/**
+ * Liste ordonnable (sections de l'accès rapide, rangées de l'accueil) : ▲ ▼ pour déplacer,
+ * « Affichée / Masquée » pour montrer ou cacher.
+ */
+function orderList(s, items, orderKey, hiddenKey, prefix) {
+  const box = el('div', 'order-list');
+  s.append(box);
+  const draw = focus => {
+    const order = (Array.isArray(settings[orderKey]) ? settings[orderKey] : []).filter(id => items.some(i => i.id === id));
+    for (const i of items) if (!order.includes(i.id)) order.push(i.id);
+    const hidden = new Set(settings[hiddenKey] || []);
+    if (prefix === 'home') {
+      if (settings.homeApps === false) hidden.add('apps');
+      if (settings.homeStores === false) hidden.add('stores');
+    }
+    const commit = key => {
+      settings[orderKey] = order;
+      settings[hiddenKey] = [...hidden];
+      if (prefix === 'home') { settings.homeApps = !hidden.has('apps'); settings.homeStores = !hidden.has('stores'); }
+      saveSettings();
+      draw(key);
+    };
+    box.replaceChildren();
+    order.forEach((id, idx) => {
+      const it = items.find(i => i.id === id);
+      const r = el('div', 'set-row order-row' + (hidden.has(id) ? ' off' : ''), `<div class="txt"><b>${esc(it.label)}</b><small>${esc(it.desc || '')}</small></div>`);
+      const move = d => {
+        const key = `${prefix}:${id}:${d < 0 ? 'up' : 'down'}`;
+        const edge = (d < 0 && idx === 0) || (d > 0 && idx === order.length - 1);
+        return nav(el('div', 'chip-btn' + (edge ? ' dim' : ''), d < 0 ? '▲' : '▼'), () => {
+          const j = idx + d;
+          if (j < 0 || j >= order.length) return;
+          [order[idx], order[j]] = [order[j], order[idx]];
+          commit(key);
+        }, key);
+      };
+      const vis = nav(el('div', 'chip-btn' + (hidden.has(id) ? '' : ' primary'), hidden.has(id) ? 'Masquée' : 'Affichée'), () => {
+        hidden.has(id) ? hidden.delete(id) : hidden.add(id);
+        commit(`${prefix}:${id}:vis`);
+      }, `${prefix}:${id}:vis`);
+      r.append(move(-1), move(1), vis);
+      box.append(r);
+    });
+    if (focus) focusIn(box, focus);
+  };
+  draw();
+}
 const scaleSeg = key => segmented([90, 100, 110, 125].map(v => ({ value: v, label: v + ' %' })), settings.uiScale, v => { settings.uiScale = +v; saveSettings(); }, key);
 
 let page;
@@ -236,7 +287,7 @@ const BUILDERS = {
   },
 
   async stream(s) {
-    h2(s, 'i-wifi', 'Streaming');
+    h2(s, 'i-wifi', 'KanePlay · streaming');
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, '<span class="dot-ko"></span>Moteur de streaming absent', 'L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1');
@@ -246,12 +297,12 @@ const BUILDERS = {
     for (const h of d.hosts) {
       infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? 'Appairé' : 'Non appairé'} · ${h.apps} application${h.apps > 1 ? 's' : ''}`);
     }
-    actionRow(s, 'i-wifi', 'Ouvrir le streaming', 'PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils', openStreaming, 'open-stream');
-    s.append(el('div', 'notice', 'Les jeux de vos PC appairés sont aussi dans la bibliothèque de KaneMode (onglet <b>KanePlay</b>) : <b>A</b> les lance directement. Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.'));
+    actionRow(s, 'i-wifi', 'Ouvrir KanePlay', 'PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils', openStreaming, 'open-stream');
+    s.append(el('div', 'notice', 'Les jeux de vos PC se choisissent dans KanePlay, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil de KanePlay, <b>B</b> revient à KaneMode.'));
   },
   async look(s) {
     h2(s, 'i-palette', 'Apparence');
-    const sw = infoRow(s, 'Couleur d’accent', 'Boutons, curseurs et reflets');
+    const sw = infoRow(s, 'Couleur d’accent', 'Boutons, curseurs et reflets · reprise par KanePlay');
     const swatches = el('div', 'swatches');
     for (const c of ACCENTS) {
       const d = el('div', 'swatch' + (settings.accent === c ? ' active' : ''), icon('i-check'));
@@ -259,16 +310,73 @@ const BUILDERS = {
       swatches.append(nav(d, () => { settings.accent = c; saveSettings(); swatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('active', x === d)); }, 'accent:' + c));
     }
     sw.append(swatches);
-    infoRow(s, 'Fond d’écran', 'Derrière les menus', segmented([{ value: 'art', label: 'Jaquette floue' }, { value: 'gradient', label: 'Dégradé animé' }, { value: 'dark', label: 'Uni' }], settings.background, v => { settings.background = v; saveSettings(); }, 'bg'));
+    const pick = (title, desc, key, options) => infoRow(s, title, desc, segmented(options.map(([value, label]) => ({ value, label })), settings[key], v => { settings[key] = typeof settings[key] === 'boolean' ? v === 'true' : v; saveSettings(); }, key));
+    pick('Fond d’écran', 'Derrière les menus', 'background', [['art', 'Jaquette floue'], ['gradient', 'Dégradé animé'], ['dark', 'Uni']]);
     infoRow(s, 'Taille de l’interface', 'Pour un grand écran vu de loin, ou l’écran d’une console portable', scaleSeg('scale'));
+    pick('Taille des jaquettes', 'Rangées de l’accueil et de l’émulation', 'cardSize', [['s', 'Petite'], ['m', 'Moyenne'], ['l', 'Grande']]);
+    pick('Coins', 'Jaquettes, boutons et panneaux', 'corners', [['square', 'Carrés'], ['soft', 'Doux'], ['round', 'Arrondis']]);
+    pick('Police', '', 'font', [['segoe', 'Segoe UI'], ['system', 'Système']]);
+    toggle(s, 'solidPanels', 'Panneaux opaques', 'Sans transparence ni flou : plus lisible, un peu plus léger pour la carte graphique');
     toggle(s, 'badges', 'Toujours afficher la boutique', 'Pastille de la boutique sur chaque jaquette de la bibliothèque');
+
+    h2(s, 'i-clock', 'Barre du haut');
+    pick('Horloge', '', 'clock24', [['true', '24 h'], ['false', '12 h']]);
+    toggle(s, 'clockSeconds', 'Afficher les secondes', '');
+    toggle(s, 'batteryPct', 'Pourcentage de batterie', 'À côté de l’icône, sur les consoles et PC portables');
+
     h2(s, 'i-home', 'Accueil');
-    toggle(s, 'homeApps', 'Rangée « Applications »', 'Applis et raccourcis ajoutés');
-    toggle(s, 'homeStores', 'Rangée « Boutiques et plateformes »', 'Lanceurs détectés et tuile Bureau');
+    s.append(el('div', 'notice', 'Les <b>jeux récents</b> (et KanePlay) restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.'));
+    orderList(s, HOME_ROWS, 'homeRows', 'homeHidden', 'home');
     toggle(s, 'sounds', 'Sons de l’interface', 'Petits sons de navigation et de validation');
-    toggle(s, 'notifications', 'Notifications', 'Nouveaux jeux détectés, ajouts, clés enregistrées…');
+    toggle(s, 'notifications', 'Notifications', 'Nouveaux jeux détectés, ajouts…');
   },
 
+  async qam(s) {
+    h2(s, 'i-grid', 'Accès rapide');
+    s.append(el('div', 'notice', 'Le panneau <b>Accès rapide</b> (bouton Vue / Partage, touche Q) règle vraiment Windows : volume, luminosité, Wi-Fi, Bluetooth, mode d’alimentation, profil de la console, fréquence de l’écran. Choisissez ses sections et leur ordre.'));
+    orderList(s, QAM_SECTIONS, 'qamOrder', 'qamHidden', 'qam');
+  },
+
+  async energy(s) {
+    h2(s, 'i-power', 'Énergie');
+    const [p, sys, d] = await Promise.all([api.get('/api/power/profiles'), api.get('/api/sys').catch(() => null), device()]);
+    const save = async patch => {
+      try { Object.assign(p, await api.post('/api/power/profiles', patch)); } catch (e) { toast(e.message, { error: true }); }
+    };
+    s.append(switchRow({
+      title: 'Profils automatiques', key: 'pw-auto', on: p.auto,
+      desc: 'En branchant ou débranchant le chargeur, KaneMode applique le profil correspondant',
+      onToggle: v => save({ auto: v }),
+    }));
+    const hh = d && d.ok && d.handheld;
+    const vendor = sys && sys.vendor && sys.vendor.modes ? sys.vendor : null;
+    const VL = { silent: 'Silencieux', quiet: 'Silencieux', balanced: 'Équilibré', performance: 'Performance', turbo: 'Turbo' };
+    for (const [src, title, icon1] of [['battery', 'Sur batterie', 'i-battery'], ['ac', 'Sur secteur', 'i-power']]) {
+      h2(s, icon1, title);
+      const prof = p[src] || {};
+      const field = (label, desc, key, options) => infoRow(s, label, desc, segmented(
+        [{ value: '', label: 'Inchangé' }, ...options.map(([value, lab]) => ({ value, label: lab }))],
+        prof[key] ?? '', v => save({ [src]: { [key]: v === '' ? null : (typeof options[0][0] === 'number' ? +v : v) } }), `${src}-${key}`));
+      if (sys && sys.powerMode) field('Mode d’alimentation de Windows', 'Consommation et réactivité du processeur', 'powerMode', [['efficiency', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']]);
+      if (vendor) field(`Profil ${hh ? esc(hh.maker) : 'de la console'}`, 'Puissance et ventilateurs réglés par le constructeur', 'vendor', vendor.modes.map(m => [m, VL[m] || m]));
+      if (sys && sys.vendor && sys.vendor.tdp) field('Puissance (expérimental)', `${sys.vendor.tdp.min} à ${sys.vendor.tdp.max} W`, 'tdp', [8, 10, 15, 20, 25, 30].filter(w => w >= sys.vendor.tdp.min && w <= sys.vendor.tdp.max).map(w => [w, w + ' W']));
+      if (sys && sys.refresh && sys.refresh.available.length > 1) field('Fréquence de l’écran', 'Moins d’images par seconde : plus d’autonomie', 'refresh', sys.refresh.available.filter(hz => hz >= 30).slice(-4).map(hz => [hz, hz + ' Hz']));
+      if (sys && sys.brightness != null) field('Luminosité', '', 'brightness', [30, 50, 70, 100].map(v => [v, v + ' %']));
+      actionRow(s, 'i-check', 'Appliquer maintenant', 'Sans attendre de brancher ou débrancher le chargeur', async () => {
+        busy('Application du profil…');
+        try {
+          const r = await api.post('/api/power/apply', { source: src, force: true });
+          toast(r.errors && r.errors.length ? r.errors[0] : `Profil « ${title.toLowerCase()} » appliqué`, { error: !!(r.errors && r.errors.length) });
+        } catch (e) { toast(e.message, { error: true }); }
+        finally { busy(null); }
+      }, 'pw-apply-' + src);
+    }
+    if (hh && !vendor) {
+      s.append(el('div', 'notice', `Sur ${esc(hh.name)}, les profils de puissance du constructeur se règlent dans ${esc(hh.tool ? hh.tool.name : 'son logiciel')} (Paramètres → Console portable) : KaneMode règle ici le mode d’alimentation de Windows, la fréquence et la luminosité.`));
+    } else if (vendor) {
+      s.append(el('div', 'notice', `Profils ${esc(hh ? hh.maker : '')} : les mêmes que dans ${esc(hh && hh.tool ? hh.tool.name : 'le logiciel du constructeur')}. La puissance en watts est expérimentale : restez dans les valeurs proposées.`));
+    }
+  },
   async boot(s) {
     h2(s, 'i-media', 'Démarrage');
     const cfg = await api.get('/api/config');

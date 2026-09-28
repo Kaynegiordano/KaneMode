@@ -113,7 +113,7 @@
     <div class="menu-item" data-nav data-key="search" data-action="menu-go" data-page="search"><svg><use href="#i-search"/></svg>Rechercher</div>
     <div class="menu-item" data-nav data-key="media" data-action="menu-go" data-page="media"><svg><use href="#i-media"/></svg>Médias</div>
     <div class="menu-item" data-nav data-key="emulation" data-action="menu-go" data-page="emulation"><svg><use href="#i-rom"/></svg>Émulation</div>
-      <div class="menu-item" data-nav data-key="stream" data-action="stream-open"><svg><use href="#i-wifi"/></svg>Streaming</div>
+      <div class="menu-item" data-nav data-key="stream" data-action="stream-open"><svg><use href="#i-wifi"/></svg>KanePlay</div>
     <div class="menu-item" data-nav data-key="add" data-action="menu-go" data-page="add"><svg><use href="#i-plus"/></svg>Ajouter un jeu ou une appli</div>
     <div class="menu-sep"></div>
     <div class="menu-item" data-nav data-key="settings" data-action="menu-go" data-page="settings"><svg><use href="#i-gear"/></svg>Paramètres</div>
@@ -128,41 +128,9 @@
   </aside>
 
   <aside class="layer panel" id="qam">
-    <div class="panel-head">Accès rapide</div>
-    <div class="qam-section">
-      <h3>Performance</h3>
-      <div class="meter"><span>Processeur</span><div class="bar"><i id="cpu-bar"></i></div><output id="cpu-val">—</output></div>
-      <div class="meter"><span>Mémoire</span><div class="bar"><i id="mem-bar"></i></div><output id="mem-val">—</output></div>
-      <div class="seg-label">Limite d'images par seconde</div>
-      <div class="segmented" data-group="fps">
-        <button data-nav data-action="seg" data-value="30">30</button>
-        <button data-nav data-action="seg" data-value="60">60</button>
-        <button data-nav data-action="seg" data-value="120">120</button>
-        <button data-nav data-action="seg" data-value="0">Aucune</button>
-      </div>
-      <div class="seg-label">Superposition de performance</div>
-      <div class="segmented" data-group="overlay">
-        <button data-nav data-action="seg" data-value="off">Non</button>
-        <button data-nav data-action="seg" data-value="fps">FPS</button>
-        <button data-nav data-action="seg" data-value="full">Complète</button>
-      </div>
-    </div>
-    <div class="qam-section">
-      <h3>Réglages rapides</h3>
-      <div class="toggles">
-        <div class="toggle" data-nav data-action="toggle" data-key="wifi"><svg><use href="#i-wifi"/></svg><span>Wi-Fi</span></div>
-        <div class="toggle" data-nav data-action="toggle" data-key="bluetooth"><svg><use href="#i-bluetooth"/></svg><span>Bluetooth</span></div>
-        <div class="toggle" data-nav data-action="toggle" data-key="night"><svg><use href="#i-moon"/></svg><span>Mode nuit</span></div>
-        <div class="toggle" data-nav data-action="toggle" data-key="sounds"><svg><use href="#i-music"/></svg><span>Sons de l'interface</span></div>
-      </div>
-      <div class="slider" data-nav data-slider="brightness"><svg><use href="#i-sun"/></svg><div class="track"><div class="fill"></div><div class="knob"></div></div><output></output></div>
-      <div class="slider" data-nav data-slider="volume"><svg><use href="#i-volume"/></svg><div class="track"><div class="fill"></div><div class="knob"></div></div><output></output></div>
-    </div>
-    <div class="qam-section">
-      <h3>Notifications</h3>
-      <div id="notifs" class="notif-empty">Aucune nouvelle notification</div>
-    </div>
-  </aside>
+      <div class="panel-head">Accès rapide</div>
+      <div id="qam-body"></div>
+    </aside>
 
   <div class="layer" id="viewer"><div class="viewer-stage"></div><div class="viewer-caption"></div></div>
   <div class="layer" id="dialog"><div class="dialog-box"></div></div>

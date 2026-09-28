@@ -195,9 +195,9 @@ export function press(k) {
 
 // ---------- Indications de boutons ----------
 const G = {
-  xbox: { a: 'a|A', b: 'b|B', x: 'x|X', y: 'y|Y', lb: '|LB', rb: '|RB', lt: '|LT', rt: '|RT' },
-  ps: { a: 'ps-a|✕', b: 'ps-b|○', x: 'ps-x|□', y: 'ps-y|△', lb: '|L1', rb: '|R1', lt: '|L2', rt: '|R2' },
-  kbd: { a: 'key|Entrée', b: 'key|Échap', x: 'key|X', y: 'key|Y', lb: 'key|Pg↑', rb: 'key|Pg↓', lt: 'key|Début', rt: 'key|Fin', menu: 'key|M', view: 'key|Q' },
+  xbox: { a: 'a|A', b: 'b|B', x: 'x|X', y: 'y|Y', lb: '|LB', rb: '|RB', lt: '|LT', rt: '|RT', left: '|◀', right: '|▶' },
+  ps: { a: 'ps-a|✕', b: 'ps-b|○', x: 'ps-x|□', y: 'ps-y|△', lb: '|L1', rb: '|R1', lt: '|L2', rt: '|R2', left: '|◀', right: '|▶' },
+  kbd: { a: 'key|Entrée', b: 'key|Échap', x: 'key|X', y: 'key|Y', lb: 'key|Pg↑', rb: 'key|Pg↓', lt: 'key|Début', rt: 'key|Fin', menu: 'key|M', view: 'key|Q', left: 'key|←', right: 'key|→' },
 };
 export function glyph(k) {
   const style = settings.padGlyphs === 'auto' ? state.padStyle : settings.padGlyphs;

@@ -127,7 +127,14 @@ setInterval(() => {
   try {
     if (!navigator.getBattery) return;
     const b = await navigator.getBattery();
-    const upd = () => { onBattery = !b.charging; }; // PC fixe : « en charge », à 100 %
+    // PC fixe : « en charge », à 100 %. Branché ou débranché : le profil d'énergie de la source s'applique.
+    let first = true;
+    const upd = () => {
+      const was = onBattery;
+      onBattery = !b.charging;
+      if (first || was !== onBattery) api.post('/api/power/apply', { source: onBattery ? 'battery' : 'ac' }).catch(() => {});
+      first = false;
+    };
     upd();
     b.addEventListener('chargingchange', upd);
   } catch { /* pas de batterie */ }

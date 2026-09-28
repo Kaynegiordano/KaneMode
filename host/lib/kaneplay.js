@@ -26,14 +26,14 @@ function findExe(bundled, dev) {
   return null;
 }
 
-/** Environnement du mode intégré : icône et identité de KaneMode, commande à exécuter. */
-function env(command, icon) {
+/** Environnement du mode intégré : icône, identité et couleur d'accent de KaneMode, commande à exécuter. */
+function env(command, { icon, accent } = {}) {
   const e = { KANEPLAY_EMBEDDED: '1', KANEMODE_COMMAND: command };
   if (icon && isFile(icon)) e.KANEMODE_ICON = icon;
+  if (/^#[0-9a-f]{6}$/i.test(accent || '')) e.KANEMODE_ACCENT = accent;
   if (process.env.KANEMODE_AUMID) e.KANEMODE_AUMID = process.env.KANEMODE_AUMID;
   return e;
 }
-
 /** PC appairés dans le streaming et leurs applications (registre, format QSettings). */
 async function hosts() {
   const out = await reg(['query', REG + '\\hosts', '/s']);
@@ -61,26 +61,16 @@ async function hosts() {
   return list;
 }
 
-const boxart = (uuid, appId) => path.join(CACHE, 'boxart', uuid, appId + '.png');
-
-/** Entrées de bibliothèque : une par application de chaque PC appairé, lancée dans le streaming. */
-function entries(exe, list, icon) {
-  if (!exe) return [];
-  const out = [];
-  for (const h of list) {
-    if (!h.paired) continue;
-    for (const a of h.apps) {
-      if (a.hidden) continue;
-      const art = boxart(h.uuid, a.id);
-      out.push({
-        id: `kaneplay:${h.uuid}:${a.id}`, source: 'kaneplay', name: a.name, streamHost: h.name, hostUuid: h.uuid,
-        type: /^(desktop|bureau)$/i.test(a.name) ? 'app' : 'game', installed: true,
-        launch: { kind: 'exe', target: exe, args: '', env: env(`stream\t${h.uuid}\t${a.id}\t${a.name}`, icon) },
-        art: isFile(art) ? { portrait: art } : {},
-      });
-    }
-  }
-  return out;
+/**
+ * Entrée de bibliothèque : KanePlay lui-même, avec sa jaquette. Les jeux des PC se choisissent
+ * dans KanePlay (bibliothèque de chaque PC, reprise d'une session en pause).
+ */
+function entry(exe, art, opts) {
+  if (!exe) return null;
+  return {
+    id: 'kaneplay', source: 'kaneplay', name: 'KanePlay', type: 'app', installed: true,
+    launch: { kind: 'exe', target: exe, args: '', env: env('show', opts) },
+    art: art && isFile(art) ? { portrait: art, hero: art } : {},
+  };
 }
-
-module.exports = { findExe, env, hosts, entries };
+module.exports = { findExe, env, hosts, entry };
