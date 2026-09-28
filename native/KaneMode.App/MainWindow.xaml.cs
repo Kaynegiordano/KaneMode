@@ -18,6 +18,8 @@ public partial class MainWindow : Window
     public const string WindowTitle = "KaneMode";
 
     private HostProcess _host = new();
+    // Menu ou accès rapide ouvert par-dessus une autre fenêtre (KanePlay) : on y retourne en le fermant
+    private IntPtr _returnTo;
     private bool _ready;
     private bool _failed;
 
@@ -36,6 +38,7 @@ public partial class MainWindow : Window
             Height = 800;
         }
         Loaded += async (_, _) => await StartAsync();
+        SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
         Activated += (_, _) => OnActivated();
         Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _host.Dispose(); };
         // Veille et réveil du système, quelle qu'en soit la cause (menu, bouton d'alimentation, capot…)
@@ -118,6 +121,39 @@ public partial class MainWindow : Window
         Post(new { type = "resume" });
     }
 
+    /// <summary>
+    /// Messages des autres programmes de KaneMode. KanePlay envoie « open	qam » ou « open	menu »
+    /// (WM_COPYDATA, wParam = sa fenêtre) quand on appuie sur Start ou Select.
+    /// </summary>
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != Native.WM_COPYDATA || lParam == IntPtr.Zero) return IntPtr.Zero;
+        var data = System.Runtime.InteropServices.Marshal.PtrToStructure<Native.CopyData>(lParam);
+        if (data.Kind != (IntPtr)0x4B4D || data.Data == IntPtr.Zero) return IntPtr.Zero;
+        string text = System.Runtime.InteropServices.Marshal.PtrToStringUni(data.Data) ?? "";
+        string[] parts = text.Split('\t');
+        if (parts.Length == 2 && parts[0] == "open" && (parts[1] == "qam" || parts[1] == "menu"))
+        {
+            handled = true;
+            OpenOverlay(parts[1], wParam);
+            return (IntPtr)1;
+        }
+        return IntPtr.Zero;
+    }
+
+    /// <summary>Ouvre le menu ou l'accès rapide de KaneMode par-dessus la fenêtre `from`.</summary>
+    public void OpenOverlay(string panel, IntPtr from)
+    {
+        if (!_ready) return;
+        _returnTo = from;
+        Log.Write($"Ouverture de « {panel} » par-dessus une autre fenêtre");
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+        Show();
+        Activate();
+        Web.Focus();
+        Post(new { type = "open", panel });
+    }
+
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
     {
         if (e.Mode == PowerModes.StatusChange) return;
@@ -142,6 +178,13 @@ public partial class MainWindow : Window
                     string action = root.TryGetProperty("action", out var a) ? a.GetString() ?? "" : "";
                     if (action == "desktop") ExitToDesktop();
                     else if (!Native.Power(action, new WindowInteropHelper(this).Handle)) Log.Write($"Action inconnue : {action}");
+                    break;
+                case "return":
+                    // Menu ou accès rapide refermé : retour à la fenêtre d'où l'on venait
+                    if (_returnTo != IntPtr.Zero) { Native.Activate(_returnTo); _returnTo = IntPtr.Zero; }
+                    break;
+                case "stay":
+                    _returnTo = IntPtr.Zero; // l'utilisateur est allé ailleurs dans KaneMode
                     break;
                 case "hello":
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });

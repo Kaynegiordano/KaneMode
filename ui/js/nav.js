@@ -311,6 +311,9 @@ const padAction = k => (k === 'select' ? (settings.padSwap ? 'view' : 'menu') : 
 const padButton = k => (k === 'menu' ? (settings.padSwap ? 'start' : 'select') : k === 'view' ? (settings.padSwap ? 'select' : 'start') : k);
 export const padLive = { id: '', buttons: [], axes: [0, 0, 0, 0], connected: 0 };
 const held = {};
+let swallow = false;
+addEventListener('focus', () => { swallow = true; });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) swallow = true; });
 const armed = {};
 // Certains pilotes signalent un stick en butée tant qu'il n'a pas bougé :
 // un axe n'est pris en compte qu'après être passé une fois par le centre.
@@ -342,6 +345,8 @@ function poll() {
       padLive.axes = [axis(p, 0), axis(p, 1), axis(p, 2), axis(p, 3)];
     }
   }
+  // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas
+  if (swallow) { for (const k of down) held[k] = Infinity; swallow = false; }
   for (const k of down) {
     if (!held[k]) {
       held[k] = now + 380; // délai avant répétition

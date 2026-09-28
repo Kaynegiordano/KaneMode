@@ -906,7 +906,15 @@ const routes = {
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
   // --- Réglages système (accès rapide) et profils d'énergie (voir lib/syscontrol.js)
   'GET /api/sys': async (req, res, q) => {
-    try { json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null }); }
+    try {
+      const hh = (await device.info().catch(() => ({}))).handheld;
+      json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null, handheld: hh ? hh.id : null });
+    }
+    catch (e) { json(res, 500, { error: e.message }); }
+  },
+  // Mesures en direct (accès rapide ouvert) : fréquence réelle du processeur, charge, watts sur batterie
+  'GET /api/sys/live': async (req, res) => {
+    try { json(res, 200, await sysctl.live()); }
     catch (e) { json(res, 500, { error: e.message }); }
   },
   'POST /api/sys': async (req, res) => {
@@ -927,7 +935,8 @@ const routes = {
     const r = await sysctl.apply(profile);
     if (!r.errors.length || r.done.length) setPerfMode(b.mode);
     const st = await sysctl.state(true).catch(() => null);
-    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null } });
+    const hh = (await device.info().catch(() => ({}))).handheld;
+    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null, handheld: hh ? hh.id : null } });
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
   'POST /api/power/profiles': async (req, res) => {

@@ -14,6 +14,23 @@ public static class Native
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int cmd);
 
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    /// <summary>Redonne le premier plan à une fenêtre (celle d'où l'on vient : KanePlay, un jeu…).</summary>
+    public static bool Activate(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindow(hwnd)) return false;
+        if (IsIconic(hwnd)) ShowWindow(hwnd, 9); // SW_RESTORE
+        return SetForegroundWindow(hwnd);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct CopyData { public IntPtr Kind; public int Size; public IntPtr Data; }
+    public const int WM_COPYDATA = 0x004A;
+
     public static void BringToFront(string title)
     {
         IntPtr hwnd = FindWindow(null, title);

@@ -45,6 +45,54 @@ export function modeSummary(mode, st = sys) {
   }[mode];
   return parts ? parts.filter(Boolean).join(' · ') : '';
 }
+// Puissance des profils du constructeur, en watts [sur batterie, sur secteur] (valeurs du fabricant)
+const PROFILE_WATTS = {
+  'rog-ally': { silent: [10, 10], performance: [15, 15], turbo: [25, 30] },
+  'rog-ally-x': { silent: [13, 13], performance: [17, 17], turbo: [25, 30] },
+  'legion-go': { quiet: [8, 8], balanced: [15, 15], performance: [20, 20] },
+};
+let live = null;      // dernières mesures (fréquence, charge, watts)
+let applied = null;   // détail du dernier mode appliqué, affiché sous les boutons
+const vendorFor = (mode, st = sys) => {
+  const v = st && st.vendor && st.vendor.modes;
+  if (!v) return null;
+  const want = { eco: ['silent', 'quiet'], balanced: ['performance', 'balanced'], performance: ['turbo', 'performance'] }[mode] || [];
+  return want.find(n => v.includes(n)) || null;
+};
+function profileWatts(vmode, st = sys) {
+  const t = st && PROFILE_WATTS[st.handheld];
+  const w = t && vmode && t[vmode];
+  return w ? w[live && live.discharging === false ? 1 : 0] : null;
+}
+const fmtW = w => (w == null ? '—' : String(Math.round(w * 10) / 10).replace('.', ',') + ' W');
+const fmtGhz = mhz => (mhz ? (mhz / 1000).toFixed(2).replace('.', ',') + ' GHz' : '—');
+
+/** Bandeau en direct : consommation (sur batterie), fréquence réelle, limite de puissance. */
+function paintLive(flash = false) {
+  const strip = $('#qam .live-strip');
+  if (!strip || !sys) return;
+  const cells = [];
+  if (live && live.watts != null && live.discharging) cells.push([fmtW(live.watts), 'Consommation']);
+  else if (live && live.discharging === false) cells.push(['Secteur', 'Alimentation']);
+  else cells.push([live && live.load != null ? live.load + ' %' : '—', 'Charge du processeur']);
+  cells.push([fmtGhz(live && live.mhz), 'Fréquence réelle']);
+  const vm = sys.vendor && sys.vendor.mode;
+  const tdp = settings.tdpActive && sys.mode === 'custom' ? settings.tdpActive : profileWatts(vm);
+  if (tdp) cells.push([fmtW(tdp), settings.tdpActive && sys.mode === 'custom' ? 'Limite réglée' : `Profil ${VENDOR_LABELS[vm] || vm}`]);
+  else if (sys.cpu) cells.push([sys.cpu.maxAc + ' %' + (sys.cpu.boostAc ? ' · turbo' : ''), 'Limite du processeur']);
+  strip.innerHTML = cells.map(([v, l]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
+  if (flash) { strip.classList.remove('flash'); void strip.offsetWidth; strip.classList.add('flash'); }
+}
+let liveTimer = 0;
+/** Mesures en direct tant que l'accès rapide est ouvert (une par seconde). */
+export function startLive() {
+  stopLive();
+  const tick = async () => { try { live = await api.get('/api/sys/live'); paintLive(); } catch { /* hôte occupé */ } };
+  tick();
+  liveTimer = setInterval(tick, 1000);
+}
+export function stopLive() { clearInterval(liveTimer); applied = null; }
+
 /** Un réglage de performance changé à la main : le mode passe à « Personnalisé ». */
 function markCustom() {
   if (!sys) return;
@@ -53,17 +101,34 @@ function markCustom() {
   if (seg) seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   const note = $('#qam .perf-note');
   if (note) note.textContent = 'Personnalisé : réglages ajustés à la main ci-dessous';
+  const list = $('#qam .applied');
+  if (list) list.remove();
+  paintLive(true);
 }
 const sendPerf = (cmd, value, extra) => send(cmd, value, extra).then(r => { markCustom(); return r; });
+const WIN_LABELS = { efficiency: 'Windows : économie d’énergie', balanced: 'Windows : équilibré', performance: 'Windows : performances maximales' };
 async function applyMode(mode) {
   const name = PERF_MODES.find(m => m[0] === mode)[1];
   try {
     const r = await api.post('/api/power/mode', { mode });
     if (r.state) sys = r.state;
+    settings.tdpActive = 0; // le profil du constructeur remplace une puissance réglée à la main
+    saveSettings();
+    // Ce qui a vraiment été fait, réglage par réglage
+    const a = r.applied || {}, done = new Set(r.done || []);
+    const items = [];
+    if (a.powerMode) items.push([done.has('powermode'), WIN_LABELS[a.powerMode]]);
+    if (a.cpuMax != null) items.push([done.has('cpumax'), a.cpuMax < 100 ? `Processeur limité à ${a.cpuMax} %` : 'Processeur sans limite']);
+    if (a.boost != null) items.push([done.has('boost'), a.boost ? 'Turbo activé' : 'Turbo coupé']);
+    if (a.vendor) { const w = profileWatts(a.vendor); items.push([done.has('vendor'), `Profil ${VENDOR_LABELS[a.vendor] || a.vendor}${w ? ` · ${w} W` : ''}`]); }
+    applied = { mode, items };
     if (r.errors && r.errors.length) toast(`Mode ${name} : ${r.errors[0]}`, { error: true });
     else toast(`Mode ${name} appliqué`);
   } catch (e) { toast(e.message, { error: true }); }
   renderQam('mode:' + mode, false);
+  paintLive(true);
+  // La fréquence met un instant à suivre : nouvelle mesure tout de suite
+  setTimeout(async () => { try { live = await api.get('/api/sys/live'); paintLive(); } catch { /* hôte occupé */ } }, 700);
 }
 
 // ---------------------------------------------------------------- petits contrôles
@@ -153,9 +218,17 @@ const BUILD = {
     // Mode de performance : règle tout d'un coup (Windows, processeur, profil de la console)
     const modeSeg = segment(PERF_MODES, sys.mode, applyMode, 'mode');
     modeSeg.classList.add('perf-mode', 'big');
-    kids.push(label('Mode de performance'), modeSeg,
+    // Puissance de chaque mode sur cette console (profil du constructeur)
+    [...modeSeg.children].forEach((b, i) => {
+      const w = profileWatts(vendorFor(PERF_MODES[i][0]));
+      if (w) b.insertAdjacentHTML('beforeend', `<small>${w} W</small>`);
+    });
+    kids.push(el('div', 'live-strip'), label('Mode de performance'), modeSeg,
       el('div', 'qam-note perf-note', sys.mode === 'custom' ? 'Personnalisé : réglages ajustés à la main ci-dessous'
         : sys.mode ? esc(modeSummary(sys.mode)) : 'Choisissez un mode : il règle Windows, le processeur et le profil de la console'));
+    if (applied && applied.mode === sys.mode) {
+      kids.push(el('ul', 'applied', applied.items.map(([ok, t]) => `<li class="${ok ? 'ok' : 'ko'}">${ok ? '✓' : '✕'} ${esc(t)}</li>`).join('')));
+    }
     const details = el('div', 'toggles');
     details.append(toggle('i-gear', 'Réglages détaillés', settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
     kids.push(details);
@@ -165,7 +238,7 @@ const BUILD = {
     }
     const vendor = sys.vendor;
     if (vendor && vendor.modes) {
-      kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v), 'vendor'));
+      kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v).then(st => { if (st && st.modes) sys.vendor = st; settings.tdpActive = 0; saveSettings(); paintLive(true); }), 'vendor'));
     } else if (vendor && vendor.error) {
       kids.push(el('div', 'qam-note', `Profil de la console indisponible : ${esc(vendor.error)}`));
     }
@@ -175,7 +248,7 @@ const BUILD = {
       const cur = Object.assign({ spl: Math.round((t.min + t.max) / 2) }, settings.tdpLimits || {});
       cur.sppt = cur.sppt || cur.spl;
       cur.fppt = cur.fppt || cur.sppt;
-      const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); sendPerf('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).catch(() => {}); };
+      const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); sendPerf('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).then(() => { settings.tdpActive = cur.spl; saveSettings(); paintLive(true); }).catch(() => {}); };
       kids.push(label(`Puissance (TDP, expérimental)`));
       if (!settings.tdpAdvanced) {
         kids.push(slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { cur.spl = cur.sppt = cur.fppt = v; sendTdp(); } }));
@@ -223,7 +296,8 @@ const BUILD = {
 
   shortcuts() {
     const row = el('div', 'qam-shortcuts');
-    const btn = (iconId, text, act, key) => row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), act, key));
+    // Un raccourci emmène ailleurs : fermer ensuite ne ramène pas à KanePlay
+    const btn = (iconId, text, act, key) => row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), () => { actions['overlay-leave'](); act(); }, key));
     btn('i-moon', 'Veille', () => sleepNow(), 'sc-sleep');
     btn('i-power', 'Alimentation', () => actions['power-open'](), 'sc-power');
     btn('i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay');
@@ -259,6 +333,7 @@ export async function renderQam(focusKey, reload = true) {
     body.replaceChildren(...qamOrder().map(id => BUILD[id]()));
     $('#qam').scrollTop = top;
     if (key) focusIn($('#qam'), key, { scroll: false });
+    paintLive();
   };
   draw(focusKey);
   if (!reload) return;

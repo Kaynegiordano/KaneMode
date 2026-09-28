@@ -85,6 +85,80 @@ namespace KaneMode {
     }
   }
 
+  // ---- Mesures en direct : fréquence réelle du processeur (compteur « % Processor Performance »,
+  // noms anglais donc indépendants de la langue de Windows) et puissance lue sur la batterie
+  public static class Live {
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] static extern int PdhOpenQuery(string src, IntPtr user, out IntPtr query);
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)] static extern int PdhAddEnglishCounter(IntPtr query, string path, IntPtr user, out IntPtr counter);
+    [DllImport("pdh.dll")] static extern int PdhCollectQueryData(IntPtr query);
+    [StructLayout(LayoutKind.Explicit)] struct PdhValue { [FieldOffset(0)] public uint Status; [FieldOffset(8)] public double Double; }
+    [DllImport("pdh.dll")] static extern int PdhGetFormattedCounterValue(IntPtr counter, uint format, IntPtr type, out PdhValue value);
+    static IntPtr query, perf, util;
+    static bool ready;
+    static void Init() {
+      if (ready) return;
+      if (PdhOpenQuery(null, IntPtr.Zero, out query) != 0) throw new Exception("Compteurs indisponibles");
+      PdhAddEnglishCounter(query, @"\Processor Information(_Total)\% Processor Performance", IntPtr.Zero, out perf);
+      PdhAddEnglishCounter(query, @"\Processor Information(_Total)\% Processor Utility", IntPtr.Zero, out util);
+      PdhCollectQueryData(query);
+      ready = true;
+    }
+    static double Read(IntPtr c) {
+      PdhValue v;
+      if (c == IntPtr.Zero || PdhGetFormattedCounterValue(c, 0x00000200 | 0x00008000, IntPtr.Zero, out v) != 0) return -1; // DOUBLE | NOCAP100
+      return v.Double;
+    }
+    public static double[] Cpu() {
+      Init();
+      PdhCollectQueryData(query);
+      return new double[] { Read(perf), Read(util) };
+    }
+
+    // Batterie : IOCTL_BATTERY_QUERY_STATUS (Rate en mW, négatif en décharge)
+    [DllImport("setupapi.dll", SetLastError = true)] static extern IntPtr SetupDiGetClassDevs(ref Guid cls, IntPtr enumerator, IntPtr parent, uint flags);
+    [DllImport("setupapi.dll", SetLastError = true)] static extern bool SetupDiEnumDeviceInterfaces(IntPtr set, IntPtr info, ref Guid cls, uint index, ref DevIface data);
+    [DllImport("setupapi.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern bool SetupDiGetDeviceInterfaceDetail(IntPtr set, ref DevIface data, IntPtr detail, uint size, out uint required, IntPtr info);
+    [DllImport("setupapi.dll")] static extern bool SetupDiDestroyDeviceInfoList(IntPtr set);
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern IntPtr CreateFile(string name, uint access, uint share, IntPtr sec, uint disp, uint flags, IntPtr tmpl);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool DeviceIoControl(IntPtr h, uint code, ref uint inBuf, int inSize, out uint outBuf, int outSize, out int ret, IntPtr ov);
+    [DllImport("kernel32.dll", SetLastError = true)] static extern bool DeviceIoControl(IntPtr h, uint code, ref WaitStatus inBuf, int inSize, out BatStatus outBuf, int outSize, out int ret, IntPtr ov);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    [StructLayout(LayoutKind.Sequential)] struct DevIface { public int Size; public Guid Class; public int Flags; public IntPtr Reserved; }
+    [StructLayout(LayoutKind.Sequential)] struct WaitStatus { public uint Tag, Timeout, PowerState, Low, High; }
+    [StructLayout(LayoutKind.Sequential)] struct BatStatus { public uint PowerState, Capacity, Voltage; public int Rate; }
+    // Renvoie { puissance (W, positive), en décharge (1/0), niveau (mWh) } ou null sans batterie
+    public static double[] Battery() {
+      Guid cls = new Guid("72631e54-78a4-11d0-bcf7-00aa00b7b32a");
+      IntPtr set = SetupDiGetClassDevs(ref cls, IntPtr.Zero, IntPtr.Zero, 0x12); // PRESENT | DEVICEINTERFACE
+      if (set == new IntPtr(-1)) return null;
+      try {
+        DevIface d = new DevIface(); d.Size = Marshal.SizeOf(typeof(DevIface));
+        if (!SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref cls, 0, ref d)) return null;
+        uint need;
+        SetupDiGetDeviceInterfaceDetail(set, ref d, IntPtr.Zero, 0, out need, IntPtr.Zero);
+        IntPtr buf = Marshal.AllocHGlobal((int)need);
+        string path;
+        try {
+          Marshal.WriteInt32(buf, IntPtr.Size == 8 ? 8 : 6);
+          if (!SetupDiGetDeviceInterfaceDetail(set, ref d, buf, need, out need, IntPtr.Zero)) return null;
+          path = Marshal.PtrToStringUni(new IntPtr(buf.ToInt64() + 4));
+        } finally { Marshal.FreeHGlobal(buf); }
+        IntPtr h = CreateFile(path, 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
+        if (h == new IntPtr(-1)) return null;
+        try {
+          uint wait = 0, tag; int ret;
+          if (!DeviceIoControl(h, 0x294040, ref wait, 4, out tag, 4, out ret, IntPtr.Zero) || tag == 0) return null;
+          WaitStatus w = new WaitStatus(); w.Tag = tag;
+          BatStatus st;
+          if (!DeviceIoControl(h, 0x29404C, ref w, Marshal.SizeOf(typeof(WaitStatus)), out st, Marshal.SizeOf(typeof(BatStatus)), out ret, IntPtr.Zero)) return null;
+          bool discharging = (st.PowerState & 0x2) != 0;
+          double watts = st.Rate == unchecked((int)0x80000000) ? -1 : Math.Abs(st.Rate) / 1000.0;
+          return new double[] { watts, discharging ? 1 : 0, st.Capacity };
+        } finally { CloseHandle(h); }
+      } finally { SetupDiDestroyDeviceInfoList(set); }
+    }
+  }
+
   // ---- Processeur : limite de performance (%) et turbo, dans le mode de gestion actif (secteur et batterie)
   public static class Cpu {
     [DllImport("powrprof.dll")] static extern uint PowerGetActiveScheme(IntPtr root, out IntPtr scheme);
@@ -319,7 +393,8 @@ function Run($c) {
                 }
             }
             return @{ tdp = @{ spl = $spl; sppt = $sppt; fppt = $fppt } }
-        }        'cpumax' {
+        }
+        'cpumax' {
             $v = [Math]::Max(30, [Math]::Min(100, [int]$c.value))
             [KaneMode.Cpu]::Write([KaneMode.Cpu]::MaxState, [uint32]$v)
             return @{ cpuMax = $v }
@@ -329,6 +404,19 @@ function Run($c) {
             $v = if ($c.value) { 2 } else { 0 }
             [KaneMode.Cpu]::Write([KaneMode.Cpu]::Boost, [uint32]$v)
             return @{ boost = [bool]$c.value }
+        }
+        'live' {
+            # Mesures en direct pour l'accès rapide : fréquence réelle, charge, puissance sur batterie
+            if (-not $script:baseMhz) { $script:baseMhz = [int](Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0').'~MHz' }
+            $cpu = [KaneMode.Live]::Cpu()
+            $bat = $null
+            try { $bat = [KaneMode.Live]::Battery() } catch { }
+            return [ordered]@{
+                mhz = if ($cpu[0] -ge 0) { [int]($script:baseMhz * $cpu[0] / 100) } else { $null }
+                load = if ($cpu[1] -ge 0) { [Math]::Min(100, [int]$cpu[1]) } else { $null }
+                watts = if ($bat -and $bat[0] -ge 0) { [Math]::Round($bat[0], 1) } else { $null }
+                discharging = if ($bat) { [bool]$bat[1] } else { $null }
+            }
         }
         'chargelimit' {
             if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }

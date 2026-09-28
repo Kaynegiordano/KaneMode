@@ -5,7 +5,7 @@ import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
-import { renderQam, prefetchQam } from './qam.js';
+import { renderQam, prefetchQam, startLive, stopLive } from './qam.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
 import './pages/home.js';
 import './pages/library.js';
@@ -19,15 +19,32 @@ import './pages/emulation.js';
 applyTheme();
 // L'écran de démarrage couvre tout dès le chargement.
 if (settings.bootMode !== 'none') $('#boot').hidden = false;
-actions.exit = () => { closeLayer(); exitToDesktop(); };
-actions['stream-open'] = () => { closeLayer(); openStreaming(); };
+// ---------- Par-dessus KanePlay ----------
+// Dans KanePlay, Select et Start ouvrent le menu et l'accès rapide de KaneMode (l'app native relaie) ;
+// les refermer ramène à KanePlay, aller ailleurs dans KaneMode y reste.
+const overlay = { active: false };
+actions['overlay-leave'] = () => { if (overlay.active) { overlay.active = false; native.send('stay'); } };
+function overlayClosed() {
+  // Différé : passer du menu à l'accès rapide (Select ↔ Start) n'est pas une fermeture
+  setTimeout(() => { if (overlay.active && !topLayer()) { overlay.active = false; native.send('return'); } }, 0);
+}
+native.on(m => {
+  if (m.type !== 'open') return;
+  while (topLayer()) closeLayer();
+  overlay.active = true;
+  (m.panel === 'menu' ? hooks.menu : hooks.qam)();
+});
+
+actions.exit = () => { actions['overlay-leave'](); closeLayer(); exitToDesktop(); };
+actions['stream-open'] = () => { actions['overlay-leave'](); closeLayer(); openStreaming(); };
 
 // ---------- Menu principal ----------
 hooks.menu = () => openLayer({
-  el: $('#menu'), name: 'menu', scrim: true, focusKey: state.page,
+  el: $('#menu'), name: 'menu', scrim: true, focusKey: state.page, onClose: overlayClosed,
   hints: () => [['a', 'Sélectionner'], ['b', 'Fermer']],
 });
 actions['menu-go'] = t => {
+  actions['overlay-leave']();
   closeLayer();
   const target = t.dataset.page;
   resetHistory();
@@ -36,6 +53,7 @@ actions['menu-go'] = t => {
 };
 // Menu d'alimentation au centre de l'écran (menu principal, accès rapide)
 export function openPowerMenu() {
+  actions['overlay-leave']();
   closeLayer();
   if (topLayer()) closeLayer();
   openLayer({ el: $('#power'), name: 'power', scrim: true, focusKey: 'sleep', hints: () => [['a', 'Choisir'], ['b', 'Annuler']] });
@@ -78,8 +96,8 @@ async function pollSystem() {
 }
 hooks.qam = () => openLayer({
   el: $('#qam'), name: 'qam', scrim: true,
-  onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); },
-  onClose: () => clearInterval(sysTimer),
+  onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); startLive(); },
+  onClose: () => { clearInterval(sysTimer); stopLive(); overlayClosed(); },
   hints: () => [['a', 'Sélectionner'], [['left', 'right'], 'Régler'], ['b', 'Fermer']],
 });
 

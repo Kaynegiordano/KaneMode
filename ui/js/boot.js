@@ -1,9 +1,11 @@
-// Démarrage : logo KaneMode animé avec un court carillon (synthétisé, aucun fichier), ou vidéo perso.
+// Démarrage : logo KaneMode animé, calé sur le pic du son (son KaneMode synthétisé ou son perso), ou vidéo perso.
 // Les mêmes sons servent à la mise en veille et au réveil.
 import { $, api, settings, saveSettings } from './core.js';
 import { inputLock } from './nav.js';
 
 // ---------------------------------------------------------------- sons synthétisés
+// Les sons sont calculés à l'avance (OfflineAudioContext) puis joués comme un fichier : leur pic est
+// connu à l'échantillon près, et le logo peut s'y caler comme pour un son perso.
 let ctx = null;
 function audio() {
   if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ctx = new AC(); }
@@ -21,36 +23,35 @@ function reverb(ac, seconds = 3.4, decay = 2.8) {
   return conv;
 }
 
-/**
- * Joue un son système : « boot » (≈3 s), « wake » (réveil) ou « sleep » (mise en veille).
- * Renvoie false si le navigateur refuse le son (pas encore d'interaction).
- */
-export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
-  const ac = audio();
-  if (!ac || volume <= 0) return false;
-  if (ac.state !== 'running') { try { await Promise.race([ac.resume(), new Promise(r => setTimeout(r, 150))]); } catch { /* refusé */ } }
-  if (ac.state !== 'running') return false;
-  const t0 = ac.currentTime + 0.04;
+/** Démarrage : instant de l'éclat (pic du son) et durée de la montée qui le précède. */
+const BOOT_HIT = 1.35, BOOT_RISE = 0.5;
+const LENGTH = { boot: 7.5, wake: 4, sleep: 3.6 };
+
+/** Construit le son `kind` dans le contexte `ac` (temps réel ou hors ligne). */
+function build(ac, kind) {
+  const t0 = 0.02;
   const out = ac.createGain();
-  out.gain.value = volume;
   const comp = ac.createDynamicsCompressor();
   out.connect(comp).connect(ac.destination);
-  const rv = reverb(ac);
-  const wet = ac.createGain(); wet.gain.value = 0.6; rv.connect(wet).connect(out);
+  const rv = kind === 'boot' ? reverb(ac, 4.6, 3.1) : reverb(ac);
+  const wet = ac.createGain(); wet.gain.value = kind === 'boot' ? 0.75 : 0.6; rv.connect(wet).connect(out);
   const dry = ac.createGain(); dry.gain.value = 0.75; dry.connect(out);
   const env = (g, start, attack, dur, peak) => {
     g.gain.setValueAtTime(0.0001, t0 + start);
     g.gain.exponentialRampToValueAtTime(peak, t0 + start + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
   };
+  const route = (node, pan = 0) => {
+    let n = node;
+    if (ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; node.connect(p); n = p; }
+    n.connect(dry); n.connect(rv);
+  };
   const tone = (freq, start, dur, { type = 'sine', peak = 0.1, attack = 0.01, detune = 0, pan = 0 } = {}) => {
     const o = ac.createOscillator(), g = ac.createGain();
     o.type = type; o.frequency.value = freq; o.detune.value = detune;
     env(g, start, attack, dur, peak);
     o.connect(g);
-    let node = g;
-    if (ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
-    node.connect(dry); node.connect(rv);
+    route(g, pan);
     o.start(t0 + start); o.stop(t0 + start + dur + 0.05);
   };
   // Cloche : fondamentale + partiels inharmoniques qui s'éteignent plus vite
@@ -66,18 +67,50 @@ export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
     src.buffer = buf; f.type = 'bandpass'; f.Q.value = 1.4;
     f.frequency.setValueAtTime(from, t0 + start); f.frequency.exponentialRampToValueAtTime(to, t0 + start + dur);
     env(g, start, dur * 0.7, dur, peak);
-    src.connect(f).connect(g); g.connect(dry); g.connect(rv);
+    src.connect(f).connect(g);
+    route(g);
     src.start(t0 + start);
   };
 
   if (kind === 'boot') {
-    whoosh(0, 1.0, 220, 5200, 0.22);                                   // montée
-    tone(55, 0.15, 2.9, { peak: 0.14, attack: 0.6 });                 // sub
-    for (const [f, d] of [[110, -7], [110, 7], [164.81, -5], [220, 5], [277.18, 0]]) {
-      tone(f, 0.25, 3.1, { type: 'triangle', peak: 0.035, attack: 0.9, detune: d }); // nappe (la majeur)
+    // Façon console de salon des années 2000 : un souffle et une nappe grave, sombres, qui gonflent
+    // jusqu'à un éclat cristallin (le logo apparaît là), puis des scintillements qui retombent
+    // dans une grande réverbération.
+    const H = BOOT_HIT;
+    whoosh(0, H + 0.08, 160, 7500, 0.24);                              // souffle qui monte
+    const lp = ac.createBiquadFilter();                                 // nappe : le filtre s'ouvre jusqu'au pic
+    lp.type = 'lowpass'; lp.Q.value = 3;
+    lp.frequency.setValueAtTime(140, t0);
+    lp.frequency.exponentialRampToValueAtTime(2800, t0 + H);
+    lp.frequency.exponentialRampToValueAtTime(500, t0 + H + 3.2);
+    const padGain = ac.createGain();
+    padGain.gain.setValueAtTime(0.0001, t0);
+    padGain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.35);
+    padGain.gain.linearRampToValueAtTime(1, t0 + H);
+    padGain.gain.exponentialRampToValueAtTime(0.0001, t0 + H + 4);
+    lp.connect(padGain);
+    route(padGain);
+    for (const [f, d] of [[55, 0], [82.41, -6], [110, 6], [164.81, -4], [246.94, 4], [329.63, 0]]) {
+      for (const det of [-9, 9]) {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = d + det;
+        g.gain.value = f < 100 ? 0.05 : 0.022;
+        o.connect(g).connect(lp);
+        o.start(t0); o.stop(t0 + H + 4.1);
+      }
     }
-    [1318.51, 1760, 2217.46, 2637.02, 3520].forEach((f, i) => bell(f, 0.92 + i * 0.075, 2.0 - i * 0.15, 0.07 - i * 0.008, (i - 2) * 0.3)); // étincelles
-    bell(880, 0.9, 2.6, 0.09);                                          // coup de cloche central
+    // Impact grave et doux, sous l'éclat
+    const kick = ac.createOscillator(), kg = ac.createGain();
+    kick.frequency.setValueAtTime(92, t0 + H); kick.frequency.exponentialRampToValueAtTime(38, t0 + H + 0.6);
+    env(kg, H, 0.012, 1.1, 0.3);
+    kick.connect(kg); route(kg);
+    kick.start(t0 + H); kick.stop(t0 + H + 1.2);
+    // Éclat cristallin : accord aigu de cloches et de verre, légèrement étalé
+    [1760, 2217.46, 2637.02, 3322.44, 4186.01].forEach((f, i) => bell(f, H + i * 0.011, 3.3 - i * 0.35, 0.075 - i * 0.009, (i - 2) * 0.35));
+    bell(880, H, 3.8, 0.09);
+    bell(440, H, 3.2, 0.05);
+    // Scintillements qui retombent
+    [3951.07, 3520, 2959.96, 2637.02, 2349.32, 1975.53, 1760].forEach((f, i) => bell(f, H + 0.28 + i * 0.16, 1.2, 0.034 * (1 - i / 9), i % 2 ? 0.55 : -0.55));
   } else if (kind === 'wake') {
     whoosh(0, 0.5, 400, 4000, 0.12);
     tone(110, 0.05, 1.4, { type: 'triangle', peak: 0.04, attack: 0.35 });
@@ -88,6 +121,42 @@ export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
     bell(1318.51, 0.14, 1.2, 0.06, -0.3);
     tone(110, 0.05, 1.2, { type: 'triangle', peak: 0.035, attack: 0.1 });
   }
+}
+
+// Sons calculés une fois pour toutes
+const rendered = {};
+function renderSound(kind) {
+  if (!rendered[kind]) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC) return Promise.resolve(null);
+    const off = new OAC(2, Math.ceil(44100 * LENGTH[kind]), 44100);
+    build(off, kind);
+    rendered[kind] = off.startRendering().catch(() => null);
+  }
+  return rendered[kind];
+}
+// Le son de démarrage se calcule dès le chargement, pendant que l'écran est encore noir
+setTimeout(() => renderSound('boot'), 0);
+
+async function ready(volume) {
+  const ac = audio();
+  if (!ac || volume <= 0) return null;
+  if (ac.state !== 'running') { try { await Promise.race([ac.resume(), new Promise(r => setTimeout(r, 150))]); } catch { /* refusé */ } }
+  return ac.state === 'running' ? ac : null;
+}
+
+/**
+ * Joue un son système : « boot » (≈4 s), « wake » (réveil) ou « sleep » (mise en veille).
+ * Renvoie false si le navigateur refuse le son (pas encore d'interaction).
+ */
+export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
+  const ac = await ready(volume);
+  const buffer = ac && await renderSound(kind);
+  if (!buffer) return false;
+  const src = ac.createBufferSource(), g = ac.createGain();
+  src.buffer = buffer; g.gain.value = volume;
+  src.connect(g).connect(ac.destination);
+  src.start();
   return true;
 }
 
@@ -140,17 +209,13 @@ async function loadCustom(ac, cfg) {
 }
 
 /**
- * Joue le son perso et fait apparaître le logo sur son pic. Renvoie { total, stop } dès que tout
- * est programmé, ou null (pas de son perso, son refusé) : on se rabat alors sur le carillon.
+ * Joue un son et fait apparaître le logo sur son pic (snd : { buffer, peak, onset }). Renvoie
+ * { total, stop } dès que tout est programmé, ou null si le son est refusé.
  */
-async function playSynced(box, cfg) {
-  const ac = audio();
+async function playSynced(box, snd) {
   const volume = Math.min(1, settings.bootVolume / 100);
-  if (!ac || volume <= 0) return null;
-  if (ac.state !== 'running') { try { await Promise.race([ac.resume(), new Promise(r => setTimeout(r, 150))]); } catch { /* refusé */ } }
-  let snd;
-  try { snd = await loadCustom(ac, cfg); } catch { return null; }
-  if (!snd || ac.state !== 'running') return null;
+  const ac = await ready(volume);
+  if (!ac || !snd) return null;
   // Le logo met « appear » secondes à apparaître et atteint son plein éclat sur le pic
   const appear = Math.min(0.5, Math.max(0.12, snd.peak - snd.onset));
   const lead = Math.max(0, appear - snd.peak); // pic trop tôt : le son attend un peu le logo
@@ -167,24 +232,41 @@ async function playSynced(box, cfg) {
     if (ts && ts.contextTime > 0 && ts.performanceTime > 0) return ts.contextTime + (performance.now() - ts.performanceTime) / 1000;
     return ac.currentTime - (ac.outputLatency || ac.baseLatency || 0);
   };
-  let raf = 0;
-  const show = () => {
+  let raf = 0, timer = 0, shown = false;
+  const show = force => {
+    if (shown) return;
     // Une image dure ~16 ms : on insère le logo à la frame la plus proche de l'instant visé
-    if (heard() < showAt - 0.008) { raf = requestAnimationFrame(show); return; }
+    if (!force && heard() < showAt - 0.008) { raf = requestAnimationFrame(() => show()); return; }
+    shown = true;
+    cancelAnimationFrame(raf); clearTimeout(timer);
     box.classList.add('sync');
     box.style.setProperty('--appear', appear.toFixed(3) + 's');
     box.insertAdjacentHTML('beforeend', LOGO_HTML);
   };
-  raf = requestAnimationFrame(show);
+  raf = requestAnimationFrame(() => show());
   const untilShow = Math.max(0, showAt - heard());
-  const tail = snd.buffer.duration - snd.peak; // son restant après le pic
+  // Filet de sécurité si les images ne sont pas dessinées (fenêtre masquée) : le logo apparaît quand même
+  timer = setTimeout(() => show(true), untilShow * 1000 + 250);
+  const tail = (snd.length || snd.buffer.duration) - snd.peak; // son restant après le pic
   return {
     total: untilShow + appear + Math.min(8, Math.max(2.2, tail + 0.15)),
+    cancel: () => { cancelAnimationFrame(raf); clearTimeout(timer); }, // fin normale : plus rien à insérer
     stop: () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf); clearTimeout(timer);
       try { g.gain.setTargetAtTime(0, ac.currentTime, 0.08); src.stop(ac.currentTime + 0.4); } catch { /* déjà arrêté */ }
     },
   };
+}
+
+/** Son de démarrage choisi : fichier perso analysé, ou son KaneMode (pic connu). */
+async function bootSource(cfg) {
+  if (settings.bootSound === 'custom') {
+    const ac = audio();
+    try { const c = ac && await loadCustom(ac, cfg); if (c) return c; } catch { /* fichier illisible : son KaneMode */ }
+  }
+  const buffer = await renderSound('boot');
+  // La réverbération prolonge le son : l'écran de logo s'arrête un peu avant la fin du calcul
+  return buffer && { buffer, peak: BOOT_HIT + 0.03, onset: BOOT_HIT + 0.03 - BOOT_RISE, length: BOOT_HIT + 2.6 };
 }
 
 // ---------------------------------------------------------------- écran de logo
@@ -201,14 +283,12 @@ function showLogo(box, kind) {
     box._skip = () => { skipped = true; clearTimeout(t); stop(); resolve(); };
     if (kind === 'boot' && settings.bootSound !== 'none') {
       const cfg = await adoptSound();
-      if (settings.bootSound === 'custom') {
-        const synced = await playSynced(box, cfg);
-        if (synced) {
-          stop = synced.stop;
-          if (skipped) return stop();
-          t = setTimeout(resolve, synced.total * 1000);
-          return;
-        }
+      const synced = await playSynced(box, await bootSource(cfg));
+      if (synced) {
+        stop = synced.stop;
+        if (skipped) return stop();
+        t = setTimeout(() => { synced.cancel(); resolve(); }, synced.total * 1000);
+        return;
       }
     }
     if (skipped) return;

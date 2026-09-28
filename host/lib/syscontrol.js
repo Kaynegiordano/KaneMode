@@ -5,7 +5,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'syscontrol.ps1');
-const ALLOWED = ['state', 'volume', 'mute', 'brightness', 'powermode', 'refresh', 'radio', 'vendor', 'tdp', 'cpumax', 'boost', 'chargelimit'];
+const ALLOWED = ['state', 'live', 'volume', 'mute', 'brightness', 'powermode', 'refresh', 'radio', 'vendor', 'tdp', 'cpumax', 'boost', 'chargelimit'];
 
 /** Constructeur dont on sait piloter les profils : d'après la console reconnue. */
 const vendorOf = handheld => (!handheld ? '' : /^rog-/.test(handheld.id) ? 'asus' : /^legion-/.test(handheld.id) ? 'lenovo' : '');
@@ -85,7 +85,7 @@ function create(getVendor) {
     return { done, errors };
   }
 
-  return { call: (c, a) => { cache = null; return call(c, a); }, state, apply, stop: () => proc && proc.kill() };
+  return { call: (c, a) => { cache = null; return call(c, a); }, live: () => call('live'), state, apply, stop: () => proc && proc.kill() };
 }
 
 module.exports = { create, vendorOf };

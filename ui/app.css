@@ -761,3 +761,15 @@ body.hints-compact .glyph { min-width: 20px; height: 20px; font-size: 11px; }
 .segmented.big button { padding: 13px 10px; font-size: 15px; }
 .perf-mode button.active { background: var(--accent); color: #fff; }
 .perf-mode button.active.focused { background: #fff; color: #111; box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* ---------- Performance en direct (accès rapide) ---------- */
+.live-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; margin: 4px 0 10px; }
+.live-strip > div { padding: 10px 8px; border-radius: var(--radius); background: rgba(255, 255, 255, 0.05); text-align: center; }
+.live-strip b { display: block; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; }
+.live-strip small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+.live-strip.flash > div { animation: liveflash 0.9s ease-out; }
+@keyframes liveflash { from { background: color-mix(in srgb, var(--accent) 55%, transparent); } }
+.perf-mode button { display: grid; gap: 2px; justify-items: center; }
+.perf-mode button small { font-size: 12px; font-weight: 600; opacity: 0.75; }
+.applied { list-style: none; margin: 2px 0 8px; padding: 10px 12px; border-radius: var(--radius); background: rgba(63, 202, 90, 0.1); font-size: 13px; line-height: 1.7; }
+.applied .ok { color: #9be3a9; } .applied .ko { color: #ff9a9e; }

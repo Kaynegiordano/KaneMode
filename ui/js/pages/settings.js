@@ -397,8 +397,8 @@ const BUILDERS = {
         if (v === 'video' && !cfg.bootVideo) toast('Choisissez la vidéo plus bas (« Vidéo perso… »)');
         set('bootMode', v);
       }, 'boot-mode'));
-    infoRow(s, 'Son', 'Court carillon joué avec le logo, façon console de salon', segmented(
-      [{ value: 'chime', label: 'Carillon KaneMode' }, { value: 'custom', label: 'Son perso' }, { value: 'none', label: 'Aucun' }],
+    infoRow(s, 'Son', 'Joué avec le logo, qui apparaît pile sur son éclat, façon console de salon', segmented(
+      [{ value: 'chime', label: 'Son KaneMode' }, { value: 'custom', label: 'Son perso' }, { value: 'none', label: 'Aucun' }],
       settings.bootSound, v => {
         if (v === 'custom' && !cfg.bootSound) toast('Choisissez le son plus bas (« Son perso… »)');
         set('bootSound', v);
@@ -429,7 +429,7 @@ const BUILDERS = {
       toast('Son de démarrage enregistré');
       rerender('boot-sound-pick');
     }, 'boot-sound-pick');
-    if (cfg.bootSound) actionRow(s, 'i-trash', 'Retirer le son perso', 'Revient au carillon KaneMode', async () => {
+    if (cfg.bootSound) actionRow(s, 'i-trash', 'Retirer le son perso', 'Revient au son KaneMode', async () => {
       await api.post('/api/config', { bootSound: null });
       if (settings.bootSound === 'custom') set('bootSound', 'chime');
       rerender('boot-sound-pick');
