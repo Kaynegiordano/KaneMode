@@ -239,9 +239,9 @@ const BUILDERS = {
     h2(s, 'i-wifi', 'Streaming');
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
-      infoRow(s, '<span class="dot-ko"></span>Moteur de streaming absent', 'L’app KaneMode l’embarque ; dans la version navigateur, KanePlay doit être installé sur ce PC');
+      infoRow(s, '<span class="dot-ko"></span>Moteur de streaming absent', 'L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1');
     } else {
-      infoRow(s, `<span class="dot-ok"></span>Streaming intégré${d.bundled ? '' : ' (moteur KanePlay installé sur ce PC)'}`, 'Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran');
+      infoRow(s, `<span class="dot-ok"></span>Streaming intégré${d.dev ? ' (moteur compilé : engine\\out)' : ''}`, 'Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran');
       for (const h of d.hosts) {
         infoRow(s, `<span class="${h.online ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? 'Appairé' : 'Non appairé'} · ${h.online ? 'en ligne' : 'hors ligne'} · ${h.apps.length} application${h.apps.length > 1 ? 's' : ''}`);
       }

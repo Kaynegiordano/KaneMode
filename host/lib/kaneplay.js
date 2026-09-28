@@ -1,17 +1,19 @@
-// Streaming intégré à KaneMode, avec KanePlay (client dérivé de Moonlight) comme moteur invisible :
-// KaneMode affiche les PC hôtes, l'appairage, les applications et la qualité ; KanePlay ne sert
-// qu'à la session de streaming elle-même, lancée en ligne de commande.
-// Seul le sous-arbre « hosts » des réglages est lu (jamais la clé privée du client).
+// Streaming intégré à KaneMode. Le moteur est KanePlay (client dérivé de Moonlight), inclus dans
+// le projet (sous-module engine/KanePlay, compilé par engine/build-engine.ps1) et embarqué dans le
+// paquet : KaneMode affiche les PC hôtes, l'appairage, les applications et la qualité ; le moteur
+// ne sert qu'à la session de streaming elle-même, lancée en ligne de commande, en « mode intégré ».
+// Ses réglages sont propres à KaneMode (HKCU\Software\KaneMode\Streaming), à part d'un KanePlay
+// installé séparément. Seul le sous-arbre « hosts » est lu (jamais la clé privée du client).
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFile, spawn } = require('child_process');
 
-const REG = 'HKCU\\Software\\KanePlay\\KanePlay';
-const RELEASES = 'https://github.com/Kaynegiordano/KanePlay/releases/latest';
-// Mode intégré (KanePlay 1.0.9+) : ni intro, ni fenêtre pour l'appairage et l'arrêt,
-// écran noir au démarrage d'un stream. Les versions plus anciennes ignorent ces variables.
+const REG = 'HKCU\\Software\\KaneMode\\Streaming';
+const CACHE = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'KaneMode', 'Streaming', 'cache');
+// Mode intégré : réglages KaneMode, ni intro, ni fenêtre pour l'appairage et l'arrêt,
+// écran noir au démarrage d'un stream.
 const ENV = { KANEPLAY_EMBEDDED: '1', KANEPLAY_NO_INTRO: '1' };
 
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
@@ -20,19 +22,12 @@ function reg(args) {
   return new Promise(resolve => execFile('reg.exe', args, { windowsHide: true, maxBuffer: 4 << 20 }, (err, out) => resolve(err ? '' : String(out))));
 }
 
-/** Chemin de KanePlay.exe : choix de l'utilisateur, copie embarquée dans KaneMode, installation. */
-async function findExe(configured, bundled) {
-  const candidates = [
-    configured, bundled,
-    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'KanePlay', 'KanePlay.exe'),
-    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'KanePlay', 'KanePlay.exe'),
-  ];
-  for (const c of candidates) if (c && isFile(c)) return c;
-  for (const root of ['HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall']) {
-    const out = await reg(['query', root, '/s', '/f', 'KanePlay', '/d']);
-    const m = out.match(/InstallLocation\s+REG_SZ\s+(.+)/i);
-    if (m && isFile(path.join(m[1].trim(), 'KanePlay.exe'))) return path.join(m[1].trim(), 'KanePlay.exe');
-  }
+/**
+ * Moteur de streaming : celui du paquet installé (dossier kaneplay\ à côté de app\), sinon celui
+ * compilé en développement (engine\out). Jamais un KanePlay installé à part.
+ */
+async function findExe(bundled, dev) {
+  for (const c of [bundled, dev]) if (c && isFile(c)) return c;
   return null;
 }
 
@@ -67,7 +62,7 @@ async function hosts() {
   return list;
 }
 
-const boxart = (uuid, appId) => path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'KanePlay', 'KanePlay', 'cache', 'boxart', uuid, appId + '.png');
+const boxart = (uuid, appId) => path.join(CACHE, 'boxart', uuid, appId + '.png');
 
 /** Entrées de bibliothèque : une par application de chaque PC appairé. */
 async function entries(exe, list) {
@@ -160,4 +155,4 @@ async function refreshApps(exe, host) {
   return r.code === 0 && /Name, ID/.test(r.out) ? { ok: true } : { ok: false, error: explain(r.err) };
 }
 
-module.exports = { findExe, hosts, entries, online, streamFlags, prefs, pair, quit, refreshApps, ENV, RELEASES, DEFAULTS };
+module.exports = { findExe, hosts, entries, online, streamFlags, prefs, pair, quit, refreshApps, ENV, DEFAULTS };

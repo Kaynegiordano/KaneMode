@@ -14,19 +14,15 @@
     dans le magasin de l'utilisateur) et exporte ce certificat (.cer) à côté.
 .PARAMETER SelfContained
     Embarque le runtime .NET (paquet plus gros, aucun prérequis sur le PC cible).
-.PARAMETER KanePlayDir
-    Moteur de streaming embarqué (dossier kaneplay\ du paquet, ~95 Mo) : C:\Program Files\KanePlay
-    par défaut, ou le dossier d'une compilation de KanePlay. KaneMode affiche lui-même les PC,
-    l'appairage et les jeux ; le moteur ne montre que l'image du stream.
 .PARAMETER NoKanePlay
-    Paquet sans le moteur de streaming.
+    Paquet sans le moteur de streaming. Sinon, le moteur (KanePlay, sous-module engine\KanePlay)
+    est embarqué depuis engine\out, compilé au besoin par engine\build-engine.ps1.
 .PARAMETER Release
     Paquet à publier : n'y note pas le chemin de ce dépôt (import des données du prototype).
 .PARAMETER Version
     Version du paquet (x.y.z.0) ; par défaut, celle du fichier VERSION.
 #>
-param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$Release,
-      [string]$KanePlayDir = (Join-Path $env:ProgramFiles 'KanePlay'), [string]$Version)
+param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$Release, [string]$Version)
 
 $ErrorActionPreference = 'Stop'
 $native = $PSScriptRoot
@@ -74,12 +70,10 @@ New-Item -ItemType Directory -Force (Join-Path $layout 'node') | Out-Null
 Copy-Item $node (Join-Path $layout 'node\node.exe')
 # Moteur de streaming (KanePlay), invisible : KaneMode affiche lui-même les PC, l'appairage et les jeux
 if (-not $NoKanePlay) {
-    if (Test-Path (Join-Path $KanePlayDir 'KanePlay.exe')) {
-        Step 'Copie du moteur de streaming (KanePlay)'
-        Copy-Item $KanePlayDir (Join-Path $layout 'kaneplay') -Recurse
-    } else {
-        Write-Warning "Moteur de streaming introuvable dans $KanePlayDir : paquet sans streaming (-KanePlayDir pour un autre dossier)"
-    }
+    $engineOut = Join-Path $root 'engine\out'
+    if (-not (Test-Path (Join-Path $engineOut 'KanePlay.exe'))) { & (Join-Path $root 'engine\build-engine.ps1') }
+    Step 'Copie du moteur de streaming (engine\out)'
+    Copy-Item $engineOut (Join-Path $layout 'kaneplay') -Recurse
 }
 
 # ---------------------------------------------------------------- 3. Icônes du paquet

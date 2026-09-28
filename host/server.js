@@ -51,7 +51,7 @@ const isImage = p => !!str(p) && IMAGE_EXT.includes(path.extname(p).toLowerCase(
 
 const VIDEO_EXT = ['.mp4', '.webm'];
 const AUDIO_EXT = ['.mp3', '.wav', '.ogg', '.m4a', '.opus', '.flac'];
-const config = () => Object.assign({ updateChannel: 'stable', updateAuto: true, kaneplayPath: null, bootVideo: null, bootSound: null, sgdbKey: null, sgdbAuto: true, sgdbPreferSteam: true, sgdbStyle: '', romRoots: [], emulatorPaths: {}, emulatorPrefs: {} }, readJson(FILES.config, {}));
+const config = () => Object.assign({ updateChannel: 'stable', updateAuto: true, bootVideo: null, bootSound: null, sgdbKey: null, sgdbAuto: true, sgdbPreferSteam: true, sgdbStyle: '', romRoots: [], emulatorPaths: {}, emulatorPrefs: {} }, readJson(FILES.config, {}));
 const state = () => Object.assign({ played: {}, overrides: {}, artOverrides: {}, collections: [] }, readJson(FILES.state, {}));
 
 function runPs(script, args = []) {
@@ -264,10 +264,12 @@ const driverJobs = device.drivers(DATA);
 // ---------------------------------------------------------------- streaming (moteur KanePlay)
 // Copie embarquée dans l'app native (dossier kaneplay\ à côté de app\, voir native\build.ps1)
 const KANEPLAY_BUNDLED = path.join(ROOT, '..', 'kaneplay', 'KanePlay.exe');
+// Développement : moteur compilé depuis le sous-module (engine\build-engine.ps1)
+const KANEPLAY_DEV = path.join(ROOT, 'engine', 'out', 'KanePlay.exe');
 const kp = { exe: null, entries: [], hosts: [], pairing: null };
 async function refreshKanePlay() {
   try {
-    const exe = await kaneplay.findExe(config().kaneplayPath, KANEPLAY_BUNDLED);
+    const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
     const entries = await kaneplay.entries(exe, hosts);
     const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
@@ -830,13 +832,12 @@ const routes = {
     json(res, 200, { ok: true });
   },
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
-  'POST /api/stream/engine': async (req, res) => json(res, 200, await run({ kind: 'uri', target: kaneplay.RELEASES })),
   'GET /api/stream': async (req, res, q) => {
     if (q.get('refresh') === '1') await refreshKanePlay();
     const status = await Promise.all(kp.hosts.map(h => kaneplay.online(h)));
     const p = kp.pairing;
     json(res, 200, {
-      engine: !!kp.exe, bundled: kp.exe === KANEPLAY_BUNDLED, prefs: streamPrefs(),
+      engine: !!kp.exe, bundled: kp.exe === KANEPLAY_BUNDLED, dev: kp.exe === KANEPLAY_DEV, prefs: streamPrefs(),
       pairing: p ? { host: p.host, pin: p.pin, done: p.done, ok: p.ok, error: p.error } : null,
       hosts: kp.hosts.map((h, i) => ({
         uuid: h.uuid, name: h.name, paired: h.paired, online: !!status[i], address: status[i] || h.addresses[0] || null,

@@ -25,11 +25,10 @@ KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mi
 powershell -ExecutionPolicy Bypass -File native/release.ps1 -Publish -Beta
 ```
 
-Version : fichier `VERSION`. Le paquet est signé par le certificat « CN=KaneMode » de votre magasin de certificats (créé au premier build, valable 10 ans). **Sauvegardez-le** : sans lui, les mises à jour ne s'installent plus par-dessus les versions existantes.
+Version : fichier `VERSION`. Le paquet est signé par le certificat « CN=KaneMode » de votre magasin de certificats (créé au premier build, valable 10 ans). **Sauvegardez-le** (fichier .pfx protégé par un mot de passe, à ranger hors du dépôt ; `-Restore` pour le réimporter) : sans lui, les mises à jour ne s'installent plus par-dessus les versions existantes.
 
-```powershell
-$c = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -eq 'CN=KaneMode'
-Export-PfxCertificate -Cert $c -FilePath KaneMode-signature.pfx -Password (Read-Host -AsSecureString 'Mot de passe')
+```bash
+powershell -ExecutionPolicy Bypass -File native/certificate.ps1 -Backup -Path E:\KaneMode-signature.pfx
 ```
 
 ## App native (développement)
@@ -60,8 +59,21 @@ powershell -ExecutionPolicy Bypass -File setup/install.ps1 -Autostart
 ## Lancer sans installer (développement)
 
 ```bash
+git clone --recursive https://github.com/Kaynegiordano/KaneMode.git
 node host/server.js
 ```
+
+### Moteur de streaming
+
+Le streaming est intégré à KaneMode ; son moteur est [KanePlay](https://github.com/Kaynegiordano/KanePlay) (dérivé de Moonlight), inclus comme **sous-module** dans `engine/KanePlay` et compilé par :
+
+```bash
+powershell -ExecutionPolicy Bypass -File engine/build-engine.ps1
+```
+
+Prérequis : Visual Studio (C++), Qt 6 msvc 64 bits (`C:\Qt\<version>\msvc*_64`). Le résultat (`engine/out`, runtime Visual C++ inclus) sert en développement et est embarqué par `native/build.ps1`. KaneMode lance le moteur en **mode intégré** (`KANEPLAY_EMBEDDED`) : aucune fenêtre KanePlay, réglages et PC appairés propres à KaneMode (`HKCU\Software\KaneMode\Streaming`, `%LOCALAPPDATA%\KaneMode\Streaming`), sans lien avec un KanePlay installé à part.
+
+Mettre à jour le moteur : `git -C engine/KanePlay pull`, puis recompiler et commiter le nouveau pointeur du sous-module.
 
 Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) ouvre la même interface en plein écran dans une fenêtre Edge dédiée.
 
@@ -110,7 +122,7 @@ KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il 
 
 - [Xbox Full Screen Experience Tool](https://github.com/8bit2qubit/XboxFullScreenExperienceTool) de 8bit2qubit (GPL v3), copie modifiée dans `vendor/` (mode `/silentenable`, voir `vendor/README-KaneMode.md`) ;
 - [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
-- [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming embarqué ;
+- [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming (sous-module `engine/KanePlay`) ;
 - Node.js (licence MIT), embarqué dans le paquet.
 
 Visuels : [SteamGridDB](https://www.steamgriddb.com) et la boutique Steam.

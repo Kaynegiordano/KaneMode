@@ -61,10 +61,7 @@ definePage('stream', {
     const root = this.el;
     const out = [el('div', 'page-head', '<h1>Streaming</h1><p>Jouez aux jeux de vos autres PC, en plein écran, sans quitter KaneMode</p>')];
     if (!d.engine) {
-      out.push(el('div', 'notice', 'Le moteur de streaming (KanePlay) est introuvable. L’app KaneMode l’embarque ; dans la version navigateur, il doit être installé sur ce PC.'));
-      const b = el('div', 'art-actions');
-      b.append(nav(el('div', 'chip-btn big primary', `${icon('i-download2')}Télécharger le moteur`), async () => { await api.post('/api/stream/engine'); toast('Ouverture…'); }, 'engine'));
-      out.push(b);
+      out.push(el('div', 'notice', 'Le moteur de streaming n’est pas présent. L’app KaneMode l’embarque ; en développement, compilez-le une fois avec <code>engine\\build-engine.ps1</code>.'));
       root.replaceChildren(...out);
       return focusIn(root, focusKey);
     }

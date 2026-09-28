@@ -1,0 +1,3 @@
+[submodule "engine/KanePlay"]
+	path = engine/KanePlay
+	url = https://github.com/Kaynegiordano/KanePlay.git

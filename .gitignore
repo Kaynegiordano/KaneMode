@@ -20,3 +20,6 @@ vendor/XboxFullScreenExperienceTool/Modules/ViVe/
 *.pfx
 *.p12
 *.key
+
+# Moteur de streaming compilé (engine\build-engine.ps1)
+engine/out/
