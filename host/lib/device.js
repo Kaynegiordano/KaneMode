@@ -50,13 +50,33 @@ function runPs(script, args = [], timeout = 30000) {
   });
 }
 
-let cache = null;
+// L'analyse de l'appareil (PowerShell + WMI) prend 2 s : son dernier résultat est gardé sur disque
+// et servi tout de suite au démarrage, puis rafraîchi en arrière-plan.
+let cache = null, cacheFile = null, pending = null;
+function setCacheFile(file) {
+  cacheFile = file;
+  try { cache = { t: 0, v: JSON.parse(fs.readFileSync(file, 'utf8')) }; } catch { cache = null; }
+}
+function probe() {
+  if (!pending) {
+    pending = runPs('device.ps1').then(out => {
+      let v = null;
+      try { v = JSON.parse(out); } catch { v = null; }
+      if (v) {
+        cache = { t: Date.now(), v };
+        if (cacheFile) try { fs.writeFileSync(cacheFile, JSON.stringify(v)); } catch { /* disque plein ? */ }
+      }
+      pending = null;
+      return v;
+    });
+  }
+  return pending;
+}
 async function raw(force = false) {
   if (!force && cache && Date.now() - cache.t < 10 * 60e3) return cache.v;
-  let v = null;
-  try { v = JSON.parse(await runPs('device.ps1')); } catch { v = null; }
-  cache = { t: Date.now(), v };
-  return v;
+  // Résultat ancien (disque) : servi tout de suite, rafraîchi en arrière-plan
+  if (!force && cache && cache.v) { probe(); return cache.v; }
+  return (await probe()) || (cache && cache.v) || null;
 }
 
 const arr = x => (Array.isArray(x) ? x : x ? [x] : []);
@@ -134,4 +154,4 @@ function drivers(dataDir) {
   };
 }
 
-module.exports = { info, allowedTargets, drivers, HANDHELDS, SIMULATED };
+module.exports = { info, setCacheFile, allowedTargets, drivers, HANDHELDS, SIMULATED };

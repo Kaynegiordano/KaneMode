@@ -82,6 +82,7 @@
     <div id="page-title"></div>
     <div class="status">
       <span id="busy" hidden><i class="spinner"></i><span></span></span>
+      <svg class="update-dot" id="update-dot" hidden><use href="#i-download2"/></svg>
       <svg class="clickable" data-hint="y"><use href="#i-search"/></svg>
       <svg><use href="#i-bell"/></svg>
       <svg><use href="#i-wifi"/></svg>
@@ -109,6 +110,7 @@
 
   <aside class="layer panel" id="menu">
     <div class="panel-head"><svg class="brand-mark"><use href="#i-brand"/></svg> KaneMode</div>
+    <div class="menu-item update-item" id="menu-update" data-nav data-key="update" data-action="update-open" hidden><svg><use href="#i-download2"/></svg><span>Mise à jour disponible</span></div>
     <div class="menu-item" data-nav data-key="home" data-action="menu-go" data-page="home"><svg><use href="#i-home"/></svg>Accueil</div>
     <div class="menu-item" data-nav data-key="library" data-action="menu-go" data-page="library"><svg><use href="#i-library"/></svg>Bibliothèque</div>
     <div class="menu-item" data-nav data-key="search" data-action="menu-go" data-page="search"><svg><use href="#i-search"/></svg>Rechercher</div>

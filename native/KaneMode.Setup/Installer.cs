@@ -85,30 +85,8 @@ public sealed class Installer
         if (result.ExtendedErrorCode != null)
             throw new InvalidOperationException($"Windows a refusé le paquet : {result.ErrorText} (0x{result.ExtendedErrorCode.HResult:X8})");
         _log.Report("App KaneMode installée.");
-        AllowWidgetLoopback();
     }
 
-    /// <summary>
-    /// Le widget Game Bar de KaneMode est une application UWP, isolée du réseau local : pour régler
-    /// la console, il doit joindre l'hôte KaneMode sur cette machine (127.0.0.1). Exemption de
-    /// bouclage pour le paquet, comme « CheckNetIsolation LoopbackExempt -a », conservée aux mises à jour.
-    /// </summary>
-    private void AllowWidgetLoopback()
-    {
-        string? family = null;
-        foreach (var p in new PackageManager().FindPackagesForUser(string.Empty))
-            if (p.Id.Name == "KaneMode") family = p.Id.FamilyName;
-        if (family == null) return;
-        try
-        {
-            var psi = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "CheckNetIsolation.exe"), $"LoopbackExempt -a -n={family}")
-            { CreateNoWindow = true, UseShellExecute = false };
-            using var proc = Process.Start(psi);
-            proc?.WaitForExit(15000);
-            _log.Report(proc?.ExitCode == 0 ? "Widget Game Bar : autorisé à joindre KaneMode." : "Widget Game Bar : autorisation réseau refusée par Windows.");
-        }
-        catch (Exception ex) { _log.Report("Widget Game Bar : " + ex.Message); }
-    }
 
     /// <summary>Installe au besoin l'outil officiel puis active le mode Xbox sans interface.</summary>
     public async Task EnableXboxModeAsync()

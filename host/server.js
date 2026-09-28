@@ -274,6 +274,7 @@ function publicEntry(g, st, cfg) {
 }
 
 // ---------------------------------------------------------------- réglages système, profils d'énergie
+device.setCacheFile(path.join(DATA, 'device.json'));
 const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.info()).handheld));
 const PERF_MODES = ['eco', 'balanced', 'performance'];
 /**
@@ -904,32 +905,7 @@ const routes = {
     json(res, 200, { ok: true });
   },
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
-  // --- Widget Game Bar : application UWP du paquet, qui doit pouvoir joindre cet hôte (127.0.0.1).
-  // L'installateur l'autorise ; après une mise à jour faite depuis l'app, c'est ici (une demande
-  // administrateur de Windows, « CheckNetIsolation LoopbackExempt »).
-  'GET /api/widget': async (req, res) => {
-    const family = (process.env.KANEMODE_AUMID || '').split('!')[0];
-    if (!family) return json(res, 200, { packaged: false, allowed: false });
-    const out = await new Promise(resolve => {
-      const p = spawn('CheckNetIsolation.exe', ['LoopbackExempt', '-s'], { windowsHide: true });
-      let s = '';
-      p.stdout.on('data', d => { s += d; });
-      p.on('error', () => resolve(''));
-      p.on('close', () => resolve(s));
-    });
-    json(res, 200, { packaged: true, allowed: out.toLowerCase().includes(family.toLowerCase()) });
-  },
-  'POST /api/widget/allow': async (req, res) => {
-    const family = (process.env.KANEMODE_AUMID || '').split('!')[0];
-    if (!/^[\w.-]+_[a-z0-9]+$/i.test(family)) return json(res, 400, { error: 'Réservé à l’app KaneMode installée' });
-    const ok = await new Promise(resolve => {
-      const p = spawn('powershell.exe', ['-NoProfile', '-Command',
-        `$p = Start-Process CheckNetIsolation.exe -ArgumentList 'LoopbackExempt -a -n=${family}' -Verb RunAs -WindowStyle Hidden -Wait -PassThru; exit $p.ExitCode`], { windowsHide: true });
-      p.on('error', () => resolve(false));
-      p.on('close', code => resolve(code === 0));
-    });
-    json(res, ok ? 200 : 400, ok ? { ok: true } : { error: 'Autorisation refusée ou annulée' });
-  },
+
   // --- Réglages système (accès rapide) et profils d'énergie (voir lib/syscontrol.js)
   'GET /api/sys': async (req, res, q) => {
     try {
@@ -1087,4 +1063,6 @@ if (!isFile(FILES.library)) {
   runPs('scan.ps1', ['-DataDir', DATA]).then(() => { scanEmulation(); version++; });
 }
 refreshKanePlay();
-setInterval(refreshKanePlay, 60e3); // nouveaux PC appairés, nouvelles applis sur l'hôte
+setInterval(refreshKanePlay, 60e3);
+// Préchauffage : appareil et réglages système prêts avant que l'accès rapide ne les demande
+setTimeout(() => { device.info().then(() => sysctl.state()).catch(() => {}); }, 1500); // nouveaux PC appairés, nouvelles applis sur l'hôte

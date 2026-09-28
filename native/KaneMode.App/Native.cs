@@ -31,6 +31,23 @@ public static class Native
     public struct CopyData { public IntPtr Kind; public int Size; public IntPtr Data; }
     public const int WM_COPYDATA = 0x004A;
 
+    [DllImport("user32.dll")]
+    private static extern bool AllowSetForegroundWindow(int processId);
+
+    /// <summary>
+    /// KaneMode (au premier plan) autorise le programme qu'il lance à prendre le premier plan, et
+    /// ramène lui-même la fenêtre `title` si elle existe déjà (KanePlay en arrière-plan).
+    /// </summary>
+    public static void GiveForeground(string? title)
+    {
+        AllowSetForegroundWindow(-1); // ASFW_ANY
+        if (string.IsNullOrEmpty(title)) return;
+        IntPtr hwnd = FindWindow(null, title);
+        if (hwnd == IntPtr.Zero) return;
+        ShowWindow(hwnd, IsIconic(hwnd) ? 9 : 5); // SW_RESTORE ou SW_SHOW (fenêtre masquée)
+        SetForegroundWindow(hwnd);
+    }
+
     public static void BringToFront(string title)
     {
         IntPtr hwnd = FindWindow(null, title);

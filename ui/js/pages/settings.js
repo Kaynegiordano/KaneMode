@@ -19,7 +19,7 @@ const SECTIONS = [
   ['storage', 'i-drive', 'Stockage'], ['xbox', 'i-desktop', 'Mode Xbox'], ['system', 'i-cpu', 'Système'],
 ];
 // Réglage demandé par une autre page → catégorie à afficher
-const SECTION_OF = { 'sgdb-key': 'sgdb', scan: 'library', demo: 'library' };
+const SECTION_OF = { 'sgdb-key': 'sgdb', scan: 'library', demo: 'library', 'upd-apply': 'system', 'upd-check': 'system' };
 
 export async function rescan() {
   busy('Analyse de la bibliothèque…');
@@ -316,6 +316,7 @@ const BUILDERS = {
     pick('Taille des jaquettes', 'Rangées de l’accueil et de l’émulation', 'cardSize', [['s', 'Petite'], ['m', 'Moyenne'], ['l', 'Grande']]);
     pick('Coins', 'Jaquettes, boutons et panneaux', 'corners', [['square', 'Carrés'], ['soft', 'Doux'], ['round', 'Arrondis']]);
     pick('Police', '', 'font', [['segoe', 'Segoe UI'], ['system', 'Système']]);
+    toggle(s, 'lowFx', 'Effets allégés', 'Moins d’ombres, de flous et de reflets : plus fluide sur une console portable, plus économe en batterie');
     toggle(s, 'solidPanels', 'Panneaux opaques', 'Sans transparence ni flou : plus lisible, un peu plus léger pour la carte graphique');
     toggle(s, 'badges', 'Toujours afficher la boutique', 'Pastille de la boutique sur chaque jaquette de la bibliothèque');
 
@@ -361,7 +362,6 @@ const BUILDERS = {
         [{ value: '', label: 'Inchangé' }, ...options.map(([value, lab]) => ({ value, label: lab }))],
         prof[key] ?? '', v => save({ [src]: { [key]: v === '' ? null : (typeof options[0][0] === 'number' ? +v : v) } }), `${src}-${key}`));
       field('Mode de performance', 'Règle d’un coup Windows, le processeur et le profil de la console · les réglages suivants le précisent', 'mode', PERF_MODES);
-      if (sys && sys.powerMode) field('Mode d’alimentation de Windows', 'Consommation et réactivité du processeur', 'powerMode', [['efficiency', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']]);
       if (vendor) field(`Profil ${hh ? esc(hh.maker) : 'de la console'}`, 'Puissance et ventilateurs réglés par le constructeur', 'vendor', vendor.modes.map(m => [m, VL[m] || m]));
       if (sys && sys.vendor && sys.vendor.tdp) field('Puissance (TDP, expérimental)', `${sys.vendor.tdp.min} à ${sys.vendor.tdp.max} W, les trois limites égales`, 'tdp', [8, 10, 15, 20, 25, 30].filter(w => w >= sys.vendor.tdp.min && w <= sys.vendor.tdp.max).map(w => [w, w + ' W']));
       if (sys && sys.cpu) {
@@ -557,17 +557,9 @@ const BUILDERS = {
     s.append(grid);
     await updatesBlock(s);
     // Widget Game Bar : réglages de la console par-dessus les jeux (touche Xbox ou Windows + G)
-    const w = await api.get('/api/widget').catch(() => null);
-    if (w && w.packaged) {
+    if (native.available) {
       h2(s, 'i-grid', 'Widget Game Bar');
-      s.append(el('div', 'notice', 'Dans la Game Bar (touche Xbox ou Windows + G), le widget <b>KaneMode</b> règle la console par-dessus n’importe quel jeu : modes de performance, puissance, processeur, fréquence de l’écran, luminosité et volume.'));
-      if (w.allowed) infoRow(s, 'Widget autorisé', 'Il peut joindre KaneMode');
-      else actionRow(s, 'i-check', 'Autoriser le widget', 'Windows demande une fois l’accord de l’administrateur, pour que le widget puisse joindre KaneMode', async () => {
-        busy('Autorisation du widget…');
-        try { await api.post('/api/widget/allow'); toast('Widget Game Bar autorisé'); rerender('reload'); }
-        catch (e) { toast(e.message, { error: true }); }
-        finally { busy(null); }
-      }, 'widget-allow');
+      s.append(el('div', 'notice', 'Dans la Game Bar (touche Xbox ou Windows + G), le widget <b>KaneMode</b> règle la console par-dessus n’importe quel jeu : modes de performance, puissance, processeur, écran, son et réseau. Il fonctionne tant que KaneMode est ouvert.'));
     }
     h2(s, 'i-cpu', 'Interface');
     actionRow(s, 'i-restart', 'Redémarrer l’interface', 'Recharge KaneMode sans quitter', () => location.reload(), 'reload');

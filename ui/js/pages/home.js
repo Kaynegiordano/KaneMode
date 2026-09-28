@@ -1,6 +1,6 @@
 // Accueil : jeux récents (et KanePlay), émulation, applications, boutiques, sortie vers le bureau.
 import { el, esc, icon, lib, fmt, sourceOf, settings } from '../core.js';
-import { definePage, nav, go } from '../nav.js';
+import { definePage, nav, go, hooks } from '../nav.js';
 import { gameCard } from '../cards.js';
 import { openGame, openLauncher, setBackground, heroUrl, exitToDesktop } from './game.js';
 
@@ -109,5 +109,7 @@ definePage('home', {
       ${g.sizeOnDisk ? `<span>${fmt.size(g.sizeOnDisk)}</span>` : ''}
       ${m.genres && m.genres.length ? `<span>${esc(m.genres.slice(0, 3).join(' · '))}</span>` : ''}</p>`;
   },
-  hints: () => [['y', 'Rechercher'], ['a', 'Ouvrir']],
+  // B sur l'accueil (rien derrière) : le menu principal, comme Select
+  back() { if (hooks.menu) { hooks.menu(); return true; } return false; },
+  hints: () => [['b', 'Menu'], ['y', 'Rechercher'], ['a', 'Ouvrir']],
 });

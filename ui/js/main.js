@@ -178,6 +178,37 @@ setInterval(async () => {
   } catch { /* hôte injoignable */ }
 }, 4000);
 
+// ---------- Mises à jour de KaneMode ----------
+function paintUpdate(last) {
+  const v = last && last.available && last.latest ? last.latest.version : null;
+  $('#menu-update').hidden = !v;
+  $('#update-dot').hidden = !v;
+  if (v) $('#menu-update span').textContent = `Mise à jour ${v} disponible`;
+}
+async function checkUpdate() {
+  try {
+    const u = await api.get('/api/update');
+    paintUpdate(u.last);
+    if (!u.auto) return;
+    const last = +(localStorage.getItem('km.updateChecked') || 0);
+    if (u.last && Date.now() - last < 5.5 * 3600e3) return;
+    localStorage.setItem('km.updateChecked', String(Date.now()));
+    const r = await api.post('/api/update/check');
+    paintUpdate(r);
+    if (r.available && localStorage.getItem('km.updateToast') !== r.latest.version) {
+      localStorage.setItem('km.updateToast', r.latest.version);
+      toast(`KaneMode ${r.latest.version} disponible · Menu → Mise à jour`, { notify: true });
+    }
+  } catch { /* hors ligne */ }
+}
+actions['update-open'] = () => {
+  actions['overlay-leave']();
+  closeLayer();
+  resetHistory();
+  state.history.push({ id: 'home', params: {} });
+  go('settings', { section: 'system', focus: 'upd-check' }, { push: false });
+};
+
 // ---------- Démarrage ----------
 (async () => {
   // La bibliothèque se charge pendant le logo (ou la vidéo) de démarrage.
@@ -190,21 +221,17 @@ setInterval(async () => {
   const wait = settings.splash && settings.bootMode === 'none' ? Math.max(0, 1100 - (performance.now() - started)) : 0;
   setTimeout(() => { $('#splash').classList.add('hide'); focusIn(currentPage().el); }, wait);
   prefetchQam();
-  // Nouvelle version de KaneMode ? (au plus une vérification par jour)
-  api.get('/api/update').then(async u => {
-    if (!u.auto) return;
-    const last = +(localStorage.getItem('km.updateChecked') || 0);
-    if (Date.now() - last < 20 * 3600e3) return;
-    localStorage.setItem('km.updateChecked', String(Date.now()));
-    const r = await api.post('/api/update/check');
-    if (r.available) toast(`KaneMode ${r.latest.version} disponible · Paramètres → Système`, { notify: true });
-  }).catch(() => {});
+  // Nouvelle version de KaneMode ? Vérifiée au démarrage puis toutes les 6 heures (canal choisi
+  // dans Paramètres → Système) ; signalée dans le menu et en haut de l'écran.
+  checkUpdate();
+  setInterval(checkUpdate, 6 * 3600e3);
   // Première fois sur une console portable : interface agrandie pour son petit écran
   api.get('/api/device').then(d => {
     const hh = d && d.handheld;
     if (!hh || settings.handheldSeen === hh.id) return;
     settings.handheldSeen = hh.id;
     if (settings.uiScale === 100) settings.uiScale = 125;
+    settings.lowFx = true; // plus fluide et plus économe sur une console portable
     saveSettings();
     toast(`${hh.name} détectée · interface adaptée (Paramètres → Console portable)`, { notify: true });
   }).catch(() => {});

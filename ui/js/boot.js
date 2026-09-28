@@ -74,10 +74,9 @@ function build(ac, kind) {
 
   if (kind === 'boot') {
     // Façon console de salon des années 2000 : un souffle et une nappe grave, sombres, qui gonflent
-    // jusqu'à un éclat cristallin (le logo apparaît là), puis des scintillements qui retombent
-    // dans une grande réverbération.
+    // jusqu'à un éclat grave et profond (le logo apparaît là), qui s'éteint dans une grande réverbération.
     const H = BOOT_HIT;
-    whoosh(0, H + 0.08, 160, 7500, 0.24);                              // souffle qui monte
+    whoosh(0, H + 0.08, 120, 2600, 0.26);                              // souffle qui monte
     const lp = ac.createBiquadFilter();                                 // nappe : le filtre s'ouvre jusqu'au pic
     lp.type = 'lowpass'; lp.Q.value = 3;
     lp.frequency.setValueAtTime(140, t0);
@@ -105,12 +104,32 @@ function build(ac, kind) {
     env(kg, H, 0.012, 1.1, 0.3);
     kick.connect(kg); route(kg);
     kick.start(t0 + H); kick.stop(t0 + H + 1.2);
-    // Éclat cristallin : accord aigu de cloches et de verre, légèrement étalé
-    [1760, 2217.46, 2637.02, 3322.44, 4186.01].forEach((f, i) => bell(f, H + i * 0.011, 3.3 - i * 0.35, 0.075 - i * 0.009, (i - 2) * 0.35));
-    bell(880, H, 3.8, 0.09);
-    bell(440, H, 3.2, 0.05);
-    // Scintillements qui retombent
-    [3951.07, 3520, 2959.96, 2637.02, 2349.32, 1975.53, 1760].forEach((f, i) => bell(f, H + 0.28 + i * 0.16, 1.2, 0.034 * (1 - i / 9), i % 2 ? 0.55 : -0.55));
+    // Éclat grave (sans notes aiguës) : un accord sombre qui s'ouvre d'un coup puis se referme,
+    // et un souffle étouffé, pour que le pic se sente plus qu'il ne s'entende
+    const bloom = ac.createBiquadFilter();
+    bloom.type = 'lowpass'; bloom.Q.value = 1.5;
+    bloom.frequency.setValueAtTime(260, t0 + H - 0.02);
+    bloom.frequency.exponentialRampToValueAtTime(1600, t0 + H + 0.06);
+    bloom.frequency.exponentialRampToValueAtTime(220, t0 + H + 2.6);
+    const bloomGain = ac.createGain();
+    env(bloomGain, H - 0.01, 0.03, 3.2, 0.9);
+    bloom.connect(bloomGain);
+    route(bloomGain);
+    for (const [f, d] of [[55, 0], [110, -7], [110, 7], [164.81, 0], [220, -5]]) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = d;
+      g.gain.value = f < 100 ? 0.09 : 0.045;
+      o.connect(g).connect(bloom);
+      o.start(t0 + H - 0.02); o.stop(t0 + H + 3.3);
+    }
+    const len = Math.floor(ac.sampleRate * 1.6), nbuf = ac.createBuffer(1, len, ac.sampleRate), nd = nbuf.getChannelData(0);
+    for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+    const air = ac.createBufferSource(), airF = ac.createBiquadFilter(), airG = ac.createGain();
+    air.buffer = nbuf; airF.type = 'lowpass'; airF.frequency.value = 900;
+    env(airG, H, 0.01, 1.5, 0.28);
+    air.connect(airF).connect(airG);
+    route(airG);
+    air.start(t0 + H);
   } else if (kind === 'wake') {
     whoosh(0, 0.5, 400, 4000, 0.12);
     tone(110, 0.05, 1.4, { type: 'triangle', peak: 0.04, attack: 0.35 });
@@ -249,7 +268,8 @@ async function playSynced(box, snd) {
   timer = setTimeout(() => show(true), untilShow * 1000 + 250);
   const tail = (snd.length || snd.buffer.duration) - snd.peak; // son restant après le pic
   return {
-    total: untilShow + appear + Math.min(8, Math.max(2.2, tail + 0.15)),
+    // Le logo reste un peu plus d'une seconde après le pic ; la fin du son continue sur l'accueil
+    total: untilShow + appear + Math.min(1.3, Math.max(0.8, tail)),
     cancel: () => { cancelAnimationFrame(raf); clearTimeout(timer); }, // fin normale : plus rien à insérer
     stop: () => {
       cancelAnimationFrame(raf); clearTimeout(timer);

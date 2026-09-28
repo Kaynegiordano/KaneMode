@@ -23,7 +23,6 @@ export function qamOrder() {
   return order.filter(id => !(settings.qamHidden || []).includes(id));
 }
 
-const POWER = [['efficiency', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']];
 const VENDOR_LABELS = { silent: 'Silencieux', quiet: 'Silencieux', balanced: 'Équilibré', performance: 'Performance', turbo: 'Turbo' };
 
 let sys = null;
@@ -233,9 +232,6 @@ const BUILD = {
     details.append(toggle('i-gear', 'Réglages détaillés', settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
     kids.push(details);
     if (settings.qamPerfDetails === false) return section('Performance', ...kids);
-    if (sys.powerMode) {
-      kids.push(label('Mode d’alimentation de Windows'), segment(POWER, sys.powerMode, v => sendPerf('powermode', v), 'powermode'));
-    }
     const vendor = sys.vendor;
     if (vendor && vendor.modes) {
       kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v).then(st => { if (st && st.modes) sys.vendor = st; settings.tdpActive = 0; saveSettings(); paintLive(true); }), 'vendor'));

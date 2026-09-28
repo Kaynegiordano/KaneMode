@@ -21,25 +21,6 @@ public static class Paths
     [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int GetCurrentApplicationUserModelId(ref int length, System.Text.StringBuilder? id);
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private static extern int GetCurrentPackageFamilyName(ref int length, System.Text.StringBuilder? name);
-
-    /// <summary>
-    /// Note l'adresse de l'hôte pour le widget Game Bar (application du même paquet, qui lit
-    /// LocalState\host.txt) : il règle la console par la même API que l'accès rapide.
-    /// </summary>
-    public static void PublishHostUrl(string url)
-    {
-        if (!Packaged) return;
-        int length = 0;
-        if (GetCurrentPackageFamilyName(ref length, null) != 122) return;
-        var sb = new System.Text.StringBuilder(length);
-        if (GetCurrentPackageFamilyName(ref length, sb) != 0) return;
-        string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", sb.ToString(), "LocalState");
-        Directory.CreateDirectory(dir);
-        File.WriteAllText(System.IO.Path.Combine(dir, "host.txt"), url);
-    }
-
     /// <summary>Identifiant d'application du paquet (famille!App), si l'app est installée.</summary>
     public static string? AppUserModelId
     {

@@ -15,7 +15,7 @@ param([string]$Vendor = '')
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
 
-Add-Type -TypeDefinition @'
+$source = @'
 using System;
 using System.Runtime.InteropServices;
 
@@ -225,6 +225,32 @@ namespace KaneMode {
       d.dmFields = 0x400000; // DM_DISPLAYFREQUENCY
       return ChangeDisplaySettingsEx(null, ref d, IntPtr.Zero, 1 /* CDS_UPDATEREGISTRY */, IntPtr.Zero);
     }
+    // Résolutions de l'écran principal (« 1920x1080 »), de la plus grande à la plus petite
+    public static string CurrentSize() { DEVMODE c = Current(); return c.dmPelsWidth + "x" + c.dmPelsHeight; }
+    public static string[] Sizes() {
+      DEVMODE cur = Current();
+      System.Collections.Generic.List<long> keys = new System.Collections.Generic.List<long>();
+      DEVMODE d = new DEVMODE(); d.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+      for (int i = 0; EnumDisplaySettings(null, i, ref d); i++) {
+        if (d.dmBitsPerPel != cur.dmBitsPerPel || d.dmPelsWidth < 800) continue;
+        long k = (long)d.dmPelsWidth * 100000 + d.dmPelsHeight;
+        if (!keys.Contains(k)) keys.Add(k);
+      }
+      keys.Sort(); keys.Reverse();
+      string[] a = new string[keys.Count];
+      for (int i = 0; i < a.Length; i++) a[i] = (keys[i] / 100000) + "x" + (keys[i] % 100000);
+      return a;
+    }
+    public static int SetSize(int w, int h) {
+      DEVMODE d = Current();
+      int hz = d.dmDisplayFrequency;
+      d.dmPelsWidth = w; d.dmPelsHeight = h;
+      d.dmFields = 0x80000 | 0x100000; // DM_PELSWIDTH | DM_PELSHEIGHT
+      int r = ChangeDisplaySettingsEx(null, ref d, IntPtr.Zero, 1, IntPtr.Zero);
+      // Même fréquence si l'écran la propose dans cette résolution
+      if (r == 0 && Array.IndexOf(Rates(), hz) >= 0 && CurrentHz() != hz) SetHz(hz);
+      return r;
+    }
   }
 
   // ---- ASUS (ROG Ally, Ally X, Xbox Ally) : peripherique ACPI « ATKACPI », comme G-Helper
@@ -267,6 +293,14 @@ namespace KaneMode {
   }
 }
 '@
+# Code C# compilé une fois puis gardé (dll dans le dossier temporaire, nommée d'après son contenu) :
+# le démarrage passe d'une demi-seconde de compilation à un simple chargement
+$hash = [BitConverter]::ToString([Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($source))).Replace('-', '').Substring(0, 16)
+$dll = Join-Path ([IO.Path]::GetTempPath()) "kanemode-syscontrol-$hash.dll"
+if (-not (Test-Path $dll)) {
+    try { Add-Type -TypeDefinition $source -OutputAssembly $dll -ErrorAction Stop } catch { Remove-Item $dll -ErrorAction SilentlyContinue; Add-Type -TypeDefinition $source }
+}
+if (Test-Path $dll) { Add-Type -Path $dll }
 
 # ---- Radios (Wi-Fi, Bluetooth) : API Windows.Devices.Radios
 $radioReady = $false
@@ -323,6 +357,7 @@ function Get-State {
     try { $s.brightness = [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { $s.brightness = $null }
     try { $s.powerMode = [KaneMode.PowerMode]::Get() } catch { $s.powerMode = $null }
     try { $s.refresh = [ordered]@{ current = [KaneMode.Display]::CurrentHz(); available = @([KaneMode.Display]::Rates()) } } catch { $s.refresh = $null }
+    try { $s.resolution = [ordered]@{ current = [KaneMode.Display]::CurrentSize(); available = @([KaneMode.Display]::Sizes()) } } catch { $s.resolution = $null }
     try { $s.radios = @(Get-Radios | ForEach-Object { [ordered]@{ kind = "$($_.Kind)"; on = "$($_.State)" -eq 'On' } }) } catch { $s.radios = @() }
     try { $s.vendor = Vendor-State } catch { $s.vendor = $null }
     try { $s.cpu = [ordered]@{ maxAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $true); maxDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $false); boostAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $true); boostDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $false) } } catch { $s.cpu = $null }
@@ -351,6 +386,13 @@ function Run($c) {
             $r = [KaneMode.Display]::SetHz($hz)
             if ($r -ne 0) { throw "Windows a refusé la fréquence (code $r)" }
             return @{ refresh = [KaneMode.Display]::CurrentHz() }
+        }
+        'resolution' {
+            if ("$($c.value)" -notmatch '^(\d{3,5})x(\d{3,5})$') { throw 'Résolution invalide' }
+            if ("$($c.value)" -notin [KaneMode.Display]::Sizes()) { throw "Résolution non proposée par l'écran : $($c.value)" }
+            $r = [KaneMode.Display]::SetSize([int]$Matches[1], [int]$Matches[2])
+            if ($r -ne 0) { throw "Windows a refusé la résolution (code $r)" }
+            return @{ resolution = [KaneMode.Display]::CurrentSize() }
         }
         'radio' {
             $radio = Get-Radios | Where-Object { "$($_.Kind)" -eq $c.kind } | Select-Object -First 1

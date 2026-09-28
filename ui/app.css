@@ -62,14 +62,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     linear-gradient(180deg, rgba(11, 14, 19, 0.35) 0%, rgba(11, 14, 19, 0.2) 40%, var(--bg) 100%),
     radial-gradient(120% 80% at 0% 0%, transparent 40%, rgba(11, 14, 19, 0.6) 100%);
 }
-body.bg-gradient #bg {
+/* Dégradé animé : un calque déplacé (transformation, calculée par la carte graphique) plutôt qu'un
+   fond redessiné en entier à chaque image */
+body.bg-gradient #bg { background: var(--bg); }
+body.bg-gradient #bg::before {
+  content: ""; position: absolute; inset: -20%;
   background:
-    radial-gradient(60% 70% at 15% 10%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%),
-    radial-gradient(50% 60% at 90% 90%, rgba(106, 92, 255, 0.28), transparent 70%), var(--bg);
-  animation: drift 24s ease-in-out infinite alternate;
-  background-size: 140% 140%;
+    radial-gradient(45% 55% at 25% 20%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%),
+    radial-gradient(40% 50% at 80% 85%, rgba(106, 92, 255, 0.28), transparent 70%);
+  animation: drift 24s ease-in-out infinite alternate; will-change: transform;
 }
-@keyframes drift { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
+@keyframes drift { from { transform: translate3d(-6%, -6%, 0); } to { transform: translate3d(6%, 6%, 0); } }
 body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 
 /* ---------- Barre du haut ---------- */
@@ -115,17 +118,24 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 .card {
   position: relative; flex: none; border-radius: var(--radius);
   background: var(--panel-2); overflow: hidden; cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-  transition: transform 220ms var(--ease), box-shadow 220ms ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 200ms var(--ease);
 }
+/* Cadre de sélection : un calque qui apparaît en fondu (opacité, calculée par la carte graphique)
+   au lieu d'une ombre redessinée à chaque image du déplacement */
+.card::after {
+  content: ""; position: absolute; inset: 0; z-index: 4; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 3px var(--focus); opacity: 0; transition: opacity 140ms ease;
+}
+.focused.card::after { opacity: 1; }
 .card > img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 280ms ease; }
 .card > img.ready { opacity: 1; }
 .card > img.instant { transition: none; }
 /* Chaque carte se met en page seule : ajouter ou changer une carte ne recalcule pas les autres */
 .card { contain: layout style; }
 .focused.card {
-  transform: scale(1.06); z-index: 2;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--focus), 0 0 28px color-mix(in srgb, var(--accent) 45%, transparent);
+  transform: scale(1.06); z-index: 2; will-change: transform;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 26px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .focused.card::before {
   content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
@@ -773,3 +783,18 @@ body.hints-compact .glyph { min-width: 20px; height: 20px; font-size: 11px; }
 .perf-mode button small { font-size: 12px; font-weight: 600; opacity: 0.75; }
 .applied { list-style: none; margin: 2px 0 8px; padding: 10px 12px; border-radius: var(--radius); background: rgba(63, 202, 90, 0.1); font-size: 13px; line-height: 1.7; }
 .applied .ok { color: #9be3a9; } .applied .ko { color: #ff9a9e; }
+
+/* ---------- Mise à jour disponible (menu, barre du haut) ---------- */
+.update-item { color: #fff; background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.update-item svg { fill: var(--accent); opacity: 1; }
+.update-item.focused svg { fill: #111; }
+.status .update-dot { fill: var(--accent); opacity: 1; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+
+/* ---------- Effets allégés (consoles portables : fluidité et batterie) ---------- */
+body.lowfx .card, body.lowfx .focused.card { box-shadow: none; }
+body.lowfx .focused.card::before { display: none; }
+body.lowfx .bg-layer { transition-duration: 250ms; }
+body.lowfx #bg::before { animation: none; }
+body.lowfx .game-bar, body.lowfx #power { backdrop-filter: none; }
+body.lowfx .game-bar { background: rgba(10, 13, 18, 0.92); }

@@ -60,6 +60,7 @@ export function art(g, urls, opts) {
   const img = new Image();
   img.alt = g.name;
   img.decoding = 'async';
+  img.loading = 'lazy'; // jaquettes hors de l'écran chargées au dernier moment
   let i = 0;
   // Apparaît en fondu une fois chargée (tout de suite si elle est déjà en cache)
   img.onload = () => img.classList.add('ready');

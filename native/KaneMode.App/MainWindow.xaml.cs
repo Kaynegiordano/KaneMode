@@ -54,21 +54,11 @@ public partial class MainWindow : Window
         {
             Status.Text = "Démarrage de KaneMode…";
             await Task.Run(Paths.ImportPrototypeData);
-            await _host.StartAsync();
-            try { Paths.PublishHostUrl(_host.Url); } catch (Exception ex) { Log.Write("Adresse pour le widget : " + ex.Message); }
-
-            if (Web.CoreWebView2 == null)
-            {
-                // Son de démarrage (et vidéo perso) joués sans clic préalable.
-                string browserArgs = "--autoplay-policy=no-user-gesture-required";
-                // Développement : --debug-port=9229 permet d'inspecter l'interface depuis l'extérieur.
-                string? debugPort = Args.FirstOrDefault(a => a.StartsWith("--debug-port="))?.Split('=')[1];
-                if (debugPort != null && int.TryParse(debugPort, out _)) browserArgs += $" --remote-debugging-port={debugPort}";
-                var options = new CoreWebView2EnvironmentOptions(browserArgs);
-                var env = await CoreWebView2Environment.CreateAsync(null, Paths.WebViewData, options);
-                await Web.EnsureCoreWebView2Async(env);
-                ConfigureWebView(Web.CoreWebView2!);
-            }
+            // L'hôte (Node) et le moteur web (WebView2) démarrent en même temps : une à deux secondes de gagnées
+            Task host = _host.StartAsync();
+            Task web = Web.CoreWebView2 == null ? InitWebViewAsync() : Task.CompletedTask;
+            await Task.WhenAll(host, web);
+            WidgetBridge.Start(_host.Url);
             Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
         }
         catch (Exception ex)
@@ -78,6 +68,19 @@ public partial class MainWindow : Window
             Status.Text = "KaneMode n’a pas pu démarrer :\n" + ex.Message;
             Hint.Visibility = Visibility.Visible;
         }
+    }
+
+    private async Task InitWebViewAsync()
+    {
+        // Son de démarrage (et vidéo perso) joués sans clic préalable.
+        string browserArgs = "--autoplay-policy=no-user-gesture-required";
+        // Développement : --debug-port=9229 permet d'inspecter l'interface depuis l'extérieur.
+        string? debugPort = Args.FirstOrDefault(a => a.StartsWith("--debug-port="))?.Split('=')[1];
+        if (debugPort != null && int.TryParse(debugPort, out _)) browserArgs += $" --remote-debugging-port={debugPort}";
+        var options = new CoreWebView2EnvironmentOptions(browserArgs);
+        var env = await CoreWebView2Environment.CreateAsync(null, Paths.WebViewData, options);
+        await Web.EnsureCoreWebView2Async(env);
+        ConfigureWebView(Web.CoreWebView2!);
     }
 
     private void ConfigureWebView(CoreWebView2 core)
@@ -183,6 +186,9 @@ public partial class MainWindow : Window
                 case "return":
                     // Menu ou accès rapide refermé : retour à la fenêtre d'où l'on venait
                     if (_returnTo != IntPtr.Zero) { Native.Activate(_returnTo); _returnTo = IntPtr.Zero; }
+                    break;
+                case "foreground":
+                    Native.GiveForeground(root.TryGetProperty("window", out var w) ? w.GetString() : null);
                     break;
                 case "stay":
                     _returnTo = IntPtr.Zero; // l'utilisateur est allé ailleurs dans KaneMode

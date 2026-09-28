@@ -59,6 +59,7 @@ export async function launch(g) {
     : g.emulator ? `Lancement de ${g.name} avec ${g.emulator}…` : `Lancement de ${g.name}…`;
   const layer = openLayer({ el: L, name: 'launch', noGlobal: true, hints: () => [['b', 'Fermer']] });
   try {
+    native.send('foreground'); // le jeu lancé pourra passer au premier plan
     const r = await api.post('/api/launch', { id: g.id });
     status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
     if (r.ok) lib.load({ background: true });
@@ -86,6 +87,9 @@ export async function exitToDesktop() {
 export async function openStreaming() {
   document.body.classList.add('handoff');
   setTimeout(() => document.body.classList.remove('handoff'), 2500);
+  // KaneMode a le premier plan : il le cède à KanePlay, et ramène lui-même sa fenêtre si
+  // KanePlay est déjà ouvert (sinon Windows le laisse en arrière-plan)
+  native.send('foreground', { window: 'KaneMode · KanePlay' });
   try { await api.post('/api/stream/open'); }
   catch (e) {
     document.body.classList.remove('handoff');
@@ -95,6 +99,7 @@ export async function openStreaming() {
 export async function openLauncher(l) {
   if (!l.installed) return toast(`${l.name} n’est pas installé sur ce PC`, { error: true });
   toast(`Ouverture de ${l.name}…`);
+  native.send('foreground');
   try { await api.post('/api/launch', { id: 'launcher:' + l.id }); }
   catch (e) { toast(e.message, { error: true }); }
 }
