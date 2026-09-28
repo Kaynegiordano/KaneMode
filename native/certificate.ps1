@@ -16,7 +16,7 @@
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File native\certificate.ps1 -Restore -Path E:\KaneMode-signature.pfx
 #>
-param([switch]$Backup, [switch]$Restore, [string]$Path = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'KaneMode-signature.pfx'))
+param([switch]$Backup, [switch]$Restore, [string]$Path = (Join-Path $env:USERPROFILE 'KaneMode-signature.pfx'))
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -39,7 +39,12 @@ if ($Backup) {
     if ((& $plain $p1).Length -lt 8) { throw 'Mot de passe trop court (8 caractères minimum).' }
 
     New-Item -ItemType Directory -Force (Split-Path $full) | Out-Null
-    Export-PfxCertificate -Cert $cert -FilePath $full -Password $p1 -CryptoAlgorithmOption AES256_SHA256 | Out-Null
+    # Par défaut dans le dossier de l'utilisateur : Documents (souvent OneDrive) peut être protégé
+    # par « Dossiers contrôlés » de Windows, qui refuse alors l'écriture (« fichier introuvable »).
+    try { Export-PfxCertificate -Cert $cert -FilePath $full -Password $p1 -CryptoAlgorithmOption AES256_SHA256 | Out-Null }
+    catch [IO.FileNotFoundException], [UnauthorizedAccessException] {
+        throw "Windows refuse d'écrire dans $(Split-Path $full) (dossier protégé ou synchronisé). Relancez avec -Path vers un autre dossier, par exemple -Path E:\KaneMode-signature.pfx sur une clé USB."
+    }
 
     # Vérification : le fichier s'ouvre avec ce mot de passe et contient bien la clé privée
     $check = New-Object Security.Cryptography.X509Certificates.X509Certificate2($full, $p1)
