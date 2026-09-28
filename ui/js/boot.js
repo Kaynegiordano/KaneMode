@@ -1,6 +1,6 @@
 // Démarrage : logo KaneMode animé avec un court carillon (synthétisé, aucun fichier), ou vidéo perso.
 // Les mêmes sons servent à la mise en veille et au réveil.
-import { $, settings } from './core.js';
+import { $, api, settings, saveSettings } from './core.js';
 import { inputLock } from './nav.js';
 
 // ---------------------------------------------------------------- sons synthétisés
@@ -91,15 +91,100 @@ export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
   return true;
 }
 
-/** Son de démarrage selon les réglages : carillon, fichier perso ou rien. */
-async function bootSound(kind = 'boot') {
-  if (settings.bootSound === 'none') return;
-  if (settings.bootSound === 'custom' && kind === 'boot') {
-    const a = new Audio('/bootsound?t=' + Date.now());
-    a.volume = Math.min(1, settings.bootVolume / 100);
-    try { await a.play(); return; } catch { /* fichier absent ou son refusé : carillon */ }
+// ---------------------------------------------------------------- son perso synchronisé
+// Le son choisi est analysé (moment où il éclate) et le logo apparaît pile sur ce pic, calé sur
+// l'horloge audio en tenant compte de la latence de sortie.
+let custom = null; // { key, buffer, peak, onset }
+
+/** Un son choisi ailleurs (autre profil, installation) est adopté une fois. */
+async function adoptSound() {
+  try {
+    const c = await api.get('/api/config');
+    if (c.bootSound && c.bootSoundAt && c.bootSoundAt !== settings.bootSoundAt) {
+      settings.bootSoundAt = c.bootSoundAt;
+      settings.bootSound = 'custom';
+      saveSettings();
+    }
+    return c;
+  } catch { return null; }
+}
+
+/** Pic du son : maximum de l'énergie (fenêtres de 20 ms) ; début : quand le son devient audible. */
+export function analyseSound(buf) {
+  const sr = buf.sampleRate, hop = Math.round(sr * 0.005), win = Math.round(sr * 0.02);
+  const chans = Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c));
+  const limit = Math.min(buf.length, sr * 8); // le pic est cherché dans les 8 premières secondes
+  const env = [];
+  for (let i = 0; i + win <= limit; i += hop) {
+    let e = 0;
+    for (const d of chans) for (let j = i; j < i + win; j += 2) e += d[j] * d[j];
+    env.push(e);
   }
-  await chime(kind);
+  if (!env.length) return { peak: 0, onset: 0 };
+  let pk = 0;
+  for (let i = 1; i < env.length; i++) if (env[i] > env[pk]) pk = i;
+  let on = pk;
+  while (on > 0 && env[on - 1] > env[pk] * 0.02) on--; // ≈ 14 % de l'amplitude du pic
+  const t = i => (i * hop + win / 2) / sr;
+  return { peak: t(pk), onset: t(on) };
+}
+
+async function loadCustom(ac, cfg) {
+  const key = cfg ? `${cfg.bootSound}|${cfg.bootSoundAt}` : '?';
+  if (custom && custom.key === key) return custom;
+  const r = await fetch('/bootsound?t=' + Date.now());
+  if (!r.ok) return null;
+  const buffer = await ac.decodeAudioData(await r.arrayBuffer());
+  custom = { key, buffer, ...analyseSound(buffer) };
+  return custom;
+}
+
+/**
+ * Joue le son perso et fait apparaître le logo sur son pic. Renvoie { total, stop } dès que tout
+ * est programmé, ou null (pas de son perso, son refusé) : on se rabat alors sur le carillon.
+ */
+async function playSynced(box, cfg) {
+  const ac = audio();
+  const volume = Math.min(1, settings.bootVolume / 100);
+  if (!ac || volume <= 0) return null;
+  if (ac.state !== 'running') { try { await Promise.race([ac.resume(), new Promise(r => setTimeout(r, 150))]); } catch { /* refusé */ } }
+  let snd;
+  try { snd = await loadCustom(ac, cfg); } catch { return null; }
+  if (!snd || ac.state !== 'running') return null;
+  // Le logo met « appear » secondes à apparaître et atteint son plein éclat sur le pic
+  const appear = Math.min(0.5, Math.max(0.12, snd.peak - snd.onset));
+  const lead = Math.max(0, appear - snd.peak); // pic trop tôt : le son attend un peu le logo
+  const startAt = ac.currentTime + 0.1 + lead;
+  const showAt = startAt + snd.peak - appear;
+  const src = ac.createBufferSource(), g = ac.createGain();
+  src.buffer = snd.buffer;
+  g.gain.value = volume;
+  src.connect(g).connect(ac.destination);
+  src.start(startAt);
+  // Instant réellement entendu : horodatage de sortie (latence comprise), sinon estimation
+  const heard = () => {
+    const ts = ac.getOutputTimestamp && ac.getOutputTimestamp();
+    if (ts && ts.contextTime > 0 && ts.performanceTime > 0) return ts.contextTime + (performance.now() - ts.performanceTime) / 1000;
+    return ac.currentTime - (ac.outputLatency || ac.baseLatency || 0);
+  };
+  let raf = 0;
+  const show = () => {
+    // Une image dure ~16 ms : on insère le logo à la frame la plus proche de l'instant visé
+    if (heard() < showAt - 0.008) { raf = requestAnimationFrame(show); return; }
+    box.classList.add('sync');
+    box.style.setProperty('--appear', appear.toFixed(3) + 's');
+    box.insertAdjacentHTML('beforeend', LOGO_HTML);
+  };
+  raf = requestAnimationFrame(show);
+  const untilShow = Math.max(0, showAt - heard());
+  const tail = snd.buffer.duration - snd.peak; // son restant après le pic
+  return {
+    total: untilShow + appear + Math.min(8, Math.max(2.2, tail + 0.15)),
+    stop: () => {
+      cancelAnimationFrame(raf);
+      try { g.gain.setTargetAtTime(0, ac.currentTime, 0.08); src.stop(ac.currentTime + 0.4); } catch { /* déjà arrêté */ }
+    },
+  };
 }
 
 // ---------------------------------------------------------------- écran de logo
@@ -110,12 +195,26 @@ const LOGO_HTML = `<div class="boot-logo">
 
 /** Logo animé seul (démarrage ou réveil). Se termine tout seul, ou au premier bouton. */
 function showLogo(box, kind) {
-  return new Promise(resolve => {
+  return new Promise(async resolve => {
     box.classList.toggle('wake', kind === 'wake');
+    let t = 0, stop = () => {}, skipped = false;
+    box._skip = () => { skipped = true; clearTimeout(t); stop(); resolve(); };
+    if (kind === 'boot' && settings.bootSound !== 'none') {
+      const cfg = await adoptSound();
+      if (settings.bootSound === 'custom') {
+        const synced = await playSynced(box, cfg);
+        if (synced) {
+          stop = synced.stop;
+          if (skipped) return stop();
+          t = setTimeout(resolve, synced.total * 1000);
+          return;
+        }
+      }
+    }
+    if (skipped) return;
     box.insertAdjacentHTML('beforeend', LOGO_HTML);
-    bootSound(kind);
-    const t = setTimeout(resolve, kind === 'wake' ? 1500 : 2900);
-    box._skip = () => { clearTimeout(t); resolve(); };
+    if (settings.bootSound !== 'none') chime(kind);
+    t = setTimeout(resolve, kind === 'wake' ? 1500 : 2900);
   });
 }
 
@@ -145,7 +244,7 @@ export function playBoot({ force = false, kind = 'boot', mode = settings.bootMod
     const box = $('#boot');
     box.replaceChildren(Object.assign(document.createElement('div'), { className: 'boot-skip', textContent: 'Appuyez sur un bouton pour passer' }));
     box.hidden = false;
-    box.classList.remove('fade', 'sleeping');
+    box.classList.remove('fade', 'sleeping', 'sync');
     box._skip = null;
     inputLock.on = true;
     let done = false, raf = 0;

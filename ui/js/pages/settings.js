@@ -421,7 +421,7 @@ const BUILDERS = {
       if (settings.bootMode === 'video') set('bootMode', 'logo');
       rerender('boot-video');
     }, 'boot-video-del');
-    actionRow(s, 'i-music', 'Son perso…', cfg.bootSound ? `Actuel : ${esc(cfg.bootSound)} · A pour en choisir un autre` : 'Un fichier .mp3, .wav, .ogg ou .m4a, idéalement de 2 à 5 secondes', async () => {
+    actionRow(s, 'i-music', 'Son perso…', cfg.bootSound ? `Actuel : ${esc(cfg.bootSound)} · A pour en choisir un autre` : 'Un fichier .mp3, .wav, .ogg ou .m4a, idéalement de 2 à 5 secondes · le logo apparaît pile sur le pic du son', async () => {
       const p = await pickFile('audio', 'Choisir le son de démarrage');
       if (!p) return;
       await api.post('/api/config', { bootSound: p });

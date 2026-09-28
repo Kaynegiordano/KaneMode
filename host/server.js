@@ -595,7 +595,7 @@ const routes = {
     json(res, 200, {
       sgdb: { configured: true, key: !!c.sgdbKey, hint: c.sgdbKey ? '…' + c.sgdbKey.slice(-4) : null, auto: c.sgdbAuto, preferSteam: c.sgdbPreferSteam, style: c.sgdbStyle },
       romRoots: c.romRoots, emulatorPaths: c.emulatorPaths, emulatorPrefs: c.emulatorPrefs,
-      bootVideo: c.bootVideo ? path.basename(c.bootVideo) : null, bootSound: c.bootSound ? path.basename(c.bootSound) : null,
+      bootVideo: c.bootVideo ? path.basename(c.bootVideo) : null, bootSound: c.bootSound ? c.bootSoundName || path.basename(c.bootSound) : null, bootSoundAt: c.bootSoundAt || 0,
     });
   },
   'POST /api/config': async (req, res) => {
@@ -611,7 +611,19 @@ const routes = {
       sgdbCache = {}; writeJson(FILES.sgdb, sgdbCache);
       for (const f of fs.readdirSync(ARTCACHE)) if (f.startsWith('sgdb_')) fs.rmSync(path.join(ARTCACHE, f), { force: true });
     }
-    if ('bootSound' in b) c.bootSound = str(b.bootSound) && AUDIO_EXT.includes(path.extname(b.bootSound).toLowerCase()) && isFile(b.bootSound) ? b.bootSound : null;
+    if ('bootSound' in b) {
+      // Le son choisi est copié dans les données de KaneMode : il reste disponible même si
+      // l'original est déplacé (Bureau, OneDrive…)
+      const src = str(b.bootSound) && AUDIO_EXT.includes(path.extname(b.bootSound).toLowerCase()) && isFile(b.bootSound) ? b.bootSound : null;
+      for (const f of fs.readdirSync(DATA)) if (/^bootsound\./i.test(f) && (!src || path.join(DATA, f) !== path.resolve(src))) fs.rmSync(path.join(DATA, f), { force: true });
+      if (src) {
+        const dest = path.join(DATA, 'bootsound' + path.extname(src).toLowerCase());
+        if (path.resolve(src) !== dest) fs.copyFileSync(src, dest);
+        c.bootSound = dest;
+        c.bootSoundName = path.basename(src);
+        c.bootSoundAt = Date.now();
+      } else { c.bootSound = null; c.bootSoundName = null; }
+    }
     if ('bootVideo' in b) c.bootVideo = str(b.bootVideo) && VIDEO_EXT.includes(path.extname(b.bootVideo).toLowerCase()) && isFile(b.bootVideo) ? b.bootVideo : null;
     if ('sgdbAuto' in b) c.sgdbAuto = !!b.sgdbAuto;
     // Couleur d'accent de l'interface, reprise par KanePlay
