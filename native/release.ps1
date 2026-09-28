@@ -81,7 +81,7 @@ Les versions déjà installées se mettent à jour depuis KaneMode : Paramètres
 "@
     }
     $files = Get-ChildItem $rel -File | ForEach-Object FullName
-    $ghArgs = @('release', 'create', $tag) + $files + @('--title', "KaneMode $version", '--notes-file', $Notes)
+    $ghArgs = @('release', 'create', $tag) + $files + @('--repo', 'Kaynegiordano/KaneMode', '--target', 'main', '--title', "KaneMode $version", '--notes-file', $Notes)
     if ($Beta) { $ghArgs += '--prerelease' }
     gh @ghArgs
     if ($LASTEXITCODE -ne 0) { throw 'Échec de la publication' }
