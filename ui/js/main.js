@@ -34,12 +34,14 @@ actions['menu-go'] = t => {
   if (target !== 'home') state.history.push({ id: 'home', params: {} });
   go(target, {}, { push: false });
 };
-actions['power-toggle'] = t => {
-  const sm = $('#power-menu');
-  sm.classList.toggle('open');
-  t.classList.toggle('expanded', sm.classList.contains('open'));
-  if (sm.classList.contains('open')) setFocus($('[data-nav]', sm));
-};
+// Menu d'alimentation au centre de l'écran (menu principal, accès rapide)
+export function openPowerMenu() {
+  closeLayer();
+  if (topLayer()) closeLayer();
+  openLayer({ el: $('#power'), name: 'power', scrim: true, focusKey: 'sleep', hints: () => [['a', 'Choisir'], ['b', 'Annuler']] });
+}
+actions['power-open'] = openPowerMenu;
+actions['power-close'] = () => closeLayer();
 const SYSTEM = {
   desktop: ['Aller au bureau Windows ?', 'Le mode console se ferme et le bureau s’affiche.', 'Aller au bureau'],
   sleep: ['Mettre en veille ?', 'Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.', 'Mettre en veille'],

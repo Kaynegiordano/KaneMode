@@ -714,3 +714,21 @@ body.solid .panel, body.solid #topbar, body.solid .layer .dialog-box { backdrop-
 .order-row { grid-template-columns: 1fr auto auto auto !important; }
 .order-row .chip-btn { min-width: 44px; justify-content: center; }
 .order-row.off .txt { opacity: 0.5; }
+/* ---------- Menu d'alimentation (au centre, grandes tuiles) ---------- */
+#power { position: fixed; inset: 0; z-index: 85; display: grid; place-items: center; padding: 24px; background: rgba(4, 6, 10, 0.72); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity 180ms; }
+#power.open { opacity: 1; pointer-events: auto; }
+.power-box { width: min(760px, 100%); display: grid; gap: 22px; justify-items: center; transform: scale(0.96); transition: transform 220ms var(--ease); }
+#power.open .power-box { transform: none; }
+.power-box h2 { margin: 0; display: flex; align-items: center; gap: 12px; font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; }
+.power-box h2 svg { width: 32px; height: 32px; fill: var(--accent); }
+.power-grid { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.power-tile { display: grid; justify-items: center; align-content: center; gap: 8px; min-height: 170px; padding: 18px 10px; border-radius: calc(var(--radius) + 6px); background: var(--panel-2); border: 1px solid var(--line); cursor: pointer; text-align: center; transition: transform 180ms var(--ease), background 160ms, box-shadow 180ms; }
+.power-tile svg { width: 52px; height: 52px; fill: #cfd5dd; }
+.power-tile b { font-size: 20px; }
+.power-tile small { color: var(--muted); font-size: 14px; }
+.power-tile.focused { transform: scale(1.06); background: var(--accent); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 3px var(--focus); }
+.power-tile.focused svg { fill: #fff; }
+.power-tile.focused small { color: rgba(255, 255, 255, 0.85); }
+.power-cancel { padding: 12px 40px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); font-size: 17px; cursor: pointer; }
+.power-cancel.focused { background: #fff; color: #111; }
+@media (max-width: 720px) { .power-grid { grid-template-columns: repeat(2, 1fr); } .power-tile { min-height: 140px; } }

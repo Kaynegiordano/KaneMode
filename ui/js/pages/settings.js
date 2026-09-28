@@ -359,7 +359,13 @@ const BUILDERS = {
         prof[key] ?? '', v => save({ [src]: { [key]: v === '' ? null : (typeof options[0][0] === 'number' ? +v : v) } }), `${src}-${key}`));
       if (sys && sys.powerMode) field('Mode d’alimentation de Windows', 'Consommation et réactivité du processeur', 'powerMode', [['efficiency', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']]);
       if (vendor) field(`Profil ${hh ? esc(hh.maker) : 'de la console'}`, 'Puissance et ventilateurs réglés par le constructeur', 'vendor', vendor.modes.map(m => [m, VL[m] || m]));
-      if (sys && sys.vendor && sys.vendor.tdp) field('Puissance (expérimental)', `${sys.vendor.tdp.min} à ${sys.vendor.tdp.max} W`, 'tdp', [8, 10, 15, 20, 25, 30].filter(w => w >= sys.vendor.tdp.min && w <= sys.vendor.tdp.max).map(w => [w, w + ' W']));
+      if (sys && sys.vendor && sys.vendor.tdp) field('Puissance (TDP, expérimental)', `${sys.vendor.tdp.min} à ${sys.vendor.tdp.max} W, les trois limites égales`, 'tdp', [8, 10, 15, 20, 25, 30].filter(w => w >= sys.vendor.tdp.min && w <= sys.vendor.tdp.max).map(w => [w, w + ' W']));
+      if (sys && sys.cpu) {
+        field('Limite du processeur', 'Plus bas : moins de chaleur et plus d’autonomie', 'cpuMax', [[50, '50 %'], [70, '70 %'], [85, '85 %'], [100, '100 %']]);
+        infoRow(s, 'Turbo du processeur', 'Désactivé : plus frais et plus économe, un peu moins rapide', segmented(
+          [{ value: '', label: 'Inchangé' }, { value: 'on', label: 'Activé' }, { value: 'off', label: 'Désactivé' }],
+          prof.boost === true ? 'on' : prof.boost === false ? 'off' : '', v => save({ [src]: { boost: v === '' ? null : v === 'on' } }), `${src}-boost`));
+      }
       if (sys && sys.refresh && sys.refresh.available.length > 1) field('Fréquence de l’écran', 'Moins d’images par seconde : plus d’autonomie', 'refresh', sys.refresh.available.filter(hz => hz >= 30).slice(-4).map(hz => [hz, hz + ' Hz']));
       if (sys && sys.brightness != null) field('Luminosité', '', 'brightness', [30, 50, 70, 100].map(v => [v, v + ' %']));
       actionRow(s, 'i-check', 'Appliquer maintenant', 'Sans attendre de brancher ou débrancher le chargeur', async () => {

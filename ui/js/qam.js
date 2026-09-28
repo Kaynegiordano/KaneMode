@@ -2,7 +2,7 @@
 // mode d'alimentation, profil de la console, puissance, fréquence de l'écran, limite de charge),
 // en sections que l'utilisateur choisit et ordonne (Paramètres → Accès rapide).
 import { $, el, esc, icon, api, settings, saveSettings, toast, sfx, getNotifications } from './core.js';
-import { nav, focusIn } from './nav.js';
+import { nav, focusIn, actions } from './nav.js';
 import { sleepNow } from './power.js';
 import { openStreaming, exitToDesktop } from './pages/game.js';
 
@@ -126,11 +126,31 @@ const BUILD = {
       kids.push(el('div', 'qam-note', `Profil de la console indisponible : ${esc(vendor.error)}`));
     }
     if (vendor && vendor.tdp) {
-      const w = settings.tdp || Math.round((vendor.tdp.min + vendor.tdp.max) / 2);
-      kids.push(label(`Puissance (${vendor.tdp.min} à ${vendor.tdp.max} W, expérimental)`),
-        slider('i-cpu', w, { min: vendor.tdp.min, max: vendor.tdp.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { settings.tdp = v; saveSettings(); send('tdp', v).catch(() => {}); } }));
+      // Puissance (TDP) : un curseur, ou les trois limites en mode avancé
+      const t = vendor.tdp;
+      const cur = Object.assign({ spl: Math.round((t.min + t.max) / 2) }, settings.tdpLimits || {});
+      cur.sppt = cur.sppt || cur.spl;
+      cur.fppt = cur.fppt || cur.sppt;
+      const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); send('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).catch(() => {}); };
+      kids.push(label(`Puissance (TDP, expérimental)`));
+      if (!settings.tdpAdvanced) {
+        kids.push(slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { cur.spl = cur.sppt = cur.fppt = v; sendTdp(); } }));
+      } else {
+        kids.push(el('div', 'qam-note', 'Soutenue'), slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp-spl', onChange: v => { cur.spl = v; cur.sppt = Math.max(cur.sppt, v); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
+        kids.push(el('div', 'qam-note', 'Boost court (quelques secondes)'), slider('i-cpu', cur.sppt, { min: t.min, max: t.boostMax, step: 1, unit: ' W', key: 'tdp-sppt', onChange: v => { cur.sppt = Math.max(v, cur.spl); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
+        kids.push(el('div', 'qam-note', 'Boost bref (pics)'), slider('i-cpu', cur.fppt, { min: t.min, max: t.boostMax, step: 1, unit: ' W', key: 'tdp-fppt', onChange: v => { cur.fppt = Math.max(v, cur.sppt); sendTdp(); } }));
+      }
+      kids.push(el('div', 'toggles'));
+      kids[kids.length - 1].append(toggle('i-gear', 'Réglage avancé', !!settings.tdpAdvanced, on => { settings.tdpAdvanced = on; saveSettings(); renderQam('tdp-adv'); }, 'tdp-adv'));
     }
-    if (sys.refresh && sys.refresh.available.length > 1) {
+    // Processeur : pour tous les PC, par Windows (sans pilote ni droits administrateur)
+    if (sys.cpu) {
+      kids.push(label('Limite du processeur'),
+        slider('i-cpu', sys.cpu.maxAc, { min: 30, max: 100, step: 5, unit: ' %', key: 'cpumax', onChange: v => send('cpumax', v).catch(() => {}) }));
+      const tg = el('div', 'toggles');
+      tg.append(toggle('i-cpu', 'Turbo du processeur', sys.cpu.boostAc !== 0, on => send('boost', on), 'boost'));
+      kids.push(tg);
+    }    if (sys.refresh && sys.refresh.available.length > 1) {
       const rates = sys.refresh.available.filter(hz => hz >= 30).slice(-5);
       kids.push(label('Fréquence de l’écran'), segment(rates.map(hz => [hz, hz + ' Hz']), sys.refresh.current, v => send('refresh', +v), 'refresh'));
     }
@@ -160,6 +180,7 @@ const BUILD = {
     const row = el('div', 'qam-shortcuts');
     const btn = (iconId, text, act, key) => row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), act, key));
     btn('i-moon', 'Veille', () => sleepNow(), 'sc-sleep');
+    btn('i-power', 'Alimentation', () => actions['power-open'](), 'sc-power');
     btn('i-wifi', 'KanePlay', () => openStreaming(), 'sc-kaneplay');
     btn('i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop');
     return section('Raccourcis', row);

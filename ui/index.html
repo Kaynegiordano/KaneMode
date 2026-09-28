@@ -118,12 +118,7 @@
     <div class="menu-sep"></div>
     <div class="menu-item" data-nav data-key="settings" data-action="menu-go" data-page="settings"><svg><use href="#i-gear"/></svg>Paramètres</div>
     <div class="menu-item" data-nav data-key="desktop" data-action="exit"><svg><use href="#i-desktop"/></svg>Quitter vers le bureau Windows</div>
-    <div class="menu-item" data-nav data-key="power" data-action="power-toggle"><svg><use href="#i-power"/></svg>Alimentation<svg class="chev"><use href="#i-chevron"/></svg></div>
-    <div class="submenu" id="power-menu">
-      <div class="menu-item" data-nav data-action="system" data-system="sleep"><svg><use href="#i-moon"/></svg>Mettre en veille</div>
-      <div class="menu-item" data-nav data-action="system" data-system="restart"><svg><use href="#i-restart"/></svg>Redémarrer</div>
-      <div class="menu-item" data-nav data-action="system" data-system="shutdown"><svg><use href="#i-power"/></svg>Éteindre</div>
-    </div>
+    <div class="menu-item" data-nav data-key="power" data-action="power-open"><svg><use href="#i-power"/></svg>Alimentation</div>
     <div class="menu-foot" id="menu-foot"></div>
   </aside>
 
@@ -133,7 +128,19 @@
     </aside>
 
   <div class="layer" id="viewer"><div class="viewer-stage"></div><div class="viewer-caption"></div></div>
-  <div class="layer" id="dialog"><div class="dialog-box"></div></div>
+  <!-- Menu d'alimentation : au centre de l'écran, grandes tuiles (lisible sur une console portable) -->
+  <div class="layer" id="power">
+    <div class="power-box">
+      <h2><svg><use href="#i-power"/></svg>Alimentation</h2>
+      <div class="power-grid">
+        <div class="power-tile" data-nav data-key="sleep" data-action="system" data-system="sleep"><svg><use href="#i-moon"/></svg><b>Veille</b><small>Reprise instantanée</small></div>
+        <div class="power-tile" data-nav data-key="restart" data-action="system" data-system="restart"><svg><use href="#i-restart"/></svg><b>Redémarrer</b><small>Le PC redémarre</small></div>
+        <div class="power-tile" data-nav data-key="shutdown" data-action="system" data-system="shutdown"><svg><use href="#i-power"/></svg><b>Éteindre</b><small>Le PC s’éteint</small></div>
+        <div class="power-tile" data-nav data-key="desktop" data-action="exit"><svg><use href="#i-desktop"/></svg><b>Bureau Windows</b><small>Ferme KaneMode</small></div>
+      </div>
+      <div class="power-cancel" data-nav data-key="cancel" data-action="power-close">Annuler</div>
+    </div>
+  </div>  <div class="layer" id="dialog"><div class="dialog-box"></div></div>
   <div class="layer" id="osk"></div>
 
   <div class="layer" id="launch">

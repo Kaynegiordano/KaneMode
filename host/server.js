@@ -278,7 +278,9 @@ const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.i
 const PROFILE_FIELDS = {
   powerMode: v => ['efficiency', 'balanced', 'performance'].includes(v),
   vendor: v => /^[a-z]{3,12}$/.test(v),
-  tdp: v => Number.isInteger(v) && v >= 5 && v <= 40,
+  tdp: v => (Number.isInteger(v) && v >= 5 && v <= 40) || (v && typeof v === 'object' && ['spl', 'sppt', 'fppt'].every(k => Number.isInteger(v[k]) && v[k] >= 5 && v[k] <= 40)),
+  cpuMax: v => Number.isInteger(v) && v >= 30 && v <= 100,
+  boost: v => typeof v === 'boolean',
   refresh: v => Number.isInteger(v) && v >= 30 && v <= 500,
   brightness: v => Number.isInteger(v) && v >= 0 && v <= 100,
 };

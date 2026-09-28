@@ -5,7 +5,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'syscontrol.ps1');
-const ALLOWED = ['state', 'volume', 'mute', 'brightness', 'powermode', 'refresh', 'radio', 'vendor', 'tdp', 'chargelimit'];
+const ALLOWED = ['state', 'volume', 'mute', 'brightness', 'powermode', 'refresh', 'radio', 'vendor', 'tdp', 'cpumax', 'boost', 'chargelimit'];
 
 /** Constructeur dont on sait piloter les profils : d'après la console reconnue. */
 const vendorOf = handheld => (!handheld ? '' : /^rog-/.test(handheld.id) ? 'asus' : /^legion-/.test(handheld.id) ? 'lenovo' : '');
@@ -77,6 +77,8 @@ function create(getVendor) {
     await step('powermode', profile.powerMode);
     await step('vendor', profile.vendor);
     await step('tdp', profile.tdp);
+    await step('cpumax', profile.cpuMax);
+    await step('boost', profile.boost);
     await step('refresh', profile.refresh);
     await step('brightness', profile.brightness);
     cache = null;

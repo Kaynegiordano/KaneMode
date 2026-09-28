@@ -85,6 +85,40 @@ namespace KaneMode {
     }
   }
 
+  // ---- Processeur : limite de performance (%) et turbo, dans le mode de gestion actif (secteur et batterie)
+  public static class Cpu {
+    [DllImport("powrprof.dll")] static extern uint PowerGetActiveScheme(IntPtr root, out IntPtr scheme);
+    [DllImport("powrprof.dll")] static extern uint PowerReadACValueIndex(IntPtr root, ref Guid scheme, ref Guid sub, ref Guid setting, out uint value);
+    [DllImport("powrprof.dll")] static extern uint PowerReadDCValueIndex(IntPtr root, ref Guid scheme, ref Guid sub, ref Guid setting, out uint value);
+    [DllImport("powrprof.dll")] static extern uint PowerWriteACValueIndex(IntPtr root, ref Guid scheme, ref Guid sub, ref Guid setting, uint value);
+    [DllImport("powrprof.dll")] static extern uint PowerWriteDCValueIndex(IntPtr root, ref Guid scheme, ref Guid sub, ref Guid setting, uint value);
+    [DllImport("powrprof.dll")] static extern uint PowerSetActiveScheme(IntPtr root, ref Guid scheme);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr p);
+    static Guid Sub = new Guid("54533251-82be-4824-96c1-47b60b740d00");
+    public static Guid MaxState = new Guid("bc5038f7-23e0-4960-96da-33abaf5935ec");
+    public static Guid Boost = new Guid("be337238-0d82-4146-a960-4f3749d470c7");
+    static Guid Scheme() {
+      IntPtr p;
+      if (PowerGetActiveScheme(IntPtr.Zero, out p) != 0) throw new InvalidOperationException("Mode de gestion introuvable");
+      Guid g = (Guid)Marshal.PtrToStructure(p, typeof(Guid));
+      LocalFree(p);
+      return g;
+    }
+    public static uint Read(Guid setting, bool ac) {
+      Guid s = Scheme(); Guid sub = Sub; uint v;
+      uint r = ac ? PowerReadACValueIndex(IntPtr.Zero, ref s, ref sub, ref setting, out v) : PowerReadDCValueIndex(IntPtr.Zero, ref s, ref sub, ref setting, out v);
+      if (r != 0) throw new InvalidOperationException("Lecture refusée (" + r + ")");
+      return v;
+    }
+    public static void Write(Guid setting, uint value) {
+      Guid s = Scheme(); Guid sub = Sub;
+      uint a = PowerWriteACValueIndex(IntPtr.Zero, ref s, ref sub, ref setting, value);
+      uint d = PowerWriteDCValueIndex(IntPtr.Zero, ref s, ref sub, ref setting, value);
+      if (a != 0 || d != 0) throw new InvalidOperationException("Windows a refusé le réglage (" + (a != 0 ? a : d) + ")");
+      PowerSetActiveScheme(IntPtr.Zero, ref s);
+    }
+  }
+
   // ---- Frequence de l'ecran principal
   [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
   public struct DEVMODE {
@@ -197,13 +231,13 @@ function Vendor-State {
         $m = [KaneMode.Asus]::Get([KaneMode.Asus]::ThrottlePolicy)
         $name = ($asusModes.GetEnumerator() | Where-Object { $_.Value -eq $m } | Select-Object -First 1).Key
         $limit = [KaneMode.Asus]::Get([KaneMode.Asus]::ChargeLimit)
-        return [ordered]@{ vendor = 'asus'; modes = @('silent', 'performance', 'turbo'); mode = $name; tdp = @{ min = 7; max = 30 }; chargeLimit = if ($limit -ge 20 -and $limit -le 100) { $limit } else { $null } }
+        return [ordered]@{ vendor = 'asus'; modes = @('silent', 'performance', 'turbo'); mode = $name; tdp = @{ min = 7; max = 30; boostMax = 35 }; chargeLimit = if ($limit -ge 20 -and $limit -le 100) { $limit } else { $null } }
     }
     if ($Vendor -eq 'lenovo') {
         try {
             $m = Lenovo-Mode
             $name = ($lenovoModes.GetEnumerator() | Where-Object { $_.Value -eq $m } | Select-Object -First 1).Key
-            return [ordered]@{ vendor = 'lenovo'; modes = @('quiet', 'balanced', 'performance'); mode = $name; tdp = $null; chargeLimit = $null }
+            return [ordered]@{ vendor = 'lenovo'; modes = @('quiet', 'balanced', 'performance', 'custom'); mode = $name; tdp = @{ min = 5; max = 30; boostMax = 35 }; chargeLimit = $null }
         } catch { return [ordered]@{ vendor = 'lenovo'; error = $_.Exception.Message } }
     }
     $null
@@ -217,6 +251,7 @@ function Get-State {
     try { $s.refresh = [ordered]@{ current = [KaneMode.Display]::CurrentHz(); available = @([KaneMode.Display]::Rates()) } } catch { $s.refresh = $null }
     try { $s.radios = @(Get-Radios | ForEach-Object { [ordered]@{ kind = "$($_.Kind)"; on = "$($_.State)" -eq 'On' } }) } catch { $s.radios = @() }
     try { $s.vendor = Vendor-State } catch { $s.vendor = $null }
+    try { $s.cpu = [ordered]@{ maxAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $true); maxDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $false); boostAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $true); boostDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $false) } } catch { $s.cpu = $null }
     $s
 }
 
@@ -262,10 +297,38 @@ function Run($c) {
             return Vendor-State
         }
         'tdp' {
-            if ($Vendor -ne 'asus') { throw 'Limite de puissance réglable seulement sur ROG Ally pour l''instant' }
-            $w = [Math]::Max(7, [Math]::Min(30, [int]$c.value))
-            foreach ($id in [KaneMode.Asus]::PptSpl, [KaneMode.Asus]::PptSppt, [KaneMode.Asus]::PptFppt) { $null = [KaneMode.Asus]::Set($id, $w) }
-            return @{ tdp = $w }
+            # Une valeur (les trois limites égales, comme le curseur de SteamOS) ou { spl, sppt, fppt }
+            $v = $c.value
+            if ($v -is [int] -or $v -is [long] -or $v -is [double]) { $v = @{ spl = [int]$v; sppt = [int]$v; fppt = [int]$v } }
+            else { $v = @{ spl = [int]$v.spl; sppt = [int]$v.sppt; fppt = [int]$v.fppt } }
+            $lim = (Vendor-State).tdp
+            if (-not $lim) { throw 'Limite de puissance réglable seulement sur ROG Ally et Legion Go' }
+            $spl = [Math]::Max($lim.min, [Math]::Min($lim.max, $v.spl))
+            $sppt = [Math]::Max($spl, [Math]::Min($lim.boostMax, $v.sppt))
+            $fppt = [Math]::Max($sppt, [Math]::Min($lim.boostMax, $v.fppt))
+            if ($Vendor -eq 'asus') {
+                $null = [KaneMode.Asus]::Set([KaneMode.Asus]::PptSpl, $spl)
+                $null = [KaneMode.Asus]::Set([KaneMode.Asus]::PptSppt, $sppt)
+                $null = [KaneMode.Asus]::Set([KaneMode.Asus]::PptFppt, $fppt)
+            } else {
+                # Legion Go : profil « personnalisé » puis limites (LENOVO_OTHER_METHOD, comme Legion Space)
+                $null = Lenovo-Mode 255
+                $m = Get-CimInstance -Namespace root/WMI -ClassName LENOVO_OTHER_METHOD -ErrorAction Stop | Select-Object -First 1
+                foreach ($p in @(@(0x0102FF00, $spl), @(0x0101FF00, $sppt), @(0x0103FF00, $fppt))) {
+                    $null = Invoke-CimMethod -InputObject $m -MethodName SetFeatureValue -Arguments @{ IDs = [int]$p[0]; value = [int]$p[1] }
+                }
+            }
+            return @{ tdp = @{ spl = $spl; sppt = $sppt; fppt = $fppt } }
+        }        'cpumax' {
+            $v = [Math]::Max(30, [Math]::Min(100, [int]$c.value))
+            [KaneMode.Cpu]::Write([KaneMode.Cpu]::MaxState, [uint32]$v)
+            return @{ cpuMax = $v }
+        }
+        'boost' {
+            # 0 : désactivé ; 2 : agressif (valeur par défaut de Windows sur la plupart des PC)
+            $v = if ($c.value) { 2 } else { 0 }
+            [KaneMode.Cpu]::Write([KaneMode.Cpu]::Boost, [uint32]$v)
+            return @{ boost = [bool]$c.value }
         }
         'chargelimit' {
             if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }
