@@ -157,6 +157,7 @@ public partial class MainWindow : Window
         _returnTo = from;
         Log.Write($"Ouverture de « {panel} » par-dessus une autre fenêtre");
         StopForegroundWatch();
+        StopInsisting();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
         Show();
         // Pas toujours autorisé par Windows (bouton de la console pressé en plein jeu) : on insiste
@@ -246,6 +247,7 @@ public partial class MainWindow : Window
                 _returnTo = IntPtr.Zero;
                 StopForegroundWatch();
                 DropLaunchCover();
+                StopInsisting();
                 if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
                 Show();
                 Native.ForceForeground(Hwnd);
@@ -319,16 +321,20 @@ public partial class MainWindow : Window
                     break;
                 case "launch":
                     // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture
-                    string game = root.TryGetProperty("id", out var gi) ? gi.GetString() ?? "" : "";
-                    int appId = root.TryGetProperty("steamAppId", out var sa) && sa.ValueKind == JsonValueKind.Number && sa.TryGetInt32(out int n) ? n : 0;
-                    StartGameWatch(game, appId, root.TryGetProperty("cover", out var cv) && cv.ValueKind == JsonValueKind.True);
+                    StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"));
                     break;
                 case "launch-cancel":
                     DropLaunchCover();
                     break;
+                case "game-query":
+                    QueryGame(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"));
+                    break;
                 case "game-front":
-                    // Jeu déjà lancé : on le remet devant
-                    if (_game != null && _game.Window != IntPtr.Zero) Native.ForceForeground(_game.Window);
+                    // « Reprendre » : le jeu en cours repasse devant
+                    FrontGame(Text(root, "id") ?? "", Text(root, "dir"));
+                    break;
+                case "game-stop":
+                    StopGame(Text(root, "id") ?? "", Text(root, "dir"), Flag(root, "force"));
                     break;
                 case "buttons":
                     // Actions des boutons de la console, envoyées par l'interface au démarrage et à chaque changement
@@ -349,6 +355,13 @@ public partial class MainWindow : Window
             Log.Write("Message de l'interface invalide : " + ex.Message);
         }
     }
+
+    private static string? Text(JsonElement o, string name) =>
+        o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    private static bool Flag(JsonElement o, string name) =>
+        o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.True;
+    private static int SteamApp(JsonElement o) =>
+        o.TryGetProperty("steamAppId", out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int n) ? n : 0;
 
     private void Post(object message)
     {

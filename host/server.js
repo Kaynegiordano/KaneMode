@@ -241,6 +241,15 @@ function findEntry(id) {
 // Pas de recherche SteamGridDB pour le bureau à distance de KanePlay (aucun jeu de ce nom)
 const noSgdb = e => e.source === 'kaneplay';
 
+// Dossier dont les processus sont « le jeu » : l'app native s'en sert pour savoir s'il tourne,
+// le remettre devant ou l'arrêter (émulation : le dossier de l'émulateur)
+function trackDir(g) {
+  if (g.demo || g.source === 'kaneplay' || g.streamHost) return null;
+  if (str(g.installDir)) return g.installDir;
+  const l = g.launch;
+  return l && l.kind === 'exe' && /\.exe$/i.test(str(l.target)) ? path.dirname(l.target) : null;
+}
+
 function publicEntry(g, st, cfg) {
   const m = meta[g.id] || {};
   const ov = st.overrides[g.id] || {};
@@ -261,7 +270,7 @@ function publicEntry(g, st, cfg) {
     hidden: !!ov.hidden, installed: g.installed !== false,
     lastPlayed: Math.max(g.lastPlayed || 0, played.last || 0), playCount: played.count || 0,
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
-    sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null,
+    sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
     emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
@@ -600,6 +609,8 @@ const routes = {
     const before = new Set(allEntries(false).games.map(g => g.id));
     const r = await runPs('scan.ps1', ['-DataDir', DATA]);
     if (r.code !== 0) return json(res, 500, { ok: false, error: r.err || 'échec du scan' });
+    libLast = Date.now();
+    watchStores();
     scanEmulation();
     await refreshKanePlay();
     const after = allEntries(false).games;
@@ -846,6 +857,11 @@ const routes = {
     const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
     json(res, 200, r);
+  },
+  // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
+  'POST /api/library/refresh': (req, res) => {
+    if (Date.now() - libLast > 60e3) rescanSoon('retour sur KaneMode', 500);
+    json(res, 200, { ok: true });
   },
   // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
   'POST /api/launch/ended': async (req, res) => {
@@ -1112,11 +1128,91 @@ const PACKAGED = process.env.KANEMODE_PACKAGED === '1';
 const updateJob = update.job();
 const updateState = { last: null };
 
+// ---------------------------------------------------------------- bibliothèque à jour toute seule
+// Un jeu installé, désinstallé ou ajouté apparaît sans passer par Paramètres : les dossiers des
+// boutiques (Steam, Epic, Xbox, raccourcis non-Steam) sont surveillés, et l'analyse complète
+// (registre : GOG, Ubisoft, EA…) est refaite au démarrage, au retour d'un jeu et toutes les 10 minutes.
+const libSig = () => {
+  const l = readJson(FILES.library, {});
+  return JSON.stringify([(l.games || []).map(g => [g.id, g.installDir, g.sizeOnDisk]), (l.launchers || []).map(x => [x.id, x.installed])]);
+};
+let libScan = null, libAgain = false, libLast = 0, libTimer = null;
+function rescanLibrary(reason) {
+  if (libScan) { libAgain = true; return libScan; }
+  libScan = (async () => {
+    const before = libSig();
+    const r = await runPs('scan.ps1', ['-DataDir', DATA]);
+    libLast = Date.now();
+    if (r.code === 0 && libSig() !== before) { version++; console.log(`Bibliothèque mise à jour (${reason})`); }
+    watchStores();
+  })().finally(() => {
+    libScan = null;
+    if (libAgain) { libAgain = false; rescanSoon('changements pendant l’analyse'); }
+  });
+  return libScan;
+}
+function rescanSoon(reason, delay = 3000) {
+  clearTimeout(libTimer);
+  libTimer = setTimeout(() => rescanLibrary(reason), delay);
+}
+
+const watches = new Map();
+function watchDir(dir, onChange) {
+  const key = dir.toLowerCase();
+  if (watches.has(key) || !fs.existsSync(dir)) return;
+  try {
+    const w = fs.watch(dir, (ev, f) => { try { onChange(String(f || '')); } catch { /* fichier en cours d'écriture */ } });
+    w.on('error', () => { w.close(); watches.delete(key); });
+    watches.set(key, w);
+  } catch { /* dossier inaccessible */ }
+}
+// Steam réécrit le manifeste d'un jeu pendant tout son téléchargement : on ne réagit qu'au
+// changement d'état « installé » (bit 4 de StateFlags), à l'ajout et à la suppression
+const acfState = new Map();
+function acfInstalled(file) {
+  try { const m = /"StateFlags"\s+"(\d+)"/i.exec(fs.readFileSync(file, 'utf8')); return !!m && (+m[1] & 4) !== 0; }
+  catch { return false; }
+}
+function watchStores() {
+  const ud = str(readJson(FILES.library, {}).steamUserdata);
+  if (ud) {
+    const root = path.dirname(ud);
+    let libs = [root];
+    try {
+      const vdf = fs.readFileSync(path.join(root, 'steamapps', 'libraryfolders.vdf'), 'utf8');
+      libs = [...new Set([...vdf.matchAll(/"path"\s+"([^"]+)"/g)].map(m => m[1].replace(/\\\\/g, '\\')))];
+    } catch { /* une seule bibliothèque */ }
+    for (const l of libs) {
+      const dir = path.join(l, 'steamapps');
+      if (watches.has(dir.toLowerCase())) continue;
+      try { for (const f of fs.readdirSync(dir)) if (/^appmanifest_\d+\.acf$/i.test(f)) acfState.set(path.join(dir, f).toLowerCase(), acfInstalled(path.join(dir, f))); }
+      catch { continue; }
+      watchDir(dir, f => {
+        if (!/^appmanifest_\d+\.acf$/i.test(f)) return;
+        const file = path.join(dir, f), key = file.toLowerCase();
+        const now = isFile(file) && acfInstalled(file);
+        if (acfState.has(key) && acfState.get(key) === now) return;
+        acfState.set(key, now);
+        rescanSoon(`Steam, ${f}`);
+      });
+    }
+    // Jeux non-Steam : lus à chaque demande, il suffit que l'interface relise
+    try { for (const u of fs.readdirSync(ud)) watchDir(path.join(ud, u, 'config'), f => { if (/^shortcuts\.vdf$/i.test(f)) version++; }); }
+    catch { /* pas de compte Steam */ }
+  }
+  watchDir(path.join(process.env.ProgramData || 'C:\\ProgramData', 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests'), f => { if (/\.item$/i.test(f)) rescanSoon('Epic'); });
+  for (const d of 'CDEFGHIJKLMNOPQRSTUVWXYZ') watchDir(`${d}:\\XboxGames`, () => rescanSoon('Xbox', 8000));
+}
+
 // Premier lancement (PC neuf) : la bibliothèque n'existe pas encore, on la construit tout de suite
 if (!isFile(FILES.library)) {
   console.log('Premier lancement : analyse de la bibliothèque');
-  runPs('scan.ps1', ['-DataDir', DATA]).then(() => { scanEmulation(); version++; });
+  runPs('scan.ps1', ['-DataDir', DATA]).then(() => { scanEmulation(); version++; watchStores(); });
+} else {
+  watchStores();
+  setTimeout(() => rescanLibrary('démarrage'), 8000); // jeux installés pendant que KaneMode était fermé
 }
+setInterval(() => rescanLibrary('vérification périodique'), 10 * 60e3);
 refreshKanePlay();
 setInterval(refreshKanePlay, 60e3);
 // Préchauffage : appareil et réglages système prêts avant que l'accès rapide ne les demande

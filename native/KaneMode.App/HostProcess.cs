@@ -31,6 +31,9 @@ public sealed class HostProcess : IDisposable
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            // Node écrit en UTF-8 : sans ça, les accents arrivent cassés dans le journal
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
         };
         psi.Environment["PORT"] = Port.ToString();
         psi.Environment["KANEMODE_DATA"] = Paths.Data;

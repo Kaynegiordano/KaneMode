@@ -94,7 +94,12 @@ actions.system = async t => {
 };
 
 // Retour sur KaneMode (fin d'un jeu, alt-tab) : la bibliothèque se met à jour (temps de jeu, installations…).
-native.on(m => { if (m.type === 'resume' && !document.hidden) lib.load({ background: true }).catch(() => {}); });
+// L'hôte refait aussi l'analyse des boutiques (au plus une fois par minute) : la liste suit d'elle-même.
+native.on(m => {
+  if (m.type !== 'resume' || document.hidden) return;
+  lib.load({ background: true }).catch(() => {});
+  api.post('/api/library/refresh').catch(() => {});
+});
 if (native.available) document.documentElement.classList.add('native');
 
 // ---------- Accès rapide ----------

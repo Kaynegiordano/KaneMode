@@ -77,6 +77,8 @@ if ($steamPath) {
             $appid = Get-Field $t 'appid'
             $name = Get-Field $t 'name'
             if (-not $appid -or $name -match 'Redistributable|Steam Linux Runtime|Proton|Steamworks|SteamVR') { return }
+            # Telechargement pas encore termine : le jeu apparait une fois installe (StateFlags, bit 4)
+            if (([int](Get-Field $t 'StateFlags') -band 4) -eq 0) { return }
             $dir = Join-Path $lib ('steamapps\common\' + (Get-Field $t 'installdir'))
             $artDir = Join-Path $cache $appid
             Add-Game @{

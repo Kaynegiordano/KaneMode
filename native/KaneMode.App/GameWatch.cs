@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.IO;
+using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
@@ -6,9 +7,14 @@ namespace KaneMode;
 
 /// <summary>
 /// Jeu lancé depuis KaneMode. Pendant le lancement, KaneMode reste au-dessus de tout avec son écran
-/// de lancement (Steam qui démarre reste caché) jusqu'à ce que la fenêtre du jeu apparaisse. Il la
-/// suit ensuite et revient au premier plan dès qu'elle se ferme : en mode Xbox, Windows le fait
-/// parfois de lui-même, sur le bureau jamais.
+/// de lancement (Steam qui démarre reste caché) jusqu'à ce que la fenêtre du jeu apparaisse. Chaque
+/// nouvelle fenêtre du jeu est ensuite mise devant une fois (un programme de démarrage qui passe la
+/// main au vrai jeu laisse sinon KaneMode devant). Quand le jeu se ferme, KaneMode revient au premier
+/// plan : en mode Xbox, Windows le fait parfois de lui-même, sur le bureau jamais.
+///
+/// « Le jeu tourne » = un processus lancé depuis son dossier d'installation (fiable même quand un
+/// lanceur relance le jeu sous un autre processus), ou Steam qui le dit en cours. Sans dossier connu,
+/// on suit sa fenêtre.
 /// </summary>
 public partial class MainWindow
 {
@@ -32,14 +38,18 @@ public partial class MainWindow
     {
         public string Id = "";
         public int SteamAppId;
+        public string? Dir;
         public bool Cover;
         public DateTime Started = DateTime.UtcNow;
         public HashSet<IntPtr> Before = new();
+        // Fenêtres du jeu déjà mises devant (une seule fois chacune : on peut revenir à KaneMode)
+        public HashSet<IntPtr> Pushed = new();
         public IntPtr Window;
         public uint Pid;
         public string Process = "";
-        public bool SteamSeen;
+        public bool Seen;
         public DateTime? Gone;
+        public DateTime InsistUntil;
     }
 
     // Durée maximale de l'écran de lancement par-dessus tout : au-delà, Steam attend peut-être une réponse
@@ -47,14 +57,45 @@ public partial class MainWindow
     private GameState? _game;
     private DispatcherTimer? _gameTimer;
 
-    private void StartGameWatch(string id, int steamAppId, bool cover)
+    /// <summary>
+    /// Dossier d'installation utilisable pour reconnaître les processus du jeu : pas une racine de
+    /// disque ni un dossier système qui contiendrait bien d'autres programmes.
+    /// </summary>
+    private static string? GameDir(string? dir)
+    {
+        if (string.IsNullOrWhiteSpace(dir) || !Path.IsPathFullyQualified(dir)) return null;
+        string full;
+        try { full = Path.GetFullPath(dir).TrimEnd('\\') + "\\"; }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+        if (full.Count(c => c == '\\') < 3) return null; // « C:\Jeux\ » au moins deux niveaux : « C:\Jeux\Hades\ »
+        var broad = new[]
+        {
+            Environment.SpecialFolder.ProgramFiles, Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.Windows,
+            Environment.SpecialFolder.UserProfile, Environment.SpecialFolder.Desktop, Environment.SpecialFolder.LocalApplicationData,
+            Environment.SpecialFolder.ApplicationData, Environment.SpecialFolder.MyDocuments,
+        };
+        foreach (var f in broad)
+        {
+            string p = Environment.GetFolderPath(f);
+            if (p.Length > 0 && string.Equals(full, p.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) return null;
+        }
+        return full;
+    }
+
+    private void StartGameWatch(string id, int steamAppId, string? dir, bool cover, bool alreadyRunning = false)
     {
         StopGameWatch();
-        var s = new GameState { Id = id, SteamAppId = steamAppId, Cover = cover, Before = new(Native.VisibleWindows()) };
+        var s = new GameState { Id = id, SteamAppId = steamAppId, Dir = GameDir(dir), Cover = cover, Before = new(Native.VisibleWindows()) };
+        if (alreadyRunning)
+        {
+            // Jeu trouvé en cours (lancé avant, ou KaneMode relancé) : ses fenêtres actuelles restent où elles sont
+            s.Seen = true;
+            foreach (IntPtr h in GameWindows(s)) s.Pushed.Add(h);
+        }
         _game = s;
         if (cover) Topmost = true;
-        Log.Write($"Lancement suivi : {id}{(cover ? " (écran de lancement par-dessus)" : "")}");
-        _gameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        Log.Write($"{(alreadyRunning ? "Jeu en cours suivi" : "Lancement suivi")} : {id}{(steamAppId != 0 ? $", Steam {steamAppId}" : "")}{(s.Dir != null ? $", dossier {s.Dir}" : ", sans dossier")}{(cover ? " (écran de lancement par-dessus)" : "")}");
+        _gameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(alreadyRunning ? 1000 : 250) };
         _gameTimer.Tick += (_, _) => { if (_game == s) GameTick(s); };
         _gameTimer.Start();
     }
@@ -78,63 +119,105 @@ public partial class MainWindow
     private void GameTick(GameState s)
     {
         double elapsed = (DateTime.UtcNow - s.Started).TotalSeconds;
-        if (s.SteamAppId != 0 && SteamRunningApp() == s.SteamAppId) s.SteamSeen = true;
+        bool running = IsRunning(s);
 
-        // 1. Lancement : on attend la fenêtre du jeu
-        if (s.Window == IntPtr.Zero)
+        // Nouvelle fenêtre du jeu : devant, une fois
+        IntPtr win = NewGameWindow(s);
+        if (win != IntPtr.Zero)
         {
-            IntPtr found = FindGameWindow(s);
-            if (found != IntPtr.Zero)
+            bool first = s.Window == IntPtr.Zero;
+            Adopt(s, win);
+            ShowGame(s, win);
+            if (first) Post(new { type = "game-started", id = s.Id });
+            running = true;
+        }
+        else if (s.InsistUntil > DateTime.UtcNow && Native.GetForegroundWindow() == Hwnd && Native.IsAppWindow(s.Window))
+        {
+            // KaneMode a repris le focus juste après (fenêtre fermée devant lui, Windows qui refuse) : on insiste
+            Log.Write($"KaneMode est repassé devant « {Native.WindowTitle(s.Window)} » : le jeu revient devant");
+            Native.Raise(s.Window);
+            Native.PlaceBelow(Hwnd, s.Window);
+        }
+
+        if (running)
+        {
+            if (!s.Seen) Post(new { type = "game-state", id = s.Id, running = true });
+            s.Seen = true;
+            s.Gone = null;
+        }
+
+        // Lancement : l'écran de lancement ne reste pas indéfiniment
+        if (s.Cover && elapsed > CoverSeconds)
+        {
+            // Rien n'a pris le premier plan : une petite fenêtre (lanceur, choix d'options de
+            // Steam…) attend peut-être derrière l'écran de lancement. On la met devant.
+            IntPtr late = s.Dir == null ? FindNewWindow(s, anySize: true) : IntPtr.Zero;
+            DropLaunchCover();
+            if (late != IntPtr.Zero)
             {
-                Adopt(s, found);
-                DropLaunchCover();
-                Native.ForceForeground(found);
+                Adopt(s, late);
+                ShowGame(s, late);
                 Post(new { type = "game-started", id = s.Id });
                 return;
             }
-            if (s.Cover && elapsed > CoverSeconds)
+            IntPtr store = NewStoreWindow(s);
+            Log.Write($"Le jeu n’est pas apparu en {CoverSeconds} s : écran de lancement retiré" + (store != IntPtr.Zero ? $", « {Native.WindowTitle(store)} » mise devant" : ""));
+            if (store != IntPtr.Zero) Native.ForceForeground(store);
+            Post(new { type = "launch-timeout", id = s.Id });
+        }
+
+        if (running) return;
+        if (!s.Seen)
+        {
+            if (elapsed > 600)
             {
-                // Rien n'a pris le premier plan : une petite fenêtre (lanceur, choix d'options de
-                // Steam…) attend peut-être derrière l'écran de lancement. On la met devant.
-                IntPtr late = FindGameWindow(s, anySize: true);
-                DropLaunchCover();
-                if (late != IntPtr.Zero)
-                {
-                    Adopt(s, late);
-                    Native.ForceForeground(late);
-                    Post(new { type = "game-started", id = s.Id });
-                    return;
-                }
-                IntPtr store = NewStoreWindow(s);
-                Log.Write($"Le jeu n’est pas apparu en {CoverSeconds} s : écran de lancement retiré" + (store != IntPtr.Zero ? $", « {Native.WindowTitle(store)} » mise devant" : ""));
-                if (store != IntPtr.Zero) Native.ForceForeground(store);
-                Post(new { type = "launch-timeout", id = s.Id });
-            }
-            if (elapsed > (s.SteamSeen ? 600 : 180))
-            {
-                Log.Write("Fenêtre du jeu introuvable : suivi abandonné");
+                Log.Write("Le jeu n’a pas démarré : suivi abandonné");
                 StopGameWatch();
             }
             return;
         }
 
-        // 2. Jeu en cours
-        if (GameAlive(s)) { s.Gone = null; return; }
-        // Fenêtre fermée : un lanceur qui passe la main au jeu, un jeu qui recrée sa fenêtre… ou la fin
-        IntPtr next = FindGameWindow(s);
-        if (next != IntPtr.Zero) { Adopt(s, next); return; }
+        // Plus rien ne tourne : quelques secondes de grâce (un lanceur qui relance le jeu)
         s.Gone ??= DateTime.UtcNow;
-        if (s.SteamSeen && SteamRunningApp() == s.SteamAppId) return; // Steam le dit encore lancé
-        double grace = Native.ProcessRunning(s.Pid) ? 20 : 4;
+        double grace = s.Dir != null ? 3 : Native.ProcessRunning(s.Pid) ? 20 : 4;
         if ((DateTime.UtcNow - s.Gone.Value).TotalSeconds < grace) return;
-        Log.Write($"Jeu fermé ({s.Process}) : retour à KaneMode");
+        Log.Write($"Jeu fermé ({(s.Process != "" ? s.Process : s.Id)}) : retour à KaneMode");
         string id = s.Id;
         StopGameWatch();
         ReturnFromGame(id);
     }
 
+    /// <summary>
+    /// Met une fenêtre du jeu devant : KaneMode quitte « toujours au-dessus » (ce qui le remet en tête
+    /// des fenêtres normales), le jeu passe au premier plan et KaneMode se range juste derrière.
+    /// Pendant 4 s, si KaneMode reprend le focus, le jeu est remis devant.
+    /// </summary>
+    private void ShowGame(GameState s, IntPtr win)
+    {
+        s.Pushed.Add(win);
+        DropLaunchCover();
+        Log.Write($"« {Native.WindowTitle(win)} » mise au premier plan");
+        Native.Raise(win);
+        Native.PlaceBelow(Hwnd, win);
+        s.InsistUntil = DateTime.UtcNow.AddSeconds(4);
+    }
+
+    /// <summary>L'utilisateur revient lui-même sur KaneMode (bouton, accès rapide) : on ne le renvoie pas au jeu.</summary>
+    private void StopInsisting()
+    {
+        if (_game != null) _game.InsistUntil = DateTime.MinValue;
+    }
+
+    private bool IsRunning(GameState s)
+    {
+        if (s.Dir != null && Native.ProcessesIn(s.Dir).Count > 0) return true;
+        if (s.SteamAppId != 0 && SteamRunning(s.SteamAppId)) return true;
+        return s.Dir == null && s.Window != IntPtr.Zero && WindowAlive(s);
+    }
+
     private void Adopt(GameState s, IntPtr hwnd)
     {
+        if (s.Window == hwnd) return;
         s.Window = hwnd;
         s.Pid = Native.WindowProcessId(hwnd);
         s.Process = Native.ProcessName(s.Pid);
@@ -143,7 +226,8 @@ public partial class MainWindow
         if (_gameTimer != null) _gameTimer.Interval = TimeSpan.FromSeconds(1);
     }
 
-    private bool GameAlive(GameState s)
+    /// <summary>Sans dossier connu : la fenêtre suivie, ou une autre du même processus, est encore là.</summary>
+    private bool WindowAlive(GameState s)
     {
         if (Native.IsAppWindow(s.Window)) return true;
         // ApplicationFrameHost porte les fenêtres de toutes les applis UWP : seule la sienne compte
@@ -153,21 +237,58 @@ public partial class MainWindow
         return false;
     }
 
+    private static bool BigEnough(IntPtr h)
+    {
+        var (w, ht) = Native.WindowSize(h);
+        return w >= 320 && ht >= 240;
+    }
+
+    /// <summary>Fenêtres visibles des processus du jeu (dossier connu), la plus grande d'abord.</summary>
+    private List<IntPtr> GameWindows(GameState s)
+    {
+        if (s.Dir == null) return new();
+        var pids = new HashSet<uint>(Native.ProcessesIn(s.Dir));
+        if (pids.Count == 0) return new();
+        return Native.VisibleWindows()
+            .Where(h => pids.Contains(Native.WindowProcessId(h)) && Native.IsAppWindow(h) && BigEnough(h))
+            .OrderByDescending(h => { var (w, ht) = Native.WindowSize(h); return (long)w * ht; })
+            .ToList();
+    }
+
+    /// <summary>Fenêtre du jeu pas encore mise devant.</summary>
+    private IntPtr NewGameWindow(GameState s)
+    {
+        if (s.Dir != null) return GameWindows(s).FirstOrDefault(h => !s.Pushed.Contains(h));
+        IntPtr h = FindNewWindow(s);
+        return s.Pushed.Contains(h) ? IntPtr.Zero : h;
+    }
+
     /// <summary>
-    /// Nouvelle fenêtre (absente au lancement) d'un programme qui n'est ni une boutique ni Windows :
-    /// celle qui a le premier plan, ou une grande fenêtre qui n'a pas réussi à le prendre.
+    /// Sans dossier connu : nouvelle fenêtre (absente au lancement) d'un programme qui n'est ni une
+    /// boutique ni Windows, celle qui a le premier plan ou une grande fenêtre qui n'a pas pu le prendre.
     /// </summary>
-    private IntPtr FindGameWindow(GameState s, bool anySize = false)
+    private IntPtr FindNewWindow(GameState s, bool anySize = false)
     {
         IntPtr fg = Native.GetForegroundWindow();
-        if (IsGameWindow(s, fg, anySize: true)) return fg;
+        if (IsNewWindow(s, fg, anySize: true)) return fg;
         foreach (IntPtr h in Native.VisibleWindows())
-            if (IsGameWindow(s, h, anySize)) return h;
+            if (IsNewWindow(s, h, anySize)) return h;
         return IntPtr.Zero;
     }
 
+    private bool IsNewWindow(GameState s, IntPtr h, bool anySize)
+    {
+        if (h == IntPtr.Zero || h == Hwnd || s.Before.Contains(h) || !Native.IsAppWindow(h) || !BigEnough(h)) return false;
+        var (w, ht) = Native.WindowSize(h);
+        if (!anySize && (long)w * ht < Native.ScreenArea / 2) return false;
+        uint pid = Native.WindowProcessId(h);
+        if (pid == (uint)Environment.ProcessId) return false;
+        string name = Native.ProcessName(pid);
+        return name != "" && !Stores.Contains(name) && !Shell.Contains(name);
+    }
+
     /// <summary>Nouvelle fenêtre d'une boutique (Steam qui demande quelque chose), la plus haute d'abord.</summary>
-    private IntPtr NewStoreWindow(GameState s)
+    private static IntPtr NewStoreWindow(GameState s)
     {
         foreach (IntPtr h in Native.VisibleWindows())
         {
@@ -175,18 +296,6 @@ public partial class MainWindow
             if (Stores.Contains(Native.ProcessName(Native.WindowProcessId(h)))) return h;
         }
         return IntPtr.Zero;
-    }
-
-    private bool IsGameWindow(GameState s, IntPtr h, bool anySize)
-    {
-        if (h == IntPtr.Zero || h == Hwnd || s.Before.Contains(h) || !Native.IsAppWindow(h)) return false;
-        var (w, ht) = Native.WindowSize(h);
-        if (w < 320 || ht < 240) return false;
-        if (!anySize && (long)w * ht < Native.ScreenArea / 2) return false;
-        uint pid = Native.WindowProcessId(h);
-        if (pid == (uint)Environment.ProcessId) return false;
-        string name = Native.ProcessName(pid);
-        return name != "" && !Stores.Contains(name) && !Shell.Contains(name);
     }
 
     /// <summary>Le jeu est fermé : KaneMode revient devant, même si Steam remet sa fenêtre en avant.</summary>
@@ -214,14 +323,82 @@ public partial class MainWindow
         t.Start();
     }
 
-    /// <summary>Jeu Steam en cours (0 si aucun), tel que Steam le note dans le registre.</summary>
-    private static int SteamRunningApp()
+    // ---------- Demandes de l'interface : état, reprise, arrêt ----------
+
+    /// <summary>Le jeu tourne-t-il ? S'il tourne sans être suivi, on le suit (retour ici à sa fermeture).</summary>
+    private void QueryGame(string id, int steamAppId, string? dir)
+    {
+        bool running;
+        if (_game != null && _game.Id == id) running = _game.Seen || IsRunning(_game);
+        else
+        {
+            string? d = GameDir(dir);
+            running = (d != null && Native.ProcessesIn(d).Count > 0) || (steamAppId != 0 && SteamRunning(steamAppId));
+            if (running && _game == null) StartGameWatch(id, steamAppId, dir, cover: false, alreadyRunning: true);
+        }
+        Post(new { type = "game-state", id, running });
+    }
+
+    /// <summary>Remet le jeu devant (« Reprendre »).</summary>
+    private void FrontGame(string id, string? dir)
+    {
+        var s = _game != null && _game.Id == id ? _game : new GameState { Id = id, Dir = GameDir(dir) };
+        IntPtr win = GameWindows(s).FirstOrDefault();
+        if (win == IntPtr.Zero && s.Window != IntPtr.Zero && Native.IsAppWindow(s.Window)) win = s.Window;
+        if (win == IntPtr.Zero)
+        {
+            Log.Write($"Reprendre {id} : aucune fenêtre du jeu");
+            Post(new { type = "game-front-failed", id });
+            return;
+        }
+        s.Pushed.Add(win);
+        Native.Raise(win);
+        Native.PlaceBelow(Hwnd, win);
+    }
+
+    /// <summary>
+    /// Arrête le jeu : d'abord poliment (on demande à ses fenêtres de se fermer, le jeu peut
+    /// sauvegarder ou demander confirmation), puis de force si l'interface le redemande.
+    /// </summary>
+    private void StopGame(string id, string? dir, bool force)
+    {
+        var pids = new HashSet<uint>();
+        string? d = GameDir(dir);
+        if (d != null) pids.UnionWith(Native.ProcessesIn(d));
+        if (_game != null && _game.Id == id && _game.Pid != 0 && Native.ProcessRunning(_game.Pid)) pids.Add(_game.Pid);
+        int done = 0, failed = 0;
+        if (!force)
+        {
+            foreach (IntPtr h in Native.VisibleWindows())
+                if (pids.Contains(Native.WindowProcessId(h)) && Native.IsAppWindow(h)) { Native.PostMessage(h, 0x0010 /* WM_CLOSE */, IntPtr.Zero, IntPtr.Zero); done++; }
+        }
+        else
+        {
+            foreach (uint pid in pids)
+            {
+                try { using var p = System.Diagnostics.Process.GetProcessById((int)pid); p.Kill(entireProcessTree: true); done++; }
+                catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
+                {
+                    failed++;
+                    Log.Write($"Arrêt forcé impossible (processus {pid}) : {e.Message}");
+                }
+            }
+        }
+        Log.Write($"{(force ? "Arrêt forcé" : "Fermeture demandée")} : {id}, {pids.Count} processus, {done} {(force ? "arrêtés" : "fenêtres")}{(failed > 0 ? $", {failed} refus" : "")}");
+        Post(new { type = "game-stop", id, force, processes = pids.Count, done, failed });
+    }
+
+    /// <summary>Steam dit le jeu en cours (valeurs du registre de l'utilisateur).</summary>
+    private static bool SteamRunning(int appId)
     {
         try
         {
             using var k = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-            return k?.GetValue("RunningAppID") is int v ? v : 0;
+            if (k == null) return false;
+            if (k.GetValue("RunningAppID") is int v && v == appId) return true;
+            using var a = k.OpenSubKey($@"Apps\{appId}");
+            return a?.GetValue("Running") is int r && r != 0;
         }
-        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or System.IO.IOException) { return 0; }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or System.IO.IOException) { return false; }
     }
 }

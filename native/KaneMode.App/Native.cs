@@ -125,6 +125,28 @@ public static class Native
         return ((long)GetWindowLongPtr(hwnd, -20 /* GWL_EXSTYLE */) & 0x80 /* WS_EX_TOOLWINDOW */) == 0;
     }
 
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    /// <summary>
+    /// Place `hwnd` juste sous `above` dans l'ordre d'affichage, sans l'activer. Retirer « toujours
+    /// au-dessus » remet une fenêtre en tête des fenêtres normales, donc devant le jeu.
+    /// </summary>
+    public static void PlaceBelow(IntPtr hwnd, IntPtr above)
+    {
+        const uint NOSIZE = 0x1, NOMOVE = 0x2, NOACTIVATE = 0x10, NOOWNERZORDER = 0x200;
+        SetWindowPos(hwnd, above, 0, 0, 0, 0, NOSIZE | NOMOVE | NOACTIVATE | NOOWNERZORDER);
+    }
+
+    /// <summary>Met la fenêtre au premier plan et en tête de l'affichage, même si elle a déjà le focus.</summary>
+    public static bool Raise(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindow(hwnd)) return false;
+        bool ok = ForceForeground(hwnd);
+        BringWindowToTop(hwnd);
+        return ok;
+    }
+
     public static (int Width, int Height) WindowSize(IntPtr hwnd) =>
         GetWindowRect(hwnd, out var r) ? (r.Right - r.Left, r.Bottom - r.Top) : (0, 0);
 
@@ -135,6 +157,45 @@ public static class Native
     {
         try { using var p = Process.GetProcessById((int)pid); return p.ProcessName; }
         catch (Exception e) when (e is ArgumentException or InvalidOperationException) { return ""; }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll")]
+    private static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool QueryFullProcessImageName(IntPtr process, int flags, System.Text.StringBuilder name, ref int size);
+
+    /// <summary>Chemin de l'exécutable d'un processus (droit limité : marche aussi pour un jeu lancé en administrateur).</summary>
+    public static string? ProcessPath(uint pid)
+    {
+        IntPtr h = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, pid);
+        if (h == IntPtr.Zero) return null;
+        try
+        {
+            var sb = new System.Text.StringBuilder(1024);
+            int size = sb.Capacity;
+            return QueryFullProcessImageName(h, 0, sb, ref size) ? sb.ToString() : null;
+        }
+        finally { CloseHandle(h); }
+    }
+
+    /// <summary>Processus dont l'exécutable est dans ce dossier (ou un sous-dossier). `dir` finit par « \ ».</summary>
+    public static List<uint> ProcessesIn(string dir)
+    {
+        var list = new List<uint>();
+        uint self = (uint)Environment.ProcessId;
+        foreach (var p in Process.GetProcesses())
+        {
+            using (p)
+            {
+                uint pid = (uint)p.Id;
+                if (pid == self || pid <= 4) continue;
+                string? path = ProcessPath(pid);
+                if (path != null && path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)) list.Add(pid);
+            }
+        }
+        return list;
     }
 
     public static bool ProcessRunning(uint pid)

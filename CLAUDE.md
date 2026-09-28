@@ -52,6 +52,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - `perfPreset()` et `POST /api/power/mode` ; **Économie, Équilibré et Performance** règlent d'un coup le mode d'alimentation Windows, la limite et le turbo CPU, et le profil constructeur.
   - `config.perfMode` passe à `custom` dès qu'un réglage est changé à la main.
   - Le « mode d'alimentation Windows » n'est plus exposé séparément dans l'interface : doublon.
+- Bibliothèque à jour toute seule (`rescanLibrary` dans `server.js`) : `fs.watch` sur les `steamapps` de chaque bibliothèque Steam (seulement quand un jeu devient installé ou disparaît : bit 4 de `StateFlags`), les `shortcuts.vdf`, les manifestes Epic et les dossiers `XboxGames`. Analyse complète au démarrage, au retour sur KaneMode (`/api/library/refresh`, une fois par minute au plus) et toutes les 10 minutes. `scan.ps1` ignore un jeu Steam pas fini de télécharger.
 - `lib/device.js` : console reconnue (catalogue `HANDHELDS`) + `device.ps1` (WMI). Résultat mis en cache dans `DATA/device.json` et servi immédiatement au démarrage.
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
 - `lib/update.js` : GitHub Releases (canaux stable/bêta), vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance.
@@ -86,10 +87,13 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - `WM_COPYDATA` « open\tqam|menu » envoyé par KanePlay (Select/Start), puis retour à KanePlay à la fermeture ;
   - le premier plan de KanePlay (`WatchForeground`) : pendant 15 s, KaneMode, encore au premier plan, guette la fenêtre « KaneMode · KanePlay » et la met lui-même devant (`Native.ForceForeground`, avec `AttachThreadInput`). Si plus aucun `KanePlay.exe` ne tourne après 1,5 s (commande partie vers une instance qui se fermait : `returnToKaneMode` masque la fenêtre puis quitte), il envoie `foreground-lost` et l'interface relance une fois ;
   - le retour au bureau : en mode Xbox (`IsGamingFullScreenExperienceActive`, api-ms-win-gaming-experience-l1-1-0), Windows relance l'app d'accueil qui se ferme. KaneMode envoie d'abord Windows + F11 (sortie du mode Xbox), attend jusqu'à 30 s qu'il soit quitté, puis se ferme ; sinon il reste ouvert (`desktop-failed`).
-- `KaneMode.App/GameWatch.cs` : jeu lancé depuis KaneMode (message `launch`, envoyé par `game.js` après `/api/launch`).
-  - Écran de lancement **par-dessus tout** (`Topmost`) : Steam qui démarre reste caché. Il se retire dès qu'une nouvelle fenêtre (absente au lancement) d'un programme qui n'est ni une boutique (`Stores`) ni Windows (`Shell`) prend le premier plan ou couvre la moitié de l'écran ; au bout de 25 s, il se retire et met devant une nouvelle fenêtre du jeu ou de Steam. B (`launch-cancel`) le retire aussi.
-  - Le jeu est ensuite suivi (fenêtres de son processus, successeur pour un lanceur, `HKCU\Software\Valve\Steam\RunningAppID` pour Steam). À sa fermeture, KaneMode revient au premier plan, y compris sur le bureau, et insiste 5 s si Steam repasse devant (`game-ended`).
+- `KaneMode.App/GameWatch.cs` : jeu lancé depuis KaneMode (message `launch` avec `id`, `steamAppId`, `dir`, envoyé par `game.js` après `/api/launch`).
+  - « Le jeu tourne » = un processus dont l'exécutable est dans `dir` (`trackDir` de l'hôte : dossier d'installation, sinon dossier de l'exe ou de l'émulateur ; `GameDir` refuse une racine ou un dossier système), ou Steam qui le dit en cours (`RunningAppID`, `Apps\<id>\Running`). Sans dossier : ancienne méthode par fenêtres (nouvelle fenêtre d'un programme hors `Stores`/`Shell`, successeur).
+  - Écran de lancement **par-dessus tout** (`Topmost`) : Steam qui démarre reste caché. Chaque **nouvelle** fenêtre du jeu est mise devant une fois (`ShowGame` : `Native.Raise` puis `PlaceBelow(KaneMode, jeu)`, car retirer `Topmost` remet KaneMode en tête des fenêtres normales, donc devant le jeu), et pendant 4 s KaneMode renvoie le jeu devant s'il reprend le focus (programme de démarrage qui se ferme, cas de FF7 Remake). Au bout de 25 s sans jeu, l'écran se retire et une nouvelle fenêtre de Steam est mise devant. B (`launch-cancel`) le retire aussi.
+  - À la fermeture (plus rien ne tourne depuis 3 s), KaneMode revient au premier plan, y compris sur le bureau, et insiste 5 s si Steam repasse devant (`game-ended`).
+  - Messages : `game-query` (la fiche demande si le jeu tourne ; un jeu trouvé en cours est suivi), `game-front` (« Reprendre »), `game-stop` (`WM_CLOSE` aux fenêtres du jeu, ou `force` : arrêt de tous ses processus). Réponses : `game-state`, `game-started`, `game-ended`, `game-stop`, `game-front-failed`.
   - Fond de l'écran : une image « hero » du jeu tirée au hasard sur SteamGridDB (`/api/launch/wallpaper`, préparée à l'ouverture de la fiche).
+  - Fiche du jeu : « Jouer » devient « Reprendre » (couleur d'accent) avec un bouton d'arrêt tant que le jeu tourne (`running` dans `game.js`) ; l'arrêt propose de forcer la fermeture au bout de 8 s.
   - Double lancement : l'hôte ignore un 2e `/api/launch` de la même entrée dans les 30 s (effacé par `/api/launch/ended`) ou d'un jeu Steam déjà en cours (`already`/`running` → `game-front`). Chaque lancement est noté dans `kanemode.log`.
 - `KaneMode.App/AllyButtons.cs` : boutons de la ROG Ally lus sur la manette interne ASUS (HID VID 0B05, PID 1ABE/1B4C, collection qui accepte le rapport de fonction 0x5A). Rapport d'entrée 0x5A, 2e octet : 166 = Command Center, 56 = Armoury Crate, 167/168 = appui long/relâché (codes de Handheld Companion). Lecture partagée avec les services ASUS.
   - Actions (`buttons`, envoyé par l'interface) : `gamebar` (Windows + G), `qam`/`menu` (par-dessus la fenêtre active, `toggle` si KaneMode est devant), `home`, `taskview`, `screenshot`, `none`. Par défaut : Command Center = `taskview` (comme un appui long sur la touche Xbox, migration `btnCCTaskView` en 1.3.1), Armoury Crate = `gamebar`, appui long = `home`.
@@ -149,7 +153,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - boutons Select/Start dans KanePlay ;
   - boutons Command Center / Armoury Crate (codes HID repris de Handheld Companion) et fermeture de l'invite Armoury Crate SE ;
   - sortie du mode Xbox par Windows + F11 ;
-  - suivi des jeux (`GameWatch`) avec un vrai jeu Steam : testé seulement avec un faux jeu (charmap) sur le PC de développement ;
+  - suivi des jeux (`GameWatch`) avec un vrai jeu Steam : testé avec de faux jeux (programme de démarrage puis jeu, arrêt poli et forcé) sur le PC de développement ; surveillance des dossiers des boutiques non testée avec une vraie installation ;
   - mises à jour ASUS : l'API n'a pas pu être appelée depuis l'environnement de développement (proxy), format repris de G-Helper.
 - Idées demandées ou à explorer :
   - KanePlay : fermer son QLocalServer dès `returnToKaneMode` (avant de quitter) éviterait qu'une relance parte vers l'instance qui se ferme ;
@@ -162,4 +166,5 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.1.0 : premier widget Game Bar ;
   - 1.2.0 : widget façon Winhanced via le tube nommé, KanePlay au premier plan, démarrage plus rapide, effets allégés, mises à jour signalées dans le menu, B = menu sur l'accueil, son de démarrage grave ;
   - 1.3.0 : widget Game Bar retiré, boutons Command Center / Armoury Crate de l'Ally, sortie du mode Xbox avant de quitter, KanePlay au premier plan même à la relance, mises à jour officielles ASUS (BIOS, pilotes) ;
-  - 1.3.1 : double lancement bloqué, écran de lancement par-dessus Steam avec un fond SteamGridDB au hasard, retour systématique à KaneMode quand le jeu se ferme, Command Center = vue des tâches.
+  - 1.3.1 : double lancement bloqué, écran de lancement par-dessus Steam avec un fond SteamGridDB au hasard, retour systématique à KaneMode quand le jeu se ferme, Command Center = vue des tâches ;
+  - 1.4.0 : jeu suivi par son dossier d'installation, jeu toujours mis au premier plan, Reprendre / Arrêter sur la fiche, bibliothèque mise à jour toute seule.

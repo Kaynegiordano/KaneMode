@@ -1,6 +1,6 @@
 // Fiche d'un jeu + actions partagées : lancement, favoris, fond d'écran, lanceurs.
 import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native } from '../core.js';
-import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage } from '../nav.js';
+import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh } from '../nav.js';
 import { art, badges } from '../cards.js';
 import { dialog, confirmDialog, openKeyboard } from '../widgets.js';
 
@@ -52,6 +52,62 @@ export function prepareWallpaper(g) {
   return p;
 }
 
+// ---------- Jeux en cours (suivis par l'app native) ----------
+// « Jouer » devient « Reprendre » et un bouton permet de l'arrêter
+export const running = new Set();
+const tracked = g => native.available && g.installed && !g.demo && !g.streamHost && g.type !== 'app';
+const gameRef = g => ({ id: g.id, steamAppId: g.steamAppId || 0, dir: g.trackDir || null });
+function setRunning(id, on) {
+  if (running.has(id) === !!on) return;
+  on ? running.add(id) : running.delete(id);
+  const p = currentPage();
+  if (p && p.id === 'game' && p.params.id === id) refresh();
+}
+/** Demande à l'app native si le jeu tourne (fiche ouverte, retour sur KaneMode). */
+export function queryGame(g) { if (tracked(g)) native.send('game-query', gameRef(g)); }
+
+/** « Reprendre » : le jeu en cours repasse devant. */
+export function resumeGame(g) { native.send('game-front', gameRef(g)); }
+
+let stopTimer = null;
+/** Arrête le jeu : fermeture demandée au jeu, puis proposée de force s'il ne répond pas. */
+export async function stopGame(g) {
+  if (!await confirmDialog(`Arrêter ${g.name} ?`, 'Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.', 'Arrêter')) return;
+  native.send('game-stop', { ...gameRef(g), force: false });
+  toast(`Fermeture de ${g.name}…`);
+  clearTimeout(stopTimer);
+  stopTimer = setTimeout(async () => {
+    if (!running.has(g.id)) return;
+    if (!await confirmDialog(`${g.name} ne s’est pas fermé`, 'Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.', 'Forcer la fermeture')) return;
+    native.send('game-stop', { ...gameRef(g), force: true });
+  }, 8000);
+}
+
+native.on(m => {
+  if (m.type === 'game-state') setRunning(m.id, m.running);
+  else if (m.type === 'game-started') setRunning(m.id, true);
+  else if (m.type === 'game-ended') {
+    // Jeu fermé (vu par l'app native, qui revient ici) : il peut être relancé tout de suite
+    clearTimeout(stopTimer);
+    setRunning(m.id, false);
+    api.post('/api/launch/ended', { id: m.id }).catch(() => {});
+    lib.load({ background: true }).catch(() => {});
+  } else if (m.type === 'game-stop' && m.force && m.failed) {
+    toast('Windows a refusé d’arrêter une partie du jeu (anti-triche ou droits administrateur)', { error: true });
+  } else if (m.type === 'game-front-failed') {
+    const g = lib.byId(m.id);
+    if (g) queryGame(g);
+    toast('La fenêtre du jeu est introuvable', { error: true });
+  }
+});
+// Retour sur KaneMode : le jeu de la fiche ouverte tourne-t-il encore ?
+native.on(m => {
+  if (m.type !== 'resume') return;
+  const p = currentPage();
+  const g = p && p.id === 'game' && lib.byId(p.params.id);
+  if (g) queryGame(g);
+});
+
 // Lancement en cours : l'écran reste affiché jusqu'à l'apparition du jeu, un second appui ne relance rien
 let launching = null;
 native.on(m => {
@@ -67,18 +123,13 @@ native.on(m => {
     if (topLayer() === L) closeLayer(L);
   }
 });
-// Jeu fermé (vu par l'app native, qui revient ici) : il peut être relancé tout de suite
-native.on(m => {
-  if (m.type !== 'game-ended') return;
-  api.post('/api/launch/ended', { id: m.id }).catch(() => {});
-  lib.load({ background: true }).catch(() => {});
-});
 
 export async function launch(g) {
   if (g.demo) return toast('Entrée de démonstration : il n’y a rien à lancer', { error: true });
   if (launching) return;
+  if (running.has(g.id)) return resumeGame(g);
   // Jeu installé : l'écran de lancement cache Steam et reste là jusqu'à ce que le jeu s'affiche
-  const cover = native.available && g.installed && !g.streamHost && g.type !== 'app';
+  const cover = tracked(g);
   const L = $('#launch');
   const bgEl = $('.launch-bg', L);
   bgEl.style.backgroundImage = heroUrl(g) ? `url("${heroUrl(g)}")` : '';
@@ -115,9 +166,9 @@ export async function launch(g) {
     const r = await api.post('/api/launch', { id: g.id });
     if (r.already || r.running) {
       status.textContent = `${g.name} est déjà lancé`;
-      native.send('game-front');
+      if (cover) { queryGame(g); resumeGame(g); }
     } else if (r.ok && cover) {
-      native.send('launch', { id: g.id, steamAppId: g.steamAppId || 0, cover: true });
+      native.send('launch', { ...gameRef(g), cover: true });
       waitForGame = true;
     } else {
       status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
@@ -284,10 +335,15 @@ definePage('game', {
 
     const bar = el('div', 'game-bar');
     const noEmu = g.source === 'rom' && !g.demo && !g.launch;
-    const label = g.demo ? 'DÉMO' : noEmu ? 'ÉMULATEUR MANQUANT' : !g.installed ? 'INSTALLER' : g.streamHost ? 'STREAMER' : g.type === 'app' ? 'LANCER' : 'JOUER';
-    const play = el('div', 'btn-play' + (g.demo || noEmu ? ' disabled' : !g.installed ? ' install' : ''), `${icon(!g.installed && !noEmu ? 'i-download2' : 'i-play')}${label}`);
-    nav(play, () => (noEmu ? go('emulation') : launch(g)), 'play');
+    queryGame(g);
+    const isRunning = running.has(g.id);
+    const label = g.demo ? 'DÉMO' : noEmu ? 'ÉMULATEUR MANQUANT' : isRunning ? 'REPRENDRE' : !g.installed ? 'INSTALLER' : g.streamHost ? 'STREAMER' : g.type === 'app' ? 'LANCER' : 'JOUER';
+    const play = el('div', 'btn-play' + (g.demo || noEmu ? ' disabled' : isRunning ? ' running' : !g.installed ? ' install' : ''), `${icon(!g.installed && !noEmu ? 'i-download2' : 'i-play')}${label}`);
+    nav(play, () => (noEmu ? go('emulation') : isRunning ? resumeGame(g) : launch(g)), 'play');
     play.dataset.autofocus = '';
+    // Jeu en cours : l'arrêter (fermeture propre, puis forcée s'il ne répond pas)
+    const stop = isRunning ? nav(el('div', 'btn-icon stop', icon('i-power')), () => stopGame(g), 'stop') : null;
+    if (stop) stop.title = 'Arrêter le jeu';
     const fav = el('div', 'btn-icon' + (favs.has(g.id) ? ' on' : ''), icon('i-star'));
     nav(fav, () => toggleFav(g), 'fav');
     const more = el('div', 'btn-icon', icon('i-more'));
@@ -302,7 +358,8 @@ definePage('game', {
       (g.systemName ? stat('Console', esc(g.systemName) + (g.region ? ` · ${esc(g.region)}` : '')) : '') +
       (g.source === 'rom' ? stat('Émulateur', g.emulator ? esc(g.emulator + (g.core ? ` (${g.core})` : '')) : '<span style="color:#ff9a9d">Non trouvé</span>') : '') +
       stat('Boutique', `<span class="pill src" style="--src:${src.color}">${esc(src.label)}${g.shortcut ? ' · non-Steam' : ''}</span>`));
-    bar.append(play, fav, more, stats);
+    bar.append(...[play, stop, fav, more, stats].filter(Boolean));
+    if (isRunning) stats.insertAdjacentHTML('afterbegin', stat('État', '<span class="now-playing">En cours</span>'));
 
     root.replaceChildren(hero, bar);
 
