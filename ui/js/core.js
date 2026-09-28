@@ -1,0 +1,170 @@
+// Briques partagées : DOM, stockage, réglages, sons, toasts, API de l'hôte, bibliothèque.
+
+export const $ = (s, r = document) => r.querySelector(s);
+export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+export const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+export const icon = (id, cls = '') => `<svg${cls ? ` class="${cls}"` : ''}><use href="#${id}"/></svg>`;
+export const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[™®©]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+// ---------- Événements ----------
+const listeners = {};
+export const on = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
+export const emit = (ev, data) => (listeners[ev] || []).forEach(fn => fn(data));
+
+// ---------- Stockage local (préférences par appareil) ----------
+export const store = {
+  get(k, d) { try { const v = localStorage.getItem('km.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('km.' + k, JSON.stringify(v)); } catch { /* ignoré */ } },
+};
+
+export const settings = Object.assign({
+  wifi: true, bluetooth: false, night: false, sounds: true, brightness: 70, volume: 45, fps: '0', overlay: 'off',
+  accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
+  uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', notifications: true, homeApps: true, homeStores: true,
+}, store.get('settings', {}));
+export const favs = new Set(store.get('favs', []));
+
+export function saveSettings() { store.set('settings', settings); applyTheme(); }
+export function saveFavs() { store.set('favs', [...favs]); }
+export function applyTheme() {
+  document.documentElement.style.setProperty('--accent', settings.accent);
+  document.body.classList.toggle('night', !!settings.night);
+  document.body.classList.toggle('show-badges', !!settings.badges);
+  document.body.classList.remove('bg-art', 'bg-gradient', 'bg-dark');
+  document.body.classList.add('bg-' + settings.background);
+  document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
+  document.body.classList.toggle('high-contrast', !!settings.highContrast);
+  document.body.style.zoom = settings.uiScale && settings.uiScale !== 100 ? settings.uiScale / 100 : '';
+}
+
+// ---------- Sons d'interface ----------
+let ac;
+export function sfx(type) {
+  if (!settings.sounds) return;
+  try { ac = ac || new AudioContext(); if (ac.state === 'suspended') ac.resume(); } catch { return; }
+  const cfg = {
+    move: [900, 900, 0.035, 0.025], select: [660, 1320, 0.09, 0.05], back: [520, 300, 0.09, 0.045],
+    open: [440, 880, 0.12, 0.04], key: [1200, 1200, 0.025, 0.02], error: [300, 200, 0.18, 0.05],
+  }[type];
+  if (!cfg) return;
+  const [f0, f1, dur, vol] = cfg;
+  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type === 'error' ? 'triangle' : 'sine';
+  o.frequency.setValueAtTime(f0, t);
+  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.9);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+// ---------- Toasts & notifications ----------
+let toastTimer;
+const notifications = [];
+export function toast(msg, { error = false, notify = false } = {}) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('error', error);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), error ? 4000 : 2600);
+  if (error) sfx('error');
+  if (notify && settings.notifications) {
+    notifications.unshift({ msg, at: new Date() });
+    notifications.length = Math.min(notifications.length, 8);
+    emit('notifications', notifications);
+  }
+}
+export const getNotifications = () => notifications;
+
+export function busy(label) {
+  const b = $('#busy');
+  if (label) { $('span', b).textContent = label; b.hidden = false; } else b.hidden = true;
+}
+
+// ---------- App native (WebView2) ----------
+// Présent quand l'interface tourne dans l'app KaneMode : actions réelles (bureau, veille, arrêt…).
+const webview = window.chrome && window.chrome.webview;
+export const native = {
+  available: !!webview,
+  send(type, data = {}) { if (webview) webview.postMessage({ type, ...data }); },
+  on(fn) { if (webview) webview.addEventListener('message', e => fn(e.data || {})); },
+};
+
+// ---------- API de l'hôte ----------
+async function request(method, url, body) {
+  const r = await fetch(url, {
+    method,
+    headers: { 'X-KaneMode': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'Erreur ' + r.status), { data: j });
+  return j;
+}
+export const api = {
+  get: url => request('GET', url),
+  post: (url, body) => request('POST', url, body || {}),
+  del: url => request('DELETE', url),
+};
+
+// ---------- Boutiques ----------
+export const SOURCES = {
+  steam: { label: 'Steam', color: '#1a9fff' },
+  epic: { label: 'Epic Games', color: '#b8bec6' },
+  gog: { label: 'GOG', color: '#a55cf2' },
+  ubisoft: { label: 'Ubisoft', color: '#2b7de8' },
+  ea: { label: 'EA', color: '#ff4d4d' },
+  battlenet: { label: 'Battle.net', color: '#00aeff' },
+  xbox: { label: 'Xbox', color: '#22b422' },
+  amazon: { label: 'Amazon', color: '#ff9900' },
+  rockstar: { label: 'Rockstar', color: '#fcaf17' },
+  riot: { label: 'Riot', color: '#eb0029' },
+  custom: { label: 'Ajouts perso', short: 'Perso', color: '#f0a030' },
+  rom: { label: 'Émulation', short: 'Émulation', color: '#e05a2b' },
+  kaneplay: { label: 'KanePlay', short: 'Streaming', color: '#8a5cff' },
+};
+export const sourceOf = id => SOURCES[id] || { label: id, color: '#888' };
+
+// ---------- Formats ----------
+export const fmt = {
+  played(ts) {
+    if (!ts) return 'Jamais joué';
+    const d = new Date(ts * 1000), now = new Date();
+    const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((day(now) - day(d)) / 86400000);
+    if (diff <= 0) return "Aujourd'hui";
+    if (diff === 1) return 'Hier';
+    if (diff < 7) return `Il y a ${diff} jours`;
+    const opts = { day: 'numeric', month: 'long' };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return 'Le ' + d.toLocaleDateString('fr-FR', opts);
+  },
+  size: b => b ? (b / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: b >= 1e10 ? 0 : 1 }) + ' Go' : '—',
+  playtime: m => !m ? null : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`,
+  gb: b => (b / 1073741824).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Go',
+  duration(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; },
+};
+
+// ---------- Bibliothèque ----------
+export const lib = {
+  games: [], launchers: [], collections: [], version: 0, generated: null,
+  async load() {
+    const d = await api.get('/api/library' + (settings.demo ? '?demo=1' : ''));
+    Object.assign(this, { games: d.games, launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });
+    emit('library');
+    return this;
+  },
+  byId(id) { return this.games.find(g => g.id === id); },
+  visible() { return this.games.filter(g => !g.hidden && !settings.hiddenSources.includes(g.source)); },
+  launcher(id) { return this.launchers.find(l => l.id === id); },
+};

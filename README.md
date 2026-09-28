@@ -1,0 +1,116 @@
+# KaneMode
+
+Interface « console » façon SteamOS pour Windows, qui devient l'app d'accueil du mode Xbox (Full Screen Experience). L'interface est en HTML/JS (`ui/`), servie par un petit hôte Node (`host/`), et affichée par l'app native (`native/`).
+
+> Projet indépendant, sans lien avec Microsoft, Xbox, Valve ou Steam.
+
+## Installation
+
+1. Téléchargez **`KaneMode-Setup-<version>.exe`** dans les [Releases](https://github.com/Kaynegiordano/KaneMode/releases) et lancez-le (Windows demande une fois l'accord de l'administrateur).
+2. L'installateur :
+   - active le **mode développeur** de Windows (nécessaire : l'autorisation « application d'accueil » de KaneMode n'est pas signée par Microsoft) ;
+   - approuve le certificat qui signe KaneMode et installe l'app (runtime .NET, Node.js et moteur de streaming inclus) ;
+   - active le **mode Xbox complet** sans fenêtre : installe au besoin [Xbox Full Screen Experience Tool](https://github.com/8bit2qubit/XboxFullScreenExperienceTool) (téléchargé depuis sa page GitHub), puis l'active (`/silentenable`).
+3. Redémarrez, puis **Paramètres > Jeux > Mode Xbox > Choisir l'application d'accueil > KaneMode**.
+
+Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). Pour revenir en arrière : désinstallez KaneMode depuis les Paramètres, puis `setup/uninstall.ps1 -RevertXboxMode` (l'outil redémarre alors le PC).
+
+### Mises à jour
+
+KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (canal **Stable** ou **Bêta**, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
+
+### Publier une version (mainteneur)
+
+```bash
+powershell -ExecutionPolicy Bypass -File native/release.ps1 -Publish -Beta
+```
+
+Version : fichier `VERSION`. Le paquet est signé par le certificat « CN=KaneMode » de votre magasin de certificats (créé au premier build, valable 10 ans). **Sauvegardez-le** : sans lui, les mises à jour ne s'installent plus par-dessus les versions existantes.
+
+```powershell
+$c = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -eq 'CN=KaneMode'
+Export-PfxCertificate -Cert $c -FilePath KaneMode-signature.pfx -Password (Read-Host -AsSecureString 'Mot de passe')
+```
+
+## App native (développement)
+
+```bash
+powershell -ExecutionPolicy Bypass -File native/build.ps1 -Register
+```
+
+- Compile `KaneMode.exe` (C# / WPF + WebView2, .NET 8), assemble le paquet dans `native/out/layout` (interface, hôte, Node.js, icônes, manifeste) et l'installe en version de développement (mode développeur de Windows requis).
+- Le paquet se déclare **application de jeu** (`windows.gamingApp` + capacité `gamingHome`) : KaneMode apparaît dans **Paramètres > Jeux > Mode Xbox > Choisir l'application d'accueil** (mode Xbox complet requis, voir plus bas). Raccourci dans KaneMode : Paramètres > Mode Xbox > « Ouvrir les réglages du mode Xbox ».
+- Plein écran, une seule instance, l'hôte Node démarre et s'arrête avec l'app. Actions réelles : retour au bureau, veille, redémarrage, extinction.
+- Données : `%LOCALAPPDATA%\KaneMode` (bibliothèque, réglages, journal `logs\kanemode.log`). Au premier lancement, l'app reprend les données du prototype (`data\`).
+- `-Pack` produit un `.msix` signé avec un certificat de test (`native/out/KaneMode.cer` à faire approuver sur le PC cible), `-Unregister` désinstalle, `-SelfContained` embarque le runtime .NET.
+- Développement : `KaneMode.exe --windowed` (fenêtre normale), `--debug-port=9229` (inspection de l'interface).
+- Prérequis actuels : runtime .NET 8 Desktop (sauf `-SelfContained`) et mode développeur (le fichier de capacité n'est pas signé par Microsoft).
+
+## Installer (mode Xbox, version navigateur)
+
+```bash
+powershell -ExecutionPolicy Bypass -File setup/install.ps1 -Autostart
+```
+
+- Crée les raccourcis **KaneMode** (menu Démarrer, Bureau) et, avec `-Autostart`, le lancement à l'ouverture de session.
+- Active le **mode Xbox complet** via XboxFullScreenExperienceTool : installe l'outil s'il manque (mettre le `.msi` dans `setup/msi/`), puis l'active sans interface (`/silentenable`, voir `vendor/README-KaneMode.md`, à compiler une fois avec `setup/build-xbox-enabler.ps1`). Sans cette compilation, l'outil s'ouvre et il suffit de cliquer « Enable ».
+- `-Check` affiche l'état sans rien modifier.
+- Désinstaller : `setup/uninstall.ps1` (`-RevertXboxMode` restaure Windows ; **l'outil redémarre alors le PC après 5 s**).
+
+## Lancer sans installer (développement)
+
+```bash
+node host/server.js
+```
+
+Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) ouvre la même interface en plein écran dans une fenêtre Edge dédiée.
+
+## Fonctions
+
+- **Bibliothèque multi-boutiques** : Steam (installés, **non installés** avec bouton Installer, raccourcis non-Steam, temps de jeu), Epic, GOG, Ubisoft, EA, Battle.net, Xbox / Game Pass, Amazon, Rockstar, Riot. Onglets : Installés, Tout, Favoris, Jeux, Applications, Non installés, Compatibles manette, Émulation, collections, par boutique.
+- **Émulation** : dossiers de ROMs rangés par console (convention EmulationStation-DE / RetroBat), 28 consoles, 23 émulateurs détectés automatiquement (ou choisis à la main), lancement direct, cœurs RetroArch choisis automatiquement.
+- **SteamGridDB, sans compte ni clé** : visuels automatiques pour tout ce qui n'en a pas ; fiche du jeu → **Visuels** : aperçu, Récupérer à nouveau, Annuler les modifications, Parcourir SteamGridDB, Importer votre image. Reprise des visuels posés dans Steam (dossier `grid`, SGDBoop, Steam ROM Manager). Une clé API perso reste possible (Paramètres → SteamGridDB → Avancé).
+- **Streaming intégré** (menu → Streaming) : PC hôtes Sunshine / Apollo / GeForce Experience, appairage avec un code affiché dans KaneMode, jeux de l'hôte dans la bibliothèque, qualité (résolution, images/s, débit, codec, HDR), fermeture du jeu sur l'hôte. Moteur : KanePlay, invisible (seule l'image du jeu s'affiche) et embarqué dans l'app native.
+- **Veille façon SteamOS** : veille immédiate, fondu au noir, réveil avec logo et carillon, manettes vérifiées ; atténuation et veille automatiques (batterie / secteur) ; veille moderne (S0) gérée sur les consoles portables.
+- **Consoles portables** : ROG Ally / Ally X / Xbox Ally, Legion Go / Go S / Go 2, MSI Claw, Steam Deck, ZOTAC Zone, AYANEO, OneXPlayer, GPD, AOKZOE reconnues ; interface agrandie au premier lancement, logiciel constructeur, pilotes graphiques, mises à jour de pilotes via Windows Update (installation avec accord administrateur).
+- **Ajouts perso** : applis installées (Win32 + Microsoft Store), fichiers, liens web.
+- **Style SteamOS** : logo animé et court carillon au démarrage (synthétisés, aucun fichier ; vidéo et son perso possibles, l'ancienne vidéo est dans `extras\`), accueil avec bouton **Bureau Windows** (ferme KaneMode), menu principal, accès rapide (CPU/RAM en direct), recherche au clavier virtuel, médias (captures Steam / Game Bar), collections, paramètres par catégories (stockage, accessibilité, taille de l'interface, testeur de manette, état du mode Xbox…).
+
+## Structure
+
+| Dossier | Rôle |
+|---|---|
+| `host/server.js` | Hôte : interface + API (bibliothèque, lancement, visuels, émulation, système) |
+| `host/lib/` | `steam.js` (VDF, temps de jeu, grid), `sgdb.js` (SteamGridDB), `emulation.js` (consoles, émulateurs, ROMs), `system.js` (mode Xbox, stockage, médias, sortie), `kaneplay.js` (streaming), `device.js` (console portable, pilotes) |
+| `host/*.ps1` | Scan des boutiques, applis du menu Démarrer, extraction d'icônes |
+| `ui/` | Interface (HTML/CSS + modules JS) |
+| `native/` | App native : `KaneMode.App` (C#), `package` (manifeste MSIX, capacité gamingHome), `build.ps1` |
+| `setup/` | Installation, lancement, désinstallation, compilation de l'activation silencieuse, icône |
+| `vendor/` | XboxFullScreenExperienceTool (GPL v3) avec le mode `/silentenable` |
+| `data/` | Généré : bibliothèque, réglages (`config.json`, contient la clé SteamGridDB), caches |
+
+L'API n'accepte que des requêtes locales portant l'en-tête `X-KaneMode`. Veille / redémarrage / extinction sont simulés dans la version navigateur, réels dans l'app native.
+
+## Commandes
+
+| Action | Manette | Clavier |
+|---|---|---|
+| Se déplacer | Croix / stick gauche | Flèches |
+| Valider | A / ✕ | Entrée |
+| Retour | B / ○ | Échap |
+| Menu principal | Start / Options | M |
+| Accès rapide | View / Share | Q |
+| Rechercher | Y / △ | Y |
+| Favori · action secondaire | X / □ | X |
+| Onglets | LB / RB | Pg↑ / Pg↓ |
+
+## Licence et crédits
+
+KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il inclut et redistribue des logiciels sous cette licence :
+
+- [Xbox Full Screen Experience Tool](https://github.com/8bit2qubit/XboxFullScreenExperienceTool) de 8bit2qubit (GPL v3), copie modifiée dans `vendor/` (mode `/silentenable`, voir `vendor/README-KaneMode.md`) ;
+- [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
+- [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming embarqué ;
+- Node.js (licence MIT), embarqué dans le paquet.
+
+Visuels : [SteamGridDB](https://www.steamgriddb.com) et la boutique Steam.

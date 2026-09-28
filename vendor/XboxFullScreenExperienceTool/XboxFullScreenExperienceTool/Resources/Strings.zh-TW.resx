@@ -1,0 +1,607 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MainFormTitle" xml:space="preserve">
+    <value>Xbox 全螢幕體驗工具</value>
+  </data>
+  <data name="UnknownVersion" xml:space="preserve">
+    <value>未知版本</value>
+  </data>
+  <data name="ErrorReadingVersion" xml:space="preserve">
+    <value>讀取版本號並設定標題時發生錯誤: {0}</value>
+  </data>
+  <data name="WelcomeMessage" xml:space="preserve">
+    <value>歡迎使用 Xbox 全螢幕體驗工具！</value>
+  </data>
+  <data name="ErrorCheckBuild" xml:space="preserve">
+    <value>檢查 Windows 組建時發生未預期錯誤: {0}</value>
+  </data>
+  <data name="VersionIncompatible" xml:space="preserve">
+    <value>版本不相容</value>
+  </data>
+  <data name="ErrorReadRegistry" xml:space="preserve">
+    <value>錯誤: 無法從登錄檔讀取或解析目前 OS 的組建資訊 (CurrentBuild 或 UBR)。</value>
+  </data>
+  <data name="YourBuildVersion" xml:space="preserve">
+    <value>您的 Windows 組建版本: {0}</value>
+  </data>
+  <data name="ErrorBuildTooLow" xml:space="preserve">
+    <value>錯誤: 您的 Windows 組建版本 ({0}) 過低。</value>
+  </data>
+  <data name="RequiredBuild" xml:space="preserve">
+    <value>此工具需要組建版本 {0} 或更高版本。</value>
+  </data>
+  <data name="VersionOK" xml:space="preserve">
+    <value>版本符合要求。</value>
+  </data>
+  <data name="StatusChecking" xml:space="preserve">
+    <value>狀態: 偵測中...</value>
+  </data>
+  <data name="StatusEnabled" xml:space="preserve">
+    <value>狀態: 已啟用</value>
+  </data>
+  <data name="StatusDisabled" xml:space="preserve">
+    <value>狀態: 未啟用</value>
+  </data>
+  <data name="StatusNeedsFix" xml:space="preserve">
+    <value>狀態: 需要修正 (未建立正確的螢幕尺寸工作)</value>
+  </data>
+  <data name="StatusUnknownError" xml:space="preserve">
+    <value>狀態: 未知 (錯誤)</value>
+  </data>
+  <data name="StatusRestartPending" xml:space="preserve">
+    <value>狀態: 等待重新啟動...</value>
+  </data>
+  <data name="btnEnable_Text" xml:space="preserve">
+    <value>啟用 Xbox Mode (FSE)</value>
+  </data>
+  <data name="btnEnable_Text_Fix" xml:space="preserve">
+    <value>修正 Xbox Mode (FSE)</value>
+  </data>
+  <data name="btnDisable_Text" xml:space="preserve">
+    <value>停用並還原</value>
+  </data>
+  <data name="grpActions_Text" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="grpOutput_Text" xml:space="preserve">
+    <value>執行日誌</value>
+  </data>
+  <data name="ErrorCheckStatus" xml:space="preserve">
+    <value>檢查狀態時發生錯誤: {0}</value>
+  </data>
+  <data name="LogStatusCheck" xml:space="preserve">
+    <value>狀態檢查 -&gt; ViVe 功能: {0}, 登錄檔: {1}, 工作需求: {2}, 工作存在: {3}</value>
+  </data>
+  <data name="LogRegStatusFalseNotExist" xml:space="preserve">
+    <value>False (不存在)</value>
+  </data>
+  <data name="LogRegStatusTrue" xml:space="preserve">
+    <value>True (值為 46)</value>
+  </data>
+  <data name="LogRegStatusFalseWrongValue" xml:space="preserve">
+    <value>False (值為 {0})</value>
+  </data>
+  <data name="LogErrorReadingScreenSize" xml:space="preserve">
+    <value>無法讀取螢幕尺寸，將無法判斷是否需要排程工作。</value>
+  </data>
+  <data name="LogBeginEnable" xml:space="preserve">
+    <value>--- 開始啟用流程 ---</value>
+  </data>
+  <data name="LogReadingScreenSize" xml:space="preserve">
+    <value>正在讀取目前螢幕尺寸...</value>
+  </data>
+  <data name="LogScreenSizeSuccess" xml:space="preserve">
+    <value>成功讀取螢幕尺寸: {0}x{1}mm。</value>
+  </data>
+  <data name="LogScreenSizeUndefined" xml:space="preserve">
+    <value>偵測到未定義的螢幕尺寸 (0x0mm)，正在建立開機工作排程...</value>
+  </data>
+  <data name="LogScreenSizeTooLarge" xml:space="preserve">
+    <value>偵測到螢幕尺寸 ({0:F2}") 大於 {1}" 門檻，正在建立開機工作排程...</value>
+  </data>
+  <data name="LogTaskCreated" xml:space="preserve">
+    <value>工作排程 'SetPanelDimensions' 已建立。</value>
+  </data>
+  <data name="LogTaskNotNeeded" xml:space="preserve">
+    <value>螢幕尺寸 ({0:F2}") 在 {1}" 範圍內，無需建立工作排程。</value>
+  </data>
+  <data name="LogErrorReadingScreenSizeEnable" xml:space="preserve">
+    <value>讀取螢幕尺寸失敗，將跳過此步驟。</value>
+  </data>
+  <data name="LogBackupAndSetRegistry" xml:space="preserve">
+    <value>正在備份並設定登錄檔...</value>
+  </data>
+  <data name="LogRegistryBackupSuccess" xml:space="preserve">
+    <value>已備份原始 DeviceForm 數值 ({0}) 到 {1}。</value>
+  </data>
+  <data name="LogRegistryBackupMarkedForDelete" xml:space="preserve">
+    <value>偵測到 DeviceForm 原始值不存在，已建立還原標記。</value>
+  </data>
+  <data name="LogRegistrySetSuccess" xml:space="preserve">
+    <value>登錄檔已成功設定為 46 (0x2E)。</value>
+  </data>
+  <data name="LogResettingBeforeEnable" xml:space="preserve">
+    <value>正在重設功能 ID 覆寫: {0}...</value>
+  </data>
+  <data name="LogEnablingFeatures" xml:space="preserve">
+    <value>正在啟用功能 ID: {0}...</value>
+  </data>
+  <data name="LogFeaturesEnabledSuccess" xml:space="preserve">
+    <value>功能已成功啟用。</value>
+  </data>
+  <data name="LogEnableComplete" xml:space="preserve">
+    <value>--- 啟用流程完成 ---</value>
+  </data>
+  <data name="PromptRestartCaptionSuccess" xml:space="preserve">
+    <value>啟用成功</value>
+  </data>
+  <data name="PromptRestartCaptionDisableSuccess" xml:space="preserve">
+    <value>停用成功</value>
+  </data>
+  <data name="PromptRestartMessage" xml:space="preserve">
+    <value>設定已成功套用。您的電腦必須重新啟動，變更才會生效。</value>
+  </data>
+  <data name="LogUserRestartNow" xml:space="preserve">
+    <value>使用者選擇立即重新啟動電腦。</value>
+  </data>
+  <data name="ErrorRestartFailed" xml:space="preserve">
+    <value>無法執行重新啟動命令: {0}</value>
+  </data>
+  <data name="MessageBoxRestartFailed" xml:space="preserve">
+    <value>無法自動執行重新啟動命令，請手動重新啟動您的電腦。</value>
+  </data>
+  <data name="LogUserRestartLater" xml:space="preserve">
+    <value>使用者選擇稍後重新啟動。在重新啟動前，無法進行其他操作。</value>
+  </data>
+  <data name="HandleExceptionMessage" xml:space="preserve">
+    <value>發生錯誤:
+{0}
+
+請確認您是以系統管理員權限執行本程式。</value>
+  </data>
+  <data name="HandleExceptionTitle" xml:space="preserve">
+    <value>錯誤</value>
+  </data>
+  <data name="LogErrorUnexpected" xml:space="preserve">
+    <value>發生未預期的錯誤: {0}</value>
+  </data>
+  <data name="LogErrorAdminRights" xml:space="preserve">
+    <value>請確認本程式是否以【系統管理員權限】執行。</value>
+  </data>
+  <data name="LogBeginDisable" xml:space="preserve">
+    <value>--- 開始停用流程 ---</value>
+  </data>
+  <data name="LogResettingBeforeDisable" xml:space="preserve">
+    <value>正在重設功能 ID 覆寫: {0}...</value>
+  </data>
+  <data name="LogDisablingFeatures" xml:space="preserve">
+    <value>正在明確停用功能 ID: {0}...</value>
+  </data>
+  <data name="LogFeaturesDisabledSuccess" xml:space="preserve">
+    <value>功能已成功設定為停用狀態。</value>
+  </data>
+  <data name="LogCheckingRegistryRestore" xml:space="preserve">
+    <value>正在檢查是否需要還原 DeviceForm 登錄檔...</value>
+  </data>
+  <data name="LogBackupFound" xml:space="preserve">
+    <value>偵測到備份檔，將進行還原操作。</value>
+  </data>
+  <data name="LogRegistryValueRemoved" xml:space="preserve">
+    <value>已根據備份標記，移除登錄檔值 '{0}'。</value>
+  </data>
+  <data name="LogRegistryValueRestored" xml:space="preserve">
+    <value>已從備份檔還原數值: {0}</value>
+  </data>
+  <data name="LogRegistryBackupInvalid" xml:space="preserve">
+    <value>備份檔內容格式不正確，為安全起見，已直接移除登錄檔值 '{0}'。</value>
+  </data>
+  <data name="LogBackupDeleted" xml:space="preserve">
+    <value>備份檔已刪除。</value>
+  </data>
+  <data name="LogNoBackupFound" xml:space="preserve">
+    <value>未找到備份檔，表示此工具未曾修改過登錄檔，無需還原。</value>
+  </data>
+  <data name="ErrorRestoringRegistry" xml:space="preserve">
+    <value>還原登錄檔時發生錯誤: {0}</value>
+  </data>
+  <data name="LogDeletingTask" xml:space="preserve">
+    <value>正在刪除工作排程 'SetPanelDimensions'...</value>
+  </data>
+  <data name="LogTaskDeleted" xml:space="preserve">
+    <value>工作排程已刪除。</value>
+  </data>
+  <data name="LogDisableComplete" xml:space="preserve">
+    <value>--- 停用流程完成 ---</value>
+  </data>
+  <data name="ErrorAppRunning" xml:space="preserve">
+    <value>應用程式已經在執行中。</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorFindFile" xml:space="preserve">
+    <value>找不到必要的檔案: {0}。請確保 PhysPanelCS.exe 與主程式位於同一個目錄。</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorCreate" xml:space="preserve">
+    <value>建立工作排程失敗: {0}</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorDelete" xml:space="preserve">
+    <value>刪除工作排程失敗: {0}</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorDirectoryNotFound" xml:space="preserve">
+    <value>無法取得應用程式的安裝目錄。</value>
+  </data>
+  <data name="ErrorCertificateFileNotFound" xml:space="preserve">
+    <value>錯誤: 找不到憑證檔案 '{0}'。</value>
+  </data>
+  <data name="ErrorDriverFilesNotFound" xml:space="preserve">
+    <value>錯誤: 找不到驅動程式檔案 '{0}' 或 '{1}'。</value>
+  </data>
+  <data name="LogErrorDriverInstallFailed" xml:space="preserve">
+    <value>驅動程式安裝失敗: {0}</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailed" xml:space="preserve">
+    <value>驅動程式移除失敗: {0}</value>
+  </data>
+  <data name="LogErrorPrefix" xml:space="preserve">
+    <value>錯誤: {0}</value>
+  </data>
+  <data name="LogCertificateInstallSuccess" xml:space="preserve">
+    <value>憑證安裝成功。</value>
+  </data>
+  <data name="LogDeletingDriverPackage" xml:space="preserve">
+    <value>找到驅動程式套件 '{0}'，正在刪除...</value>
+  </data>
+  <data name="LogDriverInstallCommandExecuted" xml:space="preserve">
+    <value>驅動程式安裝指令已執行。</value>
+  </data>
+  <data name="LogDriverRemoveCommandExecuted" xml:space="preserve">
+    <value>驅動程式移除指令已執行。</value>
+  </data>
+  <data name="LogFindingDriverPackage" xml:space="preserve">
+    <value>正在尋找驅動程式套件 (PhysPanelDrv.inf)...</value>
+  </data>
+  <data name="LogInstallingCertificate" xml:space="preserve">
+    <value>正在安裝驅動程式憑證...</value>
+  </data>
+  <data name="LogInstallingDriverWithDevcon" xml:space="preserve">
+    <value>正在使用 devcon 安裝驅動程式...</value>
+  </data>
+  <data name="LogRemovingDriverDevice" xml:space="preserve">
+    <value>正在移除驅動程式裝置...</value>
+  </data>
+  <data name="WarningOemInfNotFound" xml:space="preserve">
+    <value>警告: 找不到對應的 oem&lt;編號&gt;.inf 檔案，可能已被移除。</value>
+  </data>
+  <data name="grpPhysPanel_Text" xml:space="preserve">
+    <value>螢幕尺寸覆寫方式 (適用於非掌機)</value>
+  </data>
+  <data name="radPhysPanelCS_Text" xml:space="preserve">
+    <value>PhysPanelCS (工作排程模式，預設建議方案，無需額外設定)</value>
+  </data>
+  <data name="radPhysPanelDrv_Text" xml:space="preserve">
+    <value>PhysPanelDrv (驅動程式模式，進階替代方案，需停用安全啟動並啟用測試簽章)</value>
+  </data>
+  <data name="StatusEnabledDriverMode" xml:space="preserve">
+    <value>狀態: 已啟用 (驅動程式模式)</value>
+  </data>
+  <data name="StatusEnabledSchedulerMode" xml:space="preserve">
+    <value>狀態: 已啟用 (工作排程模式)</value>
+  </data>
+  <data name="LogTestSigningDisabled" xml:space="preserve">
+    <value>系統未啟用測試簽章模式，PhysPanelDrv 選項已停用。</value>
+  </data>
+  <data name="LogChoosingDriverMode" xml:space="preserve">
+    <value>選擇驅動程式模式 (PhysPanelDrv)...</value>
+  </data>
+  <data name="LogRemovingOldTask" xml:space="preserve">
+    <value>偵測到舊的工作排程，正在移除...</value>
+  </data>
+  <data name="LogChoosingSchedulerMode" xml:space="preserve">
+    <value>選擇工作排程模式 (PhysPanelCS)...</value>
+  </data>
+  <data name="LogRemovingOldDriver" xml:space="preserve">
+    <value>偵測到驅動程式服務，正在移除...</value>
+  </data>
+  <data name="LogRemovingPhysPanelDrv" xml:space="preserve">
+    <value>正在移除 PhysPanelDrv 驅動程式...</value>
+  </data>
+  <data name="LogLoggingErrorPrefix" xml:space="preserve">
+    <value>日誌記錄錯誤</value>
+  </data>
+  <data name="ErrorWritingLogFile" xml:space="preserve">
+    <value>寫入日誌檔案失敗: {0}</value>
+  </data>
+  <data name="LogStatusCheckSummary" xml:space="preserve">
+    <value>狀態檢查: 核心啟用={0} (ViVe功能={1}, 登錄檔={2}), 螢幕覆寫需求={3}, 覆寫存在={4} (CS={5}, Drv={6}), 測試簽章={7}</value>
+  </data>
+  <data name="StatusDriverErrorNeedsDisable" xml:space="preserve">
+    <value>驅動模式錯誤，請停用以進行還原</value>
+  </data>
+  <data name="LogDriverInstallCancelled" xml:space="preserve">
+    <value>驅動程式安裝已被使用者取消或失敗。操作已中止。</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailedDuringSwitch" xml:space="preserve">
+    <value>在切換模式時移除現有驅動程式失敗，但仍會繼續設定新的模式。</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailedGeneral" xml:space="preserve">
+    <value>移除驅動程式失敗，可能需要手動清理。</value>
+  </data>
+  <data name="LogOperationFailedRollingBack" xml:space="preserve">
+    <value>操作失敗，正在還原變更...</value>
+  </data>
+  <data name="LogRollbackComplete" xml:space="preserve">
+    <value>還原完成。系統未做任何變更。</value>
+  </data>
+  <data name="LogErrorDriverInstallCancelled" xml:space="preserve">
+    <value>驅動程式安裝失敗或已被使用者取消。 (結束代碼: {0})</value>
+  </data>
+  <data name="LogLargeScreenForceCS" xml:space="preserve">
+    <value>偵測到螢幕尺寸大於 9.5 英吋。為確保相容性，已將覆寫模式限制為「工作排程 (CS)」模式。</value>
+  </data>
+  <data name="chkStartKeyboardOnLogon_Text" xml:space="preserve">
+    <value>在登入時啟動遊戲控制器鍵盤，並自動隱藏至背景待命</value>
+  </data>
+  <data name="LogCreatingKeyboardTask" xml:space="preserve">
+    <value>正在建立「登入時啟動遊戲控制器鍵盤」的工作排程...</value>
+  </data>
+  <data name="LogDeletingKeyboardTask" xml:space="preserve">
+    <value>正在刪除「登入時啟動遊戲控制器鍵盤」的工作排程...</value>
+  </data>
+  <data name="ErrorKeyboardTask" xml:space="preserve">
+    <value>修改遊戲控制器鍵盤啟動工作排程時發生錯誤。錯誤: {0}</value>
+  </data>
+  <data name="LogTouchSupportStatus" xml:space="preserve">
+    <value>偵測到觸控支援狀態: {0}</value>
+  </data>
+  <data name="LogRegionDetectedNonEu" xml:space="preserve">
+    <value>偵測到區域: {0} (非 EU)</value>
+  </data>
+  <data name="LogRegionDetectedEu" xml:space="preserve">
+    <value>偵測到區域: {0} (EU)。已套用 EU 繞過 (螢幕尺寸覆寫)。</value>
+  </data>
+  <data name="LogEuBypassApplying" xml:space="preserve">
+    <value>正在為 Native FSE 套用 EU 繞過 (螢幕尺寸覆寫)。</value>
+  </data>
+  <data name="TooltipTouchEnabled" xml:space="preserve">
+    <value>您的系統已原生支援觸控，Windows 將自動管理遊戲控制器鍵盤的顯示。</value>
+  </data>
+  <data name="TooltipTouchDisabled" xml:space="preserve">
+    <value>您的系統未偵測到觸控支援。您可以啟用此選項，以在系統啟動時自動為控制器體驗開啟遊戲控制器鍵盤。</value>
+  </data>
+  <data name="LogPanelTaskCreated" xml:space="preserve">
+    <value>工作排程 'XFSET-SetPanelDimensions' 已建立。</value>
+  </data>
+  <data name="LogPanelTaskDeleted" xml:space="preserve">
+    <value>工作排程 'XFSET-SetPanelDimensions' 已刪除。</value>
+  </data>
+  <data name="LogKeyboardTaskCreated" xml:space="preserve">
+    <value>工作排程 'XFSET-StartGamepadKeyboardOnLogon' 已建立。</value>
+  </data>
+  <data name="LogKeyboardTaskDeleted" xml:space="preserve">
+    <value>工作排程 'XFSET-StartGamepadKeyboardOnLogon' 已刪除。</value>
+  </data>
+  <data name="ShutdownReasonEnable" xml:space="preserve">
+    <value>Xbox Full Screen Experience Tool 正在重新啟動電腦以完成設定。</value>
+  </data>
+  <data name="ShutdownReasonUninstall" xml:space="preserve">
+    <value>Xbox Full Screen Experience Tool 需要重新開機以完成解除安裝。</value>
+  </data>
+  <data name="UpdateWindowsPrompt" xml:space="preserve">
+    <value>請執行 Windows Update 將您的系統更新至最新版本後再試。</value>
+  </data>
+  <data name="LogArchNotSupported" xml:space="preserve">
+    <value>目前的 CPU 架構 (ARM64) 不支援驅動程式模式。</value>
+  </data>
+  <data name="LogStatusCheckSummaryDetail" xml:space="preserve">
+    <value>狀態檢查: 核心={0}, 原生={1}, 登錄檔={2}, 螢幕覆寫需求={3}, CS={4}, Drv={5}, 螢幕尺寸={6:F2}", 測試簽章={7}</value>
+  </data>
+  <data name="LogNativeSupportDetected" xml:space="preserve">
+    <value>偵測到 Native Build，正在套用原生支援設定。(螢幕尺寸: {0:F2}", 覆寫狀態: {1})</value>
+  </data>
+  <data name="LogNonHandheldDetected" xml:space="preserve">
+    <value>偵測到非掌機環境：正在建立登錄檔維護工作...</value>
+  </data>
+  <data name="LogHandheldDetected" xml:space="preserve">
+    <value>偵測到掌機裝置：無需維護工作。</value>
+  </data>
+  <data name="LogErrorArchivingLog" xml:space="preserve">
+    <value>無法封存舊的日誌檔案：{0}</value>
+  </data>
+  <data name="btnOpenSettings_Text" xml:space="preserve">
+    <value>開啟 Xbox Mode (FSE) 設定</value>
+  </data>
+  <data name="btnCheckUpdates_Text" xml:space="preserve">
+    <value>檢查 MS Store 的 Xbox 更新</value>
+  </data>
+  <data name="ErrorOpenSettings" xml:space="preserve">
+    <value>無法開啟設定頁面: {0}</value>
+  </data>
+  <data name="MsgOpenSettingsManual" xml:space="preserve">
+    <value>無法開啟 Windows 設定，請手動前往 [開始 &gt; 設定 &gt; 遊戲 &gt; Xbox mode]。</value>
+  </data>
+  <data name="ErrorOpenStore" xml:space="preserve">
+    <value>無法開啟 Microsoft Store: {0}</value>
+  </data>
+  <data name="MsgOpenStoreManual" xml:space="preserve">
+    <value>無法開啟 Microsoft Store，請手動確認 Xbox 相關應用程式更新。</value>
+  </data>
+  <data name="btnOpenUAC_Text" xml:space="preserve">
+    <value>開啟 UAC 設定</value>
+  </data>
+  <data name="ErrorOpenUAC" xml:space="preserve">
+    <value>無法開啟 UAC 設定: {0}</value>
+  </data>
+  <data name="MsgOpenUACError" xml:space="preserve">
+    <value>無法開啟 UAC 設定。錯誤: {0}</value>
+  </data>
+  <data name="btnOpenStartupApps_Text" xml:space="preserve">
+    <value>開啟啟動應用程式設定</value>
+  </data>
+  <data name="ErrorOpenStartupApps" xml:space="preserve">
+    <value>無法開啟啟動應用程式設定: {0}</value>
+  </data>
+  <data name="MsgOpenStartupAppsError" xml:space="preserve">
+    <value>無法開啟啟動應用程式設定。錯誤: {0}</value>
+  </data>
+  <data name="LogCertificateAlreadyInstalled" xml:space="preserve">
+    <value>憑證已安裝。略過安裝。</value>
+  </data>
+  <data name="MsgUninstallTitle" xml:space="preserve">
+    <value>解除安裝</value>
+  </data>
+  <data name="MsgDeleteLogFiles" xml:space="preserve">
+    <value>您是否要一併移除應用程式產生的日誌檔案 (含封存檔)？</value>
+  </data>
+  <data name="LogDeletingPanelTask" xml:space="preserve">
+    <value>正在刪除工作排程 'XFSET-SetPanelDimensions'...</value>
+  </data>
+  <data name="LogDeletingSimulateTouchTask" xml:space="preserve">
+    <value>正在刪除觸控模擬的工作排程...</value>
+  </data>
+  <data name="LogSimulateTouchTaskDeleted" xml:space="preserve">
+    <value>工作排程 'XFSET-SimulateTouchService' 已刪除。</value>
+  </data>
+  <data name="LogCreatingSimulateTouchTask" xml:space="preserve">
+    <value>正在建立觸控模擬的工作排程...</value>
+  </data>
+  <data name="LogSimulateTouchTaskCreated" xml:space="preserve">
+    <value>工作排程 'XFSET-SimulateTouchService' 已建立。</value>
+  </data>
+  <data name="ErrorSimulateTouchTask" xml:space="preserve">
+    <value>修改觸控模擬工作排程時發生錯誤。錯誤: {0}</value>
+  </data>
+  <data name="chkSimulateTouch_Text" xml:space="preserve">
+    <value>在系統啟動時模擬觸控輸入，以啟用遊戲控制器鍵盤 (需要重新啟動)</value>
+  </data>
+  <data name="PromptRestartWarning" xml:space="preserve">
+    <value>此操作完成後將自動重新啟動電腦，請先儲存您的工作。是否繼續？</value>
+  </data>
+  <data name="PromptEnableSimulateTouch" xml:space="preserve">
+    <value>未偵測到實體觸控螢幕。是否啟用「模擬觸控」服務？
+(此為在登入畫面使用控制器輸入 PIN 碼/密碼，以及在桌面呼叫虛擬鍵盤所必需)</value>
+  </data>
+  <data name="LogUserCancelledEnable" xml:space="preserve">
+    <value>使用者取消啟用操作。</value>
+  </data>
+  <data name="LogUserAgreedToSimulateTouch" xml:space="preserve">
+    <value>使用者同意啟用模擬觸控服務。</value>
+  </data>
+  <data name="LogUserCancelledDisable" xml:space="preserve">
+    <value>使用者取消停用操作。</value>
+  </data>
+</root>

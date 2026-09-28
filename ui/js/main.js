@@ -1,0 +1,195 @@
+// Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
+import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native } from './core.js';
+import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory } from './nav.js';
+import { confirmDialog } from './widgets.js';
+import { playBoot } from './boot.js';
+import { sleepNow } from './power.js';
+import { exitToDesktop } from './pages/game.js';
+import './pages/home.js';
+import './pages/library.js';
+import './pages/search.js';
+import './pages/add.js';
+import './pages/settings.js';
+import './pages/artpicker.js';
+import './pages/media.js';
+import './pages/emulation.js';
+import './pages/stream.js';
+
+applyTheme();
+// L'écran de démarrage couvre tout dès le chargement.
+if (settings.bootMode !== 'none') $('#boot').hidden = false;
+actions.exit = () => { closeLayer(); exitToDesktop(); };
+
+// ---------- Menu principal ----------
+hooks.menu = () => openLayer({
+  el: $('#menu'), name: 'menu', scrim: true, focusKey: state.page,
+  hints: () => [['a', 'Sélectionner'], ['b', 'Fermer']],
+});
+actions['menu-go'] = t => {
+  closeLayer();
+  const target = t.dataset.page;
+  resetHistory();
+  if (target !== 'home') state.history.push({ id: 'home', params: {} });
+  go(target, {}, { push: false });
+};
+actions['power-toggle'] = t => {
+  const sm = $('#power-menu');
+  sm.classList.toggle('open');
+  t.classList.toggle('expanded', sm.classList.contains('open'));
+  if (sm.classList.contains('open')) setFocus($('[data-nav]', sm));
+};
+const SYSTEM = {
+  desktop: ['Aller au bureau Windows ?', 'Le mode console se ferme et le bureau s’affiche.', 'Aller au bureau'],
+  sleep: ['Mettre en veille ?', 'Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.', 'Mettre en veille'],
+  restart: ['Redémarrer le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Redémarrer'],
+  shutdown: ['Éteindre le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Éteindre'],
+};
+actions.system = async t => {
+  const [title, text, ok] = SYSTEM[t.dataset.system];
+  closeLayer();
+  // Comme sur SteamOS, la veille est immédiate ; redémarrer et éteindre demandent confirmation.
+  if (t.dataset.system === 'sleep') return sleepNow();
+  if (!await confirmDialog(title, text, ok, t.dataset.system !== 'desktop')) return;
+  // App native : vraie veille / vrai redémarrage / vraie extinction. Navigateur : simulé.
+  if (native.available) return native.send('power', { action: t.dataset.system });
+  await api.post('/api/action', { action: t.dataset.system });
+  toast(`${ok} : simulé dans le prototype (aucune action réelle)`);
+};
+
+// Retour sur KaneMode (fin d'un jeu, alt-tab) : la bibliothèque se met à jour (temps de jeu, installations…).
+native.on(m => { if (m.type === 'resume' && !document.hidden) lib.load().catch(() => {}); });
+if (native.available) document.documentElement.classList.add('native');
+
+// ---------- Accès rapide ----------
+let sysTimer;
+async function pollSystem() {
+  try {
+    const s = await api.get('/api/system');
+    $('#cpu-bar').style.width = s.cpu + '%';
+    $('#cpu-val').textContent = s.cpu + ' %';
+    $('#mem-bar').style.width = Math.round(100 * s.memUsed / s.memTotal) + '%';
+    $('#mem-val').textContent = fmt.gb(s.memUsed).replace(' Go', '') + ' / ' + fmt.gb(s.memTotal);
+  } catch { /* hôte injoignable */ }
+}
+hooks.qam = () => openLayer({
+  el: $('#qam'), name: 'qam', scrim: true,
+  onOpen: () => { pollSystem(); sysTimer = setInterval(pollSystem, 1500); },
+  onClose: () => clearInterval(sysTimer),
+  hints: () => [['a', 'Sélectionner'], ['b', 'Fermer']],
+});
+
+function renderSlider(s) {
+  const v = +settings[s.dataset.slider];
+  $('.fill', s).style.width = v + '%';
+  $('.knob', s).style.left = v + '%';
+  $('output', s).textContent = v;
+}
+function setSlider(s, v) {
+  v = Math.max(0, Math.min(100, Math.round(v / 5) * 5));
+  if (v === +settings[s.dataset.slider]) return;
+  settings[s.dataset.slider] = v;
+  saveSettings();
+  renderSlider(s);
+  sfx('move');
+}
+$$('#qam .slider').forEach(s => {
+  s._dir = dir => {
+    if (dir !== 'left' && dir !== 'right') return false;
+    setSlider(s, +settings[s.dataset.slider] + (dir === 'right' ? 5 : -5));
+    return true;
+  };
+  s._click = e => {
+    const r = $('.track', s).getBoundingClientRect();
+    setSlider(s, 100 * (e.clientX - r.left) / r.width);
+  };
+  renderSlider(s);
+});
+$$('#qam .toggle').forEach(t => t.classList.toggle('on', !!settings[t.dataset.key]));
+$$('#qam .segmented').forEach(g => $$('button', g).forEach(b => b.classList.toggle('active', b.dataset.value === String(settings[g.dataset.group]))));
+actions.toggle = t => {
+  t.classList.toggle('on');
+  settings[t.dataset.key] = t.classList.contains('on');
+  saveSettings();
+};
+actions.seg = t => {
+  const g = t.closest('.segmented');
+  $$('button', g).forEach(b => b.classList.toggle('active', b === t));
+  settings[g.dataset.group] = t.dataset.value;
+  saveSettings();
+};
+
+on('notifications', list => {
+  $('#notifs').className = list.length ? '' : 'notif-empty';
+  $('#notifs').innerHTML = list.length
+    ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
+    : 'Aucune nouvelle notification';
+});
+
+// ---------- Barre d'état ----------
+const tick = () => { $('#clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
+tick();
+setInterval(tick, 10000);
+if (navigator.getBattery) {
+  navigator.getBattery().then(b => {
+    const upd = () => {
+      $('#battery').hidden = b.charging && b.level === 1;
+      $('#battery span').textContent = Math.round(b.level * 100) + ' %';
+    };
+    b.addEventListener('levelchange', upd);
+    b.addEventListener('chargingchange', upd);
+    upd();
+  }).catch(() => {});
+}
+addEventListener('gamepadconnected', e => toast(`Manette connectée : ${e.gamepad.id.replace(/\(.*?\)/g, '').trim() || 'manette'}`));
+
+// ---------- Synchronisation ----------
+function paintMenuFoot() {
+  const games = lib.visible().filter(g => g.type === 'game').length;
+  $('#menu-foot').innerHTML = `${games} jeux · ${lib.visible().length - games} applis<br>${lib.launchers.filter(l => l.installed).length} boutiques détectées${settings.demo ? '<br>Bibliothèque de démonstration active' : ''}`;
+}
+on('library', () => {
+  paintMenuFoot();
+  const p = currentPage();
+  if (p && p.libBound) refresh();
+});
+
+// Les métadonnées arrivent en arrière-plan : on recharge quand l'hôte signale du nouveau.
+setInterval(async () => {
+  if (document.hidden) return;
+  try {
+    const s = await api.get('/api/status');
+    if ($('#busy span').textContent.startsWith('Métadonnées') || s.pending) busy(s.pending ? `Métadonnées… ${s.pending}` : null);
+    if (s.version !== lib.version && !topLayer()) await lib.load();
+  } catch { /* hôte injoignable */ }
+}, 3000);
+
+// ---------- Démarrage ----------
+(async () => {
+  // La bibliothèque se charge pendant le logo (ou la vidéo) de démarrage.
+  const loading = lib.load().catch(() => toast('Hôte injoignable : lancez « node host/server.js »', { error: true }));
+  await playBoot();
+  const started = performance.now();
+  await loading;
+  go('home', {}, { push: false });
+  // Après le logo animé, pas de second logo : l'accueil apparaît directement.
+  const wait = settings.splash && settings.bootMode === 'none' ? Math.max(0, 1100 - (performance.now() - started)) : 0;
+  setTimeout(() => { $('#splash').classList.add('hide'); focusIn(currentPage().el); }, wait);
+  // Nouvelle version de KaneMode ? (au plus une vérification par jour)
+  api.get('/api/update').then(async u => {
+    if (!u.auto) return;
+    const last = +(localStorage.getItem('km.updateChecked') || 0);
+    if (Date.now() - last < 20 * 3600e3) return;
+    localStorage.setItem('km.updateChecked', String(Date.now()));
+    const r = await api.post('/api/update/check');
+    if (r.available) toast(`KaneMode ${r.latest.version} disponible · Paramètres → Système`, { notify: true });
+  }).catch(() => {});
+  // Première fois sur une console portable : interface agrandie pour son petit écran
+  api.get('/api/device').then(d => {
+    const hh = d && d.handheld;
+    if (!hh || settings.handheldSeen === hh.id) return;
+    settings.handheldSeen = hh.id;
+    if (settings.uiScale === 100) settings.uiScale = 125;
+    saveSettings();
+    toast(`${hh.name} détectée · interface adaptée (Paramètres → Console portable)`, { notify: true });
+  }).catch(() => {});
+})();

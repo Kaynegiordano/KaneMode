@@ -1,0 +1,607 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MainFormTitle" xml:space="preserve">
+    <value>Xbox 全画面表示エクスペリエンスツール</value>
+  </data>
+  <data name="UnknownVersion" xml:space="preserve">
+    <value>不明なバージョン</value>
+  </data>
+  <data name="ErrorReadingVersion" xml:space="preserve">
+    <value>バージョン番号の読み取りとタイトルの設定中にエラーが発生しました: {0}</value>
+  </data>
+  <data name="WelcomeMessage" xml:space="preserve">
+    <value>Xbox 全画面表示エクスペリエンスツールへようこそ！</value>
+  </data>
+  <data name="ErrorCheckBuild" xml:space="preserve">
+    <value>Windows ビルドの確認中に予期せぬエラーが発生しました: {0}</value>
+  </data>
+  <data name="VersionIncompatible" xml:space="preserve">
+    <value>バージョンの互換性がありません</value>
+  </data>
+  <data name="ErrorReadRegistry" xml:space="preserve">
+    <value>エラー: レジストリから現在の OS のビルド情報 (CurrentBuild または UBR) を読み取れないか、解析できません。</value>
+  </data>
+  <data name="YourBuildVersion" xml:space="preserve">
+    <value>お使いの Windows ビルドバージョン: {0}</value>
+  </data>
+  <data name="ErrorBuildTooLow" xml:space="preserve">
+    <value>エラー: お使いの Windows ビルドバージョン ({0}) は低すぎます。</value>
+  </data>
+  <data name="RequiredBuild" xml:space="preserve">
+    <value>このツールにはビルドバージョン {0} 以降が必要です。</value>
+  </data>
+  <data name="VersionOK" xml:space="preserve">
+    <value>バージョンは要件を満たしています。</value>
+  </data>
+  <data name="StatusChecking" xml:space="preserve">
+    <value>状態: 検出中...</value>
+  </data>
+  <data name="StatusEnabled" xml:space="preserve">
+    <value>状態: 有効</value>
+  </data>
+  <data name="StatusDisabled" xml:space="preserve">
+    <value>状態: 無効</value>
+  </data>
+  <data name="StatusNeedsFix" xml:space="preserve">
+    <value>状態: 修正が必要 (画面サイズタスクが正しく作成されていません)</value>
+  </data>
+  <data name="StatusUnknownError" xml:space="preserve">
+    <value>状態: 不明 (エラー)</value>
+  </data>
+  <data name="StatusRestartPending" xml:space="preserve">
+    <value>状態: 再起動待ち...</value>
+  </data>
+  <data name="btnEnable_Text" xml:space="preserve">
+    <value>Xbox Mode (FSE) を有効にする</value>
+  </data>
+  <data name="btnEnable_Text_Fix" xml:space="preserve">
+    <value>Xbox Mode (FSE) を修正する</value>
+  </data>
+  <data name="btnDisable_Text" xml:space="preserve">
+    <value>無効にして元に戻す</value>
+  </data>
+  <data name="grpActions_Text" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="grpOutput_Text" xml:space="preserve">
+    <value>実行ログ</value>
+  </data>
+  <data name="ErrorCheckStatus" xml:space="preserve">
+    <value>状態の確認中にエラーが発生しました: {0}</value>
+  </data>
+  <data name="LogStatusCheck" xml:space="preserve">
+    <value>状態チェック -&gt; ViVe 機能: {0}, レジストリ: {1}, タスク要件: {2}, タスク存在: {3}</value>
+  </data>
+  <data name="LogRegStatusFalseNotExist" xml:space="preserve">
+    <value>False (存在しません)</value>
+  </data>
+  <data name="LogRegStatusTrue" xml:space="preserve">
+    <value>True (値は 46)</value>
+  </data>
+  <data name="LogRegStatusFalseWrongValue" xml:space="preserve">
+    <value>False (値は {0})</value>
+  </data>
+  <data name="LogErrorReadingScreenSize" xml:space="preserve">
+    <value>画面サイズを読み取れないため、スケジュールされたタスクが必要かどうかを判断できません。</value>
+  </data>
+  <data name="LogBeginEnable" xml:space="preserve">
+    <value>--- 有効化プロセスを開始 ---</value>
+  </data>
+  <data name="LogReadingScreenSize" xml:space="preserve">
+    <value>現在の画面サイズを読み取り中...</value>
+  </data>
+  <data name="LogScreenSizeSuccess" xml:space="preserve">
+    <value>画面サイズの読み取りに成功しました: {0}x{1}mm。</value>
+  </data>
+  <data name="LogScreenSizeUndefined" xml:space="preserve">
+    <value>未定義の画面サイズ (0x0mm) が検出されました。起動タスクをスケジュールしています...</value>
+  </data>
+  <data name="LogScreenSizeTooLarge" xml:space="preserve">
+    <value>画面サイズ ({0:F2}インチ) がしきい値 {1}インチ を超えているのを検出しました。起動タスクをスケジュールしています...</value>
+  </data>
+  <data name="LogTaskCreated" xml:space="preserve">
+    <value>タスク 'SetPanelDimensions' が作成されました。</value>
+  </data>
+  <data name="LogTaskNotNeeded" xml:space="preserve">
+    <value>画面サイズ ({0:F2}インチ) が {1}インチ の範囲内のため、タスクをスケジュールする必要はありません。</value>
+  </data>
+  <data name="LogErrorReadingScreenSizeEnable" xml:space="preserve">
+    <value>画面サイズの読み取りに失敗しました。このステップはスキップされます。</value>
+  </data>
+  <data name="LogBackupAndSetRegistry" xml:space="preserve">
+    <value>レジストリをバックアップして設定しています...</value>
+  </data>
+  <data name="LogRegistryBackupSuccess" xml:space="preserve">
+    <value>元の DeviceForm 値 ({0}) を {1} にバックアップしました。</value>
+  </data>
+  <data name="LogRegistryBackupMarkedForDelete" xml:space="preserve">
+    <value>元の DeviceForm 値が存在しないことが検出されました。復元マーカーが作成されました。</value>
+  </data>
+  <data name="LogRegistrySetSuccess" xml:space="preserve">
+    <value>レジストリが正常に 46 (0x2E) に設定されました。</value>
+  </data>
+  <data name="LogResettingBeforeEnable" xml:space="preserve">
+    <value>機能 ID の上書き設定をリセットしています: {0}...</value>
+  </data>
+  <data name="LogEnablingFeatures" xml:space="preserve">
+    <value>機能 ID: {0} を有効にしています...</value>
+  </data>
+  <data name="LogFeaturesEnabledSuccess" xml:space="preserve">
+    <value>機能が正常に有効になりました。</value>
+  </data>
+  <data name="LogEnableComplete" xml:space="preserve">
+    <value>--- 有効化プロセス完了 ---</value>
+  </data>
+  <data name="PromptRestartCaptionSuccess" xml:space="preserve">
+    <value>有効化成功</value>
+  </data>
+  <data name="PromptRestartCaptionDisableSuccess" xml:space="preserve">
+    <value>無効化成功</value>
+  </data>
+  <data name="PromptRestartMessage" xml:space="preserve">
+    <value>設定は正常に適用されました。変更を有効にするには、コンピューターを再起動する必要があります。</value>
+  </data>
+  <data name="LogUserRestartNow" xml:space="preserve">
+    <value>ユーザーは今すぐコンピュータを再起動することを選択しました。</value>
+  </data>
+  <data name="ErrorRestartFailed" xml:space="preserve">
+    <value>再起動コマンドの実行に失敗しました: {0}</value>
+  </data>
+  <data name="MessageBoxRestartFailed" xml:space="preserve">
+    <value>再起動コマンドを自動的に実行できませんでした。手動でコンピュータを再起動してください。</value>
+  </data>
+  <data name="LogUserRestartLater" xml:space="preserve">
+    <value>ユーザーは後で再起動することを選択しました。再起動が完了するまで、他の操作は実行できません。</value>
+  </data>
+  <data name="HandleExceptionMessage" xml:space="preserve">
+    <value>エラーが発生しました:
+{0}
+
+このプログラムを管理者権限で実行していることを確認してください。</value>
+  </data>
+  <data name="HandleExceptionTitle" xml:space="preserve">
+    <value>エラー</value>
+  </data>
+  <data name="LogErrorUnexpected" xml:space="preserve">
+    <value>予期せぬエラーが発生しました: {0}</value>
+  </data>
+  <data name="LogErrorAdminRights" xml:space="preserve">
+    <value>このプログラムが【管理者権限】で実行されていることを確認してください。</value>
+  </data>
+  <data name="LogBeginDisable" xml:space="preserve">
+    <value>--- 無効化プロセスを開始 ---</value>
+  </data>
+  <data name="LogResettingBeforeDisable" xml:space="preserve">
+    <value>機能 ID の上書き設定をリセットしています: {0}...</value>
+  </data>
+  <data name="LogDisablingFeatures" xml:space="preserve">
+    <value>機能 ID: {0} を明示的に無効にしています...</value>
+  </data>
+  <data name="LogFeaturesDisabledSuccess" xml:space="preserve">
+    <value>機能が無効状態に正常に設定されました。</value>
+  </data>
+  <data name="LogCheckingRegistryRestore" xml:space="preserve">
+    <value>DeviceForm レジストリを復元する必要があるかどうかを確認しています...</value>
+  </data>
+  <data name="LogBackupFound" xml:space="preserve">
+    <value>バックアップファイルが検出されました。復元操作を実行します。</value>
+  </data>
+  <data name="LogRegistryValueRemoved" xml:space="preserve">
+    <value>バックアップマーカーに基づいてレジストリ値 '{0}' を削除しました。</value>
+  </data>
+  <data name="LogRegistryValueRestored" xml:space="preserve">
+    <value>バックアップファイルから値を復元しました: {0}</value>
+  </data>
+  <data name="LogRegistryBackupInvalid" xml:space="preserve">
+    <value>バックアップファイルの内容が不正な形式です。安全のため、レジストリ値 '{0}' を直接削除しました。</value>
+  </data>
+  <data name="LogBackupDeleted" xml:space="preserve">
+    <value>バックアップファイルを削除しました。</value>
+  </data>
+  <data name="LogNoBackupFound" xml:space="preserve">
+    <value>バックアップファイルが見つかりませんでした。このツールはレジストリを変更していないため、復元は必要ありません。</value>
+  </data>
+  <data name="ErrorRestoringRegistry" xml:space="preserve">
+    <value>レジストリの復元中にエラーが発生しました: {0}</value>
+  </data>
+  <data name="LogDeletingTask" xml:space="preserve">
+    <value>タスク 'SetPanelDimensions' を削除しています...</value>
+  </data>
+  <data name="LogTaskDeleted" xml:space="preserve">
+    <value>タスクが削除されました。</value>
+  </data>
+  <data name="LogDisableComplete" xml:space="preserve">
+    <value>--- 無効化プロセス完了 ---</value>
+  </data>
+  <data name="ErrorAppRunning" xml:space="preserve">
+    <value>アプリケーションは既に実行中です。</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorFindFile" xml:space="preserve">
+    <value>必要なファイルが見つかりません: {0}。PhysPanelCS.exe がメインプログラムと同じディレクトリにあることを確認してください。</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorCreate" xml:space="preserve">
+    <value>タスクの作成に失敗しました: {0}</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorDelete" xml:space="preserve">
+    <value>タスクの削除に失敗しました: {0}</value>
+  </data>
+  <data name="TaskSchedulerManagerErrorDirectoryNotFound" xml:space="preserve">
+    <value>アプリケーションのインストールディレクトリを取得できませんでした。</value>
+  </data>
+  <data name="ErrorCertificateFileNotFound" xml:space="preserve">
+    <value>エラー: 証明書ファイル '{0}' が見つかりません。</value>
+  </data>
+  <data name="ErrorDriverFilesNotFound" xml:space="preserve">
+    <value>エラー: ドライバーファイル '{0}' または '{1}' が見つかりません。</value>
+  </data>
+  <data name="LogErrorDriverInstallFailed" xml:space="preserve">
+    <value>ドライバーのインストールに失敗しました: {0}</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailed" xml:space="preserve">
+    <value>ドライバーの削除に失敗しました: {0}</value>
+  </data>
+  <data name="LogErrorPrefix" xml:space="preserve">
+    <value>エラー: {0}</value>
+  </data>
+  <data name="LogCertificateInstallSuccess" xml:space="preserve">
+    <value>証明書は正常にインストールされました。</value>
+  </data>
+  <data name="LogDeletingDriverPackage" xml:space="preserve">
+    <value>ドライバーパッケージ '{0}' が見つかりました。削除しています...</value>
+  </data>
+  <data name="LogDriverInstallCommandExecuted" xml:space="preserve">
+    <value>ドライバーのインストールコマンドが実行されました。</value>
+  </data>
+  <data name="LogDriverRemoveCommandExecuted" xml:space="preserve">
+    <value>ドライバーの削除コマンドが実行されました。</value>
+  </data>
+  <data name="LogFindingDriverPackage" xml:space="preserve">
+    <value>ドライバーパッケージ (PhysPanelDrv.inf) を検索しています...</value>
+  </data>
+  <data name="LogInstallingCertificate" xml:space="preserve">
+    <value>ドライバー証明書をインストールしています...</value>
+  </data>
+  <data name="LogInstallingDriverWithDevcon" xml:space="preserve">
+    <value>devcon を使用してドライバーをインストールしています...</value>
+  </data>
+  <data name="LogRemovingDriverDevice" xml:space="preserve">
+    <value>ドライバーデバイスを削除しています...</value>
+  </data>
+  <data name="WarningOemInfNotFound" xml:space="preserve">
+    <value>警告: 対応する oem&lt;番号&gt;.inf ファイルが見つかりません。すでに削除されている可能性があります。</value>
+  </data>
+  <data name="grpPhysPanel_Text" xml:space="preserve">
+    <value>画面サイズの上書き方式 (非ハンドヘルドデバイス向け)</value>
+  </data>
+  <data name="radPhysPanelCS_Text" xml:space="preserve">
+    <value>PhysPanelCS (タスクスケジューラモード, 推奨デフォルト, 追加設定不要)</value>
+  </data>
+  <data name="radPhysPanelDrv_Text" xml:space="preserve">
+    <value>PhysPanelDrv (ドライバーモード, 高度な代替オプション, セキュアブートの無効化とテスト署名の有効化が必要)</value>
+  </data>
+  <data name="StatusEnabledDriverMode" xml:space="preserve">
+    <value>状態: 有効 (ドライバーモード)</value>
+  </data>
+  <data name="StatusEnabledSchedulerMode" xml:space="preserve">
+    <value>状態: 有効 (タスクスケジューラモード)</value>
+  </data>
+  <data name="LogTestSigningDisabled" xml:space="preserve">
+    <value>システムのテスト署名モードが有効になっていません。PhysPanelDrv オプションは無効化されます。</value>
+  </data>
+  <data name="LogChoosingDriverMode" xml:space="preserve">
+    <value>ドライバーモード (PhysPanelDrv) を選択しました...</value>
+  </data>
+  <data name="LogRemovingOldTask" xml:space="preserve">
+    <value>既存のスケジュールタスクを検出しました。競合を避けるために削除します...</value>
+  </data>
+  <data name="LogChoosingSchedulerMode" xml:space="preserve">
+    <value>タスクスケジューラモード (PhysPanelCS) を選択しました...</value>
+  </data>
+  <data name="LogRemovingOldDriver" xml:space="preserve">
+    <value>既存のドライバーサービスを検出しました。競合を避けるために削除します...</value>
+  </data>
+  <data name="LogRemovingPhysPanelDrv" xml:space="preserve">
+    <value>PhysPanelDrv ドライバーを削除しています...</value>
+  </data>
+  <data name="LogLoggingErrorPrefix" xml:space="preserve">
+    <value>ログ記録エラー</value>
+  </data>
+  <data name="ErrorWritingLogFile" xml:space="preserve">
+    <value>ログファイルへの書き込みに失敗しました: {0}</value>
+  </data>
+  <data name="LogStatusCheckSummary" xml:space="preserve">
+    <value>状態チェック: コア有効={0} (ViVe機能={1}, レジストリ={2}), 画面上書き要={3}, 上書き存在={4} (CS={5}, Drv={6}), テスト署名={7}</value>
+  </data>
+  <data name="StatusDriverErrorNeedsDisable" xml:space="preserve">
+    <value>ドライバーモードエラー: 無効化して復元してください</value>
+  </data>
+  <data name="LogDriverInstallCancelled" xml:space="preserve">
+    <value>ドライバーのインストールがユーザーによってキャンセルされたか、失敗しました。操作は中止されました。</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailedDuringSwitch" xml:space="preserve">
+    <value>モードの切り替え中に既存のドライバーの削除に失敗しましたが、新しいモードの設定は続行されます。</value>
+  </data>
+  <data name="LogErrorDriverRemoveFailedGeneral" xml:space="preserve">
+    <value>ドライバーの削除に失敗しました。手動でのクリーンアップが必要になる場合があります。</value>
+  </data>
+  <data name="LogOperationFailedRollingBack" xml:space="preserve">
+    <value>操作に失敗しました。変更を元に戻しています...</value>
+  </data>
+  <data name="LogRollbackComplete" xml:space="preserve">
+    <value>ロールバックが完了しました。システムに変更はありませんでした。</value>
+  </data>
+  <data name="LogErrorDriverInstallCancelled" xml:space="preserve">
+    <value>ドライバーのインストールが失敗したか、ユーザーによってキャンセルされました。 (終了コード: {0})</value>
+  </data>
+  <data name="LogLargeScreenForceCS" xml:space="preserve">
+    <value>9.5インチを超える画面サイズが検出されました。互換性を確保するため、オーバーライドモードは「タスクスケジューラ (CS)」モードに制限されています。</value>
+  </data>
+  <data name="chkStartKeyboardOnLogon_Text" xml:space="preserve">
+    <value>ログオン時にゲームパッドキーボードを起動し、自動的にバックグラウンドに隠す</value>
+  </data>
+  <data name="LogCreatingKeyboardTask" xml:space="preserve">
+    <value>ログオン時にゲームパッドキーボードを起動するためのスケジュール済みタスクを作成しています...</value>
+  </data>
+  <data name="LogDeletingKeyboardTask" xml:space="preserve">
+    <value>ログオン時にゲームパッドキーボードを起動するためのスケジュール済みタスクを削除しています...</value>
+  </data>
+  <data name="ErrorKeyboardTask" xml:space="preserve">
+    <value>ゲームパッドキーボード起動タスクの変更に失敗しました。エラー: {0}</value>
+  </data>
+  <data name="LogTouchSupportStatus" xml:space="preserve">
+    <value>タッチサポートの検出状態: {0}</value>
+  </data>
+  <data name="LogRegionDetectedNonEu" xml:space="preserve">
+    <value>リージョン検出: {0} (非EU)</value>
+  </data>
+  <data name="LogRegionDetectedEu" xml:space="preserve">
+    <value>リージョン検出: {0} (EU)。EUバイパスを適用しました (画面サイズの上書き)。</value>
+  </data>
+  <data name="LogEuBypassApplying" xml:space="preserve">
+    <value>Native FSE 用に EU バイパスを適用しています (画面サイズの上書き)。</value>
+  </data>
+  <data name="TooltipTouchEnabled" xml:space="preserve">
+    <value>お使いのシステムはネイティブでタッチをサポートしています。Windowsはゲームパッドキーボードの表示を自動的に管理します。</value>
+  </data>
+  <data name="TooltipTouchDisabled" xml:space="preserve">
+    <value>お使いのシステムでタッチサポートは検出されませんでした。これを有効にすると、システム起動時にコントローラー優先の体験のためにゲームパッドキーボードを自動的に起動できます。</value>
+  </data>
+  <data name="LogPanelTaskCreated" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-SetPanelDimensions' が作成されました。</value>
+  </data>
+  <data name="LogPanelTaskDeleted" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-SetPanelDimensions' が削除されました。</value>
+  </data>
+  <data name="LogKeyboardTaskCreated" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-StartGamepadKeyboardOnLogon' が作成されました。</value>
+  </data>
+  <data name="LogKeyboardTaskDeleted" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-StartGamepadKeyboardOnLogon' が削除されました。</value>
+  </data>
+  <data name="ShutdownReasonEnable" xml:space="preserve">
+    <value>Xbox Full Screen Experience Tool は、構成を完了するためにコンピューターを再起動しています。</value>
+  </data>
+  <data name="ShutdownReasonUninstall" xml:space="preserve">
+    <value>Xbox Full Screen Experience Tool は、アンインストールを完了するために再起動が必要です。</value>
+  </data>
+  <data name="UpdateWindowsPrompt" xml:space="preserve">
+    <value>Windows Update を実行してシステムを最新バージョンに更新してから、もう一度お試しください。</value>
+  </data>
+  <data name="LogArchNotSupported" xml:space="preserve">
+    <value>現在の CPU アーキテクチャ (ARM64) はドライバー モードをサポートしていません。</value>
+  </data>
+  <data name="LogStatusCheckSummaryDetail" xml:space="preserve">
+    <value>状態チェック: コア={0}, ネイティブ={1}, レジストリ={2}, 画面上書き要={3}, CS={4}, Drv={5}, 画面サイズ={6:F2}", テスト署名={7}</value>
+  </data>
+  <data name="LogNativeSupportDetected" xml:space="preserve">
+    <value>Native Build を検出しました。ネイティブサポート設定を適用しています。(画面サイズ: {0:F2}", 上書き状態: {1})</value>
+  </data>
+  <data name="LogNonHandheldDetected" xml:space="preserve">
+    <value>非ハンドヘルド環境が検出されました: レジストリ保守タスクを作成しています...</value>
+  </data>
+  <data name="LogHandheldDetected" xml:space="preserve">
+    <value>ハンドヘルドデバイスが検出されました: 保守タスクは不要です。</value>
+  </data>
+  <data name="LogErrorArchivingLog" xml:space="preserve">
+    <value>古いログファイルをアーカイブできませんでした: {0}</value>
+  </data>
+  <data name="btnOpenSettings_Text" xml:space="preserve">
+    <value>Xbox Mode (FSE) 設定を開く</value>
+  </data>
+  <data name="btnCheckUpdates_Text" xml:space="preserve">
+    <value>MS Store で Xbox の更新を確認</value>
+  </data>
+  <data name="ErrorOpenSettings" xml:space="preserve">
+    <value>設定ページを開けませんでした: {0}</value>
+  </data>
+  <data name="MsgOpenSettingsManual" xml:space="preserve">
+    <value>Windows の設定を開けませんでした。手動で [スタート &gt; 設定 &gt; ゲーム &gt; Xbox mode] へ移動してください。</value>
+  </data>
+  <data name="ErrorOpenStore" xml:space="preserve">
+    <value>Microsoft Store を開けませんでした: {0}</value>
+  </data>
+  <data name="MsgOpenStoreManual" xml:space="preserve">
+    <value>Microsoft Store を開けませんでした。手動で Xbox 関連アプリの更新を確認してください。</value>
+  </data>
+  <data name="btnOpenUAC_Text" xml:space="preserve">
+    <value>UAC 設定を開く</value>
+  </data>
+  <data name="ErrorOpenUAC" xml:space="preserve">
+    <value>UAC 設定を開けませんでした: {0}</value>
+  </data>
+  <data name="MsgOpenUACError" xml:space="preserve">
+    <value>UAC 設定を開けませんでした。エラー: {0}</value>
+  </data>
+  <data name="btnOpenStartupApps_Text" xml:space="preserve">
+    <value>スタートアップ アプリ設定を開く</value>
+  </data>
+  <data name="ErrorOpenStartupApps" xml:space="preserve">
+    <value>スタートアップ アプリ設定を開けませんでした: {0}</value>
+  </data>
+  <data name="MsgOpenStartupAppsError" xml:space="preserve">
+    <value>スタートアップ アプリ設定を開けませんでした。エラー: {0}</value>
+  </data>
+  <data name="LogCertificateAlreadyInstalled" xml:space="preserve">
+    <value>証明書は既にインストールされています。インストールをスキップします。</value>
+  </data>
+  <data name="MsgUninstallTitle" xml:space="preserve">
+    <value>アンインストール</value>
+  </data>
+  <data name="MsgDeleteLogFiles" xml:space="preserve">
+    <value>アプリケーションによって作成されたログファイル（アーカイブを含む）も削除しますか？</value>
+  </data>
+  <data name="LogDeletingPanelTask" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-SetPanelDimensions' を削除しています...</value>
+  </data>
+  <data name="LogDeletingSimulateTouchTask" xml:space="preserve">
+    <value>タッチシミュレーションのスケジュールされたタスクを削除しています...</value>
+  </data>
+  <data name="LogSimulateTouchTaskDeleted" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-SimulateTouchService' が削除されました。</value>
+  </data>
+  <data name="LogCreatingSimulateTouchTask" xml:space="preserve">
+    <value>タッチシミュレーションのスケジュールされたタスクを作成しています...</value>
+  </data>
+  <data name="LogSimulateTouchTaskCreated" xml:space="preserve">
+    <value>スケジュールされたタスク 'XFSET-SimulateTouchService' が作成されました。</value>
+  </data>
+  <data name="ErrorSimulateTouchTask" xml:space="preserve">
+    <value>タッチシミュレーションタスクの変更に失敗しました。エラー: {0}</value>
+  </data>
+  <data name="chkSimulateTouch_Text" xml:space="preserve">
+    <value>システム起動時にタッチ機能をシミュレートし、ゲームパッドキーボードを有効にする (再起動が必要)</value>
+  </data>
+  <data name="PromptRestartWarning" xml:space="preserve">
+    <value>この操作が完了すると、コンピューターが自動的に再起動します。先に作業を保存してください。続行しますか？</value>
+  </data>
+  <data name="PromptEnableSimulateTouch" xml:space="preserve">
+    <value>物理的なタッチスクリーンが検出されませんでした。「タッチシミュレーション」サービスを有効にしますか？
+（これは、ログオン画面でのコントローラーによるPIN/パスワード入力、およびデスクトップでの仮想キーボードの呼び出しに必要です）</value>
+  </data>
+  <data name="LogUserCancelledEnable" xml:space="preserve">
+    <value>ユーザーが有効化操作をキャンセルしました。</value>
+  </data>
+  <data name="LogUserAgreedToSimulateTouch" xml:space="preserve">
+    <value>ユーザーがタッチシミュレーションサービスの有効化に同意しました。</value>
+  </data>
+  <data name="LogUserCancelledDisable" xml:space="preserve">
+    <value>ユーザーが無効化操作をキャンセルしました。</value>
+  </data>
+</root>

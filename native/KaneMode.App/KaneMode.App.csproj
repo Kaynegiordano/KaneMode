@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>KaneMode</AssemblyName>
+    <RootNamespace>KaneMode</RootNamespace>
+    <!-- Remplacée à la compilation par le contenu du fichier VERSION (native\build.ps1) -->
+    <Version>0.4.0</Version>
+    <Product>KaneMode</Product>
+    <Description>Interface console pour Windows</Description>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <ApplicationIcon>..\..\setup\kanemode.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\setup\kanemode.png" Link="kanemode.png" />
+  </ItemGroup>
+
+</Project>

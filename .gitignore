@@ -1,0 +1,22 @@
+# Données de l'utilisateur (bibliothèque, réglages, clé SteamGridDB éventuelle, caches)
+data/
+# Fichiers personnels
+extras/
+.claude/
+
+# Compilations
+native/out/
+setup/bin/
+setup/msi/
+**/bin/
+**/obj/
+*.user
+.vs/
+
+# Dépendance clonée par setup/build-xbox-enabler.ps1
+vendor/XboxFullScreenExperienceTool/Modules/ViVe/
+
+# Clés de signature : ne jamais publier
+*.pfx
+*.p12
+*.key

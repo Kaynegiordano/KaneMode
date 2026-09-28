@@ -1,0 +1,130 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.9.4</Version>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <IsExperimentalBuild>false</IsExperimentalBuild>
+  </PropertyGroup>
+
+  <!-- 若為實驗版，定義 EXPERIMENTAL 常數供程式碼使用 -->
+  <PropertyGroup Condition="'$(IsExperimentalBuild)'=='true'">
+    <DefineConstants>$(DefineConstants);EXPERIMENTAL</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modules\ViVe\ViVe\ViVe.csproj" />
+    <ProjectReference Include="..\PhysPanelLib\PhysPanelLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Resources\Strings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- 編譯前自動取得 Git Hash 並注入組件屬性中 -->
+  <Target Name="AddGitHashToAssembly" BeforeTargets="GetAssemblyAttributes">
+    <!-- 執行 git 指令取得短 Hash，若失敗不中斷編譯 -->
+	<Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitHash" />
+      <Output TaskParameter="ExitCode" PropertyName="GitExitCode" />
+    </Exec>
+    
+	<!-- 若取得失敗，設定預設值 N/A -->
+    <PropertyGroup>
+      <GitHash Condition="'$(GitExitCode)' != '0' Or '$(GitHash)' == ''">N/A</GitHash>
+    </PropertyGroup>
+    
+	<!-- 將 Hash 注入 AssemblyMetadataAttribute -->
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitHash</_Parameter1>
+        <_Parameter2>$(GitHash)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
+  <!-- 建置後目標，從 PhysPanelDrv 子模組複製必要的檔案 -->
+  <Target Name="CopyPhysPanelDrvFiles" AfterTargets="AfterBuild">
+    <PropertyGroup>
+      <!-- 定義來源路徑 -->
+      <PhysPanelDrvRoot>$(SolutionDir)Modules\PhysPanelDrv\PhysPanelDrv</PhysPanelDrvRoot>
+      <PhysPanelDrvBuildOutDir>$(PhysPanelDrvRoot)\bin\$(Platform)\$(Configuration)</PhysPanelDrvBuildOutDir>
+
+      <!-- 定義目標路徑 -->
+      <DestinationDir>$(TargetDir)PhysPanelDrv</DestinationDir>
+    </PropertyGroup>
+
+    <Message Text="正在將 PhysPanelDrv 檔案複製到 $(DestinationDir)..." Importance="high" />
+
+    <!-- 建立目標資料夾 -->
+    <MakeDir Directories="$(DestinationDir)" />
+
+    <!-- 定義要複製的檔案 -->
+    <ItemGroup>
+      <PhysPanelDrvFilesToCopy Include="$(PhysPanelDrvBuildOutDir)\PhysPanelDrv\PhysPanelDrv.sys" />
+      <PhysPanelDrvFilesToCopy Include="$(PhysPanelDrvBuildOutDir)\PhysPanelDrv\PhysPanelDrv.inf" />
+      <PhysPanelDrvFilesToCopy Include="$(PhysPanelDrvBuildOutDir)\PhysPanelDrv\physpaneldrv.cat" />
+      <PhysPanelDrvFilesToCopy Include="$(PhysPanelDrvBuildOutDir)\PhysPanelDrv.cer" />
+      <PhysPanelDrvFilesToCopy Include="C:\Program Files (x86)\Windows Kits\10\Tools\10.0.26100.0\$(Platform)\devcon.exe" />
+    </ItemGroup>
+
+    <!-- 執行複製，如果來源檔案不存在則忽略錯誤 -->
+    <Copy SourceFiles="@(PhysPanelDrvFilesToCopy)" DestinationFolder="$(DestinationDir)" SkipUnchangedFiles="true" ContinueOnError="WarnAndContinue" />
+  </Target>
+
+  <!-- 建置後目標，從 PhysPanelCPP 專案複製其產生的執行檔 -->
+  <Target Name="CopyPhysPanelCppExe" AfterTargets="AfterBuild">
+    <PropertyGroup>
+      <!-- 定義來源路徑 -->
+      <PhysPanelCppExePath>$(SolutionDir)PhysPanelCPP\bin\$(Platform)\$(Configuration)\PhysPanelCS.exe</PhysPanelCppExePath>
+
+      <!-- 定義目標路徑 (直接複製到主輸出目錄) -->
+      <DestinationDirForExe>$(TargetDir)</DestinationDirForExe>
+    </PropertyGroup>
+
+    <Message Text="正在將 PhysPanelCPP 執行檔複製到 $(DestinationDirForExe)..." Importance="high" />
+
+    <!-- 定義要複製的檔案 -->
+    <ItemGroup>
+      <PhysPanelExeToCopy Include="$(PhysPanelCppExePath)" />
+    </ItemGroup>
+
+    <!-- 
+      執行複製。
+      此處不使用 ContinueOnError="WarnAndContinue"，因為這個執行檔是必要元件，
+      如果它不存在，我們希望建置失敗以提示錯誤。
+    -->
+    <Copy SourceFiles="@(PhysPanelExeToCopy)" DestinationFolder="$(DestinationDirForExe)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

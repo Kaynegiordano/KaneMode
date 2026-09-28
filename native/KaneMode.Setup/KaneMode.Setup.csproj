@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Installateur de KaneMode (un seul .exe) : mode développeur, certificat, app (paquet MSIX),
+    mode Xbox complet. Les fichiers embarqués viennent de native\out (voir release.ps1) :
+      $(PayloadDir)\KaneMode.msix, KaneMode.cer, XboxModeEnabler.exe
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>KaneMode-Setup</AssemblyName>
+    <RootNamespace>KaneMode.Setup</RootNamespace>
+    <Version>0.4.0</Version>
+    <Product>KaneMode</Product>
+    <Description>Installateur de KaneMode</Description>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationIcon>..\..\setup\kanemode.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <PayloadDir Condition="'$(PayloadDir)' == ''">..\out\payload</PayloadDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="$(PayloadDir)\KaneMode.msix" LogicalName="KaneMode.msix" Condition="Exists('$(PayloadDir)\KaneMode.msix')" />
+    <EmbeddedResource Include="$(PayloadDir)\KaneMode.cer" LogicalName="KaneMode.cer" Condition="Exists('$(PayloadDir)\KaneMode.cer')" />
+    <EmbeddedResource Include="$(PayloadDir)\XboxModeEnabler.exe" LogicalName="XboxModeEnabler.exe" Condition="Exists('$(PayloadDir)\XboxModeEnabler.exe')" />
+  </ItemGroup>
+
+</Project>

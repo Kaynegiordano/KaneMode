@@ -1,0 +1,159 @@
+name: "❓ Report an Issue or Ask a Question"
+description: Report reproducible issues or ask questions *after* checking all docs.
+title: "[Issue]: "
+labels:
+  - question
+assignees: []
+body:
+  - type: checkboxes
+    id: required-checks
+    attributes:
+      label: "⚠️ Step 1: Required Checks"
+      description: "Please check all boxes."
+      options:
+        - label: >-
+            I have **read the entire** [**README**](https://github.com/8bit2qubit/XboxFullScreenExperienceTool?tab=readme-ov-file#readme), especially the following sections:
+
+            *   **"System Requirements"** (I confirm my build is one of the **COMPATIBLE** builds: `26100.7019+`, `26200.7015+`, `26220.6972+`, `28000.1450+`, or `28020.1362+`.)
+
+            *   **"Full Handheld vs. Limited PC Xbox Mode"** (I understand the difference between the editions and why this tool is required.)
+
+            *   **"Quick Start"** (I have followed the installation and initial setup steps.)
+          required: true
+        - label: |-
+            I understand this tool is an **Enabler / Utility Tool** designed to easily turn on the hidden feature. It is **NOT** the creator or implementer of the "Xbox Mode" (FSE) feature itself.
+
+            *   💡 **The Amusement Park Analogy:** Think of this tool as someone giving you a free VIP ticket to an amusement park. If the rollercoasters inside are broken, or if the park staff (Microsoft's CFR/A/B Testing) refuses to let you in despite having a ticket, you complain to the park management (Microsoft), not the person who gave you the ticket.
+
+            🤔 **Identify your issue type before proceeding:**
+
+            *   **❌ Microsoft's Issue:** Bugs, broken features, or any unintended behaviors **originating from the Xbox FSE itself** (including features remaining locked due to **Controlled Feature Rollout (CFR)** even after successful activation). Do not report these here. Report directly to Microsoft via [Windows Feedback Hub](https://apps.microsoft.com/detail/9NBLGGH4R32N) or [Xbox Insider Hub](https://apps.microsoft.com/detail/9PLDPG46G47Z).
+            *   **✅ This Tool's Issue:** Bugs in this tool's UI, **technical failures during the write/apply process**, or issues with `PhysPanelCS` / `PhysPanelDrv`.
+          required: true
+        - label: >-
+            I have already tried going to the **Microsoft Store** to update all apps (especially Xbox and Game Bar).
+          required: true
+        - label: >-
+            I have searched the [**existing Issues**](https://github.com/8bit2qubit/XboxFullScreenExperienceTool/issues) to ensure my problem is not already reported.
+          required: true
+  - type: markdown
+    attributes:
+      value: "---"
+  - type: markdown
+    attributes:
+      value: "### 📋 Step 2: Your Environment"
+  - type: dropdown
+    id: pc-type
+    attributes:
+      label: "1. What is your PC Type?"
+      options:
+        - Desktop
+        - Laptop
+        - Handheld
+    validations:
+      required: true
+  - type: input
+    id: pc-model
+    attributes:
+      label: "PC Model"
+      description: '(e.g., Dell XPS 15, ROG Ally X. For a custom-built PC, please specify the CPU and GPU, e.g., "Custom-built Desktop - Ryzen 7 7800X3D + RTX 4070".)'
+      placeholder: "Type here..."
+    validations:
+      required: true
+  - type: input
+    id: os-build
+    attributes:
+      label: "2. What is your full Windows OS Build number?"
+      description: "(Start > Settings > System > About)"
+      placeholder: "e.g., 26200.8328"
+    validations:
+      required: true
+  - type: dropdown
+    id: tool-version
+    attributes:
+      label: "3. Which Xbox Full Screen Experience Tool version are you using?"
+      description: "(You can see the version in the tool's title bar.)"
+      options:
+        - v0.9.4
+        - v0.9.3
+        - v0.9.2
+        - v0.9.0
+        - v0.0.18
+        - v0.0.17
+        - v0.0.16
+        - v0.0.15
+        - v0.0.14
+        - v0.0.13
+        - v0.0.12
+        - v0.0.11
+        - v0.0.10
+        - v0.0.9
+        - v0.0.8
+        - v0.0.7
+        - v0.0.6
+        - v0.0.5
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "---"
+  - type: markdown
+    attributes:
+      value: "### 📝 Step 3: Issue Details"
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: "4. Describe your issue or question:"
+      description: "(A clear and concise description of what the problem is.)"
+      placeholder: "Type here..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: "5. Steps to Reproduce (if applicable):"
+      description: "(If you are reporting a reproducible problem, list the steps.)"
+      placeholder: |
+        1. Boot the PC.
+        2. Observed the standard desktop loaded instead of FSE...
+        3. ...
+    validations:
+      required: false
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "6. Expected Behavior:"
+      description: "(What did you expect to happen?)"
+      placeholder: "Type here..."
+    validations:
+      required: true
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: "7. Actual Behavior:"
+      description: "(What actually happened?)"
+      placeholder: "Type here..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "8. Logs"
+      description: |-
+        Please attach **both** log files. They are located at:
+
+        *   `C:\Program Files\8bit2qubit\Xbox FullScreen Experience Tool\XboxFullScreenExperienceTool.log`
+        *   `C:\Program Files\8bit2qubit\Xbox FullScreen Experience Tool\XboxFullScreenExperienceTool.log.bak`
+
+        ⚠️ **Note:** Please rename `.log.bak` to `.log.txt` before uploading, as GitHub does not allow `.bak` files.
+      placeholder: "Drag and drop the log files here, or paste the relevant log content."
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "9. Screenshots / Videos / Error Messages"
+      description: "(Attach screenshots, videos, or error messages if applicable.)"
+      placeholder: "Type here..."
+    validations:
+      required: false
