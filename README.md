@@ -85,6 +85,7 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **KanePlay (streaming)** : une carte avec sa jaquette parmi les jeux récents ouvre l'application KanePlay complète, intégrée à KaneMode et à ses couleurs : PC trouvés automatiquement, appairage, bibliothèque de chaque PC, réglages et profils, pause (LB+RB+Select+Y) et reprise de session ; **B** revient à KaneMode. Moteur compilé depuis le sous-module `engine/KanePlay`.
 - **Veille façon SteamOS** : veille immédiate, fondu au noir, réveil avec logo et carillon, manettes vérifiées ; atténuation et veille automatiques (batterie / secteur) ; veille moderne (S0) gérée sur les consoles portables.
 - **Consoles portables** : ROG Ally / Ally X / Xbox Ally, Legion Go / Go S / Go 2, MSI Claw, Steam Deck, ZOTAC Zone, AYANEO, OneXPlayer, GPD, AOKZOE reconnues ; interface agrandie au premier lancement, logiciel constructeur, pilotes graphiques, mises à jour de pilotes via Windows Update (installation avec accord administrateur).
+- **Modes de performance** Économie / Équilibré / Performance : chacun règle d'un coup le mode d'alimentation de Windows, la limite et le turbo du processeur et le profil du constructeur (ROG Ally, Legion Go).
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
 - **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, bureau Windows.
@@ -114,11 +115,13 @@ L'API n'accepte que des requêtes locales portant l'en-tête `X-KaneMode`. Veill
 | Se déplacer | Croix / stick gauche | Flèches |
 | Valider | A / ✕ | Entrée |
 | Retour | B / ○ | Échap |
-| Menu principal | Start / Options | M |
-| Accès rapide | View / Share | Q |
+| Menu principal | Select (View / Create) | M |
+| Accès rapide | Start (Menu / Options) | Q |
 | Rechercher | Y / △ | Y |
 | Favori · action secondaire | X / □ | X |
 | Onglets | LB / RB | Pg↑ / Pg↓ |
+
+Select et Start s'inversent dans **Paramètres → Manette**.
 
 ## Licence et crédits
 

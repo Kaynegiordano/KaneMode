@@ -29,7 +29,7 @@ export const store = {
 export const settings = Object.assign({
   wifi: true, bluetooth: false, night: false, sounds: true, brightness: 70, volume: 45, fps: '0', overlay: 'off',
   accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, cardSize: 'm', corners: 'soft', solidPanels: false, font: 'segoe', clock24: true, clockSeconds: false, batteryPct: true, homeRows: ['recent', 'emulation', 'apps', 'stores'], qamOrder: null, qamHidden: [], tdp: 0, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
-  uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', notifications: true, homeApps: true, homeStores: true,
+  uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', notifications: true, homeApps: true, homeStores: true,
 }, store.get('settings', {}));
 export const favs = new Set(store.get('favs', []));
 
@@ -53,9 +53,12 @@ export function applyTheme() {
   document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
   document.body.classList.toggle('high-contrast', !!settings.highContrast);
   document.body.style.zoom = settings.uiScale && settings.uiScale !== 100 ? settings.uiScale / 100 : '';
+  // Les hauteurs en vh ne doivent pas grandir avec le zoom de l'interface (voir --vh dans app.css)
+  document.documentElement.style.setProperty('--zoom', String((settings.uiScale || 100) / 100));
+  document.body.classList.toggle('hints-compact', settings.hintsBar === 'compact');
   // Personnalisation : taille des jaquettes, arrondis, transparence, police
-  const cap = { s: 'clamp(180px, 30vh, 340px)', m: '', l: 'clamp(250px, 44vh, 520px)' }[settings.cardSize] || '';
-  document.documentElement.style.setProperty('--capsule-h', cap || 'clamp(210px, 36vh, 420px)');
+  const cap = { s: 'clamp(180px, calc(30 * var(--vh)), 340px)', m: '', l: 'clamp(250px, calc(44 * var(--vh)), 520px)' }[settings.cardSize] || '';
+  document.documentElement.style.setProperty('--capsule-h', cap || 'clamp(210px, calc(36 * var(--vh)), 420px)');
   document.documentElement.style.setProperty('--radius', { square: '2px', soft: '6px', round: '14px' }[settings.corners] || '6px');
   document.body.classList.toggle('solid', !!settings.solidPanels);
   document.body.classList.toggle('font-system', settings.font === 'system');

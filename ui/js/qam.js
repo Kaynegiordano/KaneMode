@@ -32,6 +32,40 @@ async function send(cmd, value, extra = {}) {
   catch (e) { toast(e.message, { error: true }); throw e; }
 }
 
+// ---------------------------------------------------------------- modes de performance
+export const PERF_MODES = [['eco', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']];
+/** Ce que règle chaque mode (même définition que perfPreset côté hôte). */
+export function modeSummary(mode, st = sys) {
+  const v = st && st.vendor && st.vendor.modes ? st.vendor.modes : null;
+  const pick = (...n) => (v ? n.find(x => v.includes(x)) : null);
+  const parts = {
+    eco: ['Windows en économie d’énergie', 'processeur limité à 70 %', 'turbo coupé', pick('silent', 'quiet') && 'profil Silencieux'],
+    balanced: ['Windows équilibré', 'processeur à 100 %', 'turbo activé', pick('performance', 'balanced') && `profil ${VENDOR_LABELS[pick('performance', 'balanced')]}`],
+    performance: ['Windows en performances maximales', 'processeur à 100 %', 'turbo activé', pick('turbo', 'performance') && `profil ${VENDOR_LABELS[pick('turbo', 'performance')]}`],
+  }[mode];
+  return parts ? parts.filter(Boolean).join(' · ') : '';
+}
+/** Un réglage de performance changé à la main : le mode passe à « Personnalisé ». */
+function markCustom() {
+  if (!sys) return;
+  sys.mode = 'custom';
+  const seg = $('#qam .perf-mode');
+  if (seg) seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  const note = $('#qam .perf-note');
+  if (note) note.textContent = 'Personnalisé : réglages ajustés à la main ci-dessous';
+}
+const sendPerf = (cmd, value, extra) => send(cmd, value, extra).then(r => { markCustom(); return r; });
+async function applyMode(mode) {
+  const name = PERF_MODES.find(m => m[0] === mode)[1];
+  try {
+    const r = await api.post('/api/power/mode', { mode });
+    if (r.state) sys = r.state;
+    if (r.errors && r.errors.length) toast(`Mode ${name} : ${r.errors[0]}`, { error: true });
+    else toast(`Mode ${name} appliqué`);
+  } catch (e) { toast(e.message, { error: true }); }
+  renderQam('mode:' + mode, false);
+}
+
 // ---------------------------------------------------------------- petits contrôles
 function segment(options, current, onPick, key) {
   const s = el('div', 'segmented');
@@ -116,12 +150,22 @@ const BUILD = {
   perf() {
     const kids = [];
     if (!sys) return section('Performance', el('div', 'qam-note', 'Lecture des réglages du système…'));
+    // Mode de performance : règle tout d'un coup (Windows, processeur, profil de la console)
+    const modeSeg = segment(PERF_MODES, sys.mode, applyMode, 'mode');
+    modeSeg.classList.add('perf-mode', 'big');
+    kids.push(label('Mode de performance'), modeSeg,
+      el('div', 'qam-note perf-note', sys.mode === 'custom' ? 'Personnalisé : réglages ajustés à la main ci-dessous'
+        : sys.mode ? esc(modeSummary(sys.mode)) : 'Choisissez un mode : il règle Windows, le processeur et le profil de la console'));
+    const details = el('div', 'toggles');
+    details.append(toggle('i-gear', 'Réglages détaillés', settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
+    kids.push(details);
+    if (settings.qamPerfDetails === false) return section('Performance', ...kids);
     if (sys.powerMode) {
-      kids.push(label('Mode d’alimentation de Windows'), segment(POWER, sys.powerMode, v => send('powermode', v), 'powermode'));
+      kids.push(label('Mode d’alimentation de Windows'), segment(POWER, sys.powerMode, v => sendPerf('powermode', v), 'powermode'));
     }
     const vendor = sys.vendor;
     if (vendor && vendor.modes) {
-      kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => send('vendor', v), 'vendor'));
+      kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v), 'vendor'));
     } else if (vendor && vendor.error) {
       kids.push(el('div', 'qam-note', `Profil de la console indisponible : ${esc(vendor.error)}`));
     }
@@ -131,7 +175,7 @@ const BUILD = {
       const cur = Object.assign({ spl: Math.round((t.min + t.max) / 2) }, settings.tdpLimits || {});
       cur.sppt = cur.sppt || cur.spl;
       cur.fppt = cur.fppt || cur.sppt;
-      const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); send('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).catch(() => {}); };
+      const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); sendPerf('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).catch(() => {}); };
       kids.push(label(`Puissance (TDP, expérimental)`));
       if (!settings.tdpAdvanced) {
         kids.push(slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { cur.spl = cur.sppt = cur.fppt = v; sendTdp(); } }));
@@ -146,11 +190,12 @@ const BUILD = {
     // Processeur : pour tous les PC, par Windows (sans pilote ni droits administrateur)
     if (sys.cpu) {
       kids.push(label('Limite du processeur'),
-        slider('i-cpu', sys.cpu.maxAc, { min: 30, max: 100, step: 5, unit: ' %', key: 'cpumax', onChange: v => send('cpumax', v).catch(() => {}) }));
+        slider('i-cpu', sys.cpu.maxAc, { min: 30, max: 100, step: 5, unit: ' %', key: 'cpumax', onChange: v => sendPerf('cpumax', v).catch(() => {}) }));
       const tg = el('div', 'toggles');
-      tg.append(toggle('i-cpu', 'Turbo du processeur', sys.cpu.boostAc !== 0, on => send('boost', on), 'boost'));
+      tg.append(toggle('i-cpu', 'Turbo du processeur', sys.cpu.boostAc !== 0, on => sendPerf('boost', on), 'boost'));
       kids.push(tg);
-    }    if (sys.refresh && sys.refresh.available.length > 1) {
+    }
+    if (sys.refresh && sys.refresh.available.length > 1) {
       const rates = sys.refresh.available.filter(hz => hz >= 30).slice(-5);
       kids.push(label('Fréquence de l’écran'), segment(rates.map(hz => [hz, hz + ' Hz']), sys.refresh.current, v => send('refresh', +v), 'refresh'));
     }
@@ -181,7 +226,7 @@ const BUILD = {
     const btn = (iconId, text, act, key) => row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), act, key));
     btn('i-moon', 'Veille', () => sleepNow(), 'sc-sleep');
     btn('i-power', 'Alimentation', () => actions['power-open'](), 'sc-power');
-    btn('i-wifi', 'KanePlay', () => openStreaming(), 'sc-kaneplay');
+    btn('i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay');
     btn('i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop');
     return section('Raccourcis', row);
   },
@@ -203,14 +248,20 @@ const BUILD = {
   },
 };
 
+/** Lecture de l'état du système en avance : l'accès rapide s'ouvre directement complet, sans saut. */
+export const prefetchQam = () => api.get('/api/sys').then(v => { sys = v; }).catch(() => {});
+
 /** Dessine l'accès rapide ; les réglages du système arrivent juste après (sans bloquer l'ouverture). */
-export async function renderQam(focusKey) {
+export async function renderQam(focusKey, reload = true) {
   const body = $('#qam-body');
   const draw = key => {
+    const top = $('#qam').scrollTop;
     body.replaceChildren(...qamOrder().map(id => BUILD[id]()));
+    $('#qam').scrollTop = top;
     if (key) focusIn($('#qam'), key, { scroll: false });
   };
   draw(focusKey);
+  if (!reload) return;
   try {
     sys = await api.get('/api/sys');
     const f = $('#qam .focused');

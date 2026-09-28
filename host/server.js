@@ -275,7 +275,32 @@ function publicEntry(g, st, cfg) {
 
 // ---------------------------------------------------------------- réglages système, profils d'énergie
 const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.info()).handheld));
+const PERF_MODES = ['eco', 'balanced', 'performance'];
+/**
+ * Modes de performance KaneMode : chacun règle ensemble le mode d'alimentation de Windows, la limite
+ * et le turbo du processeur et, sur une console reconnue, le profil du constructeur (qui fixe aussi
+ * sa puissance et ses ventilateurs, comme Armoury Crate ou Legion Space).
+ */
+function perfPreset(mode, st) {
+  const v = st && st.vendor;
+  const pick = (...names) => (v && v.modes ? names.find(n => v.modes.includes(n)) : undefined);
+  if (mode === 'eco') return { powerMode: 'efficiency', cpuMax: 70, boost: false, vendor: pick('silent', 'quiet') };
+  if (mode === 'balanced') return { powerMode: 'balanced', cpuMax: 100, boost: true, vendor: pick('performance', 'balanced') };
+  if (mode === 'performance') return { powerMode: 'performance', cpuMax: 100, boost: true, vendor: pick('turbo', 'performance') };
+  return {};
+}
+/** Profil complet : le mode choisi, puis les réglages précisés un par un (qui l'emportent). */
+async function expandProfile(profile) {
+  const { mode, ...rest } = profile || {};
+  if (!PERF_MODES.includes(mode)) return rest;
+  const st = await sysctl.state().catch(() => null);
+  const base = perfPreset(mode, st);
+  for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
+  return { ...base, ...rest };
+}
+const setPerfMode = mode => { const c = config(); if (c.perfMode !== mode) { c.perfMode = mode; writeJson(FILES.config, c); } };
 const PROFILE_FIELDS = {
+  mode: v => PERF_MODES.includes(v),
   powerMode: v => ['efficiency', 'balanced', 'performance'].includes(v),
   vendor: v => /^[a-z]{3,12}$/.test(v),
   tdp: v => (Number.isInteger(v) && v >= 5 && v <= 40) || (v && typeof v === 'object' && ['spl', 'sppt', 'fppt'].every(k => Number.isInteger(v[k]) && v[k] >= 5 && v[k] <= 40)),
@@ -869,13 +894,28 @@ const routes = {
   'POST /api/update/page': async (req, res) => json(res, 200, await run({ kind: 'uri', target: update.PAGE })),
   // --- Réglages système (accès rapide) et profils d'énergie (voir lib/syscontrol.js)
   'GET /api/sys': async (req, res, q) => {
-    try { json(res, 200, await sysctl.state(q.get('refresh') === '1')); }
+    try { json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null }); }
     catch (e) { json(res, 500, { error: e.message }); }
   },
   'POST /api/sys': async (req, res) => {
     const b = await readBody(req);
-    try { json(res, 200, await sysctl.call(String(b.cmd || ''), { value: b.value, kind: b.kind })); }
-    catch (e) { json(res, 400, { error: e.message }); }
+    const cmd = String(b.cmd || '');
+    try {
+      const r = await sysctl.call(cmd, { value: b.value, kind: b.kind });
+      // Un réglage de performance changé à la main : le mode devient « personnalisé »
+      if (['powermode', 'vendor', 'tdp', 'cpumax', 'boost'].includes(cmd)) setPerfMode('custom');
+      json(res, 200, r);
+    } catch (e) { json(res, 400, { error: e.message }); }
+  },
+  // Mode de performance (Économie, Équilibré, Performance) : tout est appliqué d'un coup
+  'POST /api/power/mode': async (req, res) => {
+    const b = await readBody(req);
+    if (!PERF_MODES.includes(b.mode)) return json(res, 400, { error: 'Mode inconnu' });
+    const profile = await expandProfile({ mode: b.mode });
+    const r = await sysctl.apply(profile);
+    if (!r.errors.length || r.done.length) setPerfMode(b.mode);
+    const st = await sysctl.state(true).catch(() => null);
+    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null } });
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
   'POST /api/power/profiles': async (req, res) => {
@@ -899,7 +939,10 @@ const routes = {
     const p = powerProfiles();
     const src = b.source === 'battery' ? 'battery' : 'ac';
     if (!p.auto && !b.force) return json(res, 200, { skipped: true });
-    json(res, 200, await sysctl.apply(p[src]));
+    const prof = p[src] || {};
+    const r = await sysctl.apply(await expandProfile(prof));
+    if (prof.mode) setPerfMode(Object.keys(prof).length === 1 ? prof.mode : 'custom');
+    json(res, 200, r);
   },
   // --- Streaming : l'application KanePlay intégrée (voir lib/kaneplay.js)
   'GET /api/stream': async (req, res, q) => {

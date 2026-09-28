@@ -14,7 +14,10 @@
   --gutter: clamp(20px, 4vw, 72px);
   --top: 56px;
   --bottom: 52px;
-  --capsule-h: clamp(210px, 36vh, 420px);
+  --zoom: 1;
+  /* 1vh « réel » : le zoom de l'interface (Paramètres → Accessibilité) ne doit pas agrandir les hauteurs d'écran */
+  --vh: calc(1vh / var(--zoom));
+  --capsule-h: clamp(210px, calc(36 * var(--vh)), 420px);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   color-scheme: dark;
 }
@@ -155,8 +158,8 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 .gen .gen-name { position: relative; font-weight: 700; font-size: 15px; line-height: 1.25; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); max-width: 100%; }
 .wide .gen, .tile .gen { flex-direction: row; justify-content: flex-start; gap: 16px; padding: 16px 20px; text-align: left; }
 .wide .gen .gen-icon, .tile .gen .gen-icon { width: auto; height: 62%; }
-.game-hero .gen { justify-content: center; padding-bottom: 12vh; }
-.game-hero .gen .gen-icon { width: 20vh; max-width: none; }
+.game-hero .gen { justify-content: center; padding-bottom: calc(12 * var(--vh)); }
+.game-hero .gen .gen-icon { width: calc(20 * var(--vh)); max-width: none; }
 
 .badges { position: absolute; top: 8px; right: 8px; z-index: 4; display: flex; gap: 6px; }
 .badge-fav { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); color: #ffd84a; font-size: 14px; }
@@ -224,9 +227,9 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 
 /* ---------- Fiche jeu ---------- */
 #page-game { padding-top: 0; }
-.game-hero { position: relative; height: 58vh; min-height: 280px; background: #000 center / cover no-repeat; overflow: hidden; }
+.game-hero { position: relative; height: max(220px, min(calc(58 * var(--vh)), calc(100 * var(--vh) - var(--top) - var(--bottom) - 210px))); background: #000 center / cover no-repeat; overflow: hidden; }
 .game-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 14, 19, 0.4) 0%, transparent 25%, transparent 55%, var(--bg) 100%); }
-.game-logo { position: absolute; left: var(--gutter); bottom: 26px; z-index: 1; max-width: min(40vw, 620px); max-height: 20vh; filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.7)); animation: rise 500ms var(--ease) both; }
+.game-logo { position: absolute; left: var(--gutter); bottom: 26px; z-index: 1; max-width: min(40vw, 620px); max-height: calc(20 * var(--vh)); filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.7)); animation: rise 500ms var(--ease) both; }
 h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; line-height: 1.05; max-height: none; max-width: 70vw; }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
 
@@ -427,7 +430,8 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
   position: fixed; top: 0; bottom: 0; z-index: 31; width: min(380px, 86vw);
   background: linear-gradient(180deg, #151a22, #0e1117); box-shadow: 0 0 60px rgba(0, 0, 0, 0.7);
   display: flex; flex-direction: column; transition: transform 280ms var(--ease);
-  overflow-y: auto; scrollbar-width: none; padding-bottom: var(--bottom);
+  overflow-y: auto; scrollbar-width: none; padding-bottom: calc(var(--bottom) + 12px);
+  scroll-padding: 70px 0 calc(var(--bottom) + 16px);
 }
 .panel::-webkit-scrollbar { display: none; }
 #menu { left: 0; transform: translateX(-105%); border-right: 1px solid var(--line); }
@@ -477,10 +481,11 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 .notif { padding: 10px 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); margin-bottom: 6px; font-size: 13px; color: #cdd3db; }
 .notif small { display: block; color: var(--muted); margin-top: 2px; }
 
-#dialog { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); opacity: 0; pointer-events: none; transition: opacity 180ms; }
+#dialog { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: var(--top) 0 var(--bottom); background: rgba(0, 0, 0, 0.6); opacity: 0; pointer-events: none; transition: opacity 180ms; }
 #dialog.open { opacity: 1; pointer-events: auto; }
 .dialog-box {
   width: min(560px, 90vw); padding: 28px; border-radius: 12px; background: #171c24; border: 1px solid var(--line);
+  max-height: calc(100 * var(--vh) - var(--top) - var(--bottom) - 24px); overflow-y: auto; scrollbar-width: none; scroll-padding: 16px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7); transform: scale(0.95); transition: transform 220ms var(--ease);
 }
 #dialog.open .dialog-box { transform: none; }
@@ -500,7 +505,7 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 #launch .launch-bg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: blur(24px) brightness(0.4); transform: scale(1.1); animation: slowzoom 8s linear both; }
 @keyframes slowzoom { to { transform: scale(1.18); } }
 .launch-inner { position: relative; text-align: center; display: grid; justify-items: center; gap: 28px; }
-.launch-inner img { max-width: min(50vw, 640px); max-height: 26vh; filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.8)); }
+.launch-inner img { max-width: min(50vw, 640px); max-height: calc(26 * var(--vh)); filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.8)); }
 .launch-inner h2 { margin: 0; font-size: 44px; }
 .launch-status { color: #cfd5dd; font-size: 16px; letter-spacing: 0.05em; }
 .progress { width: 260px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
@@ -627,10 +632,14 @@ body.night::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer
 
 .tab svg { width: 16px; height: 16px; fill: currentColor; }
 .settings-wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; padding-right: var(--gutter); align-items: start; }
-.settings-nav { position: sticky; top: calc(var(--top) + 10px); padding-left: calc(var(--gutter) - 12px); }
-.settings-wrap .settings { padding: 0; max-width: 980px; }
+/* Catégories et réglages défilent chacun de leur côté, toujours au-dessus de la barre des boutons */
+#page-settings { display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(var(--bottom) + 6px); }
+#page-settings .settings-wrap { flex: 1; min-height: 0; align-items: stretch; grid-template-rows: minmax(0, 1fr); }
+.settings-nav { min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-padding: 8px 0 16px; padding: 0 0 16px calc(var(--gutter) - 12px); }
+.settings-nav::-webkit-scrollbar, .settings-wrap .settings::-webkit-scrollbar { display: none; }
+.settings-wrap .settings { padding: 0 6px 28px 0; max-width: 980px; min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-padding: 60px 0 28px; }
 .settings-wrap .settings h2:first-child { margin-top: 6px; }
-@media (max-width: 800px) { .settings-wrap { grid-template-columns: 1fr; } .settings-nav { position: static; display: flex; flex-wrap: wrap; } .settings-wrap .settings { padding: 0 var(--gutter); } }
+@media (max-width: 800px) { #page-settings { display: block; overflow-y: auto; padding-bottom: calc(var(--bottom) + 40px); } .settings-wrap .settings { overflow: visible; } .settings-wrap { grid-template-columns: 1fr; } .settings-nav { overflow: visible; display: flex; flex-wrap: wrap; } .settings-wrap .settings { padding: 0 var(--gutter); } }
 .bye { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 12px; background: var(--bg); text-align: center; animation: fadein 400ms ease both; }
 .bye .brand-mark { width: 72px; height: 72px; }
 .bye h1 { margin: 8px 0 0; font-size: 34px; }
@@ -715,7 +724,7 @@ body.solid .panel, body.solid #topbar, body.solid .layer .dialog-box { backdrop-
 .order-row .chip-btn { min-width: 44px; justify-content: center; }
 .order-row.off .txt { opacity: 0.5; }
 /* ---------- Menu d'alimentation (au centre, grandes tuiles) ---------- */
-#power { position: fixed; inset: 0; z-index: 85; display: grid; place-items: center; padding: 24px; background: rgba(4, 6, 10, 0.72); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity 180ms; }
+#power { position: fixed; inset: 0; z-index: 86; display: grid; place-items: center; padding: 24px 24px calc(var(--bottom) + 12px); overflow-y: auto; background: rgba(4, 6, 10, 0.72); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity 180ms; }
 #power.open { opacity: 1; pointer-events: auto; }
 .power-box { width: min(760px, 100%); display: grid; gap: 22px; justify-items: center; transform: scale(0.96); transition: transform 220ms var(--ease); }
 #power.open .power-box { transform: none; }
@@ -732,3 +741,15 @@ body.solid .panel, body.solid #topbar, body.solid .layer .dialog-box { backdrop-
 .power-cancel { padding: 12px 40px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); font-size: 17px; cursor: pointer; }
 .power-cancel.focused { background: #fff; color: #111; }
 @media (max-width: 720px) { .power-grid { grid-template-columns: repeat(2, 1fr); } .power-tile { min-height: 140px; } }
+
+/* ---------- Barre des boutons compacte (Paramètres → Apparence) ---------- */
+body.hints-compact { --bottom: 38px; }
+body.hints-compact #hints { font-size: 12px; gap: 16px; background: linear-gradient(0deg, rgba(6, 8, 11, 0.9), rgba(6, 8, 11, 0.55)); }
+body.hints-compact #hints .left { gap: 16px; }
+body.hints-compact #hints .label-long { display: none; }
+body.hints-compact .glyph { min-width: 20px; height: 20px; font-size: 11px; }
+
+/* ---------- Mode de performance (accès rapide) ---------- */
+.segmented.big button { padding: 13px 10px; font-size: 15px; }
+.perf-mode button.active { background: var(--accent); color: #fff; }
+.perf-mode button.active.focused { background: #fff; color: #111; box-shadow: inset 0 -3px 0 var(--accent); }

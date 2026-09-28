@@ -1,18 +1,18 @@
 // Paramètres, organisés comme SteamOS : catégories à gauche, réglages à droite.
 import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy, fmt, native } from '../core.js';
-import { definePage, nav, padLive, focusIn, go } from '../nav.js';
+import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog } from '../widgets.js';
 import { pickFile } from './add.js';
 import { exitToDesktop, openGame, openStreaming } from './game.js';
 import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
-import { QAM_SECTIONS } from '../qam.js';
+import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
 import { HOME_ROWS } from './home.js';
 
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
-const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'L3', 'R3', '↑', '↓', '←', '→', 'Guide'];
+const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', '↑', '↓', '←', '→', 'Guide'];
 const SECTIONS = [
-  ['library', 'i-library', 'Bibliothèque'], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', 'Émulation'], ['stream', 'i-wifi', 'KanePlay'],
+  ['library', 'i-library', 'Bibliothèque'], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', 'Émulation'], ['stream', 'i-gamepad', 'KanePlay'],
   ['look', 'i-palette', 'Apparence'], ['boot', 'i-media', 'Démarrage'], ['pad', 'i-gamepad', 'Manette'],
   ['qam', 'i-grid', 'Accès rapide'], ['access', 'i-info', 'Accessibilité'], ['power', 'i-moon', 'Veille'], ['energy', 'i-power', 'Énergie'],
   ['device', 'i-battery', 'Console portable'],
@@ -287,7 +287,7 @@ const BUILDERS = {
   },
 
   async stream(s) {
-    h2(s, 'i-wifi', 'KanePlay · streaming');
+    h2(s, 'i-gamepad', 'KanePlay · streaming');
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, '<span class="dot-ko"></span>Moteur de streaming absent', 'L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1');
@@ -297,7 +297,7 @@ const BUILDERS = {
     for (const h of d.hosts) {
       infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? 'Appairé' : 'Non appairé'} · ${h.apps} application${h.apps > 1 ? 's' : ''}`);
     }
-    actionRow(s, 'i-wifi', 'Ouvrir KanePlay', 'PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils', openStreaming, 'open-stream');
+    actionRow(s, 'i-gamepad', 'Ouvrir KanePlay', 'PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils', openStreaming, 'open-stream');
     s.append(el('div', 'notice', 'Les jeux de vos PC se choisissent dans KanePlay, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil de KanePlay, <b>B</b> revient à KaneMode.'));
   },
   async look(s) {
@@ -319,6 +319,9 @@ const BUILDERS = {
     toggle(s, 'solidPanels', 'Panneaux opaques', 'Sans transparence ni flou : plus lisible, un peu plus léger pour la carte graphique');
     toggle(s, 'badges', 'Toujours afficher la boutique', 'Pastille de la boutique sur chaque jaquette de la bibliothèque');
 
+    h2(s, 'i-gamepad', 'Barre des boutons');
+    pick('Barre du bas', 'Indications des boutons · compacte : plus de place pour l’interface', 'hintsBar', [['full', 'Complète'], ['compact', 'Compacte']]);
+
     h2(s, 'i-clock', 'Barre du haut');
     pick('Horloge', '', 'clock24', [['true', '24 h'], ['false', '12 h']]);
     toggle(s, 'clockSeconds', 'Afficher les secondes', '');
@@ -333,7 +336,7 @@ const BUILDERS = {
 
   async qam(s) {
     h2(s, 'i-grid', 'Accès rapide');
-    s.append(el('div', 'notice', 'Le panneau <b>Accès rapide</b> (bouton Vue / Partage, touche Q) règle vraiment Windows : volume, luminosité, Wi-Fi, Bluetooth, mode d’alimentation, profil de la console, fréquence de l’écran. Choisissez ses sections et leur ordre.'));
+    s.append(el('div', 'notice', `Le panneau <b>Accès rapide</b> (bouton ${settings.padSwap ? 'Select' : 'Start'} de la manette, touche Q) règle vraiment Windows : mode de performance, volume, luminosité, Wi-Fi, Bluetooth, fréquence de l’écran, profil et puissance de la console. Choisissez ses sections et leur ordre.`));
     orderList(s, QAM_SECTIONS, 'qamOrder', 'qamHidden', 'qam');
   },
 
@@ -357,6 +360,7 @@ const BUILDERS = {
       const field = (label, desc, key, options) => infoRow(s, label, desc, segmented(
         [{ value: '', label: 'Inchangé' }, ...options.map(([value, lab]) => ({ value, label: lab }))],
         prof[key] ?? '', v => save({ [src]: { [key]: v === '' ? null : (typeof options[0][0] === 'number' ? +v : v) } }), `${src}-${key}`));
+      field('Mode de performance', 'Règle d’un coup Windows, le processeur et le profil de la console · les réglages suivants le précisent', 'mode', PERF_MODES);
       if (sys && sys.powerMode) field('Mode d’alimentation de Windows', 'Consommation et réactivité du processeur', 'powerMode', [['efficiency', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']]);
       if (vendor) field(`Profil ${hh ? esc(hh.maker) : 'de la console'}`, 'Puissance et ventilateurs réglés par le constructeur', 'vendor', vendor.modes.map(m => [m, VL[m] || m]));
       if (sys && sys.vendor && sys.vendor.tdp) field('Puissance (TDP, expérimental)', `${sys.vendor.tdp.min} à ${sys.vendor.tdp.max} W, les trois limites égales`, 'tdp', [8, 10, 15, 20, 25, 30].filter(w => w >= sys.vendor.tdp.min && w <= sys.vendor.tdp.max).map(w => [w, w + ' W']));
@@ -436,6 +440,9 @@ const BUILDERS = {
   async pad(s) {
     h2(s, 'i-gamepad', 'Manette');
     infoRow(s, 'Symboles des boutons', 'Automatique : selon la manette utilisée', segmented([{ value: 'auto', label: 'Automatique' }, { value: 'xbox', label: 'Xbox' }, { value: 'ps', label: 'PlayStation' }], settings.padGlyphs, v => { settings.padGlyphs = v; saveSettings(); }, 'glyphs'));
+    infoRow(s, 'Boutons Select et Start', 'Menu principal et accès rapide', segmented(
+      [{ value: 'false', label: 'Select : menu · Start : accès rapide' }, { value: 'true', label: 'Start : menu · Select : accès rapide' }],
+      String(!!settings.padSwap), v => { settings.padSwap = v === 'true'; saveSettings(); renderHints(); }, 'padSwap'));
     page.padName = infoRow(s, 'Aucune manette détectée', 'Appuyez sur un bouton de la manette pour la réveiller');
     const tester = el('div', 'set-row');
     tester.style.gridTemplateColumns = '1fr';
@@ -558,28 +565,73 @@ const BUILDERS = {
 page = definePage('settings', {
   libBound: true,
   title: () => 'Paramètres',
-  render(p = {}) {
+  render(p = {}, { refresh = false } = {}) {
+    // Rafraîchissement : on garde l'élément sélectionné ; nouvelle visite : celui demandé
+    const keep = refresh && focused && this.el.contains(focused) ? focused.dataset.key : null;
     const section = p.section || SECTION_OF[p.focus] || this.section || 'library';
-    this.show(section, p.focus);
+    this.show(keep ? this.section || section : section, keep || p.focus);
   },
+  /** Affiche une catégorie. Sans `focus`, le focus ne bouge pas (survol de la barre latérale). */
   async show(section, focus) {
+    const root = this.el;
+    // La barre latérale est construite une fois : seul le contenu change
+    if (!this.wrap || !root.contains(this.wrap)) {
+      this.wrap = el('div', 'settings-wrap');
+      this.side = el('div', 'settings-nav');
+      this.side.dataset.zone = 'side';
+      for (const [id, iconId, label] of SECTIONS) {
+        const it = el('div', 'menu-item', `${icon(iconId)}${label}`);
+        this.side.append(nav(it, () => this.enter(id), 'sec:' + id));
+      }
+      const content = el('div', 'settings');
+      this.wrap.append(this.side, content);
+      root.replaceChildren(el('div', 'page-head', '<h1>Paramètres</h1>'), this.wrap);
+    }
+    const changed = section !== this.section;
     this.section = section;
     cancelAnimationFrame(this.raf);
-    const root = this.el;
-    const wrap = el('div', 'settings-wrap');
-    const side = el('div', 'settings-nav');
-    for (const [id, iconId, label] of SECTIONS) {
-      const it = el('div', 'menu-item' + (id === section ? ' current' : ''), `${icon(iconId)}${label}`);
-      side.append(nav(it, () => this.show(id, 'sec:' + id), 'sec:' + id));
+    for (const m of this.side.children) {
+      const cur = m.dataset.key === 'sec:' + section;
+      m.classList.toggle('current', cur);
+      if (cur) m.dataset.autofocus = ''; else delete m.dataset.autofocus;
     }
+    if (focus && focus.startsWith('sec:')) focusIn(root, focus, { scroll: false });
+    // Construit hors de l'écran puis remplace d'un coup : pas de page vide ni de saut
     const s = el('div', 'settings');
-    wrap.append(side, s);
-    root.replaceChildren(el('div', 'page-head', '<h1>Paramètres</h1>'), wrap);
-    focusIn(root, focus && focus.startsWith('sec:') ? focus : 'sec:' + section, { scroll: false });
+    s.dataset.zone = 'content';
+    const token = (this.token = {});
     try { await BUILDERS[section](s); }
     catch (e) { s.append(el('div', 'notice', `Impossible de charger cette section : ${esc(e.message)}`)); }
+    if (token !== this.token) return; // une autre catégorie a été demandée entre-temps
+    const old = this.wrap.lastElementChild;
+    const hadFocus = focused && old.contains(focused);
+    const top = old.scrollTop;
+    old.replaceWith(s);
+    // Même catégorie (rafraîchissement) : on reste au même endroit
+    if (!changed) s.scrollTop = top;
     if (focus && !focus.startsWith('sec:')) focusIn(root, focus);
+    else if (hadFocus) focusIn(s);
     if (section === 'pad') this.live();
+  },
+  /** A (ou droite) sur une catégorie : on entre dans ses réglages. */
+  async enter(id) {
+    clearTimeout(this.hover);
+    if (id !== this.section || !this.wrap.lastElementChild.children.length) await this.show(id);
+    focusIn(this.wrap.lastElementChild);
+  },
+  onFocus(t) {
+    // Comme sur SteamOS : parcourir les catégories affiche leur contenu
+    clearTimeout(this.hover);
+    const id = t.dataset.key && t.dataset.key.startsWith('sec:') && t.dataset.key.slice(4);
+    if (id && id !== this.section) this.hover = setTimeout(() => this.show(id), 160);
+  },
+  back() {
+    // B dans les réglages : retour à la liste des catégories
+    if (focused && this.wrap && this.wrap.lastElementChild.contains(focused)) {
+      const cur = this.side.querySelector('.current');
+      if (cur) { setFocus(cur); return true; }
+    }
+    return false;
   },
   live() {
     const tick = () => {
@@ -596,6 +648,6 @@ page = definePage('settings', {
     };
     this.raf = requestAnimationFrame(tick);
   },
-  leave() { cancelAnimationFrame(this.raf); },
+  leave() { cancelAnimationFrame(this.raf); clearTimeout(this.hover); },
   hints: () => [['a', 'Modifier'], ['b', 'Retour']],
 });

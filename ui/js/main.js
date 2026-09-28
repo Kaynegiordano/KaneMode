@@ -5,7 +5,7 @@ import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
-import { renderQam } from './qam.js';
+import { renderQam, prefetchQam } from './qam.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
 import './pages/home.js';
 import './pages/library.js';
@@ -171,6 +171,7 @@ setInterval(async () => {
   // Après le logo animé, pas de second logo : l'accueil apparaît directement.
   const wait = settings.splash && settings.bootMode === 'none' ? Math.max(0, 1100 - (performance.now() - started)) : 0;
   setTimeout(() => { $('#splash').classList.add('hide'); focusIn(currentPage().el); }, wait);
+  prefetchQam();
   // Nouvelle version de KaneMode ? (au plus une vérification par jour)
   api.get('/api/update').then(async u => {
     if (!u.auto) return;

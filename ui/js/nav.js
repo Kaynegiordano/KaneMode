@@ -44,9 +44,9 @@ export function refresh() {
   if (!p) return;
   const key = focused && p.el.contains(focused) ? keyOf(focused) : null;
   const top = p.el.scrollTop;
-  p.render(p.params);
+  p.render(p.params, { refresh: true });
   p.el.scrollTop = top;
-  if (!state.layers.length) focusIn(p.el, key, { scroll: false });
+  if (!state.layers.length) focusIn(p.el, key, { scroll: !!key && !p.el.querySelector(`[data-key="${CSS.escape(key)}"]`) });
   renderHints();
 }
 
@@ -113,25 +113,38 @@ export function setFocus(target, { scroll = true, sound = true } = {}) {
     target.classList.add('focused');
     if (sound) sfx('move');
   }
+  // Mémoire de position : chaque rangée et chaque zone retient son dernier élément
+  const row = target.closest('.row'), zone = target.closest('[data-zone]');
+  if (row) row._navLast = target;
+  if (zone) zone._navLast = target;
   if (scroll) target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
   const owner = topLayer() || currentPage();
   if (owner && owner.onFocus) owner.onFocus(target);
 }
 
+// Dernier élément visité d'un groupe (rangée, zone), s'il est toujours affiché
+const lastOf = (group, items) => (group && group._navLast && group._navLast.isConnected && items.includes(group._navLast) ? group._navLast : null);
+
 export function move(dir) {
-  const items = navItems();
+  let items = navItems();
   if (!items.length) return;
   if (!focused || !items.includes(focused)) return setFocus(items[0]);
   if (focused._dir && focused._dir(dir) === true) return; // ex. curseurs
+  const vertical = dir === 'up' || dir === 'down';
+  // Zones (ex. catégories et réglages des Paramètres) : haut et bas restent dans la zone,
+  // gauche et droite passent d'une zone à l'autre.
+  const zone = focused.closest('[data-zone]');
+  if (vertical && zone) items = items.filter(e => zone.contains(e));
   const r = focused.getBoundingClientRect();
   const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
   const cands = [];
   for (const e of items) {
     if (e === focused) continue;
     const c = e.getBoundingClientRect();
+    if (!c.width && !c.height) continue;
     const ex = c.left + c.width / 2, ey = c.top + c.height / 2;
     let gap, off;
-    if (dir === 'left' || dir === 'right') {
+    if (!vertical) {
       if (dir === 'right' ? ex <= cx + 1 : ex >= cx - 1) continue;
       if (c.bottom <= r.top + 4 || c.top >= r.bottom - 4) continue; // même rangée
       gap = dir === 'right' ? c.left - r.right : r.left - c.right;
@@ -139,13 +152,49 @@ export function move(dir) {
     } else {
       if (dir === 'down' ? ey <= cy + 1 : ey >= cy - 1) continue;
       gap = dir === 'down' ? c.top - r.bottom : r.top - c.bottom;
-      off = Math.abs(ex - cx);
+      // Un élément dans la même colonne passe avant un élément décalé
+      const overlap = Math.min(c.right, r.right) - Math.max(c.left, r.left);
+      off = overlap > 0 ? 0 : Math.abs(ex - cx);
     }
-    cands.push({ e, gap, off });
+    cands.push({ e, gap: Math.max(gap, 0), off });
   }
-  if (!cands.length) return;
+  // Rien sur la même ligne : gauche et droite rejoignent quand même la zone voisine
+  if (!cands.length && !vertical && zone) {
+    const others = items.filter(e => {
+      const z = e.closest('[data-zone]');
+      if (!z || z === zone) return false;
+      const c = e.getBoundingClientRect();
+      return dir === 'right' ? c.left >= r.right - 1 : c.right <= r.left + 1;
+    });
+    if (!others.length) return;
+    const near = others.slice().sort((a, b) => Math.abs(a.getBoundingClientRect().top - r.top) - Math.abs(b.getBoundingClientRect().top - r.top))[0];
+    return setFocus(lastOf(near.closest('[data-zone]'), others) || near);
+  }
+  // Plus rien dans cette direction : on fait défiler pour montrer ce qui reste (notifications de
+  // l'accès rapide, fin d'une page…), sinon ces informations resteraient sous la barre des boutons
+  if (!cands.length) { if (vertical) nudgeScroll(focused, dir); return; }
   const min = Math.min(...cands.map(c => c.gap));
-  setFocus(cands.filter(c => c.gap <= min + 30).sort((a, b) => a.off - b.off)[0].e);
+  let next = cands.filter(c => c.gap <= min + 30).sort((a, b) => a.off - b.off || a.gap - b.gap)[0].e;
+  // Retour dans une rangée ou une zone déjà visitée : on retrouve l'élément quitté
+  if (vertical) {
+    const row = next.closest('.row');
+    if (row && row !== focused.closest('.row')) next = lastOf(row, items) || next;
+  } else {
+    const z = next.closest('[data-zone]');
+    if (z && z !== zone) next = lastOf(z, items) || next;
+  }
+  setFocus(next);
+}
+
+function nudgeScroll(from, dir) {
+  for (let e = from.parentElement; e && e !== document.body; e = e.parentElement) {
+    const oy = getComputedStyle(e).overflowY;
+    if ((oy !== 'auto' && oy !== 'scroll') || e.scrollHeight <= e.clientHeight + 2) continue;
+    const room = dir === 'down' ? e.scrollHeight - e.clientHeight - e.scrollTop : e.scrollTop;
+    if (room < 2) continue;
+    e.scrollBy({ top: (dir === 'down' ? 1 : -1) * Math.min(room, e.clientHeight * 0.6), behavior: reduceMotion ? 'auto' : 'smooth' });
+    return;
+  }
 }
 
 /** Rend un élément navigable ; `act` est appelé à la validation. */
@@ -202,7 +251,8 @@ const G = {
 export function glyph(k) {
   const style = settings.padGlyphs === 'auto' ? state.padStyle : settings.padGlyphs;
   const set = state.input === 'pad' ? G[style] : G.kbd;
-  if (state.input === 'pad' && (k === 'menu' || k === 'view')) return `<span class="glyph"><svg><use href="#i-${k === 'menu' ? 'menu' : 'more'}"/></svg></span>`;
+  // Menu principal et accès rapide : symbole du bouton Select (deux fenêtres) ou Start (trois traits)
+  if (state.input === 'pad' && (k === 'menu' || k === 'view')) return `<span class="glyph"><svg><use href="#i-${padButton(k) === 'select' ? 'view' : 'menu'}"/></svg></span>`;
   const [cls, label] = (set[k] || '|' + k).split('|');
   return `<span class="glyph ${cls}">${label}</span>`;
 }
@@ -253,7 +303,12 @@ document.addEventListener('paste', e => {
 });
 
 // ---------- Manette (API Gamepad, disposition standard) ----------
-const PAD = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 6: 'lt', 7: 'rt', 8: 'view', 9: 'menu', 10: 'l3', 11: 'r3', 12: 'up', 13: 'down', 14: 'left', 15: 'right', 16: 'menu' };
+// Select (View / Create) ouvre le menu principal, Start (Menu / Options) l'accès rapide ;
+// Paramètres → Manette permet d'inverser.
+const PAD = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 6: 'lt', 7: 'rt', 8: 'select', 9: 'start', 10: 'l3', 11: 'r3', 12: 'up', 13: 'down', 14: 'left', 15: 'right', 16: 'menu' };
+const padAction = k => (k === 'select' ? (settings.padSwap ? 'view' : 'menu') : k === 'start' ? (settings.padSwap ? 'menu' : 'view') : k);
+/** Bouton physique d'une action globale (pour les indications) */
+const padButton = k => (k === 'menu' ? (settings.padSwap ? 'start' : 'select') : k === 'view' ? (settings.padSwap ? 'select' : 'start') : k);
 export const padLive = { id: '', buttons: [], axes: [0, 0, 0, 0], connected: 0 };
 const held = {};
 const armed = {};
@@ -291,7 +346,7 @@ function poll() {
     if (!held[k]) {
       held[k] = now + 380; // délai avant répétition
       setInput('pad', source && isSony(source.id) ? 'ps' : 'xbox');
-      press(k);
+      press(padAction(k));
     } else if (DIRS.includes(k) && now >= held[k]) {
       held[k] = now + 90;
       press(k);
@@ -304,6 +359,8 @@ requestAnimationFrame(poll);
 
 // ---------- Souris ----------
 document.addEventListener('mousemove', e => {
+  // Le défilement ou un léger contact de la souris ne doit pas voler le focus à la manette
+  if (Math.abs(e.movementX) + Math.abs(e.movementY) < 3 || Date.now() - input.last < 600) return;
   if (document.body.classList.contains('pad-mode')) setInput('kbd');
   const t = e.target.closest('[data-nav]');
   if (t && scope().contains(t) && t !== focused) setFocus(t, { scroll: false, sound: false });

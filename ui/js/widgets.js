@@ -82,11 +82,11 @@ export function openKeyboard({ title, value = '', placeholder = '', submitLabel 
     layer = openLayer({
       el: host, name: 'osk', noGlobal: true, focusKey: 'k1-0',
       onClose: r => resolve(r === undefined ? null : r),
-      hints: () => [['x', 'Effacer'], ['y', 'Espace'], ['menu', 'Valider'], ['a', 'Saisir'], ['b', 'Annuler']],
+      hints: () => [['x', 'Effacer'], ['y', 'Espace'], ['view', 'Valider'], ['a', 'Saisir'], ['b', 'Annuler']],
       button: k => {
         if (k === 'x') { set(v.slice(0, -1)); sfx('key'); return true; }
         if (k === 'y') { set(v + ' '); sfx('key'); return true; }
-        if (k === 'menu') { done(); return true; }
+        if (k === 'view') { done(); return true; }
         return false;
       },
       typing: typingHandler(() => v, set, done),
