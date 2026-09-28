@@ -30,7 +30,9 @@ $ErrorActionPreference = 'Stop'
 $native = $PSScriptRoot
 $root = Split-Path -Parent $native
 $out = Join-Path $native 'out'
-$layout = Join-Path $out 'layout'
+# Paquet publié et version de développement dans deux dossiers : une publication ne doit pas
+# changer les fichiers d'une version installée avec -Register (elle s'exécute depuis son dossier)
+$layout = Join-Path $out $(if ($Release) { 'layout-release' } else { 'layout' })
 
 function Step($t) { Write-Host "== $t" -ForegroundColor Cyan }
 
