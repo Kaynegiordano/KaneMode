@@ -40,12 +40,55 @@ export function toggleFav(g) {
   toast(on ? `★ ${g.name} ajouté aux favoris` : `${g.name} retiré des favoris`);
 }
 
+// ---------- Fond du lancement : une image du jeu tirée au hasard sur SteamGridDB ----------
+const wallpapers = new Map();
+/** Tire le fond à l'avance (ouverture de la fiche) pour qu'il soit prêt au lancement. */
+export function prepareWallpaper(g) {
+  if (g.demo || wallpapers.has(g.id)) return wallpapers.get(g.id);
+  const p = api.get(`/api/launch/wallpaper?id=${encodeURIComponent(g.id)}`)
+    .then(r => r.url && new Promise(ok => { const i = new Image(); i.onload = () => ok(r.url); i.onerror = () => ok(null); i.src = r.url; }))
+    .catch(() => null);
+  wallpapers.set(g.id, p);
+  return p;
+}
+
+// Lancement en cours : l'écran reste affiché jusqu'à l'apparition du jeu, un second appui ne relance rien
+let launching = null;
+native.on(m => {
+  if (!launching || m.id !== launching.g.id) return;
+  if (m.type === 'game-started') {
+    $('#launch-status').textContent = 'Bon jeu !';
+    const L = launching.layer;
+    launching = null;
+    setTimeout(() => { if (topLayer() === L) closeLayer(L); }, 700);
+  } else if (m.type === 'launch-timeout') {
+    const L = launching.layer;
+    launching = null;
+    if (topLayer() === L) closeLayer(L);
+  }
+});
+// Jeu fermé (vu par l'app native, qui revient ici) : il peut être relancé tout de suite
+native.on(m => {
+  if (m.type !== 'game-ended') return;
+  api.post('/api/launch/ended', { id: m.id }).catch(() => {});
+  lib.load({ background: true }).catch(() => {});
+});
+
 export async function launch(g) {
   if (g.demo) return toast('Entrée de démonstration : il n’y a rien à lancer', { error: true });
+  if (launching) return;
+  // Jeu installé : l'écran de lancement cache Steam et reste là jusqu'à ce que le jeu s'affiche
+  const cover = native.available && g.installed && !g.streamHost && g.type !== 'app';
   const L = $('#launch');
-  $('.launch-bg', L).style.backgroundImage = heroUrl(g) ? `url("${heroUrl(g)}")` : '';
   const bgEl = $('.launch-bg', L);
+  bgEl.style.backgroundImage = heroUrl(g) ? `url("${heroUrl(g)}")` : '';
   bgEl.style.animation = 'none'; void bgEl.offsetWidth; bgEl.style.animation = '';
+  const wanted = g.id;
+  Promise.resolve(g.installed && !g.streamHost ? prepareWallpaper(g) : null).then(url => {
+    if (url && L.classList.contains('open') && L.dataset.game === wanted) bgEl.style.backgroundImage = `url("${url}")`;
+  });
+  wallpapers.delete(g.id); // un autre fond la prochaine fois
+  L.dataset.game = g.id;
   const title = $('#launch-title');
   title.innerHTML = `<h2>${esc(g.name)}</h2>`;
   if (g.art.logo) {
@@ -57,16 +100,38 @@ export async function launch(g) {
   status.textContent = g.streamHost ? `Connexion à ${g.streamHost}…`
     : !g.installed ? `Ouverture de Steam pour installer ${g.name}…`
     : g.emulator ? `Lancement de ${g.name} avec ${g.emulator}…` : `Lancement de ${g.name}…`;
-  const layer = openLayer({ el: L, name: 'launch', noGlobal: true, hints: () => [['b', 'Fermer']] });
+  const layer = openLayer({
+    el: L, name: 'launch', noGlobal: true, hints: () => [['b', 'Fermer']],
+    onClose() {
+      delete L.dataset.game;
+      // Fermé à la main (B) : KaneMode ne reste plus au-dessus, mais suit toujours le jeu
+      if (launching && launching.layer === layer) { launching = null; native.send('launch-cancel'); }
+    },
+  });
+  launching = { g, layer };
+  let waitForGame = false;
   try {
     native.send('foreground'); // le jeu lancé pourra passer au premier plan
     const r = await api.post('/api/launch', { id: g.id });
-    status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
+    if (r.already || r.running) {
+      status.textContent = `${g.name} est déjà lancé`;
+      native.send('game-front');
+    } else if (r.ok && cover) {
+      native.send('launch', { id: g.id, steamAppId: g.steamAppId || 0, cover: true });
+      waitForGame = true;
+    } else {
+      status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
+    }
     if (r.ok) lib.load({ background: true });
   } catch (e) {
     status.textContent = `Impossible de lancer : ${e.message}`;
   }
-  setTimeout(() => { if (topLayer() === layer) closeLayer(layer); }, 2800);
+  if (waitForGame) return; // l'app native dira quand le jeu est là (ou au bout de 25 s)
+  // Navigateur, installation, streaming : pas de suivi, l'écran se ferme tout seul
+  setTimeout(() => {
+    if (launching && launching.layer === layer) launching = null;
+    if (topLayer() === layer) closeLayer(layer);
+  }, 2800);
 }
 
 /** Ferme KaneMode et revient au bureau Windows (l'hôte s'arrête, la fenêtre se ferme). */
@@ -200,6 +265,7 @@ definePage('game', {
     if (!g) { root.innerHTML = '<div class="empty" style="padding-top:120px">Cet élément n’existe plus.</div>'; return; }
     const src = sourceOf(g.source);
     const m = g.meta || {};
+    if (g.installed && !g.streamHost) prepareWallpaper(g);
 
     const hero = el('div', 'game-hero');
     hero.append(art(g, [g.art.hero, g.art.header], { showName: false }));

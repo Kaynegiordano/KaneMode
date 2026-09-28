@@ -305,7 +305,7 @@ function buttonsBlock(s) {
   row('btnACHold', 'Armoury Crate, appui long', 'Maintenu une seconde');
   toggle(s, 'blockAsusPrompt', 'Bloquer l’invite Armoury Crate SE', 'Referme la fenêtre qui propose d’installer Armoury Crate quand on appuie sur ces boutons');
   s.append(el('div', 'notice', native.available
-    ? 'Ces boutons fonctionnent partout, même en jeu, tant que KaneMode est ouvert. <b>Accès rapide</b> et <b>Menu</b> s’ouvrent par-dessus le jeu, et le refermer y ramène. <b>KaneMode</b> revient à l’accueil.'
+    ? 'Ces boutons fonctionnent partout, même en jeu, tant que KaneMode est ouvert. <b>Vue des tâches</b> montre les fenêtres ouvertes, comme un appui long sur la touche Xbox. <b>Accès rapide</b> et <b>Menu</b> s’ouvrent par-dessus le jeu, et le refermer y ramène. <b>KaneMode</b> revient à l’accueil.'
     : 'Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).'));
 }
 

@@ -31,8 +31,14 @@ export const settings = Object.assign({
   accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, cardSize: 'm', corners: 'soft', solidPanels: false, font: 'segoe', clock24: true, clockSeconds: false, batteryPct: true, homeRows: ['recent', 'emulation', 'apps', 'stores'], qamOrder: null, qamHidden: [], tdp: 0, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
   // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Console portable
-  btnCC: 'qam', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
+  btnCC: 'taskview', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
 }, store.get('settings', {}));
+// 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
+if (!settings.btnCCTaskView) {
+  if (settings.btnCC === 'qam') settings.btnCC = 'taskview';
+  settings.btnCCTaskView = true;
+  store.set('settings', settings);
+}
 export const favs = new Set(store.get('favs', []));
 
 export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); }

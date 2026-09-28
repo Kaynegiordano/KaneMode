@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const steam = require('./lib/steam');
 const sgdb = require('./lib/sgdb');
 const emu = require('./lib/emulation');
@@ -450,6 +450,19 @@ function addMinutes(id, minutes) {
   version++;
 }
 
+// Jeu Steam en cours (0 si aucun) : Steam le note dans le registre de l'utilisateur
+function steamRunningApp() {
+  return new Promise(resolve => {
+    execFile('reg.exe', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'RunningAppID'], { windowsHide: true, timeout: 3000 }, (err, out) => {
+      const m = !err && /RunningAppID\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(out);
+      resolve(m ? parseInt(m[1], 16) : 0);
+    });
+  });
+}
+// Dernier lancement de chaque entrée : un second appui (ou un événement en double) ne relance pas le jeu
+const recentLaunch = new Map();
+const LAUNCH_GUARD = 30e3;
+
 function run(launch, { dry, onExit } = {}) {
   if (!launch || !launch.target) return Promise.resolve({ ok: false, error: 'Aucune cible de lancement' });
   let cmd, args, cwd;
@@ -817,10 +830,39 @@ const routes = {
     if (!e) return json(res, 404, { ok: false, error: 'Entrée inconnue' });
     if (e.demo) return json(res, 200, { ok: false, demo: true, error: 'Entrée de démonstration' });
     if (e.source === 'rom' && !e.launch) return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
+    if (!b.dry && e.installed !== false && !id.startsWith('launcher:')) {
+      const last = recentLaunch.get(id);
+      if (last && Date.now() - last < LAUNCH_GUARD) {
+        console.log(`Lancement ignoré, déjà demandé il y a ${Math.round((Date.now() - last) / 1000)} s : ${e.name}`);
+        return json(res, 200, { ok: true, already: true });
+      }
+      if (e.steamAppId && await steamRunningApp() === +e.steamAppId) {
+        console.log(`Lancement ignoré, le jeu tourne déjà : ${e.name}`);
+        return json(res, 200, { ok: true, running: true });
+      }
+    }
+    console.log(`Lancement : ${e.name} (${id})`);
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
     const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
-    if (r.ok && !b.dry && e.installed !== false) recordPlay(id);
+    if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
     json(res, 200, r);
+  },
+  // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
+  'POST /api/launch/ended': async (req, res) => {
+    const b = await readBody(req);
+    recentLaunch.delete(String(b.id || ''));
+    json(res, 200, { ok: true });
+  },
+  // Fond d'écran du lancement : une image « hero » du jeu tirée au hasard sur SteamGridDB
+  'GET /api/launch/wallpaper': async (req, res, q) => {
+    const e = findEntry(q.get('id') || '');
+    if (!e) return json(res, 404, { url: null });
+    try {
+      const cfg = config();
+      const game = await sgdbGameFor(e, cfg.sgdbKey);
+      const list = game ? (await sgdb.assets(cfg.sgdbKey, game.id, 'hero')).slice(0, 24) : [];
+      json(res, 200, { url: list.length ? list[Math.floor(Math.random() * list.length)].url : null });
+    } catch { json(res, 200, { url: null }); } // hors ligne : le fond local suffit
   },
   'POST /api/open': async (req, res) => {
     const b = await readBody(req);

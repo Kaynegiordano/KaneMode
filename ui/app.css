@@ -512,9 +512,11 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 
 #launch { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #000; opacity: 0; pointer-events: none; transition: opacity 300ms ease; }
 #launch.open { opacity: 1; pointer-events: auto; }
-#launch .launch-bg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: blur(24px) brightness(0.4); transform: scale(1.1); animation: slowzoom 8s linear both; }
+/* Fond du jeu tiré au hasard sur SteamGridDB, net ; un voile sombre au centre garde le logo lisible */
+#launch .launch-bg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: brightness(0.6); transform: scale(1.05); transition: background-image 500ms ease; animation: slowzoom 30s linear both; }
+#launch::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.15) 70%); }
 @keyframes slowzoom { to { transform: scale(1.18); } }
-.launch-inner { position: relative; text-align: center; display: grid; justify-items: center; gap: 28px; }
+.launch-inner { position: relative; z-index: 1; text-align: center; display: grid; justify-items: center; gap: 28px; }
 .launch-inner img { max-width: min(50vw, 640px); max-height: calc(26 * var(--vh)); filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.8)); }
 .launch-inner h2 { margin: 0; font-size: 44px; }
 .launch-status { color: #cfd5dd; font-size: 16px; letter-spacing: 0.05em; }

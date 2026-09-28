@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     private IntPtr _returnTo;
     // Boutons dédiés de la ROG Ally et ce qu'ils font (réglés dans Paramètres > Console portable)
     private readonly AllyButtons _buttons = new();
-    private Dictionary<string, string> _buttonActions = new() { ["cc"] = "qam", ["ac"] = "gamebar", ["ac-hold"] = "home" };
+    private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
     private bool _ready;
     private bool _failed;
@@ -245,6 +245,7 @@ public partial class MainWindow : Window
             case "home":
                 _returnTo = IntPtr.Zero;
                 StopForegroundWatch();
+                DropLaunchCover();
                 if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
                 Show();
                 Native.ForceForeground(Hwnd);
@@ -315,6 +316,19 @@ public partial class MainWindow : Window
                     string? title = root.TryGetProperty("window", out var w) ? w.GetString() : null;
                     Native.GiveForeground(title);
                     if (!string.IsNullOrEmpty(title)) WatchForeground(title);
+                    break;
+                case "launch":
+                    // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture
+                    string game = root.TryGetProperty("id", out var gi) ? gi.GetString() ?? "" : "";
+                    int appId = root.TryGetProperty("steamAppId", out var sa) && sa.ValueKind == JsonValueKind.Number && sa.TryGetInt32(out int n) ? n : 0;
+                    StartGameWatch(game, appId, root.TryGetProperty("cover", out var cv) && cv.ValueKind == JsonValueKind.True);
+                    break;
+                case "launch-cancel":
+                    DropLaunchCover();
+                    break;
+                case "game-front":
+                    // Jeu déjà lancé : on le remet devant
+                    if (_game != null && _game.Window != IntPtr.Zero) Native.ForceForeground(_game.Window);
                     break;
                 case "buttons":
                     // Actions des boutons de la console, envoyées par l'interface au démarrage et à chaque changement

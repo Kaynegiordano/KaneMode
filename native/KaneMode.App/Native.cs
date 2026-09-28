@@ -103,6 +103,51 @@ public static class Native
         return list;
     }
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int index);
+
+    /// <summary>
+    /// Fenêtre d'application qu'on voit vraiment : visible, pas masquée par le compositeur (applis
+    /// UWP suspendues), pas une palette d'outils.
+    /// </summary>
+    public static bool IsAppWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindow(hwnd) || !IsWindowVisible(hwnd)) return false;
+        if (DwmGetWindowAttribute(hwnd, 14 /* DWMWA_CLOAKED */, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return false;
+        return ((long)GetWindowLongPtr(hwnd, -20 /* GWL_EXSTYLE */) & 0x80 /* WS_EX_TOOLWINDOW */) == 0;
+    }
+
+    public static (int Width, int Height) WindowSize(IntPtr hwnd) =>
+        GetWindowRect(hwnd, out var r) ? (r.Right - r.Left, r.Bottom - r.Top) : (0, 0);
+
+    /// <summary>Surface de l'écran principal, en pixels.</summary>
+    public static long ScreenArea => (long)GetSystemMetrics(0 /* SM_CXSCREEN */) * GetSystemMetrics(1 /* SM_CYSCREEN */);
+
+    public static string ProcessName(uint pid)
+    {
+        try { using var p = Process.GetProcessById((int)pid); return p.ProcessName; }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException) { return ""; }
+    }
+
+    public static bool ProcessRunning(uint pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById((int)pid);
+            try { return !p.HasExited; }
+            catch (System.ComponentModel.Win32Exception) { return true; } // processus protégé (anti-triche) : il existe
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException) { return false; }
+    }
+
     /// <summary>
     /// Fenêtre visible portant exactement ce titre. FindWindow peut renvoyer la fenêtre masquée
     /// d'un programme en train de se fermer (KanePlay qui vient de rendre la main).
