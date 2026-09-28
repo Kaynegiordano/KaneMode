@@ -17,14 +17,12 @@
 .PARAMETER NoKanePlay
     Paquet sans le moteur de streaming. Sinon, le moteur (KanePlay, sous-module engine\KanePlay)
     est embarqué depuis engine\out, compilé au besoin par engine\build-engine.ps1.
-.PARAMETER NoWidget
-    Paquet sans le widget Game Bar (native\KaneMode.Widget, compilé en C++/WinRT).
 .PARAMETER Release
     Paquet à publier : n'y note pas le chemin de ce dépôt (import des données du prototype).
 .PARAMETER Version
     Version du paquet (x.y.z.0) ; par défaut, celle du fichier VERSION.
 #>
-param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$NoWidget, [switch]$Release, [string]$Version)
+param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$Release, [string]$Version)
 
 $ErrorActionPreference = 'Stop'
 $native = $PSScriptRoot
@@ -80,16 +78,6 @@ if (-not $NoKanePlay) {
     if (-not (Test-Path (Join-Path $engineOut 'KanePlay.exe'))) { & (Join-Path $root 'engine\build-engine.ps1') }
     Step 'Copie du moteur de streaming (engine\out)'
     Copy-Item $engineOut (Join-Path $layout 'kaneplay') -Recurse
-}
-
-# Widget Game Bar (application UWP en C++/WinRT, voir native\KaneMode.Widget) : à la racine du paquet,
-# où Windows cherche aussi les métadonnées (.winmd) du composant Game Bar
-if (-not $NoWidget) {
-    Step 'Widget Game Bar (native\KaneMode.Widget)'
-    & (Join-Path $native 'KaneMode.Widget\build-widget.ps1')
-    Copy-Item (Join-Path $native 'KaneMode.Widget\obj\widget\*') $layout -Force
-    New-Item -ItemType Directory -Force (Join-Path $layout 'GameBar') | Out-Null
-    Set-Content (Join-Path $layout 'GameBar\LISEZMOI.txt') 'Dossier public du widget Game Bar de KaneMode.' -Encoding UTF8
 }
 
 # ---------------------------------------------------------------- 3. Icônes du paquet

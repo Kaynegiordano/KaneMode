@@ -56,6 +56,132 @@ public static class Native
         SetForegroundWindow(hwnd);
     }
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int max);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr param);
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc proc, IntPtr param);
+
+    public static string WindowTitle(IntPtr hwnd)
+    {
+        var sb = new System.Text.StringBuilder(256);
+        GetWindowText(hwnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static uint WindowProcessId(IntPtr hwnd)
+    {
+        GetWindowThreadProcessId(hwnd, out uint pid);
+        return pid;
+    }
+
+    /// <summary>Fenêtres principales visibles (sans propriétaire), de haut en bas.</summary>
+    public static List<IntPtr> VisibleWindows()
+    {
+        var list = new List<IntPtr>();
+        EnumWindows((h, _) =>
+        {
+            if (IsWindowVisible(h) && GetWindow(h, 4 /* GW_OWNER */) == IntPtr.Zero) list.Add(h);
+            return true;
+        }, IntPtr.Zero);
+        return list;
+    }
+
+    /// <summary>
+    /// Fenêtre visible portant exactement ce titre. FindWindow peut renvoyer la fenêtre masquée
+    /// d'un programme en train de se fermer (KanePlay qui vient de rendre la main).
+    /// </summary>
+    public static IntPtr FindVisibleWindow(string title) =>
+        VisibleWindows().FirstOrDefault(h => WindowTitle(h) == title);
+
+    /// <summary>
+    /// Met une fenêtre au premier plan, même quand Windows le refuse à un programme en arrière-plan
+    /// (bouton de la console pressé pendant un jeu) : on se rattache un instant à la file d'entrée
+    /// de la fenêtre qui a le premier plan, ce qui lève le verrou.
+    /// </summary>
+    public static bool ForceForeground(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindow(hwnd)) return false;
+        ShowWindow(hwnd, IsIconic(hwnd) ? 9 : 5); // SW_RESTORE ou SW_SHOW
+        if (SetForegroundWindow(hwnd) && GetForegroundWindow() == hwnd) return true;
+        IntPtr current = GetForegroundWindow();
+        uint theirs = current == IntPtr.Zero ? 0 : GetWindowThreadProcessId(current, out _);
+        uint ours = GetCurrentThreadId();
+        bool attached = theirs != 0 && theirs != ours && AttachThreadInput(ours, theirs, true);
+        try
+        {
+            BringWindowToTop(hwnd);
+            SetForegroundWindow(hwnd);
+        }
+        finally
+        {
+            if (attached) AttachThreadInput(ours, theirs, false);
+        }
+        if (GetForegroundWindow() == hwnd) return true;
+        // Dernier recours : un appui simulé sur Alt compte comme une action de l'utilisateur
+        SendKeys(0x12 /* VK_MENU */);
+        SetForegroundWindow(hwnd);
+        return GetForegroundWindow() == hwnd;
+    }
+
+    // ---------- Clavier simulé (raccourcis de Windows : Game Bar, mode Xbox…) ----------
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT { public ushort Vk; public ushort Scan; public uint Flags; public uint Time; public IntPtr Extra; }
+    // INPUT : type puis l'union (la plus grande, MOUSEINPUT, fait 32 octets en 64 bits)
+    [StructLayout(LayoutKind.Explicit, Size = 40)]
+    private struct INPUT { [FieldOffset(0)] public uint Type; [FieldOffset(8)] public KEYBDINPUT Key; }
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, INPUT[] inputs, int size);
+
+    /// <summary>Appuie sur les touches dans l'ordre puis les relâche dans l'ordre inverse (ex. Windows + G).</summary>
+    public static bool SendKeys(params ushort[] keys)
+    {
+        const uint KEYUP = 0x0002, EXTENDED = 0x0001;
+        var inputs = new List<INPUT>();
+        foreach (ushort k in keys) inputs.Add(Key(k, k == 0x5B ? EXTENDED : 0));
+        foreach (ushort k in Enumerable.Reverse(keys)) inputs.Add(Key(k, KEYUP | (k == 0x5B ? EXTENDED : 0)));
+        uint sent = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+        return sent == inputs.Count;
+
+        static INPUT Key(ushort vk, uint flags) => new() { Type = 1 /* INPUT_KEYBOARD */, Key = new KEYBDINPUT { Vk = vk, Flags = flags } };
+    }
+
+    public const ushort VK_LWIN = 0x5B, VK_F11 = 0x7A, VK_TAB = 0x09, VK_MENU = 0x12, VK_SNAPSHOT = 0x2C;
+
+    // ---------- Mode Xbox (expérience plein écran) ----------
+    [DllImport("api-ms-win-gaming-experience-l1-1-0.dll")]
+    [return: MarshalAs(UnmanagedType.U1)]
+    private static extern bool IsGamingFullScreenExperienceActive();
+
+    /// <summary>
+    /// Vrai si le mode Xbox (expérience plein écran de Windows 11) est actif. Dans ce mode,
+    /// Windows relance l'application d'accueil dès qu'elle se ferme : il faut d'abord en sortir.
+    /// </summary>
+    public static bool FullScreenExperienceActive
+    {
+        get
+        {
+            try { return IsGamingFullScreenExperienceActive(); }
+            catch (Exception e) when (e is DllNotFoundException or EntryPointNotFoundException) { return false; }
+        }
+    }
+
     // ---------- Alimentation ----------
     [DllImport("powrprof.dll", SetLastError = true)]
     private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);

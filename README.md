@@ -39,7 +39,7 @@ powershell -ExecutionPolicy Bypass -File native/build.ps1 -Register
 
 - Compile `KaneMode.exe` (C# / WPF + WebView2, .NET 8), assemble le paquet dans `native/out/layout` (interface, hôte, Node.js, icônes, manifeste) et l'installe en version de développement (mode développeur de Windows requis).
 - Le paquet se déclare **application de jeu** (`windows.gamingApp` + capacité `gamingHome`) : KaneMode apparaît dans **Paramètres > Jeux > Mode Xbox > Choisir l'application d'accueil** (mode Xbox complet requis, voir plus bas). Raccourci dans KaneMode : Paramètres > Mode Xbox > « Ouvrir les réglages du mode Xbox ».
-- Plein écran, une seule instance, l'hôte Node démarre et s'arrête avec l'app. Actions réelles : retour au bureau, veille, redémarrage, extinction.
+- Plein écran, une seule instance, l'hôte Node démarre et s'arrête avec l'app. Actions réelles : retour au bureau (en mode Xbox, KaneMode en sort d'abord, sinon Windows le relancerait), veille, redémarrage, extinction.
 - Données : `%LOCALAPPDATA%\KaneMode` (bibliothèque, réglages, journal `logs\kanemode.log`). Au premier lancement, l'app reprend les données du prototype (`data\`).
 - `-Pack` produit un `.msix` signé avec un certificat de test (`native/out/KaneMode.cer` à faire approuver sur le PC cible), `-Unregister` désinstalle, `-SelfContained` embarque le runtime .NET.
 - Développement : `KaneMode.exe --windowed` (fenêtre normale), `--debug-port=9229` (inspection de l'interface).
@@ -84,8 +84,9 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **SteamGridDB, sans compte ni clé** : visuels automatiques pour tout ce qui n'en a pas ; fiche du jeu → **Visuels** : aperçu, Récupérer à nouveau, Annuler les modifications, Parcourir SteamGridDB, Importer votre image. Reprise des visuels posés dans Steam (dossier `grid`, SGDBoop, Steam ROM Manager). Une clé API perso reste possible (Paramètres → SteamGridDB → Avancé).
 - **KanePlay (streaming)** : une carte avec sa jaquette parmi les jeux récents ouvre l'application KanePlay complète, intégrée à KaneMode et à ses couleurs : PC trouvés automatiquement, appairage, bibliothèque de chaque PC, réglages et profils, pause (LB+RB+Select+Y) et reprise de session ; **B** revient à KaneMode. Moteur compilé depuis le sous-module `engine/KanePlay`.
 - **Veille façon SteamOS** : veille immédiate, fondu au noir, réveil avec logo et carillon, manettes vérifiées ; atténuation et veille automatiques (batterie / secteur) ; veille moderne (S0) gérée sur les consoles portables.
-- **Consoles portables** : ROG Ally / Ally X / Xbox Ally, Legion Go / Go S / Go 2, MSI Claw, Steam Deck, ZOTAC Zone, AYANEO, OneXPlayer, GPD, AOKZOE reconnues ; interface agrandie au premier lancement, logiciel constructeur, pilotes graphiques, mises à jour de pilotes via Windows Update (installation avec accord administrateur).
-- **Widget Game Bar** (touche Xbox ou Windows + G) : modes de performance avec leurs watts, mesures en direct, puissance (TDP), limite et turbo du processeur, fréquence de l'écran, luminosité et volume, par-dessus n'importe quel jeu, sans Armoury Crate. Application UWP en C++/WinRT (`native/KaneMode.Widget`, compilée par `build-widget.ps1`), style HUD : pastille de watts, profils d'énergie, tuiles « toucher pour changer » (fréquence, résolution, luminosité, turbo, limite CPU, Wi-Fi, Bluetooth, volume…). Elle passe par l'app KaneMode, qui relaie ses demandes à l'hôte par un tube nommé privé du paquet : aucune autorisation administrateur.
+- **Consoles portables** : ROG Ally / Ally X / Xbox Ally, Legion Go / Go S / Go 2, MSI Claw, Steam Deck, ZOTAC Zone, AYANEO, OneXPlayer, GPD, AOKZOE reconnues ; interface agrandie au premier lancement, logiciel constructeur, pilotes graphiques, BIOS et pilotes du constructeur (ASUS), mises à jour de pilotes via Windows Update (installation avec accord administrateur).
+- **Boutons de la ROG Ally** (Command Center, Armoury Crate, appui long) lus directement par KaneMode, même en jeu, sans Armoury Crate : Game Bar, accès rapide ou menu par-dessus le jeu, retour à KaneMode, vue des tâches, capture ; l'invite « installer Armoury Crate SE » est refermée. Réglages : **Paramètres → Console portable**.
+- **Mises à jour officielles du constructeur** : sur les consoles ASUS, BIOS et pilotes publiés pour le modèle exact (API du site d'assistance ROG), comparés aux versions installées, avec le lien de téléchargement officiel.
 - **Modes de performance** Économie / Équilibré / Performance : chacun règle d'un coup le mode d'alimentation de Windows, la limite et le turbo du processeur et le profil du constructeur (ROG Ally, Legion Go), avec sa puissance en watts ; l'accès rapide affiche en direct la consommation sur batterie, la fréquence réelle du processeur et la limite de puissance.
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
@@ -99,7 +100,7 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 | Dossier | Rôle |
 |---|---|
 | `host/server.js` | Hôte : interface + API (bibliothèque, lancement, visuels, émulation, système) |
-| `host/lib/` | `steam.js` (VDF, temps de jeu, grid), `sgdb.js` (SteamGridDB), `emulation.js` (consoles, émulateurs, ROMs), `system.js` (mode Xbox, stockage, médias, sortie), `kaneplay.js` (streaming), `device.js` (console portable, pilotes) |
+| `host/lib/` | `steam.js` (VDF, temps de jeu, grid), `sgdb.js` (SteamGridDB), `emulation.js` (consoles, émulateurs, ROMs), `system.js` (mode Xbox, stockage, médias, sortie), `kaneplay.js` (streaming), `device.js` (console portable, pilotes), `oem.js` (BIOS et pilotes du constructeur) |
 | `host/*.ps1` | Scan des boutiques, applis du menu Démarrer, extraction d'icônes |
 | `ui/` | Interface (HTML/CSS + modules JS) |
 | `native/` | App native : `KaneMode.App` (C#), `package` (manifeste MSIX, capacité gamingHome), `build.ps1` |
@@ -132,6 +133,5 @@ KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il 
 - [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
 - [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming (sous-module `engine/KanePlay`) ;
 - Node.js (licence MIT), embarqué dans le paquet.
-- Xbox Game Bar SDK de Microsoft (`Microsoft.Gaming.XboxGameBar.dll`, licence du SDK), téléchargé à la compilation et embarqué pour le widget.
 
 Visuels : [SteamGridDB](https://www.steamgriddb.com) et la boutique Steam.

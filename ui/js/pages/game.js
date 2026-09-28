@@ -71,7 +71,7 @@ export async function launch(g) {
 
 /** Ferme KaneMode et revient au bureau Windows (l'hôte s'arrête, la fenêtre se ferme). */
 export async function exitToDesktop() {
-  if (!await confirmDialog('Quitter vers le bureau Windows ?', 'KaneMode se ferme et le bureau Windows s’affiche. Pour revenir, relancez KaneMode (raccourci ou mode Xbox).', 'Quitter vers le bureau')) return;
+  if (!await confirmDialog('Quitter vers le bureau Windows ?', 'KaneMode se ferme et le bureau Windows s’affiche. En mode Xbox, KaneMode en sort d’abord (Windows peut demander confirmation). Pour revenir, relancez KaneMode ou le mode Xbox.', 'Quitter vers le bureau')) return;
   // Dans l'app native, c'est elle qui ferme la fenêtre et arrête l'hôte.
   if (native.available) return native.send('exit');
   try { await api.post('/api/exit'); } catch { /* l'hôte s'arrête peut-être déjà */ }
@@ -80,22 +80,35 @@ export async function exitToDesktop() {
   setTimeout(() => window.close(), 600);
 }
 
+const KANEPLAY_WINDOW = 'KaneMode · KanePlay';
+let streamRetry = 0;
 /**
  * Écran de streaming (KanePlay intégré) : un fondu au noir, puis il prend le relais en plein écran.
  * B sur son accueil ramène ici ; une session en pause y reste prête à reprendre.
  */
-export async function openStreaming() {
+export async function openStreaming({ retry = false } = {}) {
+  if (!retry) streamRetry = Date.now();
   document.body.classList.add('handoff');
   setTimeout(() => document.body.classList.remove('handoff'), 2500);
-  // KaneMode a le premier plan : il le cède à KanePlay, et ramène lui-même sa fenêtre si
-  // KanePlay est déjà ouvert (sinon Windows le laisse en arrière-plan)
-  native.send('foreground', { window: 'KaneMode · KanePlay' });
+  // KaneMode a le premier plan : il le cède à KanePlay, et guette sa fenêtre pour la mettre
+  // lui-même devant (Windows ne la laisse pas toujours passer au premier plan)
+  native.send('foreground', { window: KANEPLAY_WINDOW });
   try { await api.post('/api/stream/open'); }
   catch (e) {
+    streamRetry = 0; // rien n'a été lancé : pas de nouvelle tentative
     document.body.classList.remove('handoff');
     toast(e.message, { error: true });
   }
 }
+// KanePlay relancé juste après l'avoir quitté : la commande a pu partir vers l'instance qui se
+// fermait. L'app native le détecte (plus aucun KanePlay ne tourne) et on relance, une fois.
+native.on(m => {
+  if (m.type !== 'foreground-lost' || m.window !== KANEPLAY_WINDOW) return;
+  if (!streamRetry || Date.now() - streamRetry > 20000) return;
+  streamRetry = 0;
+  openStreaming({ retry: true });
+});
+
 export async function openLauncher(l) {
   if (!l.installed) return toast(`${l.name} n’est pas installé sur ce PC`, { error: true });
   toast(`Ouverture de ${l.name}…`);

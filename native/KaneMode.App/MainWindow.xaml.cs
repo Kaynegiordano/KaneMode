@@ -20,6 +20,10 @@ public partial class MainWindow : Window
     private HostProcess _host = new();
     // Menu ou accès rapide ouvert par-dessus une autre fenêtre (KanePlay) : on y retourne en le fermant
     private IntPtr _returnTo;
+    // Boutons dédiés de la ROG Ally et ce qu'ils font (réglés dans Paramètres > Console portable)
+    private readonly AllyButtons _buttons = new();
+    private Dictionary<string, string> _buttonActions = new() { ["cc"] = "qam", ["ac"] = "gamebar", ["ac-hold"] = "home" };
+    private bool _blockAsusPrompt = true;
     private bool _ready;
     private bool _failed;
 
@@ -40,7 +44,8 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await StartAsync();
         SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
         Activated += (_, _) => OnActivated();
-        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _host.Dispose(); };
+        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _buttons.Dispose(); _host.Dispose(); };
+        _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Veille et réveil du système, quelle qu'en soit la cause (menu, bouton d'alimentation, capot…)
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         PreviewKeyDown += OnKeyDown;
@@ -58,8 +63,8 @@ public partial class MainWindow : Window
             Task host = _host.StartAsync();
             Task web = Web.CoreWebView2 == null ? InitWebViewAsync() : Task.CompletedTask;
             await Task.WhenAll(host, web);
-            WidgetBridge.Start(_host.Url);
             Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
+            _buttons.Start();
         }
         catch (Exception ex)
         {
@@ -151,17 +156,136 @@ public partial class MainWindow : Window
         if (!_ready) return;
         _returnTo = from;
         Log.Write($"Ouverture de « {panel} » par-dessus une autre fenêtre");
+        StopForegroundWatch();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
         Show();
-        Activate();
+        // Pas toujours autorisé par Windows (bouton de la console pressé en plein jeu) : on insiste
+        if (!Native.ForceForeground(Hwnd)) Activate();
         Web.Focus();
         Post(new { type = "open", panel });
+    }
+
+    private IntPtr Hwnd => new WindowInteropHelper(this).Handle;
+
+    // ---------- Premier plan d'un programme lancé (KanePlay) ----------
+    private System.Windows.Threading.DispatcherTimer? _watch;
+
+    /// <summary>
+    /// KanePlay lancé ou relancé : Windows ne lui laisse pas toujours le premier plan (il est lancé
+    /// par l'hôte, pas par la fenêtre active). Pendant quelques secondes, KaneMode, qui a encore le
+    /// premier plan, guette sa fenêtre et la met lui-même devant. Si aucun KanePlay ne tourne plus
+    /// (la commande est partie vers une instance en train de se fermer), l'interface relance.
+    /// </summary>
+    private void WatchForeground(string title)
+    {
+        StopForegroundWatch();
+        var started = DateTime.UtcNow;
+        int stable = 0;
+        bool seen = false, lost = false;
+        _watch = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _watch.Tick += (_, _) =>
+        {
+            double elapsed = (DateTime.UtcNow - started).TotalSeconds;
+            IntPtr hwnd = Native.FindVisibleWindow(title);
+            if (hwnd != IntPtr.Zero)
+            {
+                seen = true;
+                if (Native.GetForegroundWindow() == hwnd) { if (++stable >= 5) StopForegroundWatch(); }
+                else
+                {
+                    stable = 0;
+                    Log.Write($"« {title} » n’est pas au premier plan : KaneMode l’y met");
+                    Native.ForceForeground(hwnd);
+                }
+            }
+            else if (!seen && !lost && elapsed > 1.5 && System.Diagnostics.Process.GetProcessesByName("KanePlay").Length == 0)
+            {
+                // Le lancement s'est perdu : on le signale une fois à l'interface, qui relance
+                lost = true;
+                Log.Write($"« {title} » ne s’est pas ouvert : nouvelle tentative");
+                Post(new { type = "foreground-lost", window = title });
+            }
+            if (elapsed > 15) StopForegroundWatch();
+        };
+        _watch.Start();
+    }
+
+    private void StopForegroundWatch()
+    {
+        _watch?.Stop();
+        _watch = null;
+    }
+
+    // ---------- Boutons de la console (ROG Ally) ----------
+    private void OnDeviceButton(string button)
+    {
+        string action = _buttonActions.TryGetValue(button, out var a) ? a : "none";
+        Log.Write($"Bouton {button} : {action}");
+        if (action == "none" || !_ready) return;
+        if (_blockAsusPrompt) _ = CloseAsusPromptAsync();
+        IntPtr front = Native.GetForegroundWindow();
+        bool ours = front == Hwnd;
+        switch (action)
+        {
+            case "gamebar":
+                Native.SendKeys(Native.VK_LWIN, 0x47 /* G */);
+                break;
+            case "taskview":
+                Native.SendKeys(Native.VK_LWIN, Native.VK_TAB);
+                break;
+            case "screenshot":
+                // Capture de la Game Bar (dossier Vidéos\Captures)
+                Native.SendKeys(Native.VK_LWIN, Native.VK_MENU, Native.VK_SNAPSHOT);
+                break;
+            case "qam":
+            case "menu":
+                if (ours) Post(new { type = "toggle", panel = action });
+                else OpenOverlay(action, front);
+                break;
+            case "home":
+                _returnTo = IntPtr.Zero;
+                StopForegroundWatch();
+                if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+                Show();
+                Native.ForceForeground(Hwnd);
+                Web.Focus();
+                Post(new { type = "home" });
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Sans Armoury Crate SE, les services ASUS proposent de l'installer à chaque appui sur ces
+    /// boutons. Pendant quelques secondes, les fenêtres qui apparaissent sont notées dans le journal ;
+    /// celles d'Armoury Crate (et le Microsoft Store ouvert sur sa page) sont refermées.
+    /// </summary>
+    private async Task CloseAsusPromptAsync()
+    {
+        var before = new HashSet<IntPtr>(Native.VisibleWindows());
+        uint self = (uint)Environment.ProcessId;
+        for (int i = 0; i < 30; i++)
+        {
+            await Task.Delay(150);
+            foreach (IntPtr w in Native.VisibleWindows())
+            {
+                if (!before.Add(w)) continue;
+                uint pid = Native.WindowProcessId(w);
+                if (pid == self) continue;
+                string title = Native.WindowTitle(w), process = "";
+                try { process = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+                bool asus = System.Text.RegularExpressions.Regex.IsMatch(title + " " + process, "armou?ry|asus|rog live", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                    || process.Equals("WinStore.App", StringComparison.OrdinalIgnoreCase);
+                Log.Write($"Fenêtre apparue après le bouton : « {title} » ({process}){(asus ? " : fermée" : "")}");
+                if (asus) Native.PostMessage(w, 0x0010 /* WM_CLOSE */, IntPtr.Zero, IntPtr.Zero);
+            }
+        }
     }
 
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
     {
         if (e.Mode == PowerModes.StatusChange) return;
         Log.Write(e.Mode == PowerModes.Suspend ? "Mise en veille du système" : "Réveil du système");
+        if (e.Mode == PowerModes.Resume) _buttons.Reopen();
         // L'événement arrive sur un autre fil : on repasse sur celui de la fenêtre.
         Dispatcher.BeginInvoke(() => Post(new { type = e.Mode == PowerModes.Suspend ? "suspend" : "wake" }));
     }
@@ -188,7 +312,15 @@ public partial class MainWindow : Window
                     if (_returnTo != IntPtr.Zero) { Native.Activate(_returnTo); _returnTo = IntPtr.Zero; }
                     break;
                 case "foreground":
-                    Native.GiveForeground(root.TryGetProperty("window", out var w) ? w.GetString() : null);
+                    string? title = root.TryGetProperty("window", out var w) ? w.GetString() : null;
+                    Native.GiveForeground(title);
+                    if (!string.IsNullOrEmpty(title)) WatchForeground(title);
+                    break;
+                case "buttons":
+                    // Actions des boutons de la console, envoyées par l'interface au démarrage et à chaque changement
+                    foreach (string key in new[] { "cc", "ac", "ac-hold" })
+                        if (root.TryGetProperty(key, out var v) && v.GetString() is string act) _buttonActions[key] = act;
+                    if (root.TryGetProperty("blockPrompt", out var bp)) _blockAsusPrompt = bp.ValueKind == JsonValueKind.True;
                     break;
                 case "stay":
                     _returnTo = IntPtr.Zero; // l'utilisateur est allé ailleurs dans KaneMode
@@ -210,11 +342,39 @@ public partial class MainWindow : Window
         Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message));
     }
 
-    private void ExitToDesktop()
+    private bool _leaving;
+
+    /// <summary>
+    /// Retour au bureau. En mode Xbox, Windows relance aussitôt l'application d'accueil qui se
+    /// ferme : on quitte d'abord le mode Xbox (Windows + F11, le raccourci de Windows), puis on
+    /// attend qu'il soit vraiment quitté (Windows peut demander confirmation) avant de se fermer.
+    /// </summary>
+    private async void ExitToDesktop()
     {
-        Log.Write("Retour au bureau");
-        Native.EnsureDesktop();
-        Close();
+        if (_leaving) return;
+        _leaving = true;
+        try
+        {
+            if (Native.FullScreenExperienceActive)
+            {
+                Log.Write("Retour au bureau : sortie du mode Xbox");
+                Native.ForceForeground(Hwnd);
+                Native.SendKeys(Native.VK_LWIN, Native.VK_F11);
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (Native.FullScreenExperienceActive && DateTime.UtcNow < deadline) await Task.Delay(250);
+                if (Native.FullScreenExperienceActive)
+                {
+                    // Sortie refusée ou annulée : se fermer ne ferait que relancer KaneMode
+                    Log.Write("Le mode Xbox est resté actif : KaneMode reste ouvert");
+                    Post(new { type = "desktop-failed" });
+                    return;
+                }
+            }
+            Log.Write("Retour au bureau");
+            Native.EnsureDesktop();
+            Close();
+        }
+        finally { _leaving = false; }
     }
 
     /// <summary>Écran d'erreur : Échap quitte, Entrée réessaie (clavier ou manette via Steam Input / pilotes).</summary>
