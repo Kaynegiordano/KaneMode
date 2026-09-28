@@ -206,7 +206,8 @@ async function checkUpdate() {
     paintUpdate(u.last);
     if (!u.auto) return;
     const last = +(localStorage.getItem('km.updateChecked') || 0);
-    if (u.last && Date.now() - last < 5.5 * 3600e3) return;
+    // Au plus une fois par heure (GitHub limite les requêtes sans compte)
+    if (u.last && Date.now() - last < 3600e3) return;
     localStorage.setItem('km.updateChecked', String(Date.now()));
     const r = await api.post('/api/update/check');
     paintUpdate(r);
@@ -236,10 +237,12 @@ actions['update-open'] = () => {
   const wait = settings.splash && settings.bootMode === 'none' ? Math.max(0, 1100 - (performance.now() - started)) : 0;
   setTimeout(() => { $('#splash').classList.add('hide'); focusIn(currentPage().el); }, wait);
   prefetchQam();
-  // Nouvelle version de KaneMode ? Vérifiée au démarrage puis toutes les 6 heures (canal choisi
+  // Nouvelle version de KaneMode ? Vérifiée au démarrage puis toutes les heures (canal choisi
   // dans Paramètres → Système) ; signalée dans le menu et en haut de l'écran.
   checkUpdate();
-  setInterval(checkUpdate, 6 * 3600e3);
+  setInterval(checkUpdate, 3600e3);
+  // KaneMode reste ouvert des jours en mode Xbox : on vérifie aussi au retour d'un jeu et au réveil
+  native.on(m => { if (m.type === 'resume' || m.type === 'wake') checkUpdate(); });
   // Première fois sur une console portable : interface agrandie pour son petit écran
   api.get('/api/device').then(d => {
     const hh = d && d.handheld;

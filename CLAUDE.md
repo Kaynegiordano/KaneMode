@@ -68,7 +68,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - la manette (API Gamepad) : **Select = menu, Start = accès rapide**, inversable avec `settings.padSwap`. Un bouton encore enfoncé au retour de focus est ignoré ;
   - le clavier : M = menu, Q = accès rapide, Échap = retour. B sur l'accueil ouvre le menu.
 - `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas), `native` (messages WebView2).
-- `js/main.js` : menus, accès rapide, relais « par-dessus KanePlay » (`overlay`), mises à jour (vérification toutes les 6 h, entrée « Mise à jour disponible » dans le menu), démarrage.
+- `js/main.js` : menus, accès rapide, relais « par-dessus KanePlay » (`overlay`), mises à jour (vérification au démarrage, au retour d'un jeu, au réveil et toutes les heures, au plus une fois par heure ; entrée « Mise à jour disponible » dans le menu), démarrage.
 - `js/qam.js` : accès rapide (sections ordonnables), bandeau en direct `/api/sys/live`, modes avec leurs watts (`PROFILE_WATTS` par console).
 - `js/boot.js` : sons **synthétisés et calculés hors ligne** (OfflineAudioContext) ; le logo apparaît sur le pic du son (`playSynced`, horodatage de sortie audio).
   - Son perso : analysé, et copié par l'hôte dans `DATA/bootsound.*`.
