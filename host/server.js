@@ -468,6 +468,37 @@ function steamRunningApp() {
     });
   });
 }
+// steam.exe, à côté du dossier userdata trouvé par l'analyse
+function steamClient() {
+  const ud = str(readJson(FILES.library, {}).steamUserdata);
+  const exe = ud ? path.join(path.dirname(ud), 'steam.exe') : null;
+  return exe && isFile(exe) ? exe : null;
+}
+const steamOpen = () => new Promise(resolve => {
+  execFile('tasklist.exe', ['/FI', 'IMAGENAME eq steam.exe', '/NH'], { windowsHide: true, timeout: 4000 }, (err, out) => resolve(!err && /steam\.exe/i.test(out)));
+});
+/**
+ * Démarre Steam avec -silent (dans la zone de notification, sans fenêtre) s'il n'est pas ouvert,
+ * puis attend qu'il tourne : le lien du jeu part ensuite vers lui. On passe par un raccourci ouvert
+ * par l'Explorateur, comme pour les liens : lancé directement par l'hôte, Steam ferait partie du
+ * paquet de KaneMode (et serait fermé à chaque mise à jour).
+ */
+async function startSteamSilently() {
+  const exe = steamClient();
+  if (!exe || await steamOpen()) return;
+  const lnk = path.join(DATA, `steam-silent-${crypto.createHash('md5').update(exe.toLowerCase()).digest('hex').slice(0, 8)}.lnk`);
+  if (!isFile(lnk)) {
+    const q = s => `'${s.replace(/'/g, "''")}'`;
+    await new Promise(resolve => execFile('powershell.exe', ['-NoProfile', '-Command',
+      `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(lnk)}); $s.TargetPath = ${q(exe)}; $s.Arguments = '-silent'; $s.WorkingDirectory = ${q(path.dirname(exe))}; $s.Save()`],
+    { windowsHide: true, timeout: 15000 }, () => resolve()));
+    if (!isFile(lnk)) { console.error('Raccourci Steam -silent impossible à créer'); return; }
+  }
+  console.log('Steam fermé : démarrage sans sa fenêtre');
+  spawn('explorer.exe', [lnk], { detached: true, stdio: 'ignore' }).unref();
+  for (let i = 0; i < 20 && !await steamOpen(); i++) await new Promise(r => setTimeout(r, 250));
+  await new Promise(r => setTimeout(r, 1500)); // le temps qu'il prenne la main sur les liens steam://
+}
 // Dernier lancement de chaque entrée : un second appui (ou un événement en double) ne relance pas le jeu
 const recentLaunch = new Map();
 const LAUNCH_GUARD = 30e3;
@@ -853,6 +884,8 @@ const routes = {
       }
     }
     console.log(`Lancement : ${e.name} (${id})`);
+    // Jeu Steam et Steam fermé : il démarre d'abord sans sa fenêtre (en mode Xbox, elle passait devant le jeu)
+    if (!b.dry && /^steam:\/\/rungameid\//i.test(str(e.launch && e.launch.target))) await startSteamSilently();
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
     const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }

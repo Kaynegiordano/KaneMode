@@ -138,6 +138,9 @@ public static class Native
         SetWindowPos(hwnd, above, 0, 0, 0, 0, NOSIZE | NOMOVE | NOACTIVATE | NOOWNERZORDER);
     }
 
+    /// <summary>Réduit une fenêtre sans activer celle qui se trouve derrière (on choisit nous-mêmes laquelle passe devant).</summary>
+    public static void Minimize(IntPtr hwnd) => ShowWindow(hwnd, 7 /* SW_SHOWMINNOACTIVE */);
+
     /// <summary>Met la fenêtre au premier plan et en tête de l'affichage, même si elle a déjà le focus.</summary>
     public static bool Raise(IntPtr hwnd)
     {
