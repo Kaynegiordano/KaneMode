@@ -83,7 +83,11 @@ Les versions déjà installées se mettent à jour depuis KaneMode : Paramètres
     $files = Get-ChildItem $rel -File | ForEach-Object FullName
     $ghArgs = @('release', 'create', $tag) + $files + @('--repo', 'Kaynegiordano/KaneMode', '--target', 'main', '--title', "KaneMode $version", '--notes-file', $Notes)
     if ($Beta) { $ghArgs += '--prerelease' }
-    gh @ghArgs
+    # gh peut manquer au PATH d'une session : on le cherche aussi à son emplacement d'installation
+    $gh = (Get-Command gh -ErrorAction SilentlyContinue).Source
+    if (-not $gh) { $gh = Join-Path $env:ProgramFiles 'GitHub CLI\gh.exe' }
+    if (-not (Test-Path $gh)) { throw 'GitHub CLI (gh) introuvable : winget install GitHub.cli' }
+    & $gh @ghArgs
     if ($LASTEXITCODE -ne 0) { throw 'Échec de la publication' }
 }
 Write-Host "`nTerminé : $rel" -ForegroundColor Green
