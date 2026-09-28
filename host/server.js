@@ -15,6 +15,7 @@ const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
 const update = require('./lib/update');
 const syscontrol = require('./lib/syscontrol');
+const oem = require('./lib/oem');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -317,6 +318,8 @@ const powerProfiles = () => {
 };
 // ---------------------------------------------------------------- pilotes (Windows Update)
 const driverJobs = device.drivers(DATA);
+// Mises à jour officielles du constructeur de la console (BIOS, pilotes du modèle)
+const oemUpdates = oem.tracker(DATA);
 
 // ---------------------------------------------------------------- streaming (moteur KanePlay)
 // Copie embarquée dans l'app native (dossier kaneplay\ à côté de app\, voir native\build.ps1)
@@ -866,10 +869,20 @@ const routes = {
     const b = await readBody(req);
     const target = String(b.target || '');
     // Uniquement les logiciels détectés et les pages officielles connues
-    if (!(await device.allowedTargets(b.simulate)).has(target)) return json(res, 400, { error: 'Cible non autorisée' });
+    if (!(await device.allowedTargets(b.simulate)).has(target) && !oemUpdates.allowed(target)) return json(res, 400, { error: 'Cible non autorisée' });
     json(res, 200, await run({ kind: 'uri', target }));
   },
   'GET /api/drivers': (req, res) => json(res, 200, driverJobs.status()),
+  'GET /api/oem': async (req, res, q) => {
+    const d = await device.info({ simulate: q.get('simulate') || '' });
+    json(res, 200, { supported: !!d.ok && oemUpdates.supported(d.handheld), maker: d.handheld ? d.handheld.maker : null, ...oemUpdates.status() });
+  },
+  'POST /api/oem/check': async (req, res) => {
+    const b = await readBody(req);
+    const d = await device.info({ simulate: String(b.simulate || '') });
+    if (!d.ok || !oemUpdates.supported(d.handheld)) return json(res, 400, { error: 'Pas de canal officiel pris en charge pour cet appareil' });
+    json(res, 200, await oemUpdates.check(d));
+  },
 
   // --- Streaming : PC hôtes (en ligne, appairés), appairage, qualité, arrêt du jeu
   // --- Mises à jour (Releases GitHub)

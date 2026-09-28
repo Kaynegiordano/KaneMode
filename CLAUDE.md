@@ -17,7 +17,8 @@ Elle regroupe :
 - les visuels SteamGridDB, sans clé ;
 - le streaming **KanePlay** (fork de Moonlight) intégré ;
 - un accès rapide qui règle vraiment le système : son, écran, réseau, énergie, TDP ;
-- un widget Game Bar ;
+- les boutons dédiés de la ROG Ally (Command Center, Armoury Crate) ;
+- les mises à jour officielles du constructeur (BIOS et pilotes ASUS) ;
 - des mises à jour intégrées.
 
 - Dépôt public (GPL v3) : https://github.com/Kaynegiordano/KaneMode (branche `main`)
@@ -30,9 +31,9 @@ Elle regroupe :
 Interface (ui/, HTML/JS sans framework) ── HTTP local ──▶ Hôte Node (host/server.js)
      ▲  WebView2                                              │ PowerShell persistants / ponctuels
      │                                                        ▼
-App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier plan, relais widget
-     ▲ tube nommé privé du paquet                             ▲ lance KanePlay.exe (env KANEPLAY_EMBEDDED)
-Widget Game Bar (native/KaneMode.Widget, UWP C++/WinRT)       KanePlay (engine/, Qt 6)
+App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier plan, boutons ASUS
+                                                              ▲ lance KanePlay.exe (env KANEPLAY_EMBEDDED)
+                                                              KanePlay (engine/, Qt 6)
 ```
 
 ### `host/` : l'hôte (Node, sans dépendances npm)
@@ -55,6 +56,10 @@ Widget Game Bar (native/KaneMode.Widget, UWP C++/WinRT)       KanePlay (engine/,
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
 - `lib/update.js` : GitHub Releases (canaux stable/bêta), vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance.
 - `lib/sgdb.js` : SteamGridDB par l'API publique, sans clé.
+- `lib/oem.js` + `inventory.ps1` : mises à jour officielles du constructeur (ASUS seulement pour l'instant).
+  - API publique du site ROG (`rog.asus.com/support/webapi/product/GetPDBIOS` et `GetPDDrivers`, `osid=52`, `systemCode=rog`), celle de G-Helper. Modèle = début de la version du BIOS (`RC72LA.312` → `RC72LA`, BIOS 312).
+  - Versions installées : `Win32_PnPSignedDriver` (identifiants matériels sans `&REV_`). Résultat dans `DATA/oem.json`, vérifié une fois par jour à l'ouverture des réglages.
+  - KaneMode n'installe rien : il ouvre le téléchargement officiel (URL `*.asus.com`, autorisée par `/api/device/open`).
 
 ### `ui/` : l'interface (modules ES, sans build)
 - `js/nav.js` : moteur de navigation. Il gère :
@@ -79,25 +84,17 @@ Widget Game Bar (native/KaneMode.Widget, UWP C++/WinRT)       KanePlay (engine/,
   - la veille (`Native.cs`) ;
   - `GiveForeground` (message `foreground` : KaneMode cède le premier plan et ramène lui-même la fenêtre KanePlay) ;
   - `WM_COPYDATA` « open\tqam|menu » envoyé par KanePlay (Select/Start), puis retour à KanePlay à la fermeture ;
-  - `WidgetBridge.cs`.
-- `KaneMode.App/WidgetBridge.cs` : **tube nommé** dans l'espace de noms du conteneur du paquet (`Sessions\<n>\AppContainerNamedObjects\<SID>\kanemode-widget`). Il relaie les requêtes JSON du widget à l'hôte.
-  - Le SID du conteneur est **calculé** : SHA-256 du nom de famille en minuscules. `DeriveAppContainerSidFromAppContainerName` plante dans l'app installée.
-  - Aucune autorisation administrateur n'est nécessaire, contrairement au bouclage réseau.
-- `KaneMode.Widget` : widget Game Bar = app **UWP en C++/WinRT, interface construite en code**. Le gabarit des tuiles passe par `XamlReader`. Style inspiré du HUD de Winhanced :
-  - pastille de watts ;
-  - carte des mesures ;
-  - tuiles de profil (Économie, Équilibré, Performance, Personnalisé) ;
-  - catégories et tuiles « Toucher pour changer » (fréquence, résolution, luminosité, turbo, limite CPU, Wi-Fi, Bluetooth, limite de charge, volume, sourdine).
-
-  Compilation : `build-widget.ps1` (vcvarsall `x64 uwp`, cppwinrt du SDK, NuGet `Microsoft.Gaming.XboxGameBar` 7.3.2607010 téléchargé dans `obj/`). Le runtime `Microsoft.VCLibs.140.00` est une dépendance du paquet ; il est présent partout où la Game Bar existe.
+  - le premier plan de KanePlay (`WatchForeground`) : pendant 15 s, KaneMode, encore au premier plan, guette la fenêtre « KaneMode · KanePlay » et la met lui-même devant (`Native.ForceForeground`, avec `AttachThreadInput`). Si plus aucun `KanePlay.exe` ne tourne après 1,5 s (commande partie vers une instance qui se fermait : `returnToKaneMode` masque la fenêtre puis quitte), il envoie `foreground-lost` et l'interface relance une fois ;
+  - le retour au bureau : en mode Xbox (`IsGamingFullScreenExperienceActive`, api-ms-win-gaming-experience-l1-1-0), Windows relance l'app d'accueil qui se ferme. KaneMode envoie d'abord Windows + F11 (sortie du mode Xbox), attend jusqu'à 30 s qu'il soit quitté, puis se ferme ; sinon il reste ouvert (`desktop-failed`).
+- `KaneMode.App/AllyButtons.cs` : boutons de la ROG Ally lus sur la manette interne ASUS (HID VID 0B05, PID 1ABE/1B4C, collection qui accepte le rapport de fonction 0x5A). Rapport d'entrée 0x5A, 2e octet : 166 = Command Center, 56 = Armoury Crate, 167/168 = appui long/relâché (codes de Handheld Companion). Lecture partagée avec les services ASUS.
+  - Actions (`buttons`, envoyé par l'interface) : `gamebar` (Windows + G), `qam`/`menu` (par-dessus la fenêtre active, `toggle` si KaneMode est devant), `home`, `taskview`, `screenshot`, `none`.
+  - Invite « installer Armoury Crate SE » : pendant 4,5 s après l'appui, les nouvelles fenêtres sont notées dans le journal et celles d'ASUS/Armoury Crate ou du Microsoft Store sont fermées (`WM_CLOSE`). Le processus exact qui affiche l'invite reste à confirmer dans `kanemode.log`.
 - `package/AppxManifest.xml` :
-  - app `App` (WPF, full trust, `windows.gamingApp`, capacité `gamingHome`) ;
-  - app `Widget` (extension `microsoft.gameBarUIExtension`) ;
-  - classes du composant Game Bar + proxy/stub (copiés du readme du NuGet).
+  - app `App` (WPF, full trust, `windows.gamingApp`, capacité `gamingHome`). Le widget Game Bar a été abandonné après la 1.2.0 (trop compliqué pour l'instant).
 - `build.ps1` : compile et assemble le paquet dans `native/out/layout`, ou `layout-release` avec `-Release` pour ne pas écraser une version de développement installée. Options :
   - `-Register` : installation de développement ;
   - `-Pack` : msix signé ;
-  - `-NoKanePlay`, `-NoWidget`.
+  - `-NoKanePlay`.
 - `release.ps1 -Publish [-Beta] -Notes <md>` : msix autonome + installateur + SHA256SUMS, puis Release GitHub (`gh`, dépôt forcé).
 - `KaneMode.Setup` : installateur unique `KaneMode-Setup-x.y.z.exe` (WinForms, administrateur). Il active le mode développeur, approuve le certificat, installe le paquet, installe l'outil Xbox FSE (8bit2qubit) et active le mode Xbox sans fenêtre (`/silentenable`).
 - `certificate.ps1 -Backup|-Restore` : sauvegarde du certificat de signature `CN=KaneMode` (empreinte `0B133FEE…086FE`, valide jusqu'en 2036). Par défaut `%USERPROFILE%\KaneMode-signature.pfx` : Documents/OneDrive est bloqué par « Dossiers contrôlés ».
@@ -145,9 +142,12 @@ Widget Game Bar (native/KaneMode.Widget, UWP C++/WinRT)       KanePlay (engine/,
   - réglages ASUS/Lenovo (TDP, profils) ;
   - watts sur batterie ;
   - boutons Select/Start dans KanePlay ;
-  - widget Game Bar : le relais par le tube est vérifié ; l'affichage dans la Game Bar reste à confirmer à l'écran.
+  - boutons Command Center / Armoury Crate (codes HID repris de Handheld Companion) et fermeture de l'invite Armoury Crate SE ;
+  - sortie du mode Xbox par Windows + F11 ;
+  - mises à jour ASUS : l'API n'a pas pu être appelée depuis l'environnement de développement (proxy), format repris de G-Helper.
 - Idées demandées ou à explorer :
-  - boutons dédiés de l'Ally (Command Center / Armoury Crate) via le HID ASUS (VID 0B05, rapport 0x5A) pour ouvrir l'accès rapide ;
+  - KanePlay : fermer son QLocalServer dès `returnToKaneMode` (avant de quitter) éviterait qu'une relance parte vers l'instance qui se ferme ;
+  - mises à jour officielles pour Lenovo (Legion Go) et MSI (Claw) ;
   - limite d'images par seconde, fonctions AMD (RSR, AFMF, Anti-Lag via ADLX), courbe de ventilateur ;
   - superposition transparente par-dessus les jeux.
 - Historique récent :

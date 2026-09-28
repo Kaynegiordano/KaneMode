@@ -116,10 +116,12 @@ async function updatesBlock(s) {
   h2(s, 'i-download2', 'Mises à jour');
   const box = el('div');
   s.append(box);
-  let timer = 0;
+  let timer = 0, drawn = false;
   const draw = async focus => {
     const u = await api.get('/api/update').catch(() => null);
-    if (!u || !box.isConnected) return clearInterval(timer);
+    // Premier dessin : la catégorie est construite hors de l'écran, `box` n'y est pas encore
+    if (!u || (drawn && !box.isConnected)) return clearInterval(timer);
+    drawn = true;
     box.replaceChildren();
     const l = u.last, j = u.job;
     infoRow(box, `KaneMode ${esc(u.current)}`, u.packaged ? 'App installée' : 'Version de développement (mise à jour par l’installateur)');
@@ -172,9 +174,11 @@ async function updatesBlock(s) {
 async function driversBlock(s) {
   const box = el('div');
   s.append(box);
+  let drawn = false;
   const draw = async focus => {
     const st = await api.get('/api/drivers').catch(() => ({}));
-    if (!box.isConnected) return;
+    if (drawn && !box.isConnected) return;
+    drawn = true;
     box.replaceChildren();
     const last = st.last;
     const items = last && last.ok ? last.items : [];
@@ -220,6 +224,89 @@ async function driversBlock(s) {
     if (focus) focusIn(box, focus);
   };
   await draw();
+}
+
+// ---------- Mises à jour officielles du constructeur (BIOS et pilotes du modèle de console)
+const OEM_STATUS = { new: '<span class="dot-ko"></span>', ok: '<span class="dot-ok"></span>', unknown: '' };
+async function oemBlock(s, hh) {
+  h2(s, 'i-download2', `Mises à jour officielles ${esc(hh.maker)}`);
+  const box = el('div');
+  s.append(box);
+  const sim = settings.simulateDevice || '';
+  const check = async () => {
+    try { await api.post('/api/oem/check', { simulate: sim }); }
+    catch (e) { toast(e.message, { error: true }); }
+  };
+  let drawn = false;
+  const draw = async focus => {
+    const st = await api.get(`/api/oem?simulate=${encodeURIComponent(sim)}`).catch(() => null);
+    if (!st || (drawn && !box.isConnected)) return;
+    drawn = true;
+    box.replaceChildren();
+    const last = st.last;
+    const channels = last && last.ok ? last.channels : [];
+    const drivers = (channels.find(c => c.items) || { items: [] }).items;
+    const news = drivers.filter(i => i.status === 'new');
+    const bios = channels.find(c => c.id.endsWith('-bios'));
+    const count = news.length + (bios && bios.status === 'new' ? 1 : 0);
+    const sub = st.checking ? `Vérification sur le site ${esc(hh.maker)}…`
+      : !last ? `BIOS et pilotes publiés par ${esc(hh.maker)} pour cette console`
+        : !last.ok ? `Échec : ${esc(last.error || 'erreur inconnue')}`
+          : `${count || 'Aucune'} mise${count > 1 ? 's' : ''} à jour · vérifié le ${day(last.checked)}`;
+    actionRow(box, 'i-search', 'Vérifier les mises à jour du constructeur', sub, async () => {
+      busy(`Vérification sur le site ${hh.maker}…`);
+      await check();
+      busy(null);
+      draw('oem-check');
+    }, 'oem-check');
+    if (bios) {
+      const desc = `Installé : ${esc(bios.installed || '?')} · publié : ${esc(bios.latest)}${bios.date ? ` du ${day(bios.date)}` : ''}${bios.size ? ` · ${esc(bios.size)}` : ''}`;
+      const title = `${OEM_STATUS[bios.status]}${esc(bios.title)}${bios.status === 'new' ? ' · nouvelle version' : bios.status === 'ok' ? ' · à jour' : ''}`;
+      if (bios.url && bios.status !== 'ok') actionRow(box, 'i-download2', title, `${desc} · ${esc(bios.notes)}`, () => openDevice(bios.url), 'oem-bios');
+      else infoRow(box, title, desc);
+    }
+    // Pilotes : ceux qui ont une version plus récente d'abord, puis ceux qui sont à jour
+    for (const it of [...news, ...drivers.filter(i => i.status === 'ok')]) {
+      const desc = [it.category, it.installed ? `installé : ${it.installed}` : '', `publié : ${it.version}`, it.date && `du ${day(it.date)}`, it.size].filter(Boolean).map(esc).join(' · ');
+      const title = `${OEM_STATUS[it.status]}${esc(it.title)}${it.status === 'new' ? ' · nouvelle version' : ''}`;
+      if (it.url && it.status === 'new') actionRow(box, 'i-download2', title, desc + ' · télécharger sur le site officiel', () => openDevice(it.url), 'oem:' + it.title);
+      else infoRow(box, title, desc);
+    }
+    const other = drivers.filter(i => i.status === 'unknown').length;
+    if (other) infoRow(box, `${other} autre${other > 1 ? 's' : ''} pilote${other > 1 ? 's' : ''} publié${other > 1 ? 's' : ''}`, 'Outils ou matériel non détecté sur cette console : voir le site officiel');
+    if (hh.support) actionRow(box, 'i-globe', `Assistance ${esc(hh.maker)}`, 'Toutes les versions, notes de version et manuels', () => openDevice(hh.support), 'oem-site');
+    if (focus) focusIn(box, focus);
+    // Vérification automatique une fois par jour
+    if (!st.checking && (!last || Date.now() - Date.parse(last.checked) > 24 * 3600e3) && !box.dataset.auto) {
+      box.dataset.auto = '1';
+      check().then(() => draw());
+    }
+  };
+  await draw();
+}
+
+// ---------- Boutons dédiés de la console (ROG Ally : Command Center et Armoury Crate)
+const BUTTON_ACTIONS = [
+  { value: 'gamebar', label: 'Game Bar' }, { value: 'qam', label: 'Accès rapide' }, { value: 'menu', label: 'Menu' },
+  { value: 'home', label: 'KaneMode' }, { value: 'taskview', label: 'Vue des tâches' }, { value: 'screenshot', label: 'Capture' },
+  { value: 'none', label: 'Rien' },
+];
+function buttonsBlock(s) {
+  h2(s, 'i-gamepad', 'Boutons de la console');
+  // Sept choix : la rangée prend toute la largeur, sous le titre
+  const row = (key, title, desc) => {
+    const r = el('div', 'set-row', `<div class="txt"><b>${title}</b><small>${desc}</small></div>`);
+    r.style.gridTemplateColumns = '1fr';
+    r.append(segmented(BUTTON_ACTIONS, settings[key], v => { settings[key] = v; saveSettings(); }, key));
+    s.append(r);
+  };
+  row('btnCC', 'Bouton Command Center', 'Le petit bouton en haut à gauche de l’écran');
+  row('btnAC', 'Bouton Armoury Crate', 'Le bouton sous Command Center');
+  row('btnACHold', 'Armoury Crate, appui long', 'Maintenu une seconde');
+  toggle(s, 'blockAsusPrompt', 'Bloquer l’invite Armoury Crate SE', 'Referme la fenêtre qui propose d’installer Armoury Crate quand on appuie sur ces boutons');
+  s.append(el('div', 'notice', native.available
+    ? 'Ces boutons fonctionnent partout, même en jeu, tant que KaneMode est ouvert. <b>Accès rapide</b> et <b>Menu</b> s’ouvrent par-dessus le jeu, et le refermer y ramène. <b>KaneMode</b> revient à l’accueil.'
+    : 'Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).'));
 }
 
 const BUILDERS = {
@@ -491,11 +578,14 @@ const BUILDERS = {
     if (hh) {
       const tool = hh.tool;
       if (tool && tool.app) actionRow(s, 'i-open', `Ouvrir ${esc(tool.name)}`, 'Mises à jour du BIOS et des pilotes, performances (TDP), boutons, éclairage', () => openDevice(tool.app.target), 'hh-tool');
-      else if (tool) actionRow(s, 'i-globe', `Installer ${esc(tool.name)}`, `Logiciel ${esc(hh.maker)} absent · ouvre la page d’assistance officielle`, () => openDevice(hh.support), 'hh-tool');
-      if (hh.support && tool && tool.app) actionRow(s, 'i-globe', `Assistance ${esc(hh.maker)}`, 'BIOS, pilotes et manuels sur le site officiel', () => openDevice(hh.support), 'hh-support');
+      // ASUS : pas besoin d'Armoury Crate, KaneMode suit lui-même le BIOS et les pilotes (plus bas)
+      else if (tool && hh.maker !== 'ASUS') actionRow(s, 'i-globe', `Installer ${esc(tool.name)}`, `Logiciel ${esc(hh.maker)} absent · ouvre la page d’assistance officielle`, () => openDevice(hh.support), 'hh-tool');
+      if (hh.support && tool && tool.app && hh.maker !== 'ASUS') actionRow(s, 'i-globe', `Assistance ${esc(hh.maker)}`, 'BIOS, pilotes et manuels sur le site officiel', () => openDevice(hh.support), 'hh-support');
       actionRow(s, 'i-grid', 'Adapter l’interface à cet écran', `Textes et jaquettes plus grands pour un écran de ${d.screenInches || 7}″ tenu en main`, () => {
         settings.uiScale = 125; settings.badges = false; saveSettings(); toast('Interface adaptée à la console');
       }, 'hh-scale');
+      if (hh.id.startsWith('rog-')) buttonsBlock(s);
+      if (hh.maker === 'ASUS') await oemBlock(s, hh);
     }
 
     h2(s, 'i-download2', 'Pilotes');
@@ -507,7 +597,7 @@ const BUILDERS = {
       else if (g.page) actionRow(s, 'i-globe', `${esc(g.name)} · pilotes ${esc(g.maker)}`, desc + ' · ouvre la page officielle', () => openDevice(g.page), 'gpu:' + g.name);
       else infoRow(s, esc(g.name), desc);
     }
-    if (hh && d.gpus.some(g => g.vendor === '1002')) s.append(el('div', 'notice', `Sur une ${esc(hh.name)}, préférez les pilotes graphiques proposés par ${esc(hh.maker)} (${esc(hh.tool ? hh.tool.name : 'site officiel')}) : ils sont réglés pour la console (consommation, écran, boutons).`));
+    if (hh && d.gpus.some(g => g.vendor === '1002')) s.append(el('div', 'notice', `Sur une ${esc(hh.name)}, préférez les pilotes graphiques proposés par ${esc(hh.maker)} (${hh.maker === 'ASUS' ? 'Mises à jour officielles ASUS, plus haut' : esc(hh.tool ? hh.tool.name : 'site officiel')}) : ils sont réglés pour la console (consommation, écran, boutons).`));
     await driversBlock(s);
   },
 
@@ -556,11 +646,6 @@ const BUILDERS = {
     }
     s.append(grid);
     await updatesBlock(s);
-    // Widget Game Bar : réglages de la console par-dessus les jeux (touche Xbox ou Windows + G)
-    if (native.available) {
-      h2(s, 'i-grid', 'Widget Game Bar');
-      s.append(el('div', 'notice', 'Dans la Game Bar (touche Xbox ou Windows + G), le widget <b>KaneMode</b> règle la console par-dessus n’importe quel jeu : modes de performance, puissance, processeur, écran, son et réseau. Il fonctionne tant que KaneMode est ouvert.'));
-    }
     h2(s, 'i-cpu', 'Interface');
     actionRow(s, 'i-restart', 'Redémarrer l’interface', 'Recharge KaneMode sans quitter', () => location.reload(), 'reload');
     actionRow(s, 'i-exit', 'Quitter vers le bureau Windows', 'Ferme KaneMode', exitToDesktop, 'exit');

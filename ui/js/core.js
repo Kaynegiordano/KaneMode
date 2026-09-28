@@ -30,10 +30,12 @@ export const settings = Object.assign({
   wifi: true, bluetooth: false, night: false, sounds: true, brightness: 70, volume: 45, fps: '0', overlay: 'off',
   accent: '#1a9fff', background: 'art', badges: false, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, cardSize: 'm', corners: 'soft', solidPanels: false, font: 'segoe', clock24: true, clockSeconds: false, batteryPct: true, homeRows: ['recent', 'emulation', 'apps', 'stores'], qamOrder: null, qamHidden: [], tdp: 0, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
+  // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Console portable
+  btnCC: 'qam', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
 }, store.get('settings', {}));
 export const favs = new Set(store.get('favs', []));
 
-export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); }
+export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); }
 
 // KanePlay reprend la couleur d'accent de KaneMode : l'hôte la lui transmet au lancement
 let sentAccent = null;
@@ -43,6 +45,15 @@ function syncAccent() {
   api.post('/api/config', { accent: settings.accent }).catch(() => { sentAccent = null; });
 }
 setTimeout(syncAccent, 0);
+// L'app native lit les boutons de la console : elle apprend ici ce qu'ils doivent faire
+let sentButtons = null;
+function syncButtons() {
+  const b = { cc: settings.btnCC, ac: settings.btnAC, 'ac-hold': settings.btnACHold, blockPrompt: !!settings.blockAsusPrompt };
+  if (JSON.stringify(b) === sentButtons) return;
+  sentButtons = JSON.stringify(b);
+  native.send('buttons', b);
+}
+setTimeout(syncButtons, 0);
 export function saveFavs() { store.set('favs', [...favs]); }
 export function applyTheme() {
   document.documentElement.style.setProperty('--accent', settings.accent);

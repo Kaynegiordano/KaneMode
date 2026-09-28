@@ -34,6 +34,21 @@ native.on(m => {
   overlay.active = true;
   (m.panel === 'menu' ? hooks.menu : hooks.qam)();
 });
+// Boutons de la console (ROG Ally) pressés alors que KaneMode est déjà devant : ouvre ou referme
+native.on(m => {
+  if (m.type === 'toggle') {
+    const top = topLayer();
+    if (top && top.name === m.panel) return closeLayer();
+    while (topLayer()) closeLayer();
+    (m.panel === 'menu' ? hooks.menu : hooks.qam)();
+  } else if (m.type === 'home') {
+    overlay.active = false;
+    while (topLayer()) closeLayer();
+    if (currentPage() && currentPage().id !== 'home') { resetHistory(); go('home', {}, { push: false }); }
+  } else if (m.type === 'desktop-failed') {
+    toast('Le mode Xbox est resté actif : KaneMode reste ouvert. Réessayez, ou utilisez la touche Windows.', { error: true });
+  }
+});
 
 actions.exit = () => { actions['overlay-leave'](); closeLayer(); exitToDesktop(); };
 actions['stream-open'] = () => { actions['overlay-leave'](); closeLayer(); openStreaming(); };
