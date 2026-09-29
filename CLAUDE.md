@@ -179,4 +179,4 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.4.0 : jeu suivi par son dossier d'installation, jeu toujours mis au premier plan, Reprendre / Arrêter sur la fiche, bibliothèque mise à jour toute seule ;
   - 1.4.1 : Steam reste en arrière-plan (démarrage `-silent`, fenêtre réduite si elle passe devant), retour immédiat sur KaneMode à la fin du jeu, journal des changements de premier plan (mode Xbox à valider sur l'Ally) ;
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
-  - 1.5.1 (pas encore publiée) : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally).
+  - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally).
