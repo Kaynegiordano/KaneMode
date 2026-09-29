@@ -44,6 +44,7 @@ const PATHS = {
   sleep: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   check: 'M5 12l5 5 9-10',
   monitor: 'M3 5h18v11H3zM8 20h8M12 16v4M6 12l3-3 3 2 5-5',
+  mouse: 'M12 3a6 6 0 0 0-6 6v6a6 6 0 0 0 12 0V9a6 6 0 0 0-6-6zM12 3v7M6 10h12',
 };
 const svg = id => `<svg class="hud-i" viewBox="0 0 24 24"><path d="${PATHS[id]}"/></svg>`;
 
@@ -57,8 +58,8 @@ async function loadSprite() {
 }
 
 // ---------------------------------------------------------------- état
-let sys = null, live = null, info = null, game = null, amd = null, gpu = null;
-const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['monitor', 'Moniteur']];
+let sys = null, live = null, info = null, game = null, amd = null, gpu = null, mouse = null;
+const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['pad', 'Manette'], ['monitor', 'Moniteur']];
 const filter = () => (CATS.some(c => c[0] === settings.hudFilter) ? settings.hudFilter : 'all');
 const onBattery = () => live && live.discharging === true;
 const fmtW = w => String(Math.round(w * 10) / 10).replace('.', ',') + ' W';
@@ -248,6 +249,19 @@ function tiles() {
   for (const r of sys.radios || []) {
     const wifi = r.kind === 'WiFi';
     t({ key: 'radio:' + r.kind, cat: 'network', icon: wifi ? 'wifi' : 'bluetooth', title: wifi ? 'Wi-Fi' : 'Bluetooth', on: r.on, act: () => send('radio', !r.on, { kind: r.kind }) });
+  }
+
+  // Manette : mode souris (comme Start maintenu 1 s), pour cliquer dans un lanceur ou une fenêtre ;
+  // le jeu au premier plan reçoit toujours la manette
+  if (mouse !== null) {
+    t({ key: 'mouse', cat: 'pad', icon: 'mouse', title: 'Mode souris', on: mouse, sub: mouse ? 'Stick : curseur · A : clic' : 'Ou Start maintenu 1 s',
+      act: async () => {
+        try {
+          mouse = !!(await toApp('mouse-mode', { on: !mouse })).on;
+          toast(mouse ? 'Mode souris : stick = curseur, A = clic, B = clic droit' : 'Mode souris désactivé');
+        } catch (e) { toast(e.message, { error: true }); }
+        render();
+      } });
   }
 
   // Moniteur en direct : autre widget, à épingler sur le jeu ; ses mesures se choisissent ici
@@ -621,10 +635,13 @@ async function loadLive() {
 async function loadGame() {
   if (!WIDGET) return; // aperçu dans un navigateur : l'état du jeu vient de l'app KaneMode
   try {
-    const next = (await toApp('widget-state')).game || null;
+    const st = await toApp('widget-state');
+    const next = st.game || null;
     if ((next && next.id) !== (game && game.id)) stopArmed = stopAsked = 0;
-    const changed = JSON.stringify(next) !== JSON.stringify(game);
+    const m = typeof st.mouse === 'boolean' ? st.mouse : null;
+    const changed = JSON.stringify(next) !== JSON.stringify(game) || m !== mouse;
     game = next;
+    mouse = m;
     if (changed) render();
   } catch { /* KaneMode fermé : signalé par loadSys */ }
 }

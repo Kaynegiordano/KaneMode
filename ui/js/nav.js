@@ -505,7 +505,7 @@ function readPads() {
       if (!heldBy[id]) {
         heldBy[id] = now + 380; // délai avant répétition
         // Start agit au relâchement : maintenu 1 s, il active le mode souris (app native)
-        if (k === 'start') { startAt[id] = now; continue; }
+        if (k === 'start') { startAt[id] = { t: now }; continue; }
         if (now - (lastPress[k] || -1e9) < SAME_PRESS_MS) continue;
         lastPress[k] = now;
         logSource(p);
@@ -523,8 +523,13 @@ function readPads() {
   for (const id in heldBy) if (!seen.has(id)) delete heldBy[id];
   // Start relâché : appui court = son action (accès rapide ou menu) ; appui long = mode souris
   for (const id in startAt) {
-    if (seen.has(id)) continue;
-    const held = now - startAt[id];
+    if (seen.has(id)) {
+      // Toujours tenu après 1,3 s sans que l'app ait activé le mode souris (elle ne voyait pas la
+      // manette : mode Xbox) : l'interface le lui demande
+      if (!startAt[id].sent && !mouseMode.on && now - startAt[id].t >= 1300) { startAt[id].sent = true; native.send('mouse-mode', { on: true }); }
+      continue;
+    }
+    const held = now - startAt[id].t;
     delete startAt[id];
     if (held >= START_HOLD_MS || mouseMode.on || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
     lastPress.start = now;

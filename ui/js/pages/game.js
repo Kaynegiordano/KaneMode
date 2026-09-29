@@ -185,11 +185,13 @@ export async function launch(g) {
   }, 2800);
 }
 
-/** Ferme KaneMode et revient au bureau Windows (l'hôte s'arrête, la fenêtre se ferme). */
+/**
+ * Bureau Windows : en mode Xbox, KaneMode en sort (Windows peut demander confirmation) et reste
+ * ouvert ; déjà sur le bureau, il se réduit. Il ne se ferme plus (2.1.0).
+ */
 export async function exitToDesktop() {
-  if (!await confirmDialog('Quitter vers le bureau Windows ?', 'KaneMode se ferme et le bureau Windows s’affiche. En mode Xbox, KaneMode en sort d’abord (Windows peut demander confirmation). Pour revenir, relancez KaneMode ou le mode Xbox.', 'Quitter vers le bureau')) return;
-  // Dans l'app native, c'est elle qui ferme la fenêtre et arrête l'hôte.
-  if (native.available) return native.send('exit');
+  if (native.available) { toast('Bureau Windows · KaneMode reste ouvert'); return native.send('exit'); }
+  if (!await confirmDialog('Quitter KaneMode ?', 'Hors de l’app, l’hôte s’arrête et cette page se ferme.', 'Quitter')) return;
   try { await api.post('/api/exit'); } catch { /* l'hôte s'arrête peut-être déjà */ }
   const bye = el('div', 'bye', '<svg class="brand-mark"><use href="#i-brand"/></svg><h1>À bientôt</h1><p>KaneMode est fermé, le bureau Windows a repris la main.<br>Vous pouvez fermer cette fenêtre.</p>');
   document.body.append(bye);

@@ -34,6 +34,8 @@ public sealed class XInputPads : IDisposable
         Orphan,
         /// <summary>Une autre fenêtre (jeu, Game Bar, vue des tâches…).</summary>
         Other,
+        /// <summary>KaneMode en arrière-plan derrière une fenêtre ordinaire (bureau, lanceur) : seul Start maintenu compte.</summary>
+        Desktop,
     }
 
     /// <summary>État des manettes en JSON (tableau), à chaque changement ; « [] » quand KaneMode n'a plus la main.</summary>
@@ -70,7 +72,25 @@ public sealed class XInputPads : IDisposable
     public bool MouseMode => _mouse;
 
     /// <summary>Quitte le mode souris (lancement d'un jeu : la manette est à lui).</summary>
-    public void StopMouseMode() => _mouse = false;
+    public void StopMouseMode() { if (_mouse) SetMouseMode(false, "lancement"); }
+
+    private long _lastToggle;
+    /// <summary>Moment du dernier changement de mode (Environment.TickCount64).</summary>
+    public long LastToggle => _lastToggle;
+
+    /// <summary>
+    /// Active ou coupe le mode souris (Start maintenu, interface, widget Game Bar). Un Start encore
+    /// tenu à ce moment ne compte plus jusqu'à son relâchement : il ne rebascule pas une seconde après.
+    /// </summary>
+    public void SetMouseMode(bool on, string why)
+    {
+        _lastToggle = Environment.TickCount64;
+        for (int i = 0; i < 4; i++) { _startUsed[i] = true; _startSince[i] = 1; }
+        if (on == _mouse) return;
+        _restX = _restY = 0;
+        _mouse = on;
+        Log.Write(on ? $"Mode souris activé ({why})" : $"Mode souris désactivé ({why})");
+    }
 
     public void Start()
     {
@@ -91,7 +111,7 @@ public sealed class XInputPads : IDisposable
             Focus focus = dllMissing ? Focus.Hidden : _focus();
             bool ours = focus == Focus.Ours || focus == Focus.Orphan;
             string now = "[]";
-            if (!dllMissing && (ours || _mouse || focus == Focus.Other))
+            if (!dllMissing && (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop))
             {
                 try
                 {
@@ -101,7 +121,7 @@ public sealed class XInputPads : IDisposable
                     bool pressed = (all & ~_prevAll) != 0;
                     _prevAll = all;
                     // Start maintenu : seulement quand KaneMode a la main (ou pour quitter le mode souris)
-                    if (ours || _mouse) CheckHold(t);
+                    if (ours || _mouse || focus == Focus.Desktop) CheckHold(t);
                     if (_mouse) MouseStep(t, dt);
                     else if (ours) now = Json();
                     if (pressed && !_mouse)
@@ -116,7 +136,8 @@ public sealed class XInputPads : IDisposable
             if (_mouse != mouseShown) { mouseShown = _mouse; MouseModeChanged?.Invoke(_mouse); }
             if (now != last) { last = now; Changed?.Invoke(now); }
             // KaneMode ou mode souris : lecture à 125 Hz ; autre fenêtre : un coup d'œil (journal) ; sinon rien
-            Thread.Sleep(ours || _mouse ? 8 : 150);
+            // (derrière une fenêtre ordinaire : 20 fois par seconde, assez pour un appui long sur Start)
+            Thread.Sleep(ours || _mouse ? 8 : focus == Focus.Desktop ? 50 : 150);
         }
         if (_mouseButtons != 0) ReleaseMouse();
     }
@@ -160,10 +181,8 @@ public sealed class XInputPads : IDisposable
             if (!down) { _startSince[i] = 0; _startUsed[i] = false; continue; }
             if (_startSince[i] == 0) _startSince[i] = t;
             if (_startUsed[i] || t - _startSince[i] < HOLD_MS) continue;
-            _startUsed[i] = true;
-            _mouse = !_mouse;
-            _restX = _restY = 0;
-            Log.Write(_mouse ? "Mode souris activé (Start maintenu)" : "Mode souris désactivé");
+            SetMouseMode(!_mouse, "Start maintenu");
+            return;
         }
     }
 

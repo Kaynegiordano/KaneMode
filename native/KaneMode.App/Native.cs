@@ -318,6 +318,16 @@ public static class Native
 
     public static bool IsMinimized(IntPtr hwnd) => IsIconic(hwnd);
 
+    /// <summary>Fenêtre qui couvre tout son écran (jeu en plein écran ou sans bordure).</summary>
+    public static bool CoversMonitor(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out RECT r)) return false;
+        var info = new MONITORINFO { Size = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(MonitorFromWindow(hwnd, 2 /* MONITOR_DEFAULTTONEAREST */), ref info)) return false;
+        var m = info.Monitor;
+        return r.Left <= m.Left && r.Top <= m.Top && r.Right >= m.Right && r.Bottom >= m.Bottom;
+    }
+
     /// <summary>
     /// Premier plan « à personne » : aucune fenêtre, une fenêtre masquée ou invisible (KanePlay qui vient
     /// de se fermer), ou le bureau. KaneMode, affiché, peut alors reprendre la main sans rien voler.

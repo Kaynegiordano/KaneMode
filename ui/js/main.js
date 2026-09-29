@@ -32,7 +32,9 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => { applyTheme(); refresh(); }, 250);
 });
 // L'écran de démarrage couvre tout dès le chargement.
-if (settings.bootMode !== 'none') $('#boot').hidden = false;
+// Interface rechargée par l'app (fermeture de KanePlay) : ni logo ni son de démarrage
+const RELOADED = new URLSearchParams(location.search).has('resume');
+if (settings.bootMode !== 'none' && !RELOADED) $('#boot').hidden = false;
 // ---------- Par-dessus KanePlay ----------
 // Dans KanePlay, Select et Start ouvrent le menu et l'accès rapide de KaneMode (l'app native relaie) ;
 // les refermer ramène à KanePlay, aller ailleurs dans KaneMode y reste.
@@ -96,7 +98,7 @@ export function openPowerMenu() {
 actions['power-open'] = openPowerMenu;
 actions['power-close'] = () => closeLayer();
 const SYSTEM = {
-  desktop: ['Aller au bureau Windows ?', 'Le mode console se ferme et le bureau s’affiche.', 'Aller au bureau'],
+  desktop: ['Aller au bureau Windows ?', 'KaneMode sort du mode Xbox et reste ouvert.', 'Aller au bureau'],
   sleep: ['Mettre en veille ?', 'Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.', 'Mettre en veille'],
   restart: ['Redémarrer le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Redémarrer'],
   shutdown: ['Éteindre le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Éteindre'],
@@ -289,12 +291,12 @@ actions['update-open'] = () => {
 (async () => {
   // La bibliothèque se charge pendant le logo (ou la vidéo) de démarrage.
   const loading = lib.load().catch(() => toast('Hôte injoignable : lancez « node host/server.js »', { error: true }));
-  await playBoot();
+  if (!RELOADED) await playBoot();
   const started = performance.now();
   await loading;
   go('home', {}, { push: false });
   // Après le logo animé, pas de second logo : l'accueil apparaît directement.
-  const wait = settings.splash && settings.bootMode === 'none' ? Math.max(0, 1100 - (performance.now() - started)) : 0;
+  const wait = settings.splash && settings.bootMode === 'none' && !RELOADED ? Math.max(0, 1100 - (performance.now() - started)) : 0;
   setTimeout(() => { $('#splash').classList.add('hide'); focusIn(currentPage().el); }, wait);
   prefetchQam();
   // Nouvelle version de KaneMode ? Vérifiée au démarrage puis toutes les heures (canal choisi

@@ -52,7 +52,7 @@ const ROWS = {
       t.style.setProperty('--src', sourceOf(l.id).color);
       lrow.append(nav(t, () => openLauncher(l), 'launcher:' + l.id));
     }
-    const deskTile = el('div', 'card tile launcher-tile', `${icon('i-desktop')}<span>Bureau Windows<small>Fermer KaneMode</small></span>`);
+    const deskTile = el('div', 'card tile launcher-tile', `${icon('i-desktop')}<span>Bureau Windows<small>KaneMode reste ouvert</small></span>`);
     deskTile.style.setProperty('--src', '#2a7fe0');
     lrow.append(nav(deskTile, exitToDesktop, 'desktop-tile'));
     root.append(lrow);

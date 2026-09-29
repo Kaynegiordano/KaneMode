@@ -662,7 +662,7 @@ const BUILDERS = {
     updatesBlock(s);
     h2(s, 'i-cpu', 'Interface');
     actionRow(s, 'i-restart', 'Redémarrer l’interface', 'Recharge KaneMode sans quitter', () => location.reload(), 'reload');
-    actionRow(s, 'i-exit', 'Quitter vers le bureau Windows', 'Ferme KaneMode', exitToDesktop, 'exit');
+    actionRow(s, 'i-exit', 'Bureau Windows', 'Sort du mode Xbox ; KaneMode reste ouvert', exitToDesktop, 'exit');
   },
 };
 

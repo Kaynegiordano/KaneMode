@@ -84,6 +84,7 @@ public partial class MainWindow : Window
             _buttons.Start();
             _pads.Start();
             WidgetBridge.Start(_host.Url);
+            WatchKanePlay();
         }
         catch (Exception ex)
         {
@@ -148,19 +149,37 @@ public partial class MainWindow : Window
     /// </summary>
     private XInputPads.Focus PadFocus()
     {
+        var focus = ComputePadFocus();
+        if (focus != _lastPadFocus)
+        {
+            // Journal : qui a la main pour la manette (diagnostic du mode Xbox sur la console)
+            _lastPadFocus = focus;
+            IntPtr f = Native.GetForegroundWindow();
+            Log.Write($"Manette : {focus} (premier plan « {Native.WindowTitle(f)} », {Native.ProcessName(Native.WindowProcessId(f))}, {Native.WindowClass(f)})");
+        }
+        return focus;
+    }
+    private XInputPads.Focus _lastPadFocus = XInputPads.Focus.Hidden;
+
+    private XInputPads.Focus ComputePadFocus()
+    {
         IntPtr me = _hwnd;
-        if (!_ready || me == IntPtr.Zero || Native.IsMinimized(me) || !Native.IsAppWindow(me)) return XInputPads.Focus.Hidden;
+        if (!_ready || me == IntPtr.Zero) return XInputPads.Focus.Hidden;
         IntPtr f = Native.GetForegroundWindow();
         if (f == me) return XInputPads.Focus.Ours;
         // Jeu suivi ou KanePlay qu'on met devant : c'est à eux, KaneMode n'y touche pas
         if (_game != null || _watch != null) return XInputPads.Focus.Hidden;
-        if (Native.IsOrphanForeground(f)) return XInputPads.Focus.Orphan;
-        // Quelque chose est affiché devant KaneMode (Game Bar, vue des tâches, autre fenêtre) : pas à nous
-        IntPtr top = Native.VisibleWindows().FirstOrDefault(Native.IsAppWindow);
-        if (top != me) return XInputPads.Focus.Hidden;
-        // Fenêtre d'application cachée derrière KaneMode : on peut reprendre la main. Sinon (fenêtre
-        // outil, superposition), on ne fait que le noter dans le journal.
-        return Native.IsAppWindow(f) ? XInputPads.Focus.Orphan : XInputPads.Focus.Other;
+        if (!Native.IsMinimized(me) && Native.IsAppWindow(me))
+        {
+            if (Native.IsOrphanForeground(f)) return XInputPads.Focus.Orphan;
+            // Fenêtre d'application cachée derrière KaneMode : on peut reprendre la main. Sinon (fenêtre
+            // outil, superposition), on ne fait que le noter dans le journal.
+            IntPtr top = Native.VisibleWindows().FirstOrDefault(Native.IsAppWindow);
+            if (top == me) return Native.IsAppWindow(f) ? XInputPads.Focus.Orphan : XInputPads.Focus.Other;
+        }
+        // KaneMode en arrière-plan (bureau Windows, lanceur, navigateur devant) : Start maintenu y active
+        // le mode souris. Jamais par-dessus une fenêtre qui couvre l'écran (jeu, Game Bar, vue des tâches).
+        return Native.IsOrphanForeground(f) || !Native.CoversMonitor(f) ? XInputPads.Focus.Desktop : XInputPads.Focus.Hidden;
     }
 
     private DateTime _reclaimedAt;
@@ -273,6 +292,50 @@ public partial class MainWindow : Window
         _watch.Start();
     }
 
+    // ---------- Fermeture de KanePlay : KaneMode se recharge ----------
+    private const string KanePlayTitle = "KaneMode · KanePlay";
+    private System.Windows.Threading.DispatcherTimer? _kanePlayTimer;
+    private bool _kanePlayOpen;
+
+    /// <summary>
+    /// Après une session KanePlay, la manette ne répondait plus dans KaneMode tant qu'on ne passait pas
+    /// par la vue des tâches (2.0.0 n'a pas suffi). Désormais, dès que KanePlay est fermé (bouton
+    /// « KaneMode » / B, fin de session, plantage), KaneMode reprend le premier plan et recharge
+    /// entièrement son interface, sans le logo de démarrage.
+    /// </summary>
+    private void WatchKanePlay()
+    {
+        if (_kanePlayTimer != null) return; // démarrage relancé après une erreur
+        _kanePlayTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _kanePlayTimer.Tick += (_, _) =>
+        {
+            if (!_ready) return;
+            if (Native.FindVisibleWindow(KanePlayTitle) != IntPtr.Zero) { _kanePlayOpen = true; return; }
+            if (!_kanePlayOpen || System.Diagnostics.Process.GetProcessesByName("KanePlay").Length > 0) return;
+            _kanePlayOpen = false;
+            ReloadAfterKanePlay();
+        };
+        _kanePlayTimer.Start();
+    }
+
+    private async void ReloadAfterKanePlay()
+    {
+        Log.Write("KanePlay fermé : KaneMode reprend la main et recharge son interface");
+        _returnTo = IntPtr.Zero;
+        StopForegroundWatch();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+        Show();
+        Native.ForceForeground(Hwnd);
+        // WebView2 masqué puis réaffiché : Chromium refait son état de visibilité (fenêtre qui était
+        // recouverte par KanePlay), puis la page repart de zéro
+        Web.Visibility = Visibility.Hidden;
+        await Task.Delay(50);
+        Web.Visibility = Visibility.Visible;
+        try { Web.CoreWebView2?.Navigate($"{_host.Url}/?native=1&resume=1"); }
+        catch (InvalidOperationException) { }
+        Web.Focus();
+    }
+
     private void StopForegroundWatch()
     {
         _watch?.Stop();
@@ -379,7 +442,7 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
 
     // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
-    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "gamebar-close" };
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "gamebar-close", "mouse-mode" };
 
     /// <summary>
     /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
@@ -399,7 +462,7 @@ public partial class MainWindow : Window
                 case "widget-state":
                     // Jeu en cours, pour la section « Jeu » du widget
                     var g = _game;
-                    return JsonSerializer.Serialize(new { game = g != null && g.Seen ? new { id = g.Id, name = g.Name ?? Native.WindowTitle(g.Window), dir = g.Dir, steamAppId = g.SteamAppId } : null });
+                    return JsonSerializer.Serialize(new { game = g != null && g.Seen ? new { id = g.Id, name = g.Name ?? Native.WindowTitle(g.Window), dir = g.Dir, steamAppId = g.SteamAppId } : null, mouse = _pads.MouseMode });
                 case "lossless":
                     // Widget : mise à l'échelle de Lossless Scaling, par son raccourci global (Ctrl + Alt + S par défaut)
                     Native.SendKeys(0x11 /* Ctrl */, Native.VK_MENU, 0x53 /* S */);
@@ -475,9 +538,13 @@ public partial class MainWindow : Window
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });
                     if (_pads.MouseMode) Post(new { type = "mouse-mode", on = true });
                     break;
-                case "mouse-mode-off":
-                    _pads.StopMouseMode();
-                    break;
+                case "mouse-mode":
+                    // Interface (Start maintenu vu par WebView2, quand l'app ne l'a pas vu elle-même) ou
+                    // widget Game Bar (interrupteur « Mode souris »)
+                    bool on = Flag(root, "on");
+                    if (!fromWidget && on && Environment.TickCount64 - _pads.LastToggle < 2500) return null; // déjà basculé par l'app
+                    _pads.SetMouseMode(on, fromWidget ? "widget Game Bar" : $"interface, manette : {_lastPadFocus}");
+                    return JsonSerializer.Serialize(new { on = _pads.MouseMode });
             }
         }
         catch (Exception ex)
@@ -503,34 +570,36 @@ public partial class MainWindow : Window
     private bool _leaving;
 
     /// <summary>
-    /// Retour au bureau. En mode Xbox, Windows relance aussitôt l'application d'accueil qui se
-    /// ferme : on quitte d'abord le mode Xbox (Windows + F11, le raccourci de Windows), puis on
-    /// attend qu'il soit vraiment quitté (Windows peut demander confirmation) avant de se fermer.
+    /// « Bureau Windows » (2.1.0) : KaneMode ne se ferme plus. En mode Xbox, on en sort seulement
+    /// (Windows + F11, le raccourci de Windows ; Windows peut demander confirmation) et KaneMode reste
+    /// ouvert tel quel sur le bureau. Déjà sur le bureau : KaneMode se réduit pour le laisser voir.
     /// </summary>
-    private async void ExitToDesktop()
+    private async void ExitToDesktop(bool quit = false)
     {
         if (_leaving) return;
         _leaving = true;
         try
         {
+            Native.EnsureDesktop();
             if (Native.FullScreenExperienceActive)
             {
-                Log.Write("Retour au bureau : sortie du mode Xbox");
+                Log.Write("Bureau Windows : sortie du mode Xbox, KaneMode reste ouvert");
                 Native.ForceForeground(Hwnd);
                 Native.SendKeys(Native.VK_LWIN, Native.VK_F11);
                 var deadline = DateTime.UtcNow.AddSeconds(30);
                 while (Native.FullScreenExperienceActive && DateTime.UtcNow < deadline) await Task.Delay(250);
                 if (Native.FullScreenExperienceActive)
                 {
-                    // Sortie refusée ou annulée : se fermer ne ferait que relancer KaneMode
-                    Log.Write("Le mode Xbox est resté actif : KaneMode reste ouvert");
+                    Log.Write("Le mode Xbox est resté actif");
                     Post(new { type = "desktop-failed" });
                     return;
                 }
+                if (quit) Close();
+                return;
             }
-            Log.Write("Retour au bureau");
-            Native.EnsureDesktop();
-            Close();
+            if (quit) { Close(); return; }
+            Log.Write("Bureau Windows : KaneMode réduit, toujours ouvert");
+            WindowState = WindowState.Minimized;
         }
         finally { _leaving = false; }
     }
@@ -539,7 +608,7 @@ public partial class MainWindow : Window
     private async void OnKeyDown(object sender, KeyEventArgs e)
     {
         if (!_failed) return;
-        if (e.Key == Key.Escape) { e.Handled = true; ExitToDesktop(); }
+        if (e.Key == Key.Escape) { e.Handled = true; ExitToDesktop(quit: true); } // démarrage raté : on quitte vraiment
         else if (e.Key == Key.Enter)
         {
             e.Handled = true;
