@@ -74,11 +74,9 @@ if (WIDGET) window.chrome.webview.addEventListener('message', e => {
 });
 
 async function loadLive() {
-  const [a, b] = await Promise.all([
-    api.get('/api/sys/live').catch(() => null),
-    amd && amd.available ? api.get('/api/amd/live').catch(() => null) : null,
-  ]);
-  live = a; gpu = b;
+  // Processeur, batterie et GPU en une requête, partagée avec le widget KaneMode ouvert
+  const r = await api.get('/api/hud/live').catch(() => null);
+  live = r && r.live; gpu = r && r.gpu;
   paint();
 }
 async function loadState() {

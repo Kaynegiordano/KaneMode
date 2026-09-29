@@ -54,7 +54,9 @@ export function back() {
   const L = topLayer();
   if (L) { sfx('back'); return closeLayer(L); }
   const p = currentPage();
-  if (!p || (p.back && p.back() === true)) return; // widget Game Bar : pas de pages
+  // Widget Game Bar : pas de pages, B ferme la Game Bar (hooks.back, voir widget.js)
+  if (!p) { if (hooks.back) { sfx('back'); hooks.back(); } return; }
+  if (p.back && p.back() === true) return;
   if (!state.history.length) return;
   sfx('back');
   const h = state.history.pop();
@@ -370,8 +372,16 @@ function poll() {
   readPads();
   requestAnimationFrame(poll);
 }
-requestAnimationFrame(poll);
-setInterval(() => { if (performance.now() - lastRead > 100 && (!document.hidden || xpads.length)) readPads(); }, 16);
+// Widgets Game Bar, par-dessus un jeu : pas de lecture à chaque image (120 fois par seconde sur la
+// ROG Ally), qui prenait du temps au jeu. Le moniteur n'a pas besoin de manette ; le widget la lit
+// 20 fois par seconde, seulement quand il a le focus.
+const GAMEBAR_PAGE = /\/(widget|monitor)\.html$/.exec(location.pathname);
+if (!GAMEBAR_PAGE) {
+  requestAnimationFrame(poll);
+  setInterval(() => { if (performance.now() - lastRead > 100 && (!document.hidden || xpads.length)) readPads(); }, 16);
+} else if (GAMEBAR_PAGE[1] === 'widget') {
+  setInterval(() => { if (!document.hidden && document.hasFocus()) readPads(); }, 50);
+}
 
 function readPads() {
   lastRead = performance.now();

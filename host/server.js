@@ -352,6 +352,8 @@ const setPerfMode = mode => {
 // changé sans cesse, un autre programme l'impose : KaneMode s'efface 10 minutes et le signale.
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
+const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
+const losslessCheck = { t: 0, p: null }; // Lossless Scaling ouvert (GET /api/widget)
 /** Un réglage vient d'être fait à la main ou par un mode : pas de vérification pendant 4 s. */
 const keeperQuiet = () => { keeper.quiet = Date.now(); };
 async function keepPerf(reason) {
@@ -996,8 +998,14 @@ const routes = {
   'GET /api/widget': async (req, res) => {
     const version = (() => { try { return fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim(); } catch { return null; } })();
     const ls = allEntries(false).byId.get('steam:993090');
-    const running = await new Promise(resolve => execFile('tasklist.exe', ['/FI', 'IMAGENAME eq LosslessScaling.exe', '/NH'], { windowsHide: true, timeout: 4000 },
-      (err, out) => resolve(!err && /LosslessScaling\.exe/i.test(out))));
+    // Lossless Scaling ouvert ? Seulement s'il est installé, et gardé 15 s (tasklist est un programme
+    // à lancer, coûteux par-dessus un jeu)
+    if (ls && (!losslessCheck.p || Date.now() - losslessCheck.t > 15000)) {
+      losslessCheck.t = Date.now();
+      losslessCheck.p = new Promise(resolve => execFile('tasklist.exe', ['/FI', 'IMAGENAME eq LosslessScaling.exe', '/NH'], { windowsHide: true, timeout: 4000 },
+        (err, out) => resolve(!err && /LosslessScaling\.exe/i.test(out))));
+    }
+    const running = ls ? await losslessCheck.p : false;
     json(res, 200, { version, accent: config().accent || null, lossless: ls || running ? { installed: !!ls, running, id: ls ? ls.id : null } : null });
   },
   // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
@@ -1174,6 +1182,18 @@ const routes = {
   'GET /api/amd/live': async (req, res) => {
     try { json(res, 200, await amd.live()); }
     catch (e) { json(res, 500, { error: e.message }); }
+  },
+  // Widgets Game Bar : toutes les mesures en direct en une requête (processeur, batterie, GPU), gardées
+  // un court instant : le widget et le moniteur ouverts ensemble ne les demandent qu'une fois
+  'GET /api/hud/live': async (req, res) => {
+    if (!hudLive.p || Date.now() - hudLive.t > 700) {
+      hudLive.t = Date.now();
+      hudLive.p = Promise.all([
+        sysctl.live().catch(() => null),
+        amd.state().then(s => (s && s.available ? amd.live() : null)).catch(() => null),
+      ]).then(([live, gpu]) => ({ live, gpu }));
+    }
+    json(res, 200, await hudLive.p);
   },
   'POST /api/amd': async (req, res) => {
     const b = await readBody(req);

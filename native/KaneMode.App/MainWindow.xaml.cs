@@ -331,7 +331,7 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
 
     // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
-    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "amd-overlay" };
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "amd-overlay", "gamebar-close" };
 
     /// <summary>
     /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
@@ -355,6 +355,10 @@ public partial class MainWindow : Window
                 case "lossless":
                     // Widget : mise à l'échelle de Lossless Scaling, par son raccourci global (Ctrl + Alt + S par défaut)
                     Native.SendKeys(0x11 /* Ctrl */, Native.VK_MENU, 0x53 /* S */);
+                    break;
+                case "gamebar-close":
+                    // Widget : B (rond) ferme la Game Bar, par son raccourci (Windows + G)
+                    Native.SendKeys(Native.VK_LWIN, 0x47 /* G */);
                     break;
                 case "amd-overlay":
                     // Widget : overlay de mesures d'AMD Software (Ctrl + Maj + O), qui compte aussi les

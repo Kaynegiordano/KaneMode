@@ -128,7 +128,10 @@ namespace KaneMode {
     [StructLayout(LayoutKind.Sequential)] struct WaitStatus { public uint Tag, Timeout, PowerState, Low, High; }
     [StructLayout(LayoutKind.Sequential)] struct BatStatus { public uint PowerState, Capacity, Voltage; public int Rate; }
     // Renvoie { puissance (W, positive), en décharge (1/0), niveau (mWh) } ou null sans batterie
-    public static double[] Battery() {
+    // Chemin de la batterie, cherché une fois (l'énumération des périphériques est coûteuse, et les
+    // mesures sont lues chaque seconde par l'accès rapide et les widgets Game Bar)
+    static string batteryPath;
+    static string FindBattery() {
       Guid cls = new Guid("72631e54-78a4-11d0-bcf7-00aa00b7b32a");
       IntPtr set = SetupDiGetClassDevs(ref cls, IntPtr.Zero, IntPtr.Zero, 0x12); // PRESENT | DEVICEINTERFACE
       if (set == new IntPtr(-1)) return null;
@@ -138,25 +141,28 @@ namespace KaneMode {
         uint need;
         SetupDiGetDeviceInterfaceDetail(set, ref d, IntPtr.Zero, 0, out need, IntPtr.Zero);
         IntPtr buf = Marshal.AllocHGlobal((int)need);
-        string path;
         try {
           Marshal.WriteInt32(buf, IntPtr.Size == 8 ? 8 : 6);
           if (!SetupDiGetDeviceInterfaceDetail(set, ref d, buf, need, out need, IntPtr.Zero)) return null;
-          path = Marshal.PtrToStringUni(new IntPtr(buf.ToInt64() + 4));
+          return Marshal.PtrToStringUni(new IntPtr(buf.ToInt64() + 4));
         } finally { Marshal.FreeHGlobal(buf); }
-        IntPtr h = CreateFile(path, 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
-        if (h == new IntPtr(-1)) return null;
-        try {
-          uint wait = 0, tag; int ret;
-          if (!DeviceIoControl(h, 0x294040, ref wait, 4, out tag, 4, out ret, IntPtr.Zero) || tag == 0) return null;
-          WaitStatus w = new WaitStatus(); w.Tag = tag;
-          BatStatus st;
-          if (!DeviceIoControl(h, 0x29404C, ref w, Marshal.SizeOf(typeof(WaitStatus)), out st, Marshal.SizeOf(typeof(BatStatus)), out ret, IntPtr.Zero)) return null;
-          bool discharging = (st.PowerState & 0x2) != 0;
-          double watts = st.Rate == unchecked((int)0x80000000) ? -1 : Math.Abs(st.Rate) / 1000.0;
-          return new double[] { watts, discharging ? 1 : 0, st.Capacity };
-        } finally { CloseHandle(h); }
       } finally { SetupDiDestroyDeviceInfoList(set); }
+    }
+    public static double[] Battery() {
+      if (batteryPath == null) batteryPath = FindBattery();
+      if (batteryPath == null) return null;
+      IntPtr h = CreateFile(batteryPath, 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
+      if (h == new IntPtr(-1)) { batteryPath = null; return null; } // batterie réénumérée : cherchée à nouveau
+      try {
+        uint wait = 0, tag; int ret;
+        if (!DeviceIoControl(h, 0x294040, ref wait, 4, out tag, 4, out ret, IntPtr.Zero) || tag == 0) return null;
+        WaitStatus w = new WaitStatus(); w.Tag = tag;
+        BatStatus st;
+        if (!DeviceIoControl(h, 0x29404C, ref w, Marshal.SizeOf(typeof(WaitStatus)), out st, Marshal.SizeOf(typeof(BatStatus)), out ret, IntPtr.Zero)) return null;
+        bool discharging = (st.PowerState & 0x2) != 0;
+        double watts = st.Rate == unchecked((int)0x80000000) ? -1 : Math.Abs(st.Rate) / 1000.0;
+        return new double[] { watts, discharging ? 1 : 0, st.Capacity };
+      } finally { CloseHandle(h); }
     }
   }
 

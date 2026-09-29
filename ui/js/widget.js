@@ -7,7 +7,7 @@
 // dans le widget UWP, qui relaie ses requêtes à l'hôte et ses messages à l'app KaneMode (core.js :
 // WIDGET, toApp).
 import { $, el, esc, api, toast, settings, saveSettings, applyTheme, WIDGET, toApp, sfx } from './core.js';
-import { nav, focusIn, focused, openLayer, closeLayer, topLayer } from './nav.js';
+import { nav, focusIn, focused, openLayer, closeLayer, topLayer, hooks } from './nav.js';
 import { PERF_MODES, PROFILE_WATTS, VENDOR_LABELS, vendorFor } from './qam.js';
 import { MONITOR_ITEMS, monitorPrefs, setMonitorPref, noteChange } from './hud.js';
 
@@ -454,7 +454,10 @@ function render() {
   if (chip) chips.scrollLeft = Math.max(0, Math.min(chips.scrollLeft, chip.offsetLeft - 8), chip.offsetLeft + chip.offsetWidth - chips.clientWidth + 8);
 }
 
-// Bandeau des mesures : images par seconde et GPU (pilote AMD), processeur, batterie
+// Bandeau des mesures : images par seconde et GPU (pilote AMD), processeur, batterie. Le bandeau et
+// le graphique sont créés une fois et mis à jour sur place (par-dessus un jeu, reconstruire la page
+// chaque seconde coûtait cher sur la ROG Ally).
+let liveEl = null;
 function liveStrip() {
   const cells = [];
   if (gpu && gpu.fps != null) cells.push([String(gpu.fps), 'images/s']);
@@ -462,17 +465,15 @@ function liveStrip() {
   if (live && live.mhz) cells.push([(live.mhz / 1000).toFixed(1).replace('.', ',') + ' GHz', live.load != null ? `CPU · ${live.load} %` : 'CPU']);
   if (live && onBattery() && live.watts != null) cells.push([fmtW(live.watts), 'Batterie']);
   else if (gpu && gpu.gpuPower != null) cells.push([fmtW(gpu.gpuPower), 'Puissance GPU']);
-  const d = el('div', 'hud-live');
-  d.id = 'hud-live';
-  d.hidden = !cells.length;
-  d.innerHTML = cells.map(([v, l]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
-  return d;
+  if (!liveEl) { liveEl = el('div', 'hud-live'); liveEl.id = 'hud-live'; }
+  const html = cells.map(([v, l]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
+  if (liveEl._html !== html) { liveEl._html = html; liveEl.innerHTML = html; }
+  liveEl.hidden = !cells.length;
+  return liveEl;
 }
 function paintLive() {
-  const old = $('#hud-live');
-  if (old) old.replaceWith(liveStrip());
-  const h = $('#hud-history');
-  if (h) h.replaceWith(historyBox());
+  liveStrip();
+  historyBox();
   paintHead();
 }
 
@@ -486,19 +487,24 @@ function record() {
   while (hist.length && Date.now() - hist[0].t > HISTORY_MS) hist.shift();
   while (marks.length && Date.now() - marks[0].t > HISTORY_MS) marks.shift();
 }
+let histEl = null, histCanvas = null, histLegend = null;
 function historyBox() {
-  const d = el('div', 'hud-history');
-  d.id = 'hud-history';
+  if (!histEl) {
+    histEl = el('div', 'hud-history');
+    histEl.id = 'hud-history';
+    histCanvas = document.createElement('canvas');
+    histLegend = el('div', 'hud-history-legend');
+    histEl.append(histCanvas, histLegend);
+  }
   const hasFps = hist.some(x => x.fps != null), hasW = hist.some(x => x.w != null);
-  d.hidden = hist.length < 2 || (!hasFps && !hasW);
-  if (d.hidden) return d;
-  const c = document.createElement('canvas');
-  d.append(c);
+  histEl.hidden = hist.length < 2 || (!hasFps && !hasW);
+  if (histEl.hidden) return histEl;
   const wLabel = live && onBattery() ? 'Batterie (W)' : 'GPU (W)';
-  d.append(el('div', 'hud-history-legend', (hasFps ? '<span><i style="background:#7cf29a"></i>Images/s</span>' : '') +
-    (hasW ? `<span><i style="background:#ffb35c"></i>${wLabel}</span>` : '') + '<span>60 s</span>'));
-  requestAnimationFrame(() => drawHistory(c));
-  return d;
+  const legend = (hasFps ? '<span><i style="background:#7cf29a"></i>Images/s</span>' : '') +
+    (hasW ? `<span><i style="background:#ffb35c"></i>${wLabel}</span>` : '') + '<span>60 s</span>';
+  if (histLegend.innerHTML !== legend) histLegend.innerHTML = legend;
+  requestAnimationFrame(() => drawHistory(histCanvas));
+  return histEl;
 }
 function drawHistory(c) {
   const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
@@ -590,22 +596,24 @@ function status(text) {
 }
 
 // ---------------------------------------------------------------- données
+// Relectures régulières : la page n'est redessinée que si les données ont changé
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 async function loadSys() {
-  try { sys = await api.get('/api/sys'); status(''); }
+  let next = sys;
+  try { next = await api.get('/api/sys'); status(''); }
   catch (e) { status(WIDGET ? 'KaneMode n’est pas ouvert : ouvrez-le pour régler le système.' : e.message); }
-  render();
+  if (!same(next, sys)) { sys = next; render(); }
 }
 async function loadAmd(force) {
-  try { amd = await api.get('/api/amd' + (force ? '?refresh=1' : '')); } catch { amd = null; }
-  render();
+  let next = null;
+  try { next = await api.get('/api/amd' + (force ? '?refresh=1' : '')); } catch { next = null; }
+  if (!same(next, amd)) { amd = next; render(); }
 }
 async function loadLive() {
-  const [a, b] = await Promise.all([
-    api.get('/api/sys/live').catch(() => null),
-    amd && amd.available ? api.get('/api/amd/live').catch(() => null) : null,
-  ]);
+  // Processeur, batterie et GPU en une requête (l'hôte la partage avec le moniteur)
+  const r = await api.get('/api/hud/live').catch(() => null);
   const wasBattery = onBattery();
-  live = a; gpu = b;
+  live = r && r.live; gpu = r && r.gpu;
   record();
   // Chargeur branché ou débranché : les watts des profils changent (Turbo : 25 ou 30 W)
   if (onBattery() !== wasBattery) render(); else paintLive();
@@ -621,10 +629,11 @@ async function loadGame() {
   } catch { /* KaneMode fermé : signalé par loadSys */ }
 }
 async function loadInfo() {
-  try { info = await api.get('/api/widget'); } catch { info = null; }
+  let next = null;
+  try { next = await api.get('/api/widget'); } catch { next = null; }
   // Même couleur d'accent que KaneMode (pour ce widget seulement, sans la renvoyer)
-  if (info && info.accent && info.accent !== settings.accent) { settings.accent = info.accent; applyTheme(); }
-  render();
+  if (next && next.accent && next.accent !== settings.accent) { settings.accent = next.accent; applyTheme(); }
+  if (!same(next, info)) { info = next; render(); }
 }
 
 let timers = [];
@@ -633,12 +642,18 @@ function start() {
   loadSys(); loadAmd().then(loadLive); loadGame(); loadInfo();
   // Réglages relus seulement quand aucun panneau n'est ouvert (l'utilisateur règle)
   const idle = fn => () => { if (!sheet) fn(); };
-  timers = [setInterval(loadLive, 1000), setInterval(loadGame, 3000), setInterval(idle(loadSys), 15000),
-    setInterval(idle(() => loadAmd()), 20000), setInterval(idle(loadInfo), 20000)];
+  timers = [setInterval(loadLive, 2000), setInterval(loadGame, 5000), setInterval(idle(loadSys), 15000),
+    setInterval(idle(() => loadAmd()), 20000), setInterval(idle(loadInfo), 60000)];
 }
 function stop() { timers.forEach(clearInterval); timers = []; }
 // Game Bar fermée : plus de mesures ni de requêtes
 document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+
+// B ou rond (Échap au clavier), sans panneau ouvert : la Game Bar se ferme et le jeu reprend
+hooks.back = () => {
+  if (!WIDGET) return toast('Ferme la Game Bar (dans la Game Bar seulement)');
+  toApp('gamebar-close').catch(() => {});
+};
 
 (async () => {
   applyTheme();
