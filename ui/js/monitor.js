@@ -36,7 +36,7 @@ function paint() {
   // Réglages actifs : ce que le pilote AMD applique en ce moment
   const badges = [];
   if (p.badges && amd && amd.available) {
-    if (amd.fps && amd.fps.on) badges.push(`≤ ${amd.fps.value} i/s`);
+    if (amd.fpsLimit) badges.push(`≤ ${amd.fpsLimit} i/s`);
     if (afmf) badges.push('AFMF');
     if (amd.rsr && amd.rsr.on) badges.push('RSR');
     if (amd.antilag && amd.antilag.on) badges.push('Anti-Lag');

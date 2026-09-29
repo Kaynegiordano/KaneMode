@@ -353,6 +353,31 @@ const setPerfMode = mode => {
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
+
+// ---------------------------------------------------------------- limite d'images, jeux seulement
+// La limite d'images du pilote AMD (Radeon Chill) vaut pour toute application 3D, KaneMode compris :
+// réglée à 60 i/s dans le widget, elle bridait aussi l'interface (120 Hz sur la ROG Ally). La limite
+// choisie est gardée (config.fpsLimit) et appliquée seulement quand KaneMode n'est pas au premier
+// plan ; l'app signale chaque passage (POST /api/amd/front).
+const fpsScope = { front: true, busy: null };
+async function applyFpsScope() {
+  const run = async () => {
+    const st = await amd.state(true).catch(() => null);
+    if (!st || !st.available || !st.fps) return st;
+    const c = config();
+    // Première fois : la limite déjà réglée dans le pilote devient celle des jeux
+    if (c.fpsLimit == null) { c.fpsLimit = st.fps.on ? st.fps.value : 0; writeJson(FILES.config, c); }
+    const want = fpsScope.front ? 0 : c.fpsLimit;
+    const now = st.fps.on ? st.fps.value : 0;
+    if (want === now) return st;
+    console.log(want ? `Limite de ${want} i/s appliquée (jeu au premier plan)` : 'Limite d’images levée (KaneMode au premier plan)');
+    return amd.set('fps', want);
+  };
+  // Une application à la fois, dans l'ordre des passages
+  fpsScope.busy = (fpsScope.busy || Promise.resolve()).catch(() => {}).then(run);
+  return fpsScope.busy;
+}
+const withFps = st => (st && st.available ? { ...st, fpsLimit: config().fpsLimit ?? (st.fps && st.fps.on ? st.fps.value : 0), kanemodeFront: fpsScope.front } : st);
 const losslessCheck = { t: 0, p: null }; // Lossless Scaling ouvert (GET /api/widget)
 /** Un réglage vient d'être fait à la main ou par un mode : pas de vérification pendant 4 s. */
 const keeperQuiet = () => { keeper.quiet = Date.now(); };
@@ -1176,8 +1201,15 @@ const routes = {
   // --- Graphismes AMD (Radeon) : limite d'images par seconde, RSR, AFMF, Anti-Lag, netteté, mesures
   // du GPU (voir lib/amd.js et native/KaneMode.Amd)
   'GET /api/amd': async (req, res, q) => {
-    try { json(res, 200, await amd.state(q.get('refresh') === '1')); }
+    try { json(res, 200, withFps(await amd.state(q.get('refresh') === '1'))); }
     catch (e) { json(res, 200, { available: false, reason: e.message }); }
+  },
+  // KaneMode passe au premier plan ou le quitte (app native) : la limite d'images suit
+  'POST /api/amd/front': async (req, res) => {
+    const b = await readBody(req);
+    fpsScope.front = !!b.front;
+    try { json(res, 200, withFps(await applyFpsScope())); }
+    catch (e) { json(res, 200, { error: e.message }); }
   },
   'GET /api/amd/live': async (req, res) => {
     try { json(res, 200, await amd.live()); }
@@ -1197,8 +1229,18 @@ const routes = {
   },
   'POST /api/amd': async (req, res) => {
     const b = await readBody(req);
-    try { json(res, 200, await amd.set(String(b.feature || ''), b.value)); }
-    catch (e) { json(res, 400, { error: e.message }); }
+    const feature = String(b.feature || '');
+    try {
+      if (feature === 'fps') {
+        // Limite des jeux : gardée, appliquée au pilote seulement hors de KaneMode
+        const n = Math.max(0, Math.round(Number(b.value) || 0));
+        const c = config();
+        c.fpsLimit = n;
+        writeJson(FILES.config, c);
+        return json(res, 200, withFps(await applyFpsScope()));
+      }
+      json(res, 200, withFps(await amd.set(feature, b.value)));
+    } catch (e) { json(res, 400, { error: e.message }); }
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
   'POST /api/power/profiles': async (req, res) => {

@@ -8,7 +8,8 @@ export const MONITOR_ITEMS = [
   ['fps', 'Images/s'], ['gpu', 'GPU'], ['cpu', 'Processeur'],
   ['power', 'Consommation'], ['limit', 'Puissance'], ['badges', 'Réglages actifs'],
 ];
-export const monitorPrefs = () => ({ fps: true, gpu: true, cpu: true, power: true, limit: true, badges: true, ...store.get('monitor', {}) });
+// chart : graphique du widget KaneMode (pas une mesure du moniteur), désactivé par défaut
+export const monitorPrefs = () => ({ fps: true, gpu: true, cpu: true, power: true, limit: true, badges: true, chart: false, ...store.get('monitor', {}) });
 export const setMonitorPref = (key, on) => store.set('monitor', { ...monitorPrefs(), [key]: on });
 
 /** Dernier réglage fait dans le widget, vérifié (ok) ou non : le moniteur l'affiche quelques secondes. */

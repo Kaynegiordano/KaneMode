@@ -44,7 +44,6 @@ const PATHS = {
   sleep: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   check: 'M5 12l5 5 9-10',
   monitor: 'M3 5h18v11H3zM8 20h8M12 16v4M6 12l3-3 3 2 5-5',
-  overlay: 'M4 4h16v16H4zM4 9h16M9 9v11',
 };
 const svg = id => `<svg class="hud-i" viewBox="0 0 24 24"><path d="${PATHS[id]}"/></svg>`;
 
@@ -133,7 +132,8 @@ async function sendAmd(feature, value) {
     amd = await api.post('/api/amd', { feature, value });
     const x = amd[key] || {};
     let ok, read;
-    if (feature === 'fps') { ok = value > 0 ? x.on && x.value === value : !x.on; read = x.on ? `${x.value} i/s` : 'aucune limite'; }
+    // Limite des jeux : gardée par KaneMode, appliquée au pilote hors de KaneMode seulement
+    if (feature === 'fps') { ok = amd.fpsLimit === value && (amd.kanemodeFront || (value > 0 ? x.on && x.value === value : !x.on)); read = amd.fpsLimit ? `${amd.fpsLimit} i/s en jeu` : 'aucune limite'; }
     else if (feature.endsWith('sharp')) { ok = x.sharpness === value; read = `netteté ${x.sharpness} %`; }
     else { ok = !!x.on === !!value; read = x.on ? 'activé' : 'désactivé'; }
     prove(key, ok, (ok ? '' : 'relu ') + read + ' · pilote AMD');
@@ -181,15 +181,17 @@ function tiles() {
     if (amd.fps) {
       const f = amd.fps;
       const top = Math.max(60, (sys.refresh && sys.refresh.current) || 60);
+      const limit = amd.fpsLimit || 0;
       const presets = [30, 40, 45, 60, 72, 90, 120, 144, 165].filter(v => v <= top && v >= (f.min || 0) && (!f.max || v <= f.max));
-      if (f.on && !presets.includes(f.value)) presets.push(f.value);
+      if (limit && !presets.includes(limit)) presets.push(limit);
       presets.sort((a, b) => a - b);
-      t({ key: 'fps', cat: 'graphics', icon: 'fps', title: 'Limite d’images', value: f.on ? `${f.value} i/s` : 'Aucune', lit: f.on,
-        choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`])], get: () => (amd.fps.on ? amd.fps.value : 0), set: v => sendAmd('fps', v) } });
+      // Pour les jeux seulement : KaneMode lui-même garde toute sa fluidité (120 Hz sur la ROG Ally)
+      t({ key: 'fps', cat: 'graphics', icon: 'fps', title: 'Limite d’images', value: limit ? `${limit} i/s` : 'Aucune', lit: !!limit, sub: limit ? 'Jeux seulement' : '',
+        choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`, 'jeux seulement'])], get: () => amd.fpsLimit || 0, set: v => sendAmd('fps', v) } });
     }
     // Les images générées par AFMF ne passent pas par le jeu : le pilote ne les compte pas dans les
-    // images par seconde qu'il donne (ADLX). L'overlay d'AMD, lui, les affiche.
-    if (amd.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: amd.afmf.on, sub: amd.afmf.on ? 'Hors compteur : voir overlay AMD' : '', act: () => sendAmd('afmf', !amd.afmf.on) });
+    // images par seconde qu'il donne (ADLX)
+    if (amd.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: amd.afmf.on, sub: amd.afmf.on ? 'Images ajoutées non comptées' : '', act: () => sendAmd('afmf', !amd.afmf.on) });
     if (amd.antilag) t({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: 'Anti-Lag', on: amd.antilag.on, act: () => sendAmd('antilag', !amd.antilag.on) });
     for (const [key, name, full] of [['rsr', 'Super Resolution', 'Radeon Super Resolution'], ['ris', 'Netteté (RIS)', 'Radeon Image Sharpening']]) {
       const x = amd[key];
@@ -199,11 +201,6 @@ function tiles() {
           set: v => { amd[key].sharpness = v; soon(key, () => sendAmd(key + 'sharp', v)); },
           onOff: { label: full, get: () => amd[key].on, set: on => sendAmd(key, on) } } });
     }
-  }
-  if (amd && amd.available) {
-    t({ key: 'amdoverlay', cat: 'graphics', icon: 'overlay', title: 'Overlay AMD', wide: true, value: 'Afficher / masquer',
-      sub: 'Ctrl + Maj + O : mesures d’AMD Software, images AFMF comprises',
-      act: () => toApp('amd-overlay').then(() => toast('Overlay AMD (Ctrl + Maj + O)')).catch(e => toast(e.message, { error: true })) });
   }
   if (info && info.lossless) {
     const ls = info.lossless;
@@ -257,6 +254,9 @@ function tiles() {
   t({ key: 'monitor-open', cat: 'monitor', icon: 'monitor', title: 'Moniteur en direct', wide: true, value: 'Ouvrir',
     sub: 'Puis épinglez-le (punaise) pour le garder sur le jeu', act: openMonitor });
   const prefs = monitorPrefs();
+  // Graphique des 60 dernières secondes dans ce widget : léger, mais inutile de le dessiner en jeu
+  // si on ne le regarde pas (désactivé par défaut)
+  t({ key: 'mon:chart', cat: 'monitor', icon: 'fps', title: 'Graphique (60 s)', on: !!prefs.chart, act: () => { setMonitorPref('chart', !prefs.chart); render(); } });
   for (const [k, label] of MONITOR_ITEMS) {
     t({ key: 'mon:' + k, cat: 'monitor', icon: 'monitor', title: label, on: !!prefs[k], act: () => { setMonitorPref(k, !prefs[k]); render(); } });
   }
@@ -497,7 +497,7 @@ function historyBox() {
     histEl.append(histCanvas, histLegend);
   }
   const hasFps = hist.some(x => x.fps != null), hasW = hist.some(x => x.w != null);
-  histEl.hidden = hist.length < 2 || (!hasFps && !hasW);
+  histEl.hidden = !monitorPrefs().chart || hist.length < 2 || (!hasFps && !hasW);
   if (histEl.hidden) return histEl;
   const wLabel = live && onBattery() ? 'Batterie (W)' : 'GPU (W)';
   const legend = (hasFps ? '<span><i style="background:#7cf29a"></i>Images/s</span>' : '') +

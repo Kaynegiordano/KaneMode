@@ -49,6 +49,8 @@ public partial class MainWindow : Window
         _pads = new XInputPads(() => _ready && _hwnd != IntPtr.Zero && Native.GetForegroundWindow() == _hwnd);
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
         Activated += (_, _) => OnActivated();
+        // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte
+        Deactivated += (_, _) => { if (_ready) Post(new { type = "background" }); };
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès)
         Closing += (_, _) => { try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
@@ -331,7 +333,7 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
 
     // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
-    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "amd-overlay", "gamebar-close" };
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "gamebar-close" };
 
     /// <summary>
     /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
@@ -359,11 +361,6 @@ public partial class MainWindow : Window
                 case "gamebar-close":
                     // Widget : B (rond) ferme la Game Bar, par son raccourci (Windows + G)
                     Native.SendKeys(Native.VK_LWIN, 0x47 /* G */);
-                    break;
-                case "amd-overlay":
-                    // Widget : overlay de mesures d'AMD Software (Ctrl + Maj + O), qui compte aussi les
-                    // images générées par AFMF (le pilote ne les donne pas à ADLX)
-                    Native.SendKeys(0x11 /* Ctrl */, 0x10 /* Maj */, 0x4F /* O */);
                     break;
                 case "show":
                     // Widget : « Ouvrir KaneMode » (accueil, ou une page)
