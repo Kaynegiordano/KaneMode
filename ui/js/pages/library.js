@@ -1,6 +1,6 @@
 // Bibliothèque : onglets (installés, types, favoris, émulation, collections, boutiques), tri, grille.
 import { el, esc, icon, lib, favs, settings, saveSettings, sourceOf, store, sfx } from '../core.js';
-import { definePage, nav, go, focusIn, glyph } from '../nav.js';
+import { definePage, nav, go, focusIn, glyph, renderHints } from '../nav.js';
 import { gameCard } from '../cards.js';
 import { openGame, setBackground, heroUrl } from './game.js';
 
@@ -12,11 +12,14 @@ const initial = g => {
   return /[A-Z]/.test(c) ? c : '#';
 };
 
-// Comme sur SteamOS : en parcourant la liste triée par nom, la lettre en cours s'affiche en grand
+// Comme sur SteamOS : en parcourant une longue liste triée par nom, la lettre en cours s'affiche sur
+// le côté, à la hauteur qui correspond à l'endroit où l'on est dans la liste (comme un ascenseur)
+const MANY = 40; // en dessous, la liste se parcourt d'un coup d'œil : pas de lettre
 let letterEl, letterTimer;
-function showLetter(ch) {
+function showLetter(ch, ratio) {
   if (!letterEl) { letterEl = el('div', 'letter-hint'); document.body.append(letterEl); }
   if (letterEl.textContent !== ch) letterEl.textContent = ch;
+  letterEl.style.top = `${14 + Math.min(1, Math.max(0, ratio)) * 68}%`;
   letterEl.classList.add('show');
   clearTimeout(letterTimer);
   letterTimer = setTimeout(() => letterEl.classList.remove('show'), 750);
@@ -109,6 +112,7 @@ definePage('library', {
           : cur.collection ? 'Collection vide. Sur la fiche d’un jeu, choisissez « Collections » pour l’y ranger.'
             : 'Rien ici pour le moment.'));
     }
+    renderHints(); // « Lettres » selon la taille de la liste affichée
   },
   setTab(id, keepOnTab) {
     if (id === this.tab) return;
@@ -123,9 +127,10 @@ definePage('library', {
     if (!g) return;
     setBackground(heroUrl(g));
     // Lettre en cours, seulement quand on change de rangée (pas en allant à gauche ou à droite)
-    if (settings.sort === 'name' && t.closest('.grid')) {
+    const grid = t.closest('.grid');
+    if (settings.sort === 'name' && grid && grid.children.length >= MANY) {
       const top = t.offsetTop;
-      if (this.lastTop !== undefined && top !== this.lastTop) showLetter(initial(g));
+      if (this.lastTop !== undefined && top !== this.lastTop) showLetter(initial(g), [...grid.children].indexOf(t) / (grid.children.length - 1));
       this.lastTop = top;
     }
   },
@@ -133,7 +138,7 @@ definePage('library', {
   jumpLetter(dir) {
     if (settings.sort !== 'name') return false;
     const cards = [...this.el.querySelectorAll('.grid [data-id]')];
-    if (!cards.length) return true;
+    if (cards.length < MANY) return false;
     const letters = cards.map(c => { const g = lib.byId(c.dataset.id); return g ? initial(g) : '#'; });
     let i = Math.max(0, cards.findIndex(c => c.classList.contains('focused')));
     const start = j => { while (j > 0 && letters[j - 1] === letters[j]) j--; return j; };
@@ -149,7 +154,7 @@ definePage('library', {
     sfx('move');
     focusIn(this.el, cards[i].dataset.key);
     this.lastTop = cards[i].offsetTop;
-    showLetter(letters[i]);
+    showLetter(letters[i], i / (cards.length - 1));
     return true;
   },
   button(k) {
@@ -163,5 +168,8 @@ definePage('library', {
     this.setTab(next.id, !!onTab);
     return true;
   },
-  hints: () => [[['lb', 'rb'], '<span class="label-long">Onglets</span>'], ...(settings.sort === 'name' ? [[['lt', 'rt'], '<span class="label-long">Lettres</span>']] : []), ['y', 'Rechercher'], ['a', 'Ouvrir'], ['b', 'Retour']],
+  hints() {
+    const many = settings.sort === 'name' && this.el.querySelectorAll('.grid [data-id]').length >= MANY;
+    return [[['lb', 'rb'], '<span class="label-long">Onglets</span>'], ...(many ? [[['lt', 'rt'], '<span class="label-long">Lettres</span>']] : []), ['y', 'Rechercher'], ['a', 'Ouvrir'], ['b', 'Retour']];
+  },
 });

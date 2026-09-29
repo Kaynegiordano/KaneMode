@@ -530,6 +530,11 @@ const BUILDERS = {
     infoRow(s, 'Boutons Select et Start', 'Menu principal et accès rapide', segmented(
       [{ value: 'false', label: 'Select : menu · Start : accès rapide' }, { value: 'true', label: 'Start : menu · Select : accès rapide' }],
       String(!!settings.padSwap), v => { settings.padSwap = v === 'true'; saveSettings(); renderHints(); }, 'padSwap'));
+    infoRow(s, 'Select et Start pendant un jeu', native.available
+      ? 'Maintenus : menu et accès rapide de KaneMode par-dessus le jeu, qui reprend à la fermeture. Un appui court reste pour le jeu.'
+      : 'Disponible dans l’app KaneMode installée (manettes Xbox et manette intégrée des consoles)', segmented(
+      [{ value: '0', label: 'Désactivé' }, { value: '1', label: '1 s' }, { value: '1.5', label: '1,5 s' }, { value: '2', label: '2 s' }],
+      String(+settings.padHold || 0), v => { settings.padHold = +v; saveSettings(); }, 'padHold'));
     page.padName = infoRow(s, 'Aucune manette détectée', 'Appuyez sur un bouton de la manette pour la réveiller');
     const tester = el('div', 'set-row');
     tester.style.gridTemplateColumns = '1fr';

@@ -32,6 +32,8 @@ export const settings = Object.assign({
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
   // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Console portable
   btnCC: 'taskview', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
+  // Start / Select maintenus en jeu (secondes, 0 = désactivé) : menu et accès rapide par-dessus
+  padHold: 1.5,
 }, store.get('settings', {}));
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {
@@ -54,7 +56,7 @@ setTimeout(syncAccent, 0);
 // L'app native lit les boutons de la console : elle apprend ici ce qu'ils doivent faire
 let sentButtons = null;
 function syncButtons() {
-  const b = { cc: settings.btnCC, ac: settings.btnAC, 'ac-hold': settings.btnACHold, blockPrompt: !!settings.blockAsusPrompt };
+  const b = { cc: settings.btnCC, ac: settings.btnAC, 'ac-hold': settings.btnACHold, blockPrompt: !!settings.blockAsusPrompt, padHold: +settings.padHold || 0, padSwap: !!settings.padSwap };
   if (JSON.stringify(b) === sentButtons) return;
   sentButtons = JSON.stringify(b);
   native.send('buttons', b);
@@ -83,19 +85,19 @@ export function applyTheme() {
 }
 
 // ---------- Sons d'interface ----------
-// Façon Switch 2 : petits « tocs » ronds et boisés. Chaque note a le timbre d'une lame de marimba
-// (fondamentale + partiel à 4 fois la fréquence qui s'éteint vite), une attaque de 2 ms avec un
-// léger glissé vers le bas, un petit clic et un écho court et étouffé qui arrondit le tout.
+// Façon Switch 2, en doux : petits « tocs » ronds et boisés. Chaque note a le timbre d'une lame de
+// marimba (fondamentale + un soupçon de partiel à 4 fois la fréquence), une attaque de 5 ms avec un
+// léger glissé vers le bas, un clic à peine audible, des aigus filtrés et un écho court et étouffé.
 // Les sons sont calculés une fois (OfflineAudioContext) puis rejoués : bien plus léger que
 // de créer des oscillateurs à chaque déplacement.
 const SOUNDS = {
   //       notes : [fréquence, départ (s), volume, durée]          volume général
-  move: { notes: [[1760, 0, 1, 0.045]], vol: 0.045 },
-  key: { notes: [[2349, 0, 1, 0.03]], vol: 0.035 },
-  select: { notes: [[1319, 0, 0.9, 0.08], [1976, 0.04, 1, 0.13]], vol: 0.07 },
-  back: { notes: [[1319, 0, 0.9, 0.07], [988, 0.04, 1, 0.11]], vol: 0.065 },
-  open: { notes: [[1047, 0, 0.7, 0.09], [1568, 0.035, 0.8, 0.1], [2093, 0.07, 0.9, 0.16]], vol: 0.055 },
-  error: { notes: [[415, 0, 1, 0.1], [349, 0.1, 1, 0.14]], vol: 0.09, dull: true },
+  move: { notes: [[1175, 0, 1, 0.055]], vol: 0.03 },
+  key: { notes: [[1568, 0, 1, 0.035]], vol: 0.022 },
+  select: { notes: [[988, 0, 0.85, 0.09], [1319, 0.045, 1, 0.15]], vol: 0.045 },
+  back: { notes: [[988, 0, 0.85, 0.08], [740, 0.045, 1, 0.13]], vol: 0.042 },
+  open: { notes: [[784, 0, 0.7, 0.1], [1175, 0.04, 0.8, 0.12], [1568, 0.08, 0.8, 0.18]], vol: 0.036 },
+  error: { notes: [[392, 0, 1, 0.1], [330, 0.1, 1, 0.14]], vol: 0.055, dull: true },
 };
 const SR = 44100;
 let ac, sounds = null, rendering = null;
@@ -108,7 +110,10 @@ function renderSounds() {
     const o = new OAC(1, Math.ceil(end * SR), SR);
     const out = o.createGain();
     out.gain.value = s.vol;
-    out.connect(o.destination);
+    // Aigus adoucis : plus rond, moins « clic »
+    const soft = o.createBiquadFilter();
+    soft.type = 'lowpass'; soft.frequency.value = 4200; soft.Q.value = 0.5;
+    out.connect(soft).connect(o.destination);
     // Écho court, étouffé, qui s'éteint vite
     const delay = o.createDelay(0.1), fb = o.createGain(), lp = o.createBiquadFilter(), wet = o.createGain();
     delay.delayTime.value = 0.03; fb.gain.value = 0.25; lp.type = 'lowpass'; lp.frequency.value = 2400; wet.gain.value = 0.3;
@@ -119,19 +124,19 @@ function renderSounds() {
     for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
     for (const [f, t0, amp, dec] of s.notes) {
       // Partiels : marimba (1 et 4) ; son d'erreur plus mat (1 et 3)
-      for (const [mult, pa, pd] of s.dull ? [[1, 1, 1], [3, 0.3, 0.5]] : [[1, 1, 1], [4, 0.22, 0.3]]) {
+      for (const [mult, pa, pd] of s.dull ? [[1, 1, 1], [3, 0.2, 0.5]] : [[1, 1, 1], [4, 0.1, 0.25]]) {
         const osc = o.createOscillator(), g = o.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(f * mult * 1.05, t0);
-        osc.frequency.exponentialRampToValueAtTime(f * mult, t0 + 0.012);
+        osc.frequency.setValueAtTime(f * mult * 1.03, t0);
+        osc.frequency.exponentialRampToValueAtTime(f * mult, t0 + 0.015);
         g.gain.setValueAtTime(0, t0);
-        g.gain.linearRampToValueAtTime(amp * pa, t0 + 0.002);
+        g.gain.linearRampToValueAtTime(amp * pa, t0 + 0.005);
         g.gain.exponentialRampToValueAtTime(0.0001, t0 + dec * pd);
         osc.connect(g).connect(out);
         osc.start(t0); osc.stop(t0 + dec * pd + 0.01);
       }
       const click = o.createBufferSource(), bp = o.createBiquadFilter(), cg = o.createGain();
-      click.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = s.dull ? 1200 : 3800; bp.Q.value = 1.2; cg.gain.value = amp * 0.35;
+      click.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = s.dull ? 1000 : 2400; bp.Q.value = 1.2; cg.gain.value = amp * 0.12;
       click.connect(bp).connect(cg).connect(out);
       click.start(t0);
     }
