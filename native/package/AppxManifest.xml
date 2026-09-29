@@ -9,8 +9,8 @@
     composants de Microsoft (Game Bar, WebView2 pour UWP) sont déclarés plus bas.
   - Virtualisation désactivée : l'app et les jeux qu'elle lance écrivent dans les vrais
     dossiers (sauvegardes, réglages), pas dans un espace privé du paquet.
-  __VERSION__ et __WEBVIEW2_CLASSES__ sont remplacés par build.ps1 ; avec -NoWidget, tout ce qui
-  est entre les marqueurs WIDGET est retiré.
+  build.ps1 y remplace la version et la liste des classes WebView2 (marqueurs entre doubles
+  soulignés) ; avec -NoWidget, tout ce qui est entre les marqueurs WIDGET est retiré.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
