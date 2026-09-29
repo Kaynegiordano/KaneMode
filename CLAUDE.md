@@ -66,7 +66,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - **Jamais testé sur un vrai GPU AMD** : le PC de développement a une RTX 5080 (ADLX se charge, « Pas de GPU AMD »).
 - `lib/device.js` : console reconnue (catalogue `HANDHELDS`) + `device.ps1` (WMI). Résultat mis en cache dans `DATA/device.json` et servi immédiatement au démarrage.
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
-- `lib/update.js` : GitHub Releases (canaux stable/bêta), vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance.
+- `lib/update.js` : GitHub Releases, vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance. **Canal stable seulement** depuis 2.0.0 (le choix bêta a été retiré des Paramètres ; l'hôte vérifie toujours `stable`). Les blocs redessinés des Paramètres (mises à jour, pilotes, ASUS) gardent focus et position (`snapshot`/`restore` dans `settings.js`) : valider une mise à jour ramenait tout en haut.
+- Réseau : commande `net` de `syscontrol.ps1` (carte active avec passerelle, filaire avant Wi-Fi, VPN/Bluetooth ignorés ; signal Wi-Fi par `netsh`), `GET /api/net` (gardé 5 s). Icône de la barre du haut : câble, Wi-Fi (pâle sous 40 %) ou hors ligne, relue toutes les 20 s.
 - `lib/sgdb.js` : SteamGridDB par l'API publique, sans clé. Les 3 pages de résultats sont demandées en parallèle (~0,3 s). Le CDN est lent (~1 s par vignette, 200 Ko ; image entière 2-3 Mo) : `artpicker.js` ne charge une vignette qu'à l'approche de l'écran (`IntersectionObserver`), précharge toutes les listes à l'ouverture des visuels et les premières vignettes des onglets voisins.
 - `lib/oem.js` + `inventory.ps1` : mises à jour officielles du constructeur (ASUS seulement pour l'instant).
   - API publique du site ROG (`rog.asus.com/support/webapi/product/GetPDBIOS` et `GetPDDrivers`, `osid=52`, `systemCode=rog`), celle de G-Helper. Modèle = début de la version du BIOS (`RC72LA.312` → `RC72LA`, BIOS 312).
@@ -82,6 +83,10 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
     - **Les deux sources sont lues ensemble** (1.8.1) : en 1.8.0, les manettes de l'app *remplaçaient* celles de WebView2, et sur la ROG Ally X la manette devenait « reconnue mais inutilisable » (une manette XInput inactive ou virtuelle privait l'interface de la vraie). État des boutons **par manette** (`heldBy`) : un bouton bloqué sur une manette fantôme ne gêne pas les autres ; le même appui vu par les deux sources compte une fois (`SAME_PRESS_MS`, 90 ms).
     - `readPads` tourne à chaque image, mais aussi à chaque message `xpad` et par une minuterie quand `requestAnimationFrame` s'arrête (page crue masquée par Chromium : c'est le cas du panneau de test de Claude, et probablement du retour de KanePlay).
     - Journal : `XInput : manette N détectée/retirée` (app) et `[interface] Manette : premier appui reçu par …` (message `log`, source de chaque manette) ;
+  - **Start agit au relâchement** (2.0.0) : appui court = son action, maintenu ≥ 0,9 s = rien côté interface (l'app active le **mode souris**, message `mouse-mode` ; `mouseMode.on` : l'interface ignore alors toute manette, `body.mouse-mode` réaffiche le curseur, pastille « Souris » en haut) ;
+  - **défilement doux maison** (`reveal`/`scrollToPos`, 2.0.0) : `scrollIntoView({behavior:'smooth'})` repartait de zéro à chaque répétition (toutes les 90 ms) et la bibliothèque saccadait direction maintenue. L'animation rattrape une cible qui bouge ; marges = `scroll-padding` du conteneur ; tient compte du `zoom` CSS (rectangles à l'échelle de l'écran, défilement à celle de la page) ; sans images dessinées (page crue masquée), saut direct à la cible ;
+  - **retour sur une page** : l'historique garde sa position de défilement (`scroll`), `go` la remet avant de redonner le focus (la bibliothèque remontait en haut puis redescendait au jeu) ;
+  - élément sélectionné retiré (bloc redessiné) : `move` reprend l'élément le plus proche de sa place (`spot`), plus le premier de la page ;
   - le clavier : M = menu, Q = accès rapide, Échap = retour. B sur l'accueil ouvre le menu.
   - `openLayer`/`closeLayer` n'exigent plus `#scrim` (absent du widget).
 - `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas ; le zoom est en plus réduit sous 1280 × 720 points CSS, pour garder la même mise en page quand la résolution baisse ; `main.js` le recalcule et redessine la page à chaque `resize`), `native` (messages WebView2), `sfx` : sons d'interface façon Switch 2, **doux** (demande de l'utilisateur) : « tocs » de marimba (partiel 4 à peine présent), attaque de 5 ms, clic très faible, passe-bas à 4,2 kHz, crêtes de 0,02 à 0,05 ; calculés une fois (`OfflineAudioContext`, table `SOUNDS`) puis rejoués.
@@ -92,7 +97,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - `js/boot.js` : sons **synthétisés et calculés hors ligne** (OfflineAudioContext) ; le logo apparaît sur le pic du son (`playSynced`, horodatage de sortie audio).
   - Son perso : analysé, et copié par l'hôte dans `DATA/bootsound.*`.
   - Le son de démarrage par défaut est grave, **sans notes aiguës** (demande de l'utilisateur).
-  - **Le vrai son PS2 ne doit jamais être intégré** : il est protégé (Sony). L'utilisateur l'utilise en « Son perso ».
+  - **Le vrai son PS2 ne doit jamais être intégré** : il est protégé (Sony). L'utilisateur l'utilise en « Son perso » (Paramètres → Démarrage → Son perso…, puis « Son perso »). Redemandé pour la 2.0.0 (« ajoute-le officiellement ») : refusé, expliqué ; il reste à le choisir sur chaque appareil (fichier dans OneDrive\Bureau).
 - `js/pages/settings.js` : catégories à gauche (zone `side`) et réglages à droite (zone `content`). La catégorie s'affiche au survol, B revient à la liste.
 - `app.css` :
   - effets coûteux remplacés par des transformations et de l'opacité ;
@@ -101,7 +106,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 ### `native/`
 - `KaneMode.App` (WPF, .NET 8) : fenêtre plein écran + WebView2. L'hôte et WebView2 démarrent **en parallèle**. Autres rôles :
   - la veille (`Native.cs`) ;
-  - les manettes XInput (`XInputPads.cs`, fil à part : `xinput1_4.dll`, emplacements vides revus toutes les 2 s), envoyées à l'interface quand KaneMode est au premier plan ;
+  - les manettes XInput (`XInputPads.cs`, fil à part : `xinput1_4.dll`, emplacements vides revus toutes les 2 s), envoyées à l'interface quand KaneMode a la main (`PadFocus` : `Ours`, ou `Orphan` = premier plan à personne : aucune fenêtre, fenêtre masquée ou camouflée, bureau, ou fenêtre d'appli cachée derrière KaneMode). Un bouton pressé en `Orphan` fait reprendre le premier plan (`ReclaimForeground`, noté dans le journal) : après KanePlay, la manette ne répondait plus jusqu'à passer par la vue des tâches (2.0.0). Jeu suivi ou KanePlay en cours de mise au premier plan : jamais. Fenêtre outil devant (`Other`) : seulement noté (« Manette : KaneMode est affiché mais … a le premier plan ») ;
+  - le **mode souris** (2.0.0, comme KanePlay) : Start maintenu 1 s sur une manette XInput quand KaneMode a la main. Stick le plus poussé = curseur (courbe de KanePlay, ~1 250 px/s en butée), A/B/X = clics gauche/droit/milieu, LB/RB = précédent/suivant, croix = molette (répétée). Marche dans toutes les fenêtres jusqu'au prochain appui long ; coupé au lancement d'un jeu ou de KanePlay (`StopMouseMode`). `SendInput` souris dans `Native.Mouse` ;
   - le changement de résolution (`SystemEvents.DisplaySettingsChanged`) : `Native.FillMonitor` remet la fenêtre à la taille de l'écran, sans l'activer (WPF laissait la fenêtre sans bordure agrandie à l'ancienne taille : interface inadaptée après un changement de résolution depuis le widget) ;
   - `GiveForeground` (message `foreground` : KaneMode cède le premier plan et ramène lui-même la fenêtre KanePlay) ;
   - `WM_COPYDATA` « open\tqam|menu » envoyé par KanePlay (Select/Start), puis retour à KanePlay à la fermeture ;
@@ -214,6 +220,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
   - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally) ;
   - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant ;
+  - 2.0.0 : mode souris (Start maintenu), manette qui répond de nouveau après KanePlay, icône réseau (câble / Wi-Fi / hors ligne), bibliothèque fluide direction maintenue et qui garde sa position au retour d'une fiche, canal bêta retiré, Paramètres qui ne remontent plus en haut ;
   - 1.9.0 : limite d'images pour les jeux seulement (KaneMode n'est plus bridé à 60 i/s), graphique du widget en option, overlay AMD retiré ;
   - 1.8.2 : widget Game Bar beaucoup plus léger en jeu, B ferme la Game Bar ;
   - 1.8.1 : manette de nouveau utilisable sur ROG Ally X (sources de manette combinées au lieu d'être remplacées), lecture indépendante de requestAnimationFrame ;

@@ -29,7 +29,7 @@ html, body {
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased; user-select: none;
 }
-body.pad-mode, body.pad-mode * { cursor: none !important; }
+body.pad-mode:not(.mouse-mode), body.pad-mode:not(.mouse-mode) * { cursor: none !important; }
 img { display: block; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
 [hidden] { display: none !important; }
@@ -84,7 +84,12 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 #page-title { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .status { display: flex; align-items: center; gap: 20px; color: #cfd5dd; font-size: 15px; }
 .status svg { width: 20px; height: 20px; fill: currentColor; opacity: 0.9; }
+.status #net-icon.net-weak { opacity: 0.5; }
+.status #net-icon.net-off { opacity: 0.45; }
 .status .clickable { cursor: pointer; }
+#mouse-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 99px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 600; }
+#mouse-pill[hidden] { display: none; }
+#mouse-pill svg { width: 16px; height: 16px; opacity: 1; }
 #busy { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 #clock { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
 
@@ -232,6 +237,9 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
   gap: 22px 18px; padding: 16px var(--gutter);
 }
 .grid .capsule { height: auto; width: 100%; }
+/* Longue bibliothèque : les cartes hors de l'écran ne sont ni dessinées ni mises en page (la taille
+   vient de la colonne et du format 2/3) ; parcourir la grille reste fluide */
+.grid .card { content-visibility: auto; }
 .empty { color: var(--muted); padding: 40px var(--gutter); font-size: 16px; line-height: 1.6; }
 .empty .glyph { vertical-align: middle; }
 

@@ -180,6 +180,31 @@ if (navigator.getBattery) {
     upd();
   }).catch(() => {});
 }
+// Réseau : câble, Wi-Fi (plus pâle quand le signal est faible) ou hors ligne. Relu toutes les 20 s
+// et au retour sur KaneMode ; l'icône Wi-Fi restait affichée même en filaire.
+const NET = { ethernet: ['i-ethernet', 'Connecté par câble'], wifi: ['i-wifi', 'Wi-Fi'], none: ['i-wifi-off', 'Hors ligne'] };
+async function paintNet() {
+  if (document.hidden) return;
+  try {
+    const n = await api.get('/api/net');
+    if (!NET[n.kind]) { setTimeout(paintNet, 3000); return; } // réglages système pas encore prêts
+    const [icon, label] = NET[n.kind];
+    const el = $('#net-icon');
+    el.querySelector('use').setAttribute('href', '#' + icon);
+    el.classList.toggle('net-off', n.kind === 'none');
+    el.classList.toggle('net-weak', n.kind === 'wifi' && n.signal != null && n.signal < 40);
+    el.setAttribute('aria-label', n.kind === 'wifi' && n.signal != null ? `${label} · ${n.signal} %` : label);
+  } catch { setTimeout(paintNet, 5000); } // hôte pas encore prêt
+}
+paintNet();
+setInterval(paintNet, 20000);
+native.on(m => { if (m.type === 'resume' || m.type === 'wake') paintNet(); });
+// Mode souris (Start maintenu 1 s, comme dans KanePlay) : l'app native déplace la vraie souris
+native.on(m => {
+  if (m.type !== 'mouse-mode') return;
+  $('#mouse-pill').hidden = !m.on;
+  toast(m.on ? 'Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter' : 'Mode souris désactivé');
+});
 addEventListener('gamepadconnected', e => toast(`Manette connectée : ${e.gamepad.id.replace(/\(.*?\)/g, '').trim() || 'manette'}`));
 
 // ---------- Synchronisation ----------

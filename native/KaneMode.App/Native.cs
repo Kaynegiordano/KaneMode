@@ -275,8 +275,10 @@ public static class Native
     [StructLayout(LayoutKind.Sequential)]
     private struct KEYBDINPUT { public ushort Vk; public ushort Scan; public uint Flags; public uint Time; public IntPtr Extra; }
     // INPUT : type puis l'union (la plus grande, MOUSEINPUT, fait 32 octets en 64 bits)
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT { public int Dx; public int Dy; public int Data; public uint Flags; public uint Time; public IntPtr Extra; }
     [StructLayout(LayoutKind.Explicit, Size = 40)]
-    private struct INPUT { [FieldOffset(0)] public uint Type; [FieldOffset(8)] public KEYBDINPUT Key; }
+    private struct INPUT { [FieldOffset(0)] public uint Type; [FieldOffset(8)] public KEYBDINPUT Key; [FieldOffset(8)] public MOUSEINPUT Mouse; }
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint count, INPUT[] inputs, int size);
 
@@ -291,6 +293,41 @@ public static class Native
         return sent == inputs.Count;
 
         static INPUT Key(ushort vk, uint flags) => new() { Type = 1 /* INPUT_KEYBOARD */, Key = new KEYBDINPUT { Vk = vk, Flags = flags } };
+    }
+
+    // ---------- Souris simulée (mode souris à la manette, voir XInputPads) ----------
+    public const uint MOUSE_MOVE = 0x0001, LEFT_DOWN = 0x0002, LEFT_UP = 0x0004, RIGHT_DOWN = 0x0008, RIGHT_UP = 0x0010,
+        MIDDLE_DOWN = 0x0020, MIDDLE_UP = 0x0040, X_DOWN = 0x0080, X_UP = 0x0100, WHEEL = 0x0800, HWHEEL = 0x1000;
+
+    /// <summary>Évènement de souris : déplacement relatif, bouton (data = 1 ou 2 pour les boutons X) ou molette (data = ±120).</summary>
+    public static void Mouse(uint flags, int dx = 0, int dy = 0, int data = 0)
+    {
+        var input = new INPUT { Type = 0 /* INPUT_MOUSE */, Mouse = new MOUSEINPUT { Dx = dx, Dy = dy, Data = data, Flags = flags } };
+        SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder name, int max);
+
+    public static string WindowClass(IntPtr hwnd)
+    {
+        var sb = new System.Text.StringBuilder(128);
+        GetClassName(hwnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static bool IsMinimized(IntPtr hwnd) => IsIconic(hwnd);
+
+    /// <summary>
+    /// Premier plan « à personne » : aucune fenêtre, une fenêtre masquée ou invisible (KanePlay qui vient
+    /// de se fermer), ou le bureau. KaneMode, affiché, peut alors reprendre la main sans rien voler.
+    /// </summary>
+    public static bool IsOrphanForeground(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || !IsWindow(hwnd) || !IsWindowVisible(hwnd)) return true;
+        if (DwmGetWindowAttribute(hwnd, 14 /* DWMWA_CLOAKED */, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return true;
+        string cls = WindowClass(hwnd);
+        return cls == "Progman" || cls == "WorkerW";
     }
 
     public const ushort VK_LWIN = 0x5B, VK_F11 = 0x7A, VK_TAB = 0x09, VK_MENU = 0x12, VK_SNAPSHOT = 0x2C;

@@ -352,6 +352,7 @@ const setPerfMode = mode => {
 // changé sans cesse, un autre programme l'impose : KaneMode s'efface 10 minutes et le signale.
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
+const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
 const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
 
 // ---------------------------------------------------------------- limite d'images, jeux seulement
@@ -1126,8 +1127,9 @@ const routes = {
       last: updateState.last, job: updateJob.state, page: update.PAGE,
     });
   },
+  // Canal stable seulement : le canal bêta a été retiré en 2.0.0
   'POST /api/update/check': async (req, res) => {
-    try { updateState.last = await update.check(ROOT, config().updateChannel); json(res, 200, updateState.last); }
+    try { updateState.last = await update.check(ROOT, 'stable'); json(res, 200, updateState.last); }
     catch (e) { json(res, 502, { error: e.message }); }
   },
   'POST /api/update/download': async (req, res) => {
@@ -1145,7 +1147,7 @@ const routes = {
   'POST /api/update/prefs': async (req, res) => {
     const b = await readBody(req);
     const c = config();
-    if (['stable', 'beta'].includes(b.channel)) { c.updateChannel = b.channel; updateState.last = null; }
+    if (b.channel === 'stable') { c.updateChannel = b.channel; updateState.last = null; }
     if (typeof b.auto === 'boolean') c.updateAuto = b.auto;
     writeJson(FILES.config, c);
     json(res, 200, { ok: true });
@@ -1164,6 +1166,15 @@ const routes = {
   'GET /api/sys/live': async (req, res) => {
     try { json(res, 200, await sysctl.live()); }
     catch (e) { json(res, 500, { error: e.message }); }
+  },
+  // Connexion réseau (icône de la barre du haut) : filaire, Wi-Fi (avec le signal) ou aucune
+  'GET /api/net': async (req, res) => {
+    if (!netState.p || Date.now() - netState.t > 5000) {
+      netState.t = Date.now();
+      // Service pas encore prêt (démarrage) : réponse « inconnue », pas gardée
+      netState.p = sysctl.call('net').catch(() => { netState.p = null; return { kind: 'unknown' }; });
+    }
+    json(res, 200, await netState.p);
   },
   'POST /api/sys': async (req, res) => {
     const b = await readBody(req);

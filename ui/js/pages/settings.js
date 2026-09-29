@@ -111,6 +111,20 @@ async function openWin(p) {
 }
 const day = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
+// Blocs redessinés sur place (téléchargement, installation, analyse) : l'élément sélectionné et la
+// position de la page restent les mêmes. Avant, le focus disparaissait avec l'ancien contenu et
+// l'appui suivant ramenait tout en haut des Paramètres.
+function snapshot(box) {
+  const sc = box.closest('.settings');
+  return { key: focused && box.contains(focused) ? focused.dataset.key : null, sc, top: sc ? sc.scrollTop : 0 };
+}
+function restore(box, snap, focus, fallback = []) {
+  if (snap.sc) snap.sc.scrollTop = snap.top;
+  const want = [focus, snap.key, ...fallback].find(k => k && box.querySelector(`[data-key="${CSS.escape(k)}"]`));
+  if ((focus || snap.key) && want) focusIn(box, want);
+  else if (focus || snap.key) focusIn(box);
+}
+
 // ---------- Mises à jour de KaneMode (Releases GitHub)
 async function updatesBlock(s) {
   h2(s, 'i-download2', 'Mises à jour');
@@ -122,18 +136,12 @@ async function updatesBlock(s) {
     // Premier dessin : la catégorie est construite hors de l'écran, `box` n'y est pas encore
     if (!u || (drawn && !box.isConnected)) return clearInterval(timer);
     drawn = true;
+    const snap = snapshot(box);
     box.replaceChildren();
     const l = u.last, j = u.job;
     infoRow(box, `KaneMode ${esc(u.current)}`, u.packaged ? 'App installée' : 'Version de développement (mise à jour par l’installateur)');
-    const chan = el('div', 'set-row', '<div class="txt"><b>Canal</b><small>Bêta : nouveautés plus tôt, parfois moins stables</small></div>');
-    chan.style.gridTemplateColumns = '1fr auto';
-    chan.append(segmented([{ value: 'stable', label: 'Stable' }, { value: 'beta', label: 'Bêta' }], u.channel, async v => {
-      await api.post('/api/update/prefs', { channel: v });
-      draw('upd-check');
-    }, 'upd-chan'));
-    box.append(chan);
     box.append(switchRow({ title: 'Vérifier au démarrage', desc: 'Une notification signale une nouvelle version', on: u.auto, key: 'upd-auto', onToggle: v => api.post('/api/update/prefs', { auto: v }) }));
-    const status = !l ? 'Jamais vérifié' : l.available ? `Version ${esc(l.latest.version)} disponible${l.latest.prerelease ? ' (bêta)' : ''}` : l.latest ? `À jour · dernière version ${esc(l.latest.version)}` : 'Aucune version publiée pour ce canal';
+    const status = !l ? 'Jamais vérifié' : l.available ? `Version ${esc(l.latest.version)} disponible` : l.latest ? `À jour · dernière version ${esc(l.latest.version)}` : 'Aucune version publiée';
     actionRow(box, 'i-refresh', 'Rechercher des mises à jour', `${status}${l ? ` · vérifié le ${day(l.checked)}` : ''}`, async () => {
       busy('Recherche des mises à jour…');
       try { await api.post('/api/update/check'); }
@@ -166,7 +174,7 @@ async function updatesBlock(s) {
         }, 'upd-dl');
       }
     }
-    if (focus) focusIn(box, focus);
+    restore(box, snap, focus, ['upd-apply', 'upd-dl', 'upd-check']);
   };
   await draw();
 }
@@ -179,6 +187,7 @@ async function driversBlock(s) {
     const st = await api.get('/api/drivers').catch(() => ({}));
     if (drawn && !box.isConnected) return;
     drawn = true;
+    const snap = snapshot(box);
     box.replaceChildren();
     const last = st.last;
     const items = last && last.ok ? last.items : [];
@@ -221,7 +230,7 @@ async function driversBlock(s) {
         st.install.ok ? `${st.install.installed} pilote(s) installé(s)${st.install.reboot ? ' · redémarrage nécessaire' : ''}` : esc(st.install.error || ''));
     }
     actionRow(box, 'i-open', 'Ouvrir Windows Update', 'Mises à jour facultatives : pilotes proposés par les constructeurs', () => openWin('optional-updates'), 'drv-wu');
-    if (focus) focusIn(box, focus);
+    restore(box, snap, focus);
   };
   await draw();
 }
@@ -242,6 +251,7 @@ async function oemBlock(s, hh) {
     const st = await api.get(`/api/oem?simulate=${encodeURIComponent(sim)}`).catch(() => null);
     if (!st || (drawn && !box.isConnected)) return;
     drawn = true;
+    const snap = snapshot(box);
     box.replaceChildren();
     const last = st.last;
     const channels = last && last.ok ? last.channels : [];
@@ -275,7 +285,7 @@ async function oemBlock(s, hh) {
     const other = drivers.filter(i => i.status === 'unknown').length;
     if (other) infoRow(box, `${other} autre${other > 1 ? 's' : ''} pilote${other > 1 ? 's' : ''} publié${other > 1 ? 's' : ''}`, 'Outils ou matériel non détecté sur cette console : voir le site officiel');
     if (hh.support) actionRow(box, 'i-globe', `Assistance ${esc(hh.maker)}`, 'Toutes les versions, notes de version et manuels', () => openDevice(hh.support), 'oem-site');
-    if (focus) focusIn(box, focus);
+    restore(box, snap, focus);
     // Vérification automatique une fois par jour
     if (!st.checking && (!last || Date.now() - Date.parse(last.checked) > 24 * 3600e3) && !box.dataset.auto) {
       box.dataset.auto = '1';
@@ -529,7 +539,9 @@ const BUILDERS = {
     infoRow(s, 'Symboles des boutons', 'Automatique : selon la manette utilisée', segmented([{ value: 'auto', label: 'Automatique' }, { value: 'xbox', label: 'Xbox' }, { value: 'ps', label: 'PlayStation' }], settings.padGlyphs, v => { settings.padGlyphs = v; saveSettings(); }, 'glyphs'));
     infoRow(s, 'Boutons Select et Start', 'Menu principal et accès rapide', segmented(
       [{ value: 'false', label: 'Select : menu · Start : accès rapide' }, { value: 'true', label: 'Start : menu · Select : accès rapide' }],
-      String(!!settings.padSwap), v => { settings.padSwap = v === 'true'; saveSettings(); renderHints(); }, 'padSwap'));    page.padName = infoRow(s, 'Aucune manette détectée', 'Appuyez sur un bouton de la manette pour la réveiller');
+      String(!!settings.padSwap), v => { settings.padSwap = v === 'true'; saveSettings(); renderHints(); }, 'padSwap'));
+    infoRow(s, 'Mode souris', 'Maintenez Start 1 s, comme dans KanePlay : le stick déplace le curseur, A clique, B fait un clic droit, X un clic du milieu, la croix fait défiler, LB / RB reviennent en arrière ou avancent. Il marche aussi dans les autres fenêtres (lanceurs, connexion à un compte). Maintenez Start de nouveau pour revenir à la manette.');
+    page.padName = infoRow(s, 'Aucune manette détectée', 'Appuyez sur un bouton de la manette pour la réveiller');
     const tester = el('div', 'set-row');
     tester.style.gridTemplateColumns = '1fr';
     page.buttons = el('div', 'tester', PAD_NAMES.map(n => `<span>${n}</span>`).join(''));

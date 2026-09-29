@@ -18,23 +18,28 @@ export function definePage(id, def) {
 export const page = id => pages[id];
 export const currentPage = () => pages[state.page];
 
-export function go(id, params = {}, { push = true } = {}) {
+export function go(id, params = {}, { push = true, scroll = null } = {}) {
   const from = pages[state.page], to = pages[id];
   if (!to) return;
   if (from) {
     from.savedFocus = focused && from.el.contains(focused) ? keyOf(focused) : from.savedFocus;
-    if (push && from !== to) state.history.push({ id: from.id, params: from.params, focus: from.savedFocus });
+    if (push && from !== to) state.history.push({ id: from.id, params: from.params, focus: from.savedFocus, scroll: posOf(from.el, 'y') });
+    anims.delete(from.el);
     from.el.classList.remove('active');
     from.leave && from.leave();
   }
   to.params = params;
   state.page = id;
   to.el.classList.add('active');
-  if (from !== to) to.el.scrollTop = 0;
+  const keep = from === to ? to.el.scrollTop : 0;
+  anims.delete(to.el);
   to.render(params);
+  // Retour sur une page : elle revient telle qu'on l'a quittée, sans remonter en haut puis
+  // redescendre jusqu'au jeu choisi
+  to.el.scrollTop = scroll != null ? scroll : keep;
   $('#page-title').textContent = to.title ? to.title(params) : '';
   $$('#menu [data-page]').forEach(m => m.classList.toggle('current', m.dataset.page === id));
-  focusIn(to.el, params.focus || (from === to ? keyOf(focused) : null));
+  focusIn(to.el, params.focus || (from === to ? keyOf(focused) : null), { scroll: 'instant' });
   renderHints();
 }
 
@@ -61,7 +66,7 @@ export function back() {
   sfx('back');
   const h = state.history.pop();
   pages[h.id].savedFocus = h.focus;
-  go(h.id, { ...h.params, focus: h.focus }, { push: false });
+  go(h.id, { ...h.params, focus: h.focus }, { push: false, scroll: h.scroll });
 }
 
 /** Retire de l'historique les pages d'un parcours terminé (ex. assistant d'ajout). */
@@ -107,6 +112,9 @@ export function focusIn(root, key, opts) {
   if (target) setFocus(target, { sound: false, ...opts });
 }
 
+// Place de l'élément sélectionné dans le contenu de la page (voir move)
+let spot = null;
+const spotOnScreen = () => spot && { x: spot.x, y: spot.y - (spot.sc ? spot.sc.scrollTop * spot.k : 0) };
 export function setFocus(target, { scroll = true, sound = true } = {}) {
   if (!target) return;
   if (target !== focused) {
@@ -119,9 +127,84 @@ export function setFocus(target, { scroll = true, sound = true } = {}) {
   const row = target.closest('.row'), zone = target.closest('[data-zone]');
   if (row) row._navLast = target;
   if (zone) zone._navLast = target;
-  if (scroll) target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  if (scroll) reveal(target, scroll === 'instant');
+  const sc = scrollerOf(target, 'y'), c = target.getBoundingClientRect();
+  const k = sc ? sc.getBoundingClientRect().height / sc.offsetHeight || 1 : 1; // CSS zoom (voir reveal)
+  spot = { sc, k, x: c.left + c.width / 2, y: c.top + c.height / 2 + (sc ? sc.scrollTop * k : 0) };
   const owner = topLayer() || currentPage();
   if (owner && owner.onFocus) owner.onFocus(target);
+}
+
+// ---------- Défilement ----------
+// Défilement doux maison. scrollIntoView({behavior:'smooth'}) repartait de zéro à chaque répétition
+// d'une direction maintenue (toutes les 90 ms) : la bibliothèque avançait par à-coups. Ici, chaque
+// appui déplace seulement la cible ; l'animation en cours la rattrape sans jamais s'arrêter.
+const anims = new Map(); // conteneur → { axis, target, last }
+function scrollerOf(e, axis) {
+  for (let p = e.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    const o = axis === 'y' ? cs.overflowY : cs.overflowX;
+    if ((o === 'auto' || o === 'scroll') && (axis === 'y' ? p.scrollHeight > p.clientHeight + 1 : p.scrollWidth > p.clientWidth + 1)) return p;
+  }
+  return null;
+}
+const px = v => parseFloat(v) || 0;
+/** Position de défilement de `sc` en cours (ou visée par l'animation). */
+const posOf = (sc, axis) => { const a = anims.get(sc); return a && a.axis === axis ? a.target : axis === 'y' ? sc.scrollTop : sc.scrollLeft; };
+export function scrollToPos(sc, axis, want, instant) {
+  const max = axis === 'y' ? sc.scrollHeight - sc.clientHeight : sc.scrollWidth - sc.clientWidth;
+  want = Math.round(Math.max(0, Math.min(max, want)));
+  const cur = axis === 'y' ? sc.scrollTop : sc.scrollLeft;
+  const set = v => { if (axis === 'y') sc.scrollTop = v; else sc.scrollLeft = v; };
+  if (instant || reduceMotion) { anims.delete(sc); set(want); return; }
+  const a = anims.get(sc);
+  if (a && a.axis === axis) { a.target = want; return; }
+  if (Math.abs(want - cur) < 1) return;
+  const anim = { axis, target: want, last: cur, t: performance.now() };
+  anims.set(sc, anim);
+  // Pas d'images dessinées (page que Chromium croit masquée) : on saute directement à la cible
+  const watchdog = setInterval(() => {
+    if (anims.get(sc) !== anim) return clearInterval(watchdog);
+    if (performance.now() - anim.t > 150) { clearInterval(watchdog); anims.delete(sc); set(anim.target); }
+  }, 150);
+  const step = now => {
+    if (anims.get(sc) !== anim) return;
+    const pos = axis === 'y' ? sc.scrollTop : sc.scrollLeft;
+    // Défilement par l'utilisateur (molette, doigt) pendant l'animation : on le laisse faire
+    if (Math.abs(pos - anim.last) > 3) { anims.delete(sc); return; }
+    const dt = Math.min(64, now - anim.t);
+    anim.t = now;
+    const d = anim.target - pos;
+    if (Math.abs(d) < 1) { set(anim.target); anims.delete(sc); return; }
+    // Rattrapage exponentiel indépendant de la fréquence de l'écran (60 ou 120 Hz)
+    let move = d * (1 - Math.pow(0.78, dt / 16.7));
+    if (Math.abs(move) < 1) move = Math.sign(d);
+    set(pos + move);
+    anim.last = axis === 'y' ? sc.scrollTop : sc.scrollLeft;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+/** Fait défiler juste assez pour montrer l'élément (marges : scroll-padding du conteneur). */
+function reveal(target, instant) {
+  for (const axis of ['y', 'x']) {
+    const sc = scrollerOf(target, axis);
+    if (!sc) continue;
+    const cs = getComputedStyle(sc), r = target.getBoundingClientRect(), c = sc.getBoundingClientRect();
+    const cur = axis === 'y' ? sc.scrollTop : sc.scrollLeft, pos = posOf(sc, axis);
+    const size = axis === 'y' ? sc.clientHeight : sc.clientWidth;
+    // Interface agrandie ou réduite (CSS zoom) : les rectangles sont à l'échelle de l'écran, le
+    // défilement à celle de la page
+    const k = (axis === 'y' ? c.height / sc.offsetHeight : c.width / sc.offsetWidth) || 1;
+    // Position de l'élément dans le contenu du conteneur
+    const start = (axis === 'y' ? r.top - c.top : r.left - c.left) / k + cur;
+    const end = start + (axis === 'y' ? r.height : r.width) / k;
+    const padA = px(axis === 'y' ? cs.scrollPaddingTop : cs.scrollPaddingLeft), padB = px(axis === 'y' ? cs.scrollPaddingBottom : cs.scrollPaddingRight);
+    let want = pos;
+    if (start - padA < want) want = start - padA;
+    else if (end + padB > want + size) want = Math.min(start - padA, end + padB - size);
+    if (want !== pos) scrollToPos(sc, axis, want, instant);
+  }
 }
 
 // Dernier élément visité d'un groupe (rangée, zone), s'il est toujours affiché
@@ -130,7 +213,14 @@ const lastOf = (group, items) => (group && group._navLast && group._navLast.isCo
 export function move(dir) {
   let items = navItems();
   if (!items.length) return;
-  if (!focused || !items.includes(focused)) return setFocus(items[0]);
+  if (!focused || !items.includes(focused)) {
+    // Élément sélectionné retiré (bloc redessiné) : on reprend l'élément le plus proche de sa place,
+    // au lieu du premier de la page (qui ramenait tout en haut)
+    const at = spot && (!spot.sc || (spot.sc.isConnected && scope().contains(spot.sc))) ? spotOnScreen() : null;
+    if (!at) return setFocus(items[0]);
+    const d = e => { const c = e.getBoundingClientRect(); return Math.hypot(c.left + c.width / 2 - at.x, c.top + c.height / 2 - at.y); };
+    return setFocus(items.reduce((a, b) => (d(b) < d(a) ? b : a)));
+  }
   if (focused._dir && focused._dir(dir) === true) return; // ex. curseurs
   const vertical = dir === 'up' || dir === 'down';
   // Zones (ex. catégories et réglages des Paramètres) : haut et bas restent dans la zone,
@@ -192,9 +282,10 @@ function nudgeScroll(from, dir) {
   for (let e = from.parentElement; e && e !== document.body; e = e.parentElement) {
     const oy = getComputedStyle(e).overflowY;
     if ((oy !== 'auto' && oy !== 'scroll') || e.scrollHeight <= e.clientHeight + 2) continue;
-    const room = dir === 'down' ? e.scrollHeight - e.clientHeight - e.scrollTop : e.scrollTop;
+    const pos = posOf(e, 'y');
+    const room = dir === 'down' ? e.scrollHeight - e.clientHeight - pos : pos;
     if (room < 2) continue;
-    e.scrollBy({ top: (dir === 'down' ? 1 : -1) * Math.min(room, e.clientHeight * 0.6), behavior: reduceMotion ? 'auto' : 'smooth' });
+    scrollToPos(e, 'y', pos + (dir === 'down' ? 1 : -1) * Math.min(room, e.clientHeight * 0.6));
     return;
   }
 }
@@ -408,10 +499,13 @@ function readPads() {
     for (const k of down) {
       const id = p.index + ':' + k;
       seen.add(id);
-      // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas
-      if (swallow) { heldBy[id] = Infinity; continue; }
+      // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas.
+      // Mode souris : la manette est une souris, l'interface ne la lit plus.
+      if (swallow || mouseMode.on) { heldBy[id] = Infinity; continue; }
       if (!heldBy[id]) {
         heldBy[id] = now + 380; // délai avant répétition
+        // Start agit au relâchement : maintenu 1 s, il active le mode souris (app native)
+        if (k === 'start') { startAt[id] = now; continue; }
         if (now - (lastPress[k] || -1e9) < SAME_PRESS_MS) continue;
         lastPress[k] = now;
         logSource(p);
@@ -427,7 +521,28 @@ function readPads() {
   }
   swallow = false;
   for (const id in heldBy) if (!seen.has(id)) delete heldBy[id];
+  // Start relâché : appui court = son action (accès rapide ou menu) ; appui long = mode souris
+  for (const id in startAt) {
+    if (seen.has(id)) continue;
+    const held = now - startAt[id];
+    delete startAt[id];
+    if (held >= START_HOLD_MS || mouseMode.on || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
+    lastPress.start = now;
+    press(padAction('start'));
+  }
 }
+
+// Mode souris (Start maintenu, voir native/KaneMode.App/XInputPads.cs) : l'app le signale
+export const mouseMode = { on: false };
+const startAt = {};
+const START_HOLD_MS = 900;
+native.on(m => {
+  if (m.type !== 'mouse-mode') return;
+  mouseMode.on = !!m.on;
+  // En sortant du mode souris, Start (encore tenu) et le reste ne doivent pas agir
+  if (!m.on) swallow = true;
+  document.body.classList.toggle('mouse-mode', mouseMode.on);
+});
 
 // ---------- Souris ----------
 document.addEventListener('mousemove', e => {

@@ -17,12 +17,12 @@ Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). 
 
 ### Mises à jour
 
-KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (canal **Stable** ou **Bêta**, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
+KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (versions stables, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
 
 ### Publier une version (mainteneur)
 
 ```bash
-powershell -ExecutionPolicy Bypass -File native/release.ps1 -Publish -Beta
+powershell -ExecutionPolicy Bypass -File native/release.ps1 -Publish -Notes native/out/notes-x.y.z.md
 ```
 
 Version : fichier `VERSION`. Le paquet est signé par le certificat « CN=KaneMode » de votre magasin de certificats (créé au premier build, valable 10 ans). **Sauvegardez-le** (fichier .pfx protégé par un mot de passe, à ranger hors du dépôt ; `-Restore` pour le réimporter) : sans lui, les mises à jour ne s'installent plus par-dessus les versions existantes.

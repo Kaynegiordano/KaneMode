@@ -45,9 +45,12 @@ public partial class MainWindow : Window
         }
         Loaded += async (_, _) => await StartAsync();
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); };
-        // Manettes XInput lues par l'app tant que KaneMode est au premier plan (voir XInputPads)
-        _pads = new XInputPads(() => _ready && _hwnd != IntPtr.Zero && Native.GetForegroundWindow() == _hwnd);
+        // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
+        _pads = new XInputPads(PadFocus);
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
+        _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
+        _pads.Knock += () => Dispatcher.BeginInvoke(LogPadKnock);
+        _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() => { if (_ready) Post(new { type = "mouse-mode", on }); });
         Activated += (_, _) => OnActivated();
         // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte
         Deactivated += (_, _) => { if (_ready) Post(new { type = "background" }); };
@@ -136,6 +139,49 @@ public partial class MainWindow : Window
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
         };
         core.ProcessFailed += (_, e) => Log.Write($"WebView2 : processus {e.ProcessFailedKind} arrêté");
+    }
+
+    /// <summary>
+    /// Qui a la main, pour les manettes (lu par le fil des manettes). Au retour de KanePlay, le premier
+    /// plan pouvait rester à une fenêtre fermée ou masquée : KaneMode était affiché mais la manette ne
+    /// répondait plus, jusqu'à passer par la vue des tâches (retour de l'utilisateur).
+    /// </summary>
+    private XInputPads.Focus PadFocus()
+    {
+        IntPtr me = _hwnd;
+        if (!_ready || me == IntPtr.Zero || Native.IsMinimized(me) || !Native.IsAppWindow(me)) return XInputPads.Focus.Hidden;
+        IntPtr f = Native.GetForegroundWindow();
+        if (f == me) return XInputPads.Focus.Ours;
+        // Jeu suivi ou KanePlay qu'on met devant : c'est à eux, KaneMode n'y touche pas
+        if (_game != null || _watch != null) return XInputPads.Focus.Hidden;
+        if (Native.IsOrphanForeground(f)) return XInputPads.Focus.Orphan;
+        // Quelque chose est affiché devant KaneMode (Game Bar, vue des tâches, autre fenêtre) : pas à nous
+        IntPtr top = Native.VisibleWindows().FirstOrDefault(Native.IsAppWindow);
+        if (top != me) return XInputPads.Focus.Hidden;
+        // Fenêtre d'application cachée derrière KaneMode : on peut reprendre la main. Sinon (fenêtre
+        // outil, superposition), on ne fait que le noter dans le journal.
+        return Native.IsAppWindow(f) ? XInputPads.Focus.Orphan : XInputPads.Focus.Other;
+    }
+
+    private DateTime _reclaimedAt;
+    private void ReclaimForeground()
+    {
+        if (DateTime.UtcNow - _reclaimedAt < TimeSpan.FromSeconds(1)) return;
+        _reclaimedAt = DateTime.UtcNow;
+        IntPtr f = Native.GetForegroundWindow();
+        if (f == Hwnd) return;
+        Log.Write($"Manette : premier plan repris (il était à « {Native.WindowTitle(f)} », {Native.ProcessName(Native.WindowProcessId(f))}, {Native.WindowClass(f)})");
+        Native.ForceForeground(Hwnd);
+        Web.Focus();
+    }
+
+    private IntPtr _knocked;
+    private void LogPadKnock()
+    {
+        IntPtr f = Native.GetForegroundWindow();
+        if (f == _knocked || f == Hwnd) return;
+        _knocked = f;
+        Log.Write($"Manette : KaneMode est affiché mais « {Native.WindowTitle(f)} » ({Native.ProcessName(Native.WindowProcessId(f))}, {Native.WindowClass(f)}) a le premier plan");
     }
 
     /// <summary>Retour sur KaneMode (après un jeu par exemple) : focus et rafraîchissement.</summary>
@@ -388,11 +434,14 @@ public partial class MainWindow : Window
                     break;
                 case "foreground":
                     string? title = root.TryGetProperty("window", out var w) ? w.GetString() : null;
+                    _pads.StopMouseMode(); // KanePlay prend la manette
                     Native.GiveForeground(title);
                     if (!string.IsNullOrEmpty(title)) WatchForeground(title);
                     break;
                 case "launch":
-                    // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture
+                    // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture.
+                    // La manette est au jeu : fin du mode souris.
+                    _pads.StopMouseMode();
                     StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"), name: Text(root, "name"));
                     break;
                 case "launch-cancel":
@@ -424,6 +473,10 @@ public partial class MainWindow : Window
                     break;
                 case "hello":
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });
+                    if (_pads.MouseMode) Post(new { type = "mouse-mode", on = true });
+                    break;
+                case "mouse-mode-off":
+                    _pads.StopMouseMode();
                     break;
             }
         }

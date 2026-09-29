@@ -392,6 +392,31 @@ function Get-Radios {
     @($list | Where-Object { "$($_.Kind)" -in 'WiFi', 'Bluetooth' })
 }
 
+# ---- Réseau (icône de la barre du haut) : connexion qui mène à Internet, filaire ou Wi-Fi.
+# Une carte compte si elle est active et a une passerelle (le commutateur par défaut de Hyper-V n'en a
+# pas) ; le filaire passe avant le Wi-Fi, comme dans Windows. VPN et Bluetooth sont ignorés.
+function Get-Net {
+    $best = $null
+    foreach ($n in [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {
+        if ("$($n.OperationalStatus)" -ne 'Up') { continue }
+        $t = "$($n.NetworkInterfaceType)"
+        $kind = if ($t -eq 'Wireless80211') { 'wifi' } elseif ($t -match 'Ethernet') { 'ethernet' } else { continue }
+        if ($n.Description -match 'VPN|TAP-|WireGuard|Tailscale|ZeroTier|Loopback|VMware|VirtualBox|Bluetooth') { continue }
+        $gw = @($n.GetIPProperties().GatewayAddresses | Where-Object { $a = "$($_.Address)"; $a -and $a -ne '0.0.0.0' -and $a -ne '::' })
+        if (-not $gw.Count) { continue }
+        if (-not $best -or ($kind -eq 'ethernet' -and $best -eq 'wifi')) { $best = $kind }
+    }
+    $r = [ordered]@{ kind = if ($best) { $best } else { 'none' }; signal = $null }
+    if ($best -eq 'wifi') {
+        # Qualité du signal (0-100) ; netsh peut la refuser sans l'accès à la position : icône pleine
+        try {
+            $line = netsh wlan show interfaces 2>$null | Where-Object { $_ -match '^\s*Signal\s*:\s*(\d+)\s*%' } | Select-Object -First 1
+            if ($line -match '(\d+)\s*%') { $r.signal = [int]$Matches[1] }
+        } catch { }
+    }
+    $r
+}
+
 # ---- Lenovo (Legion Go, Go S, Go 2) : WMI « LENOVO_GAMEZONE_DATA », comme Legion Space
 function Lenovo-Mode([int]$set = -1) {
     $wmi = Get-CimInstance -Namespace root/WMI -ClassName LENOVO_GAMEZONE_DATA -ErrorAction Stop | Select-Object -First 1
@@ -474,6 +499,7 @@ function Run($c) {
             if ($r -ne 0) { throw "Windows a refusé le HDR (code $r)" }
             return @{ hdr = [KaneMode.Hdr]::State() }
         }
+        'net' { return Get-Net }
         'radio' {
             $radio = Get-Radios | Where-Object { "$($_.Kind)" -eq $c.kind } | Select-Object -First 1
             if (-not $radio) { throw "$($c.kind) introuvable" }
