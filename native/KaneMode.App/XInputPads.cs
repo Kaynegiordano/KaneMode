@@ -26,6 +26,7 @@ public sealed class XInputPads : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly bool[] _connected = new bool[4];
     private readonly long[] _nextScan = new long[4];
+    private readonly bool[] _announced = new bool[4];
 
     /// <param name="active">Vrai quand KaneMode est au premier plan (lu hors du fil de l'interface).</param>
     public XInputPads(Func<bool> active) { _active = active; }
@@ -64,6 +65,8 @@ public sealed class XInputPads : IDisposable
             // Un emplacement vide est lent à interroger : revu toutes les 2 s seulement
             if (!_connected[i] && t < _nextScan[i]) continue;
             bool ok = XInputGetState(i, out State s) == 0;
+            // Branchement et débranchement notés dans le journal (diagnostic sur la console)
+            if (ok != _connected[i] && (ok || _announced[i])) { _announced[i] = ok; Log.Write($"XInput : manette {i} {(ok ? "détectée" : "retirée")}"); }
             _connected[i] = ok;
             if (!ok) { _nextScan[i] = t + 2000; continue; }
             var p = s.Pad;

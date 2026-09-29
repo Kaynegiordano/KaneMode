@@ -1,6 +1,6 @@
 // Moteur de navigation : pages, couches (menus, dialogues), focus spatial et entrées
 // manette / clavier / souris.
-import { $, $$, sfx, reduceMotion, settings } from './core.js';
+import { $, $$, sfx, reduceMotion, settings, native } from './core.js';
 
 export const DIRS = ['up', 'down', 'left', 'right'];
 export const state = { page: null, history: [], layers: [], input: 'kbd', padStyle: 'xbox' };
@@ -311,7 +311,6 @@ const padAction = k => (k === 'select' ? (settings.padSwap ? 'view' : 'menu') : 
 /** Bouton physique d'une action globale (pour les indications) */
 const padButton = k => (k === 'menu' ? (settings.padSwap ? 'start' : 'select') : k === 'view' ? (settings.padSwap ? 'select' : 'start') : k);
 export const padLive = { id: '', buttons: [], axes: [0, 0, 0, 0], connected: 0 };
-const held = {};
 let swallow = false;
 addEventListener('focus', () => { swallow = true; });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) swallow = true; });
@@ -326,61 +325,99 @@ const axis = (p, i) => {
 const isSony = id => /054c|playstation|dualsense|dualshock|wireless controller/i.test(id);
 
 // Manettes XInput lues par l'app native (native/KaneMode.App/XInputPads.cs) : l'API Gamepad de
-// WebView2 ne les voyait plus toujours au retour d'une autre application (KanePlay). Tant que l'app
-// en signale, elles remplacent celles de l'API Gamepad, sauf les manettes Sony et Nintendo, qui ne
-// passent pas par XInput.
+// WebView2 ne les voyait plus toujours au retour d'une autre application (KanePlay). Les deux sources
+// sont lues ensemble : une manette XInput vue par les deux compte une fois (même appui fusionné), et
+// une manette vue par une seule marche quand même. En 1.8.0, les manettes de l'app remplaçaient
+// celles de WebView2 : sur la ROG Ally X, une manette XInput inactive privait ainsi l'interface de
+// la vraie manette.
 let xpads = [];
 // Boutons XInput → disposition standard de l'API Gamepad (A, B, X, Y, LB, RB, LT, RT, View, Menu, L3, R3, croix)
 const XBITS = [0x1000, 0x2000, 0x4000, 0x8000, 0x100, 0x200, -1, -2, 0x20, 0x10, 0x40, 0x80, 0x1, 0x2, 0x4, 0x8];
 export function setNativePads(list) {
   const next = (Array.isArray(list) ? list : []).map(x => ({
-    id: 'Manette XInput', index: 100 + x.i, mapping: 'standard',
+    id: 'Manette XInput (KaneMode)', index: 100 + x.i, mapping: 'standard', native: true,
     buttons: XBITS.map(bit => ({ pressed: bit === -1 ? x.lt > 30 : bit === -2 ? x.rt > 30 : (x.b & bit) !== 0 })),
     axes: [x.lx, x.ly, x.rx, x.ry],
   }));
   // Retour au premier plan : un bouton encore enfoncé (celui qui a quitté KanePlay) ne compte pas
   if (next.length && !xpads.length) swallow = true;
   xpads = next;
+  // Traité tout de suite, sans attendre l'image suivante (voir readPads)
+  readPads();
 }
 
+// Journal de l'app (diagnostic sur la console) : premier appui reçu par chaque source
+const logged = new Set();
+function logSource(p) {
+  const src = p.native ? 'XInput (app)' : 'WebView2 : ' + p.id;
+  if (logged.has(src)) return;
+  logged.add(src);
+  native.send('log', { text: `Manette : premier appui reçu par ${src}` });
+}
+
+// État de chaque bouton, par manette (une manette fantôme au bouton bloqué ne gêne pas les autres)
+const heldBy = {};
+// Dernier appui et dernière répétition de chaque action, toutes manettes : la même pression vue par
+// l'app et par WebView2 n'agit qu'une fois
+const lastPress = {}, lastRepeat = {};
+const SAME_PRESS_MS = 90;
+
+// Lecture des manettes à chaque image. Quand Chromium croit la page masquée (fenêtre recouverte,
+// retour de KanePlay), requestAnimationFrame s'arrête : une minuterie prend alors le relais, et les
+// messages de manette de l'app sont traités dès leur arrivée.
+let lastRead = 0;
 function poll() {
+  readPads();
+  requestAnimationFrame(poll);
+}
+requestAnimationFrame(poll);
+setInterval(() => { if (performance.now() - lastRead > 100 && (!document.hidden || xpads.length)) readPads(); }, 16);
+
+function readPads() {
+  lastRead = performance.now();
   const web = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
-  const pads = xpads.length ? [...xpads, ...web.filter(p => isSony(p.id) || /057e|nintendo|pro controller|joy-con/i.test(p.id))] : web;
+  const pads = [...xpads, ...web];
   const now = performance.now();
-  const down = new Set();
   let source = null;
-  padLive.connected = pads.length;
+  padLive.connected = Math.max(xpads.length, web.length);
+  const seen = new Set();
   for (const p of pads) {
-    const before = down.size;
+    const down = new Set();
     p.buttons.forEach((b, i) => { if (b.pressed && PAD[i]) down.add(PAD[i]); });
     const x = axis(p, 0), y = axis(p, 1);
     if (x < -0.55) down.add('left');
     if (x > 0.55) down.add('right');
     if (y < -0.55) down.add('up');
     if (y > 0.55) down.add('down');
-    if (down.size > before || !source) {
+    if (down.size || !source) {
       source = p;
       padLive.id = p.id;
       padLive.buttons = p.buttons.map(b => b.pressed);
       padLive.axes = [axis(p, 0), axis(p, 1), axis(p, 2), axis(p, 3)];
     }
-  }
-  // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas
-  if (swallow) { for (const k of down) held[k] = Infinity; swallow = false; }
-  for (const k of down) {
-    if (!held[k]) {
-      held[k] = now + 380; // délai avant répétition
-      setInput('pad', source && isSony(source.id) ? 'ps' : 'xbox');
-      press(padAction(k));
-    } else if (DIRS.includes(k) && now >= held[k]) {
-      held[k] = now + 90;
-      press(k);
+    for (const k of down) {
+      const id = p.index + ':' + k;
+      seen.add(id);
+      // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas
+      if (swallow) { heldBy[id] = Infinity; continue; }
+      if (!heldBy[id]) {
+        heldBy[id] = now + 380; // délai avant répétition
+        if (now - (lastPress[k] || -1e9) < SAME_PRESS_MS) continue;
+        lastPress[k] = now;
+        logSource(p);
+        setInput('pad', isSony(p.id) ? 'ps' : 'xbox');
+        press(padAction(k));
+      } else if (DIRS.includes(k) && now >= heldBy[id]) {
+        heldBy[id] = now + 90;
+        if (now - (lastRepeat[k] || -1e9) < 60) continue;
+        lastRepeat[k] = now;
+        press(k);
+      }
     }
   }
-  for (const k in held) if (!down.has(k)) delete held[k];
-  requestAnimationFrame(poll);
+  swallow = false;
+  for (const id in heldBy) if (!seen.has(id)) delete heldBy[id];
 }
-requestAnimationFrame(poll);
 
 // ---------- Souris ----------
 document.addEventListener('mousemove', e => {

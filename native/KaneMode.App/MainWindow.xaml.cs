@@ -416,6 +416,11 @@ public partial class MainWindow : Window
                 case "stay":
                     _returnTo = IntPtr.Zero; // l'utilisateur est allé ailleurs dans KaneMode
                     break;
+                case "log":
+                    // Diagnostic de l'interface (ex. source de la manette), dans kanemode.log
+                    string line = Text(root, "text") ?? "";
+                    if (line.Length > 0) Log.Write("[interface] " + (line.Length > 300 ? line[..300] : line));
+                    break;
                 case "hello":
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });
                     break;
