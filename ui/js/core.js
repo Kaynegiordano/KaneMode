@@ -69,9 +69,14 @@ export function applyTheme() {
   document.body.classList.add('bg-' + settings.background);
   document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
   document.body.classList.toggle('high-contrast', !!settings.highContrast);
-  document.body.style.zoom = settings.uiScale && settings.uiScale !== 100 ? settings.uiScale / 100 : '';
+  // Taille de l'interface : celle choisie (Accessibilité), réduite sur un écran plus petit que
+  // 1280 × 720 points (résolution abaissée, forte mise à l'échelle de Windows) pour garder la même
+  // mise en page ; le widget Game Bar a sa propre taille
+  const fit = /\/widget\.html$/.test(location.pathname) ? 1 : Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
+  const zoom = Math.round(((settings.uiScale || 100) / 100) * (fit > 0 ? fit : 1) * 1000) / 1000;
+  document.body.style.zoom = zoom !== 1 ? zoom : '';
   // Les hauteurs en vh ne doivent pas grandir avec le zoom de l'interface (voir --vh dans app.css)
-  document.documentElement.style.setProperty('--zoom', String((settings.uiScale || 100) / 100));
+  document.documentElement.style.setProperty('--zoom', String(zoom));
   document.body.classList.toggle('hints-compact', settings.hintsBar === 'compact');
   document.body.classList.toggle('lowfx', !!settings.lowFx);
   // Personnalisation : taille des jaquettes, arrondis, transparence, police

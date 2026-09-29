@@ -73,7 +73,7 @@ export function openLayer(layer) {
   layer.returnFocus = focused;
   state.layers.push(layer);
   layer.el.classList.add('open');
-  if (layer.scrim) $('#scrim').classList.add('show');
+  if (layer.scrim && $('#scrim')) $('#scrim').classList.add('show');
   layer.onOpen && layer.onOpen();
   sfx('open');
   focusIn(layer.el, layer.focusKey, { scroll: false });
@@ -84,7 +84,7 @@ export function closeLayer(layer = topLayer(), result) {
   if (!layer) return;
   state.layers = state.layers.filter(l => l !== layer);
   layer.el.classList.remove('open');
-  if (!state.layers.some(l => l.scrim)) $('#scrim').classList.remove('show');
+  if (!state.layers.some(l => l.scrim) && $('#scrim')) $('#scrim').classList.remove('show'); // pas de voile dans le widget Game Bar
   if (layer.returnFocus && layer.returnFocus.isConnected) setFocus(layer.returnFocus, { scroll: false, sound: false });
   else focusIn(scope());
   layer.onClose && layer.onClose(result);

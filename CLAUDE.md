@@ -42,7 +42,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - Au démarrage, il préchauffe `device.info()` et `sysctl.state()`.
 - `syscontrol.ps1` : service PowerShell **persistant** (JSON-RPC, une ligne par commande) avec du C# compilé.
   - La dll est mise en cache dans `%TEMP%\kanemode-syscontrol-<hash>.dll`.
-  - Commandes : `state`, `live`, volume, mute, brightness, powermode, refresh, resolution, radio (Wi-Fi/BT), vendor, tdp, cpumax, boost, chargelimit.
+  - Commandes : `state` (avec `ac` : secteur ou batterie), `live`, `policy` (profil constructeur en cours et secteur, lecture ACPI instantanée), volume, mute, brightness, powermode, refresh, resolution, radio (Wi-Fi/BT), vendor (vérifié : relu après écriture, erreur si la console ne l'a pas pris), tdp, cpumax, boost, chargelimit.
   - ASUS (ROG Ally) : `\\.\ATKACPI` en DeviceIoControl. Throttle `0x00120075`, PPT `0x001200A3`/`A0`/`C1`, limite de charge `0x00120057`.
   - Lenovo : WMI `LENOVO_GAMEZONE_DATA` / `LENOVO_OTHER_METHOD`.
   - Processeur : powrprof (PROCTHROTTLEMAX, PERFBOOSTMODE).
@@ -50,6 +50,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - `lib/syscontrol.js` : client du service ; `apply(profile)`.
 - `server.js`, modes de performance :
   - `perfPreset()` et `POST /api/power/mode` ; **Économie, Équilibré et Performance** règlent d'un coup le mode d'alimentation Windows, la limite et le turbo CPU, et le profil constructeur.
+  - Sur ROG Ally, le mode impose aussi la puissance (`ASUS_WATTS` : SPL = sPPT = fPPT, valeurs d'Armoury Crate ; Ally X 13 / 17 / 25 W, Turbo 30 W sur secteur). Avant la 1.7.0, seul le profil ACPI changeait : une puissance réglée à la main restait en place et « le mode ne changeait rien » (retour de l'utilisateur sur son Ally X).
+  - **Mode tenu** (`keepPerf`) : toutes les 5 s, commande `policy` ; si le profil constructeur n'est plus celui du mode (Armoury Crate SE et ses profils par jeu, Legion Space), le mode est réappliqué et noté dans le journal. Plus de 4 corrections en 2 min : conflit, pause de 10 min, `modeConflict` dans `/api/sys` (avertissement dans l'accès rapide et le widget). Puissance remise au branchement / débranchement, à la sortie de veille (minuterie arrêtée > 30 s) et 8 s puis 25 s après un lancement de jeu. `keeperQuiet()` suspend les vérifications 4 s après chaque réglage manuel ou changement de mode. Puissance réglée à la main : `config.customTdp`, remise dans les mêmes cas.
   - `config.perfMode` passe à `custom` dès qu'un réglage est changé à la main.
   - Le « mode d'alimentation Windows » n'est plus exposé séparément dans l'interface : doublon.
 - Bibliothèque à jour toute seule (`rescanLibrary` dans `server.js`) : `fs.watch` sur les `steamapps` de chaque bibliothèque Steam (seulement quand un jeu devient installé ou disparaît : bit 4 de `StateFlags`), les `shortcuts.vdf`, les manifestes Epic et les dossiers `XboxGames`. Analyse complète au démarrage, au retour sur KaneMode (`/api/library/refresh`, une fois par minute au plus) et toutes les 10 minutes. `scan.ps1` ignore un jeu Steam pas fini de télécharger.
@@ -57,6 +59,10 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - `allEntries` est gardé en mémoire (refait quand `version` change, au plus tard après 5 s) avec un index `byId` pour `findEntry` : chaque image `/art/…` reconstruisait toute la bibliothèque (171 jaquettes : 15,7 s → 0,17 s). **Toute écriture de `library.json`, `custom.json` ou `roms.json` doit faire `version++`.**
   - `sendFile` envoie un `ETag` (taille + date) et répond 304 : jaquettes et fichiers de l'interface ne sont plus retéléchargés à chaque affichage.
   - `steam.gridArt` lit le dossier `grid` une fois (cache par date du dossier) au lieu d'une vingtaine d'accès disque par jeu.
+- `lib/amd.js` + `native/KaneMode.Amd` : réglages graphiques AMD par **ADLX** (bibliothèque du pilote, `amdadlx64.dll`). `kanemode-amd.exe` (C++, SDK ADLX 2.0 téléchargé par `build-amd.ps1`, commit fixé et empreinte vérifiée ; **le SDK a sa propre licence, il n'est pas dans le dépôt**) reste ouvert et lit une commande par ligne : `state`, `live`, `set <fonction> <valeur>`.
+  - Fonctions : `fps` (limite d'images par seconde : Radeon Chill avec minimum = maximum, sinon Frame Rate Target Control ; 0 = aucune), `rsr`/`rsrsharp`, `afmf`, `antilag`, `ris`/`rissharp`. `live` : images par seconde du jeu au premier plan, charge, température, puissance et fréquence du GPU.
+  - Routes `GET /api/amd` (`available:false` + `reason` sans GPU AMD), `GET /api/amd/live`, `POST /api/amd {feature, value}` (renvoie l'état complet : une fonction peut en couper une autre).
+  - **Jamais testé sur un vrai GPU AMD** : le PC de développement a une RTX 5080 (ADLX se charge, « Pas de GPU AMD »).
 - `lib/device.js` : console reconnue (catalogue `HANDHELDS`) + `device.ps1` (WMI). Résultat mis en cache dans `DATA/device.json` et servi immédiatement au démarrage.
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
 - `lib/update.js` : GitHub Releases (canaux stable/bêta), vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance.
@@ -72,7 +78,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - le défilement quand plus rien n'est focalisable ;
   - la manette (API Gamepad) : **Select = menu, Start = accès rapide**, inversable avec `settings.padSwap`. Un bouton encore enfoncé au retour de focus est ignoré ;
   - le clavier : M = menu, Q = accès rapide, Échap = retour. B sur l'accueil ouvre le menu.
-- `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas), `native` (messages WebView2), `sfx` : sons d'interface façon Switch 2, **doux** (demande de l'utilisateur) : « tocs » de marimba (partiel 4 à peine présent), attaque de 5 ms, clic très faible, passe-bas à 4,2 kHz, crêtes de 0,02 à 0,05 ; calculés une fois (`OfflineAudioContext`, table `SOUNDS`) puis rejoués.
+  - `openLayer`/`closeLayer` n'exigent plus `#scrim` (absent du widget).
+- `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas ; le zoom est en plus réduit sous 1280 × 720 points CSS, pour garder la même mise en page quand la résolution baisse ; `main.js` le recalcule et redessine la page à chaque `resize`), `native` (messages WebView2), `sfx` : sons d'interface façon Switch 2, **doux** (demande de l'utilisateur) : « tocs » de marimba (partiel 4 à peine présent), attaque de 5 ms, clic très faible, passe-bas à 4,2 kHz, crêtes de 0,02 à 0,05 ; calculés une fois (`OfflineAudioContext`, table `SOUNDS`) puis rejoués.
 - `js/pages/library.js` : tri par nom et au moins 40 jeux dans l'onglet (`MANY`) : la lettre en cours s'affiche sur le côté droit en changeant de rangée, à la hauteur qui correspond à la position dans la liste (`.letter-hint`, comme SteamOS) ; LT/RT sautent à la lettre suivante ou précédente.
 - `js/pages/settings.js` : une catégorie s'affiche tout de suite ; les blocs lents (mises à jour, pilotes, ASUS) se remplissent ensuite, et « Console portable » lit la description en cache (l'analyse WMI est relancée en arrière-plan).
 - `js/main.js` : menus, accès rapide, relais « par-dessus KanePlay » (`overlay`), mises à jour (vérification au démarrage, au retour d'un jeu, au réveil et toutes les heures, au plus une fois par heure ; entrée « Mise à jour disponible » dans le menu), démarrage.
@@ -89,6 +96,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 ### `native/`
 - `KaneMode.App` (WPF, .NET 8) : fenêtre plein écran + WebView2. L'hôte et WebView2 démarrent **en parallèle**. Autres rôles :
   - la veille (`Native.cs`) ;
+  - le changement de résolution (`SystemEvents.DisplaySettingsChanged`) : `Native.FillMonitor` remet la fenêtre à la taille de l'écran, sans l'activer (WPF laissait la fenêtre sans bordure agrandie à l'ancienne taille : interface inadaptée après un changement de résolution depuis le widget) ;
   - `GiveForeground` (message `foreground` : KaneMode cède le premier plan et ramène lui-même la fenêtre KanePlay) ;
   - `WM_COPYDATA` « open\tqam|menu » envoyé par KanePlay (Select/Start), puis retour à KanePlay à la fermeture ;
   - le premier plan de KanePlay (`WatchForeground`) : pendant 15 s, KaneMode, encore au premier plan, guette la fenêtre « KaneMode · KanePlay » et la met lui-même devant (`Native.ForceForeground`, avec `AttachThreadInput`). Si plus aucun `KanePlay.exe` ne tourne après 1,5 s (commande partie vers une instance qui se fermait : `returnToKaneMode` masque la fenêtre puis quitte), il envoie `foreground-lost` et l'interface relance une fois ;
@@ -100,7 +108,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
     - `build-widget.ps1` : NuGet Game Bar 7.3.2607010, WinUI 2.8.6 (paquet d'exécution `Microsoft.UI.Xaml.2.8` 8.2310.30001.0, dépendance du paquet, embarqué dans l'installateur), WebView2 1.0.2903.40 ; cppwinrt + `cl` (vcvarsall `x64 uwp`). `build.ps1` injecte dans le manifeste les classes WebView2 (`__WEBVIEW2_CLASSES__`) ; `-NoWidget` retire tout ce qui est entre les marqueurs `WIDGET`.
   - La page parle au widget par `postMessage` : `{type:'api', id, method, path, body}` → hôte ; `{type:'native', message}` → app (`toApp` dans `core.js`, mode `WIDGET` détecté par le chemin `widget.html`). Le widget relaie par le tube nommé (`WidgetBridge.cs`, conteneur du paquet, SID calculé) et renvoie `{type:'api-result', id, status, body}`.
   - Messages natifs permis au widget (`WidgetMessages`) : `widget-state` (jeu en cours), `game-stop`, `show` (ouvrir KaneMode, éventuellement sur une page), `power`, `lossless` (Ctrl + Alt + S).
-  - `ui/js/widget.js` : jeu en cours (arrêt en deux appuis, puis forcé), profils Économie / Équilibré / Performance / Personnalisé avec leurs watts, catégories (Écran, Système, Son, Réseau, Mise à l'échelle), tuiles « Toucher pour changer » (◀ ▶ pour ajuster), raccourcis vers KaneMode. `GET /api/widget` : version, accent, Lossless Scaling. Le widget ne renvoie jamais son accent (`syncAccent` coupé).
+  - `ui/js/widget.js` (refait en 1.7.0) : bandeau en direct (images/s et GPU par ADLX, CPU, batterie), jeu en cours (arrêt en deux appuis, puis forcé), profils Économie / Équilibré / Performance / Personnalisé avec leurs watts (Personnalisé ouvre le curseur de puissance), catégories sur une ligne défilante (Écran, Graphismes, Performance, Son, Réseau), raccourcis vers KaneMode. Tuiles de même hauteur : interrupteur (appui), ou **panneau** en bas (`openSheet`, une couche de `nav.js`) avec un curseur glissable au doigt (gauche/droite à la manette) ou une liste de choix. **Plus de flèches ◀ ▶** (l'utilisateur n'aimait pas). `GET /api/widget` : version, accent, Lossless Scaling. Le widget ne renvoie jamais son accent (`syncAccent` coupé).
+  - Tester l'interface du widget sans toucher au système : une page de démo avec une API simulée (Ally X + Radeon) injectée avant `widget.js` ; ne **jamais** cliquer les tuiles sur `node host/server.js` (réglages réels du PC de l'utilisateur).
   - HDR : `syscontrol.ps1` classe `Hdr` (DisplayConfig, advanced color : lecture type 9, bascule type 10), commande `hdr`, `state.hdr` (-1 sans écran HDR).
   - Tester sur ce PC : paquet signé en version supérieure (`build.ps1 -Pack -Version 1.x.y.z`, installé via WMI), puis `explorer "ms-gamebar://launch/activate/KaneMode_7gtma5f85sgk8_Widget_KaneModeWidget"`. `-Register` est refusé par-dessus une version installée depuis un paquet signé.
   - La mise à jour intégrée n'installe pas WinUI 2.8 : un PC sans ce paquet échouerait (l'ancienne version reste). Il est présent partout où la Microsoft Store et la Game Bar sont à jour.
@@ -178,7 +187,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - Idées demandées ou à explorer :
   - KanePlay : fermer son QLocalServer dès `returnToKaneMode` (avant de quitter) éviterait qu'une relance parte vers l'instance qui se ferme ;
   - mises à jour officielles pour Lenovo (Legion Go) et MSI (Claw) ;
-  - limite d'images par seconde, fonctions AMD (RSR, AFMF, Anti-Lag via ADLX), courbe de ventilateur ;
+  - courbe de ventilateur ; limite d'images par seconde hors AMD (RTSS) ;
   - superposition transparente par-dessus les jeux.
 - Historique récent :
   - 1.0.1 : navigation, Select/Start, modes de performance ;
@@ -191,4 +200,5 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.4.1 : Steam reste en arrière-plan (démarrage `-silent`, fenêtre réduite si elle passe devant), retour immédiat sur KaneMode à la fin du jeu, journal des changements de premier plan (mode Xbox à valider sur l'Ally) ;
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
   - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally) ;
-  - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant.
+  - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant ;
+  - 1.7.0 : graphismes AMD (limite d'images/s, RSR, AFMF, Anti-Lag, netteté) et mesures GPU dans le widget, widget refait (curseurs et listes au lieu des flèches), puissance ASUS imposée par les modes et mode tenu contre Armoury Crate SE, interface qui suit un changement de résolution.

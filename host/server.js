@@ -16,6 +16,7 @@ const kaneplay = require('./lib/kaneplay');
 const update = require('./lib/update');
 const syscontrol = require('./lib/syscontrol');
 const oem = require('./lib/oem');
+const amd = require('./lib/amd');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -301,29 +302,104 @@ function publicEntry(g, st, cfg) {
 device.setCacheFile(path.join(DATA, 'device.json'));
 const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.info()).handheld));
 const PERF_MODES = ['eco', 'balanced', 'performance'];
+// Puissance des profils ASUS en watts, [sur batterie, sur secteur] (valeurs d'Armoury Crate SE). Elle
+// est imposée avec le profil (les trois limites SPL, sPPT et fPPT égales) : sans cela, une puissance
+// réglée à la main ou par un autre programme pouvait rester en place et le mode ne changeait rien.
+const ASUS_WATTS = {
+  'rog-ally': { silent: [10, 10], performance: [15, 15], turbo: [25, 30] },
+  'rog-ally-x': { silent: [13, 13], performance: [17, 17], turbo: [25, 30] },
+};
 /**
  * Modes de performance KaneMode : chacun règle ensemble le mode d'alimentation de Windows, la limite
- * et le turbo du processeur et, sur une console reconnue, le profil du constructeur (qui fixe aussi
- * sa puissance et ses ventilateurs, comme Armoury Crate ou Legion Space).
+ * et le turbo du processeur et, sur une console reconnue, le profil du constructeur (puissance et
+ * ventilateurs, comme Armoury Crate ou Legion Space) et, sur ROG Ally, la puissance elle-même.
  */
-function perfPreset(mode, st) {
+function perfPreset(mode, st, handheld) {
   const v = st && st.vendor;
   const pick = (...names) => (v && v.modes ? names.find(n => v.modes.includes(n)) : undefined);
-  if (mode === 'eco') return { powerMode: 'efficiency', cpuMax: 70, boost: false, vendor: pick('silent', 'quiet') };
-  if (mode === 'balanced') return { powerMode: 'balanced', cpuMax: 100, boost: true, vendor: pick('performance', 'balanced') };
-  if (mode === 'performance') return { powerMode: 'performance', cpuMax: 100, boost: true, vendor: pick('turbo', 'performance') };
-  return {};
+  const base = {
+    eco: { powerMode: 'efficiency', cpuMax: 70, boost: false, vendor: pick('silent', 'quiet') },
+    balanced: { powerMode: 'balanced', cpuMax: 100, boost: true, vendor: pick('performance', 'balanced') },
+    performance: { powerMode: 'performance', cpuMax: 100, boost: true, vendor: pick('turbo', 'performance') },
+  }[mode];
+  if (!base) return {};
+  const w = v && v.vendor === 'asus' && base.vendor && ASUS_WATTS[handheld] && ASUS_WATTS[handheld][base.vendor];
+  if (w) base.tdp = w[st.ac ? 1 : 0];
+  return base;
 }
 /** Profil complet : le mode choisi, puis les réglages précisés un par un (qui l'emportent). */
 async function expandProfile(profile) {
   const { mode, ...rest } = profile || {};
   if (!PERF_MODES.includes(mode)) return rest;
   const st = await sysctl.state().catch(() => null);
-  const base = perfPreset(mode, st);
+  const hh = (await device.info().catch(() => ({}))).handheld;
+  const base = perfPreset(mode, st, hh && hh.id);
   for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
   return { ...base, ...rest };
 }
-const setPerfMode = mode => { const c = config(); if (c.perfMode !== mode) { c.perfMode = mode; writeJson(FILES.config, c); } };
+const setPerfMode = mode => {
+  const c = config();
+  if (c.perfMode === mode && (mode === 'custom' || c.customTdp == null)) return;
+  c.perfMode = mode;
+  if (mode !== 'custom') delete c.customTdp; // un mode remplace la puissance réglée à la main
+  writeJson(FILES.config, c);
+};
+
+// ---------------------------------------------------------------- mode tenu
+// Armoury Crate SE (et ses profils par jeu), Legion Space, le branchement du chargeur ou la sortie de
+// veille peuvent remettre un autre profil ou une autre puissance sur la console. Toutes les 5 s,
+// KaneMode lit le profil en cours (lecture ACPI, instantanée) et rétablit le mode choisi. S'il est
+// changé sans cesse, un autre programme l'impose : KaneMode s'efface 10 minutes et le signale.
+const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
+const keeperConflict = () => Date.now() < keeper.pausedUntil;
+/** Un réglage vient d'être fait à la main ou par un mode : pas de vérification pendant 4 s. */
+const keeperQuiet = () => { keeper.quiet = Date.now(); };
+async function keepPerf(reason) {
+  if (keeper.busy || Date.now() - keeper.quiet < 4000) return;
+  const hh = (await device.info().catch(() => ({}))).handheld;
+  if (!syscontrol.vendorOf(hh)) return;
+  keeper.busy = true;
+  try {
+    const pol = await sysctl.policy();
+    const acChanged = keeper.ac != null && pol.ac != null && pol.ac !== keeper.ac;
+    if (pol.ac != null) keeper.ac = pol.ac;
+    const c = config();
+    if (PERF_MODES.includes(c.perfMode)) {
+      // Profils proposés par la console : l'état complet n'est relu que toutes les 5 minutes (il
+      // interroge aussi le son, l'écran, les radios…), la source d'alimentation vient de la lecture rapide
+      if (!keeper.st || Date.now() - keeper.stAt > 300000) { keeper.st = await sysctl.state(); keeper.stAt = Date.now(); }
+      const p = perfPreset(c.perfMode, { ...keeper.st, ac: pol.ac != null ? pol.ac : keeper.st.ac }, hh.id);
+      for (const k of Object.keys(p)) if (p[k] === undefined) delete p[k];
+      if (Date.now() - keeper.quiet < 4000 || config().perfMode !== c.perfMode) return; // changé entre-temps
+      if (p.vendor && pol.vendor && pol.vendor !== p.vendor) {
+        const now = Date.now();
+        keeper.fixes = keeper.fixes.filter(t => now - t < 120000).concat(now);
+        if (keeperConflict()) return;
+        if (keeper.fixes.length > 4) {
+          keeper.pausedUntil = now + 600000;
+          console.log(`Mode ${c.perfMode} : un autre programme impose le profil ${pol.vendor} (Armoury Crate SE ?), KaneMode ne le rétablit plus pendant 10 minutes`);
+          return;
+        }
+        console.log(`Mode ${c.perfMode} rétabli : la console était passée en profil ${pol.vendor}`);
+        await sysctl.apply(p);
+      } else if (acChanged || reason) {
+        // Même profil : la puissance est remise (le secteur change celle du profil Turbo)
+        if (reason) console.log(`Mode ${c.perfMode} : puissance remise (${reason})`);
+        await sysctl.apply({ vendor: acChanged ? p.vendor : undefined, tdp: p.tdp });
+      }
+    } else if (c.perfMode === 'custom' && c.customTdp != null && (acChanged || reason)) {
+      await sysctl.call('tdp', { value: c.customTdp });
+    }
+  } catch { /* console occupée : prochaine vérification dans 5 s */ }
+  finally { keeper.busy = false; }
+}
+setInterval(() => {
+  const now = Date.now();
+  // Minuterie arrêtée plus de 30 s : la console sortait de veille
+  const woke = now - keeper.tick > 30000;
+  keeper.tick = now;
+  keepPerf(woke ? 'sortie de veille' : null);
+}, 5000);
 const PROFILE_FIELDS = {
   mode: v => PERF_MODES.includes(v),
   powerMode: v => ['efficiency', 'balanced', 'performance'].includes(v),
@@ -912,6 +988,8 @@ const routes = {
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
     const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
+    // Armoury Crate SE applique ses profils par jeu au lancement : le mode choisi est remis ensuite
+    if (r.ok && !b.dry) for (const t of [8000, 25000]) setTimeout(() => keepPerf('jeu lancé'), t);
     json(res, 200, r);
   },
   // Widget Game Bar : version de KaneMode et Lossless Scaling (installé par Steam, lancé ou non)
@@ -1045,7 +1123,7 @@ const routes = {
   'GET /api/sys': async (req, res, q) => {
     try {
       const hh = (await device.info().catch(() => ({}))).handheld;
-      json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null, handheld: hh ? hh.id : null });
+      json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: config().customTdp ?? null });
     }
     catch (e) { json(res, 500, { error: e.message }); }
   },
@@ -1058,9 +1136,18 @@ const routes = {
     const b = await readBody(req);
     const cmd = String(b.cmd || '');
     try {
+      const perf = ['powermode', 'vendor', 'tdp', 'cpumax', 'boost'].includes(cmd);
+      if (perf) keeperQuiet();
       const r = await sysctl.call(cmd, { value: b.value, kind: b.kind });
       // Un réglage de performance changé à la main : le mode devient « personnalisé »
-      if (['powermode', 'vendor', 'tdp', 'cpumax', 'boost'].includes(cmd)) setPerfMode('custom');
+      if (perf) {
+        setPerfMode('custom');
+        // Puissance réglée à la main : remise après la veille ou le branchement du chargeur
+        const c = config();
+        if (cmd === 'tdp') c.customTdp = r.tdp ? r.tdp.spl : b.value;
+        else if (cmd === 'vendor') delete c.customTdp;
+        writeJson(FILES.config, c);
+      }
       json(res, 200, r);
     } catch (e) { json(res, 400, { error: e.message }); }
   },
@@ -1068,12 +1155,30 @@ const routes = {
   'POST /api/power/mode': async (req, res) => {
     const b = await readBody(req);
     if (!PERF_MODES.includes(b.mode)) return json(res, 400, { error: 'Mode inconnu' });
+    keeperQuiet();
+    keeper.fixes = []; keeper.pausedUntil = 0; // choix de l'utilisateur : KaneMode reprend la main
     const profile = await expandProfile({ mode: b.mode });
     const r = await sysctl.apply(profile);
     if (!r.errors.length || r.done.length) setPerfMode(b.mode);
+    keeperQuiet();
     const st = await sysctl.state(true).catch(() => null);
     const hh = (await device.info().catch(() => ({}))).handheld;
-    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null, handheld: hh ? hh.id : null } });
+    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: null } });
+  },
+  // --- Graphismes AMD (Radeon) : limite d'images par seconde, RSR, AFMF, Anti-Lag, netteté, mesures
+  // du GPU (voir lib/amd.js et native/KaneMode.Amd)
+  'GET /api/amd': async (req, res, q) => {
+    try { json(res, 200, await amd.state(q.get('refresh') === '1')); }
+    catch (e) { json(res, 200, { available: false, reason: e.message }); }
+  },
+  'GET /api/amd/live': async (req, res) => {
+    try { json(res, 200, await amd.live()); }
+    catch (e) { json(res, 500, { error: e.message }); }
+  },
+  'POST /api/amd': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await amd.set(String(b.feature || ''), b.value)); }
+    catch (e) { json(res, 400, { error: e.message }); }
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
   'POST /api/power/profiles': async (req, res) => {
@@ -1098,7 +1203,9 @@ const routes = {
     const src = b.source === 'battery' ? 'battery' : 'ac';
     if (!p.auto && !b.force) return json(res, 200, { skipped: true });
     const prof = p[src] || {};
+    keeperQuiet();
     const r = await sysctl.apply(await expandProfile(prof));
+    keeperQuiet();
     if (prof.mode) setPerfMode(Object.keys(prof).length === 1 ? prof.mode : 'custom');
     json(res, 200, r);
   },

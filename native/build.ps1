@@ -3,7 +3,7 @@
     Construit l'app native KaneMode et son paquet MSIX.
 .DESCRIPTION
     Assemble dans native\out\layout : KaneMode.exe (WPF + WebView2), l'interface (ui\), l'hôte (host\),
-    Node.js, les icônes du paquet, le manifeste et le fichier de capacité « gamingHome ».
+    l'outil des réglages AMD (app\tools), Node.js, les icônes du paquet, le manifeste et le fichier de capacité « gamingHome ».
 .PARAMETER Register
     Installe la version de développement sur ce PC (mode développeur requis, sans certificat).
     KaneMode apparaît alors dans le menu Démarrer et dans le choix de l'app d'accueil du mode Xbox.
@@ -74,6 +74,12 @@ $node = (Get-Command node -ErrorAction SilentlyContinue).Source
 if (-not $node) { throw 'Node.js introuvable : winget install OpenJS.NodeJS.LTS' }
 New-Item -ItemType Directory -Force (Join-Path $layout 'node') | Out-Null
 Copy-Item $node (Join-Path $layout 'node\node.exe')
+# Réglages graphiques AMD (limite d'images par seconde, RSR, AFMF…) : outil C++ sur ADLX, lancé par
+# l'hôte (host\lib\amd.js) depuis app\tools
+Step 'Réglages AMD (native\KaneMode.Amd)'
+& (Join-Path $native 'KaneMode.Amd\build-amd.ps1')
+New-Item -ItemType Directory -Force (Join-Path $app 'tools') | Out-Null
+Copy-Item (Join-Path $native 'KaneMode.Amd\obj\amd\kanemode-amd.exe') (Join-Path $app 'tools')
 # Moteur de streaming (KanePlay), invisible : KaneMode affiche lui-même les PC, l'appairage et les jeux
 if (-not $NoKanePlay) {
     $engineOut = Join-Path $root 'engine\out'

@@ -47,12 +47,14 @@ public partial class MainWindow : Window
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès)
         Closing += (_, _) => { try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
-        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _buttons.Dispose(); _host.Dispose(); };
+        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
         WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));
         // Veille et réveil du système, quelle qu'en soit la cause (menu, bouton d'alimentation, capot…)
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        // Résolution ou mise à l'échelle changée (widget Game Bar, Paramètres de Windows)
+        SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         PreviewKeyDown += OnKeyDown;
     }
 
@@ -288,6 +290,27 @@ public partial class MainWindow : Window
                 if (asus) Native.PostMessage(w, 0x0010 /* WM_CLOSE */, IntPtr.Zero, IntPtr.Zero);
             }
         }
+    }
+
+    /// <summary>
+    /// Nouvelle résolution : la fenêtre plein écran reprend toute la taille de l'écran (WPF laisse une
+    /// fenêtre sans bordure agrandie à son ancienne taille, l'interface débordait ou ne remplissait plus
+    /// l'écran). Sans l'activer : un jeu au premier plan y reste. Refait un peu plus tard, le temps que
+    /// Windows applique aussi la mise à l'échelle.
+    /// </summary>
+    private void OnDisplayChanged(object? sender, EventArgs e)
+    {
+        if (Args.Contains("--windowed")) return;
+        Dispatcher.BeginInvoke(async () =>
+        {
+            foreach (int delay in new[] { 200, 1200, 3000 })
+            {
+                await Task.Delay(delay);
+                if (WindowState == WindowState.Minimized) continue;
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (Native.FillMonitor(hwnd)) Log.Write("Affichage modifié : fenêtre remise à la taille de l'écran");
+            }
+        });
     }
 
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)

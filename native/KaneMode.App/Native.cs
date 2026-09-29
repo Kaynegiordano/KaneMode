@@ -138,6 +138,28 @@ public static class Native
         SetWindowPos(hwnd, above, 0, 0, 0, 0, NOSIZE | NOMOVE | NOACTIVATE | NOOWNERZORDER);
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO { public int Size; public RECT Monitor, Work; public uint Flags; }
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+
+    /// <summary>
+    /// Étend la fenêtre à tout son écran, à sa taille actuelle, sans l'activer ni changer son rang :
+    /// après un changement de résolution, une fenêtre sans bordure agrandie garde sinon l'ancienne taille.
+    /// Renvoie vrai si la taille a changé.
+    /// </summary>
+    public static bool FillMonitor(IntPtr hwnd)
+    {
+        const uint NOZORDER = 0x4, NOACTIVATE = 0x10, NOOWNERZORDER = 0x200;
+        var info = new MONITORINFO { Size = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(MonitorFromWindow(hwnd, 2 /* MONITOR_DEFAULTTONEAREST */), ref info)) return false;
+        var m = info.Monitor;
+        if (GetWindowRect(hwnd, out RECT r) && r.Left == m.Left && r.Top == m.Top && r.Right == m.Right && r.Bottom == m.Bottom) return false;
+        return SetWindowPos(hwnd, IntPtr.Zero, m.Left, m.Top, m.Right - m.Left, m.Bottom - m.Top, NOZORDER | NOACTIVATE | NOOWNERZORDER);
+    }
+
     /// <summary>Réduit une fenêtre sans activer celle qui se trouve derrière (on choisit nous-mêmes laquelle passe devant).</summary>
     public static void Minimize(IntPtr hwnd) => ShowWindow(hwnd, 7 /* SW_SHOWMINNOACTIVE */);
 

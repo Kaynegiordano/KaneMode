@@ -17,6 +17,13 @@ import './pages/media.js';
 import './pages/emulation.js';
 
 applyTheme();
+// Résolution ou mise à l'échelle changée (widget Game Bar, Paramètres de Windows) : taille de
+// l'interface recalculée et page redessinée pour la nouvelle taille d'écran
+let resizeTimer = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { applyTheme(); refresh(); }, 250);
+});
 // L'écran de démarrage couvre tout dès le chargement.
 if (settings.bootMode !== 'none') $('#boot').hidden = false;
 // ---------- Par-dessus KanePlay ----------

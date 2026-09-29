@@ -513,58 +513,114 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 #launch { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #000; opacity: 0; pointer-events: none; transition: opacity 300ms ease; }
 #launch.open { opacity: 1; pointer-events: auto; }
 /* Widget Game Bar (widget.html) : HUD façon Winhanced, sur un fond légèrement transparent qui laisse
-   deviner le jeu. Tuiles arrondies, valeur en grand, contour blanc sur l'élément sélectionné. */
-body.widget { background: transparent; }
-#hud { height: 100%; overflow-y: auto; scrollbar-width: none; background: rgba(20, 24, 32, 0.95); padding: 0 14px 18px; }
+   deviner le jeu. Tuiles arrondies de même hauteur, valeur en grand, contour blanc sur l'élément
+   sélectionné ; un panneau en bas (curseur ou liste) pour changer une valeur. */
+body.widget { background: transparent; overflow: hidden; }
+#hud { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; background: rgba(20, 24, 32, 0.95); padding: 0 14px 18px; }
 #hud::-webkit-scrollbar { display: none; }
-.hud-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 -14px 10px; padding: 14px 18px 12px; background: rgba(30, 35, 45, 0.97); border-bottom: 1px solid var(--line); }
-.hud-head .brand-mark { width: 26px; height: 26px; }
+.hud-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 -14px 12px; padding: 12px 16px 10px; background: rgba(30, 35, 45, 0.97); border-bottom: 1px solid var(--line); }
+.hud-head .brand-mark { width: 26px; height: 26px; flex: none; }
 .hud-head b { font-size: 17px; }
 .hud-head small { color: var(--muted); font-size: 12px; margin-left: 4px; }
-.hud-watts { margin-left: auto; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; background: color-mix(in srgb, var(--accent) 35%, #0d1a2b); border: 2px solid var(--accent); }
+.hud-watts { margin-left: auto; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; background: color-mix(in srgb, var(--accent) 35%, #0d1a2b); border: 2px solid var(--accent); font-variant-numeric: tabular-nums; }
 .hud-status { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; color: #ffd0d2; background: rgba(229, 72, 77, 0.15); }
+.hud-note { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.45; color: #ffe2b0; background: rgba(245, 166, 35, 0.14); }
 .hud-h { margin: 16px 4px 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #cfd5dd; }
+.hud-i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Mesures en direct */
+.hud-live { display: flex; gap: 6px; margin-bottom: 10px; }
+.hud-live > div { flex: 1; min-width: 0; padding: 8px 6px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); text-align: center; }
+.hud-live b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hud-live small { display: block; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Jeu en cours */
 .hud-card { border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.06); }
-.hud-game { display: flex; align-items: center; gap: 12px; padding: 12px; }
-.hud-game-icon { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); }
+.hud-game { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.hud-game-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); }
 .hud-game-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.4; color: #cfd5dd; }
 .hud-game-text b { display: block; font-size: 16px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-game-text small { font-size: 11px; }
-.hud-stop { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); font-size: 13px; font-weight: 600; cursor: pointer; }
+.hud-stop { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); border: 2px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
 .hud-stop.danger { background: rgba(229, 72, 77, 0.25); color: #ffb3b5; }
-.hud-stop.focused { box-shadow: 0 0 0 2px #fff; }
+.hud-stop.focused { border-color: #fff; }
 .hud-stop.danger.focused { background: #e5484d; color: #fff; }
-.hud-i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.hud-profiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.hud-profile { display: grid; justify-items: center; gap: 4px; padding: 12px 4px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid transparent; text-align: center; cursor: pointer; }
-.hud-profile .hud-i { width: 26px; height: 26px; }
-.hud-profile b { font-size: 12px; }
-.hud-profile small { font-size: 12px; font-weight: 700; color: #cfd5dd; }
+
+/* Profils d'énergie */
+.hud-profiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hud-profile { display: grid; justify-items: center; gap: 4px; padding: 10px 2px 8px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid transparent; text-align: center; cursor: pointer; }
+.hud-profile .hud-i { width: 24px; height: 24px; }
+.hud-profile b { font-size: clamp(10.5px, 3.1vw, 12px); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-profile small { font-size: 12px; font-weight: 700; color: #cfd5dd; font-variant-numeric: tabular-nums; }
 .hud-profile.active { background: color-mix(in srgb, var(--accent) 30%, #0d1a2b); border-color: var(--accent); color: #fff; }
 .hud-profile.active small { color: #9fd3ff; }
 .hud-profile.focused { border-color: #fff; }
-.hud-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; padding-top: 14px; border-top: 1px solid var(--line); }
-.hud-chip { padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); font-size: 13px; font-weight: 600; cursor: pointer; }
+
+/* Catégories : une seule ligne qui défile */
+.hud-chips { display: flex; gap: 6px; margin: 16px -14px 12px; padding: 14px 14px 2px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
+.hud-chips::-webkit-scrollbar { display: none; }
+.hud-chip { flex: none; padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); border: 2px solid transparent; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .hud-chip.active { background: #fff; color: #111; }
-.hud-chip.focused { box-shadow: 0 0 0 2px var(--accent); }
-.hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.hud-tile { position: relative; display: grid; align-content: start; gap: 6px; min-height: 96px; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
-.hud-tile.wide { grid-column: 1 / -1; min-height: 0; }
-.hud-tile-top { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-.hud-tile-top span { flex: 1; min-width: 0; }
-.hud-tile-top .hud-i:last-child:not(:first-child) { width: 16px; height: 16px; opacity: 0.7; }
-.hud-tile b { font-size: 15px; color: #cfd5dd; }
-.hud-tile .hud-value { font-size: 24px; font-weight: 700; color: #fff; white-space: nowrap; }
+.hud-chip.focused { border-color: var(--accent); }
+
+/* Tuiles : même hauteur, titre sur une ligne, valeur en grand, barre pour les pourcentages */
+.hud-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.hud-tile { position: relative; display: flex; flex-direction: column; gap: 6px; height: 92px; padding: 11px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.05); cursor: pointer; overflow: hidden; transition: background-color 120ms ease, border-color 120ms ease; }
+.hud-tile.wide { grid-column: 1 / -1; height: auto; min-height: 76px; }
+.hud-tile-top { display: flex; align-items: center; gap: 7px; font-size: clamp(12px, 3.5vw, 13px); font-weight: 600; color: #cfd5dd; }
+.hud-tile-top span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-tile .hud-value { font-size: clamp(16px, 5.4vw, 21px); font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .hud-tile small { font-size: 11px; color: var(--muted); }
-.hud-dot { width: 10px; height: 10px; border-radius: 50%; background: #e6e9ee; flex: none; }
-.hud-tile.on { background: color-mix(in srgb, var(--accent) 28%, #0d1a2b); border-color: var(--accent); }
-.hud-tile.on b { color: #9fd3ff; }
-.hud-tile.on .hud-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.hud-bar { position: absolute; left: 12px; right: 12px; bottom: 10px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.hud-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.hud-tile.on { background: color-mix(in srgb, var(--accent) 26%, #0d1a2b); border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+.hud-tile.on .hud-tile-top { color: #fff; }
+.hud-tile.on .hud-value { color: #9fd3ff; }
 .hud-tile.focused { border-color: #fff; }
+.hud-tile:active, .hud-profile:active, .hud-option:active { transform: scale(0.98); }
+/* Interrupteur (comme les réglages rapides de Windows) */
+.hud-switch { position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; border: 2px solid #cfd5dd; transition: background-color 120ms ease, border-color 120ms ease; }
+.hud-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: #cfd5dd; transition: transform 140ms var(--ease), background-color 120ms ease; }
+.on > .hud-tile-top .hud-switch, .hud-sheet-switch.on .hud-switch { background: var(--accent); border-color: var(--accent); }
+.on > .hud-tile-top .hud-switch::after, .hud-sheet-switch.on .hud-switch::after { transform: translateX(14px); background: #fff; }
 .hud-empty { padding: 18px 6px; color: var(--muted); font-size: 13px; }
-.hud-shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+/* Raccourcis vers KaneMode */
+.hud-shortcuts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .hud-short { display: grid; justify-items: center; gap: 6px; padding: 12px 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid transparent; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; }
+.hud-short span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hud-short.focused { border-color: #fff; }
+
+/* Panneau d'un réglage : glisse depuis le bas, par-dessus un voile */
+.hud-sheet { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0); transition: background-color 180ms ease; }
+.hud-sheet.open { background: rgba(0, 0, 0, 0.5); }
+.hud-sheet.closing { background: rgba(0, 0, 0, 0); pointer-events: none; }
+.hud-sheet-panel { width: 100%; max-height: 82%; overflow-y: auto; scrollbar-width: none; padding: 16px 16px 14px; border-radius: 18px 18px 0 0; background: #1e232d; border-top: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45); transform: translateY(100%); transition: transform 200ms var(--ease); }
+.hud-sheet.open .hud-sheet-panel { transform: none; }
+.hud-sheet.closing .hud-sheet-panel { transform: translateY(100%); }
+.hud-sheet-head { display: flex; align-items: center; gap: 10px; font-size: 15px; margin-bottom: 12px; }
+.hud-sheet-value { margin: 4px 0 14px; font-size: 38px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.hud-sheet-switch { display: flex; align-items: center; gap: 10px; padding: 12px; margin-bottom: 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 2px solid transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
+.hud-sheet-switch span { flex: 1; }
+.hud-sheet-switch.focused { border-color: #fff; }
+.hud-slider { padding: 16px 12px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; touch-action: none; }
+.hud-slider.focused { border-color: #fff; background: rgba(255, 255, 255, 0.04); }
+.hs-track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.14); }
+.hs-fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); }
+.hs-knob { position: absolute; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); transition: transform 100ms ease; }
+.hud-slider.drag .hs-knob { transform: scale(1.15); }
+.hud-sheet-panel.off .hud-slider, .hud-sheet-panel.off .hud-sheet-value { opacity: 0.45; }
+.hud-sheet-scale { display: flex; justify-content: space-between; padding: 0 12px; font-size: 12px; color: var(--muted); }
+.hud-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.hud-option { position: relative; display: grid; gap: 2px; padding: 12px 34px 12px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 2px solid transparent; cursor: pointer; }
+.hud-option b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-option small { font-size: 11px; color: var(--muted); }
+.hud-option .hud-i { position: absolute; top: 50%; right: 10px; width: 18px; height: 18px; margin-top: -9px; color: #9fd3ff; }
+.hud-option.active { background: color-mix(in srgb, var(--accent) 26%, #0d1a2b); border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+.hud-option.pending { opacity: 0.6; }
+.hud-option.focused { border-color: #fff; }
+.hud-sheet-done { margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 2px solid transparent; text-align: center; font-weight: 700; cursor: pointer; }
+.hud-sheet-done.focused { border-color: #fff; background: #fff; color: #111; }
 
 /* Lettre en cours dans la bibliothèque triée par nom (comme SteamOS) */
 .letter-hint { position: fixed; top: 50%; right: 18px; z-index: 40; width: 76px; height: 76px; margin-top: -38px; display: grid; place-items: center; border-radius: 16px; background: rgba(12, 15, 20, 0.85); border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); color: #fff; font-size: 44px; font-weight: 700; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; transform: translateX(12px); transition: opacity 160ms ease, transform 160ms ease, top 180ms ease; pointer-events: none; }

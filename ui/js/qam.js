@@ -124,7 +124,8 @@ async function applyMode(mode) {
     if (a.powerMode) items.push([done.has('powermode'), WIN_LABELS[a.powerMode]]);
     if (a.cpuMax != null) items.push([done.has('cpumax'), a.cpuMax < 100 ? `Processeur limité à ${a.cpuMax} %` : 'Processeur sans limite']);
     if (a.boost != null) items.push([done.has('boost'), a.boost ? 'Turbo activé' : 'Turbo coupé']);
-    if (a.vendor) { const w = profileWatts(a.vendor); items.push([done.has('vendor'), `Profil ${VENDOR_LABELS[a.vendor] || a.vendor}${w ? ` · ${w} W` : ''}`]); }
+    if (a.vendor) { const w = a.tdp == null && profileWatts(a.vendor); items.push([done.has('vendor'), `Profil ${VENDOR_LABELS[a.vendor] || a.vendor}${w ? ` · ${w} W` : ''}`]); }
+    if (a.tdp != null) items.push([done.has('tdp'), `Puissance fixée à ${typeof a.tdp === 'object' ? a.tdp.spl : a.tdp} W`]);
     applied = { mode, items };
     if (r.errors && r.errors.length) toast(`Mode ${name} : ${r.errors[0]}`, { error: true });
     else toast(`Mode ${name} appliqué`);
@@ -230,6 +231,8 @@ const BUILD = {
     kids.push(el('div', 'live-strip'), label('Mode de performance'), modeSeg,
       el('div', 'qam-note perf-note', sys.mode === 'custom' ? 'Personnalisé : réglages ajustés à la main ci-dessous'
         : sys.mode ? esc(modeSummary(sys.mode)) : 'Choisissez un mode : il règle Windows, le processeur et le profil de la console'));
+    // Le mode est tenu par l'hôte ; un autre programme qui impose le sien est signalé
+    if (sys.modeConflict) kids.push(el('div', 'qam-note', 'Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.'));
     if (applied && applied.mode === sys.mode) {
       kids.push(el('ul', 'applied', applied.items.map(([ok, t]) => `<li class="${ok ? 'ok' : 'ko'}">${ok ? '✓' : '✕'} ${esc(t)}</li>`).join('')));
     }

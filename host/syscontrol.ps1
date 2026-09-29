@@ -10,6 +10,7 @@
 #   {"id":8,"cmd":"vendor","value":"turbo"}    profil du constructeur (ROG Ally, Legion Go)
 #   {"id":9,"cmd":"tdp","value":15}            limite de puissance en watts (ROG Ally, experimental)
 #   {"id":10,"cmd":"chargelimit","value":80}   limite de charge de la batterie (ROG Ally)
+#   {"id":11,"cmd":"policy"}                   profil du constructeur en cours et source d'alimentation (lecture rapide)
 param([string]$Vendor = '')
 
 $ErrorActionPreference = 'Stop'
@@ -302,6 +303,18 @@ namespace KaneMode {
     }
   }
 
+  // ---- Source d'alimentation : 1 secteur, 0 batterie, -1 inconnue
+  public static class PowerSource {
+    [StructLayout(LayoutKind.Sequential)]
+    struct SYSTEM_POWER_STATUS { public byte ACLineStatus, BatteryFlag, BatteryLifePercent, SystemStatusFlag; public int BatteryLifeTime, BatteryFullLifeTime; }
+    [DllImport("kernel32.dll")] static extern bool GetSystemPowerStatus(out SYSTEM_POWER_STATUS s);
+    public static int OnAc() {
+      SYSTEM_POWER_STATUS s;
+      if (!GetSystemPowerStatus(out s)) return -1;
+      return s.ACLineStatus == 1 ? 1 : s.ACLineStatus == 0 ? 0 : -1;
+    }
+  }
+
   // ---- ASUS (ROG Ally, Ally X, Xbox Ally) : peripherique ACPI « ATKACPI », comme G-Helper
   public static class Asus {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -402,6 +415,8 @@ function Vendor-State {
 
 function Get-State {
     $s = [ordered]@{}
+    $ac = [KaneMode.PowerSource]::OnAc()
+    $s.ac = if ($ac -ge 0) { [bool]$ac } else { $null }
     try { $s.volume = [KaneMode.Audio]::GetVolume(); $s.muted = [KaneMode.Audio]::GetMute() } catch { $s.volume = $null }
     try { $s.brightness = [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { $s.brightness = $null }
     try { $s.powerMode = [KaneMode.PowerMode]::Get() } catch { $s.powerMode = $null }
@@ -462,6 +477,15 @@ function Run($c) {
             if ($Vendor -eq 'asus') {
                 if (-not $asusModes.ContainsKey($c.value)) { throw 'Profil inconnu' }
                 $null = [KaneMode.Asus]::Set([KaneMode.Asus]::ThrottlePolicy, $asusModes[$c.value])
+                # Vérifié : la console doit vraiment être passée dans ce profil
+                $ok = $false
+                for ($i = 0; $i -lt 3 -and -not $ok; $i++) {
+                    if ($i) { Start-Sleep -Milliseconds 150 }
+                    $got = [KaneMode.Asus]::Get([KaneMode.Asus]::ThrottlePolicy)
+                    # Valeur illisible (certains BIOS) : rien à vérifier
+                    $ok = $got -eq $asusModes[$c.value] -or $got -notin $asusModes.Values
+                }
+                if (-not $ok) { throw "La console n'a pas accepté le profil $($c.value)" }
             } elseif ($Vendor -eq 'lenovo') {
                 if (-not $lenovoModes.ContainsKey($c.value)) { throw 'Profil inconnu' }
                 $null = Lenovo-Mode $lenovoModes[$c.value]
@@ -515,6 +539,20 @@ function Run($c) {
                 watts = if ($bat -and $bat[0] -ge 0) { [Math]::Round($bat[0], 1) } else { $null }
                 discharging = if ($bat) { [bool]$bat[1] } else { $null }
             }
+        }
+        'policy' {
+            # Lecture rapide pour tenir le profil choisi (host/server.js, keepPerf) : un autre programme
+            # (Armoury Crate SE et ses profils par jeu) ou la console elle-même peut en changer
+            $ac = [KaneMode.PowerSource]::OnAc()
+            $m = $null
+            if ($Vendor -eq 'asus' -and [KaneMode.Asus]::Available()) {
+                $v = [KaneMode.Asus]::Get([KaneMode.Asus]::ThrottlePolicy)
+                $m = ($asusModes.GetEnumerator() | Where-Object { $_.Value -eq $v } | Select-Object -First 1).Key
+            } elseif ($Vendor -eq 'lenovo') {
+                $v = Lenovo-Mode
+                $m = ($lenovoModes.GetEnumerator() | Where-Object { $_.Value -eq $v } | Select-Object -First 1).Key
+            }
+            return [ordered]@{ vendor = $m; ac = if ($ac -ge 0) { [bool]$ac } else { $null } }
         }
         'chargelimit' {
             if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }
