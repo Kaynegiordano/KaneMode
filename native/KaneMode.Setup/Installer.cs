@@ -78,9 +78,17 @@ public sealed class Installer
         Directory.CreateDirectory(_work);
         string msix = Path.Combine(_work, "KaneMode.msix");
         await File.WriteAllBytesAsync(msix, Resource("KaneMode.msix"));
+        // Widget Game Bar : WinUI 2.8 (paquet d'exécution de Microsoft), installé avec l'app s'il manque
+        var dependencies = new List<Uri>();
+        if (Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains("Microsoft.UI.Xaml.2.8.appx"))
+        {
+            string winui = Path.Combine(_work, "Microsoft.UI.Xaml.2.8.appx");
+            await File.WriteAllBytesAsync(winui, Resource("Microsoft.UI.Xaml.2.8.appx"));
+            dependencies.Add(new Uri(winui));
+        }
         _log.Report("Installation de l’app KaneMode…");
         var pm = new PackageManager();
-        var result = await pm.AddPackageAsync(new Uri(msix), null,
+        var result = await pm.AddPackageAsync(new Uri(msix), dependencies,
             DeploymentOptions.ForceApplicationShutdown | DeploymentOptions.ForceUpdateFromAnyVersion).AsTask();
         if (result.ExtendedErrorCode != null)
             throw new InvalidOperationException($"Windows a refusé le paquet : {result.ErrorText} (0x{result.ExtendedErrorCode.HResult:X8})");

@@ -168,7 +168,7 @@ export async function launch(g) {
       status.textContent = `${g.name} est déjà lancé`;
       if (cover) { queryGame(g); resumeGame(g); }
     } else if (r.ok && cover) {
-      native.send('launch', { ...gameRef(g), cover: true });
+      native.send('launch', { ...gameRef(g), name: g.name, cover: true });
       waitForGame = true;
     } else {
       status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;

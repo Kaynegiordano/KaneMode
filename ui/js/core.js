@@ -32,8 +32,6 @@ export const settings = Object.assign({
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
   // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Console portable
   btnCC: 'taskview', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
-  // Start / Select maintenus en jeu (secondes, 0 = désactivé) : menu et accès rapide par-dessus
-  padHold: 1.5,
 }, store.get('settings', {}));
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {
@@ -48,7 +46,7 @@ export function saveSettings() { store.set('settings', settings); applyTheme(); 
 // KanePlay reprend la couleur d'accent de KaneMode : l'hôte la lui transmet au lancement
 let sentAccent = null;
 function syncAccent() {
-  if (settings.accent === sentAccent) return;
+  if (WIDGET || settings.accent === sentAccent) return; // le widget reprend la couleur de KaneMode, il ne l'impose pas
   sentAccent = settings.accent;
   api.post('/api/config', { accent: settings.accent }).catch(() => { sentAccent = null; });
 }
@@ -56,7 +54,7 @@ setTimeout(syncAccent, 0);
 // L'app native lit les boutons de la console : elle apprend ici ce qu'ils doivent faire
 let sentButtons = null;
 function syncButtons() {
-  const b = { cc: settings.btnCC, ac: settings.btnAC, 'ac-hold': settings.btnACHold, blockPrompt: !!settings.blockAsusPrompt, padHold: +settings.padHold || 0, padSwap: !!settings.padSwap };
+  const b = { cc: settings.btnCC, ac: settings.btnAC, 'ac-hold': settings.btnACHold, blockPrompt: !!settings.blockAsusPrompt };
   if (JSON.stringify(b) === sentButtons) return;
   sentButtons = JSON.stringify(b);
   native.send('buttons', b);
@@ -188,14 +186,45 @@ export function busy(label) {
 // ---------- App native (WebView2) ----------
 // Présent quand l'interface tourne dans l'app KaneMode : actions réelles (bureau, veille, arrêt…).
 const webview = window.chrome && window.chrome.webview;
+// Widget Game Bar (widget.html) : la page tourne dans le widget, isolé du réseau local. Il relaie
+// ses requêtes à l'hôte et ses messages à l'app KaneMode (voir native\KaneMode.Widget).
+export const WIDGET = !!webview && /\/widget\.html$/.test(location.pathname);
 export const native = {
-  available: !!webview,
-  send(type, data = {}) { if (webview) webview.postMessage({ type, ...data }); },
-  on(fn) { if (webview) webview.addEventListener('message', e => fn(e.data || {})); },
+  available: !!webview && !WIDGET,
+  send(type, data = {}) { if (webview && !WIDGET) webview.postMessage({ type, ...data }); },
+  on(fn) { if (webview && !WIDGET) webview.addEventListener('message', e => fn(e.data || {})); },
 };
+
+/** Widget : message à l'app KaneMode (veille, ouvrir KaneMode, état du jeu…), avec sa réponse. */
+export const toApp = (type, data = {}) => (WIDGET
+  ? relay({ type: 'native', message: { type, ...data } }).then(r => r.body || {})
+  : Promise.reject(new Error('Hors de la Game Bar')));
+
+let relayId = 0;
+const waiting = new Map();
+if (WIDGET) webview.addEventListener('message', e => {
+  const m = e.data || {};
+  if (m.type !== 'api-result') return;
+  const done = waiting.get(m.id);
+  if (done) { waiting.delete(m.id); done(m); }
+});
+function relay(message) {
+  return new Promise(resolve => {
+    const id = ++relayId;
+    waiting.set(id, resolve);
+    webview.postMessage({ ...message, id });
+    setTimeout(() => { if (waiting.delete(id)) resolve({ status: 504, body: { error: 'KaneMode ne répond pas' } }); }, 20000);
+  });
+}
 
 // ---------- API de l'hôte ----------
 async function request(method, url, body) {
+  if (WIDGET) {
+    const r = await relay({ type: 'api', method, path: url, body: body || null });
+    const j = r.body || {};
+    if (!r.status || r.status >= 400) throw Object.assign(new Error(j.error || 'Erreur ' + r.status), { data: j });
+    return j;
+  }
   const r = await fetch(url, {
     method,
     headers: { 'X-KaneMode': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) },

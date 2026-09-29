@@ -54,7 +54,7 @@ export function back() {
   const L = topLayer();
   if (L) { sfx('back'); return closeLayer(L); }
   const p = currentPage();
-  if (p.back && p.back() === true) return;
+  if (!p || (p.back && p.back() === true)) return; // widget Game Bar : pas de pages
   if (!state.history.length) return;
   sfx('back');
   const h = state.history.pop();
@@ -258,6 +258,7 @@ export function glyph(k) {
 }
 
 export function renderHints() {
+  if (!$('#hints')) return; // widget Game Bar : pas de barre d'indications
   const L = topLayer(), P = currentPage();
   const h = (k, label) => {
     const keys = Array.isArray(k) ? k : [k];

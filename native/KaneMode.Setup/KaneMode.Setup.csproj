@@ -31,6 +31,8 @@
     <EmbeddedResource Include="$(PayloadDir)\KaneMode.msix" LogicalName="KaneMode.msix" Condition="Exists('$(PayloadDir)\KaneMode.msix')" />
     <EmbeddedResource Include="$(PayloadDir)\KaneMode.cer" LogicalName="KaneMode.cer" Condition="Exists('$(PayloadDir)\KaneMode.cer')" />
     <EmbeddedResource Include="$(PayloadDir)\XboxModeEnabler.exe" LogicalName="XboxModeEnabler.exe" Condition="Exists('$(PayloadDir)\XboxModeEnabler.exe')" />
+    <!-- Dépendance du widget Game Bar, installée avec l'app si le PC ne l'a pas -->
+    <EmbeddedResource Include="$(PayloadDir)\Microsoft.UI.Xaml.2.8.appx" LogicalName="Microsoft.UI.Xaml.2.8.appx" Condition="Exists('$(PayloadDir)\Microsoft.UI.Xaml.2.8.appx')" />
   </ItemGroup>
 
 </Project>

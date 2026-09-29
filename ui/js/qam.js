@@ -2,9 +2,14 @@
 // mode d'alimentation, profil de la console, puissance, fréquence de l'écran, limite de charge),
 // en sections que l'utilisateur choisit et ordonne (Paramètres → Accès rapide).
 import { $, el, esc, icon, api, settings, saveSettings, toast, sfx, getNotifications } from './core.js';
-import { nav, focusIn, actions } from './nav.js';
-import { sleepNow } from './power.js';
-import { openStreaming, exitToDesktop } from './pages/game.js';
+import { nav, focusIn } from './nav.js';
+
+/**
+ * Raccourcis de l'accès rapide, fournis par la page qui l'affiche : l'interface de KaneMode
+ * (main.js) ou le widget Game Bar (widget.js), qui n'agissent pas de la même façon.
+ * Chaque entrée : [icône, libellé, action] ; `leave` est appelé avant (quitter le mode par-dessus).
+ */
+export const qamShortcuts = { list: [], leave: () => {} };
 
 export const QAM_SECTIONS = [
   { id: 'quick', label: 'Réglages rapides', desc: 'Volume, luminosité, Wi-Fi, Bluetooth, mode nuit' },
@@ -23,7 +28,7 @@ export function qamOrder() {
   return order.filter(id => !(settings.qamHidden || []).includes(id));
 }
 
-const VENDOR_LABELS = { silent: 'Silencieux', quiet: 'Silencieux', balanced: 'Équilibré', performance: 'Performance', turbo: 'Turbo' };
+export const VENDOR_LABELS = { silent: 'Silencieux', quiet: 'Silencieux', balanced: 'Équilibré', performance: 'Performance', turbo: 'Turbo' };
 
 let sys = null;
 async function send(cmd, value, extra = {}) {
@@ -45,14 +50,14 @@ export function modeSummary(mode, st = sys) {
   return parts ? parts.filter(Boolean).join(' · ') : '';
 }
 // Puissance des profils du constructeur, en watts [sur batterie, sur secteur] (valeurs du fabricant)
-const PROFILE_WATTS = {
+export const PROFILE_WATTS = {
   'rog-ally': { silent: [10, 10], performance: [15, 15], turbo: [25, 30] },
   'rog-ally-x': { silent: [13, 13], performance: [17, 17], turbo: [25, 30] },
   'legion-go': { quiet: [8, 8], balanced: [15, 15], performance: [20, 20] },
 };
 let live = null;      // dernières mesures (fréquence, charge, watts)
 let applied = null;   // détail du dernier mode appliqué, affiché sous les boutons
-const vendorFor = (mode, st = sys) => {
+export const vendorFor = (mode, st = sys) => {
   const v = st && st.vendor && st.vendor.modes;
   if (!v) return null;
   const want = { eco: ['silent', 'quiet'], balanced: ['performance', 'balanced'], performance: ['turbo', 'performance'] }[mode] || [];
@@ -293,11 +298,9 @@ const BUILD = {
   shortcuts() {
     const row = el('div', 'qam-shortcuts');
     // Un raccourci emmène ailleurs : fermer ensuite ne ramène pas à KanePlay
-    const btn = (iconId, text, act, key) => row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), () => { actions['overlay-leave'](); act(); }, key));
-    btn('i-moon', 'Veille', () => sleepNow(), 'sc-sleep');
-    btn('i-power', 'Alimentation', () => actions['power-open'](), 'sc-power');
-    btn('i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay');
-    btn('i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop');
+    for (const [iconId, text, act, key] of qamShortcuts.list) {
+      row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), () => { qamShortcuts.leave(); act(); }, key));
+    }
     return section('Raccourcis', row);
   },
 

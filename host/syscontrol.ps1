@@ -253,6 +253,55 @@ namespace KaneMode {
     }
   }
 
+  // ---- HDR (couleur avancee) : API DisplayConfig, comme l'interrupteur des Parametres d'affichage
+  public static class Hdr {
+    [StructLayout(LayoutKind.Sequential)] struct Header { public uint type; public uint size; public uint adapterLow; public int adapterHigh; public uint id; }
+    [StructLayout(LayoutKind.Sequential)] struct ColorInfo { public Header h; public uint value; public uint encoding; public uint bits; }
+    [StructLayout(LayoutKind.Sequential)] struct ColorSet { public Header h; public uint value; }
+    [DllImport("user32.dll")] static extern int GetDisplayConfigBufferSizes(uint flags, out uint paths, out uint modes);
+    [DllImport("user32.dll")] static extern int QueryDisplayConfig(uint flags, ref uint paths, IntPtr pathArray, ref uint modes, IntPtr modeArray, IntPtr topology);
+    [DllImport("user32.dll")] static extern int DisplayConfigGetDeviceInfo(ref ColorInfo info);
+    [DllImport("user32.dll")] static extern int DisplayConfigSetDeviceInfo(ref ColorSet info);
+    const int PathSize = 72, ModeSize = 64;
+
+    // Ecrans actifs : adaptateur (LUID) et identifiant de la cible, lus dans DISPLAYCONFIG_PATH_INFO
+    static Header[] Targets() {
+      uint np, nm;
+      if (GetDisplayConfigBufferSizes(2 /* QDC_ONLY_ACTIVE_PATHS */, out np, out nm) != 0) return new Header[0];
+      IntPtr paths = Marshal.AllocHGlobal((int)np * PathSize), modes = Marshal.AllocHGlobal((int)nm * ModeSize);
+      try {
+        if (QueryDisplayConfig(2, ref np, paths, ref nm, modes, IntPtr.Zero) != 0) return new Header[0];
+        Header[] list = new Header[np];
+        for (int i = 0; i < np; i++) {
+          IntPtr t = paths + i * PathSize + 20; // targetInfo apres sourceInfo (20 octets)
+          list[i] = new Header { adapterLow = (uint)Marshal.ReadInt32(t), adapterHigh = Marshal.ReadInt32(t + 4), id = (uint)Marshal.ReadInt32(t + 8) };
+        }
+        return list;
+      } finally { Marshal.FreeHGlobal(paths); Marshal.FreeHGlobal(modes); }
+    }
+    // -1 : aucun ecran HDR ; 0 : HDR coupe ; 1 : HDR actif (premier ecran compatible)
+    public static int State() {
+      foreach (Header t in Targets()) {
+        ColorInfo c = new ColorInfo { h = t };
+        c.h.type = 9; c.h.size = (uint)Marshal.SizeOf(typeof(ColorInfo));
+        if (DisplayConfigGetDeviceInfo(ref c) == 0 && (c.value & 1) != 0) return (c.value & 2) != 0 ? 1 : 0;
+      }
+      return -1;
+    }
+    public static int Set(bool on) {
+      int result = -1;
+      foreach (Header t in Targets()) {
+        ColorInfo c = new ColorInfo { h = t };
+        c.h.type = 9; c.h.size = (uint)Marshal.SizeOf(typeof(ColorInfo));
+        if (DisplayConfigGetDeviceInfo(ref c) != 0 || (c.value & 1) == 0) continue;
+        ColorSet s = new ColorSet { h = t, value = on ? 1u : 0u };
+        s.h.type = 10; s.h.size = (uint)Marshal.SizeOf(typeof(ColorSet));
+        result = DisplayConfigSetDeviceInfo(ref s);
+      }
+      return result;
+    }
+  }
+
   // ---- ASUS (ROG Ally, Ally X, Xbox Ally) : peripherique ACPI « ATKACPI », comme G-Helper
   public static class Asus {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -358,6 +407,7 @@ function Get-State {
     try { $s.powerMode = [KaneMode.PowerMode]::Get() } catch { $s.powerMode = $null }
     try { $s.refresh = [ordered]@{ current = [KaneMode.Display]::CurrentHz(); available = @([KaneMode.Display]::Rates()) } } catch { $s.refresh = $null }
     try { $s.resolution = [ordered]@{ current = [KaneMode.Display]::CurrentSize(); available = @([KaneMode.Display]::Sizes()) } } catch { $s.resolution = $null }
+    try { $s.hdr = [KaneMode.Hdr]::State() } catch { $s.hdr = -1 }
     try { $s.radios = @(Get-Radios | ForEach-Object { [ordered]@{ kind = "$($_.Kind)"; on = "$($_.State)" -eq 'On' } }) } catch { $s.radios = @() }
     try { $s.vendor = Vendor-State } catch { $s.vendor = $null }
     try { $s.cpu = [ordered]@{ maxAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $true); maxDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $false); boostAc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $true); boostDc = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $false) } } catch { $s.cpu = $null }
@@ -393,6 +443,12 @@ function Run($c) {
             $r = [KaneMode.Display]::SetSize([int]$Matches[1], [int]$Matches[2])
             if ($r -ne 0) { throw "Windows a refusé la résolution (code $r)" }
             return @{ resolution = [KaneMode.Display]::CurrentSize() }
+        }
+        'hdr' {
+            $r = [KaneMode.Hdr]::Set([bool]$c.value)
+            if ($r -eq -1) { throw "Pas d'écran HDR" }
+            if ($r -ne 0) { throw "Windows a refusé le HDR (code $r)" }
+            return @{ hdr = [KaneMode.Hdr]::State() }
         }
         'radio' {
             $radio = Get-Radios | Where-Object { "$($_.Kind)" -eq $c.kind } | Select-Object -First 1

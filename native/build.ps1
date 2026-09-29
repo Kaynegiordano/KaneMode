@@ -17,12 +17,14 @@
 .PARAMETER NoKanePlay
     Paquet sans le moteur de streaming. Sinon, le moteur (KanePlay, sous-module engine\KanePlay)
     est embarqué depuis engine\out, compilé au besoin par engine\build-engine.ps1.
+.PARAMETER NoWidget
+    Paquet sans le widget Game Bar (native\KaneMode.Widget, compilé en C++/WinRT).
 .PARAMETER Release
     Paquet à publier : n'y note pas le chemin de ce dépôt (import des données du prototype).
 .PARAMETER Version
     Version du paquet (x.y.z.0) ; par défaut, celle du fichier VERSION.
 #>
-param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$Release, [string]$Version)
+param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$NoWidget, [switch]$Release, [string]$Version)
 
 $ErrorActionPreference = 'Stop'
 $native = $PSScriptRoot
@@ -80,6 +82,22 @@ if (-not $NoKanePlay) {
     Copy-Item $engineOut (Join-Path $layout 'kaneplay') -Recurse
 }
 
+# Widget Game Bar (application UWP en C++/WinRT, voir native\KaneMode.Widget) : à la racine du paquet,
+# où Windows cherche aussi les métadonnées (.winmd) des composants Game Bar et WebView2
+$manifestFile = Join-Path $native 'package\AppxManifest.xml'
+if (-not $NoWidget) {
+    Step 'Widget Game Bar (native\KaneMode.Widget)'
+    & (Join-Path $native 'KaneMode.Widget\build-widget.ps1')
+    # Sans écraser les fichiers de KaneMode.exe (le composant WebView2 pour UWP est dans webview2-uwp\) :
+    # un fichier du widget qui porte le nom d'un fichier de l'app ferait planter KaneMode au démarrage
+    $widgetOut = Join-Path $native 'KaneMode.Widget\obj\widget'
+    $clash = Get-ChildItem $widgetOut -File | Where-Object { Test-Path (Join-Path $layout $_.Name) }
+    if ($clash) { throw "Fichiers du widget en conflit avec ceux de KaneMode.exe : $($clash.Name -join ', ')" }
+    Copy-Item (Join-Path $widgetOut '*') $layout -Recurse -Force
+    New-Item -ItemType Directory -Force (Join-Path $layout 'GameBar') | Out-Null
+    Set-Content (Join-Path $layout 'GameBar\LISEZMOI.txt') 'Dossier public du widget Game Bar de KaneMode.' -Encoding UTF8
+}
+
 # ---------------------------------------------------------------- 3. Icônes du paquet
 Step 'Icônes du paquet'
 Add-Type -AssemblyName System.Drawing
@@ -114,8 +132,17 @@ New-Logo 'SplashScreen.png' 620 300 0.5
 
 # ---------------------------------------------------------------- 4. Manifeste
 Step 'Manifeste (application de jeu, capacité gamingHome)'
-$manifest = Get-Content (Join-Path $native 'package\AppxManifest.xml') -Raw -Encoding UTF8
-[IO.File]::WriteAllText((Join-Path $layout 'AppxManifest.xml'), $manifest.Replace('__VERSION__', $Version), (New-Object Text.UTF8Encoding $false))
+$manifest = (Get-Content $manifestFile -Raw -Encoding UTF8).Replace('__VERSION__', $Version)
+# Sans widget : on retire tout ce qui le concerne (entre les marqueurs WIDGET du manifeste)
+if ($NoWidget) { $manifest = [regex]::Replace($manifest, '(?s)<!-- WIDGET -->.*?<!-- /WIDGET -->', '') }
+else {
+    # Classes du composant WebView2 pour UWP, relevées dans ses en-têtes C++/WinRT (suivent la version du kit)
+    $header = Get-Content (Join-Path $native 'KaneMode.Widget\obj\gen\winrt\impl\Microsoft.Web.WebView2.Core.2.h') -Raw
+    $classes = [regex]::Matches($header, 'struct WINRT_IMPL_EMPTY_BASES (CoreWebView2\w*) :') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+    if (-not $classes) { throw 'Classes WebView2 introuvables dans les en-têtes du widget' }
+    $manifest = $manifest.Replace('__WEBVIEW2_CLASSES__', (($classes | ForEach-Object { "        <ActivatableClass ActivatableClassId=`"Microsoft.Web.WebView2.Core.$_`" ThreadingModel=`"both`" />" }) -join "`r`n"))
+}
+[IO.File]::WriteAllText((Join-Path $layout 'AppxManifest.xml'), $manifest, (New-Object Text.UTF8Encoding $false))
 Copy-Item (Join-Path $native 'package\CustomCapability.SCCD') $layout
 New-Item -ItemType Directory -Force (Join-Path $layout 'Public') | Out-Null
 Set-Content (Join-Path $layout 'Public\LISEZMOI.txt') 'Dossier public de l''extension windows.gamingApp de KaneMode.' -Encoding UTF8

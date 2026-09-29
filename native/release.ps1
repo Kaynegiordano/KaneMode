@@ -39,6 +39,8 @@ if (-not $?) { throw 'Échec du paquet' }
 $msix = Join-Path $out "KaneMode_$($version).0_x64.msix"
 Copy-Item $msix (Join-Path $payload 'KaneMode.msix')
 Copy-Item (Join-Path $out 'KaneMode.cer') $payload
+# WinUI 2.8, dont dépend le widget Game Bar : l'installateur l'ajoute s'il manque sur le PC
+Copy-Item (Join-Path $native 'KaneMode.Widget\obj\framework\Microsoft.UI.Xaml.2.8.appx') $payload
 
 # ---------------------------------------------------------------- 2. Activation silencieuse du mode Xbox (un seul fichier)
 Step 'Activation silencieuse du mode Xbox'

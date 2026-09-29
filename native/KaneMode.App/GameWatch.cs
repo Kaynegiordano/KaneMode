@@ -37,6 +37,7 @@ public partial class MainWindow
     private sealed class GameState
     {
         public string Id = "";
+        public string? Name; // nom affiché (widget Game Bar)
         public int SteamAppId;
         public string? Dir;
         public bool Cover;
@@ -83,10 +84,10 @@ public partial class MainWindow
         return full;
     }
 
-    private void StartGameWatch(string id, int steamAppId, string? dir, bool cover, bool alreadyRunning = false)
+    private void StartGameWatch(string id, int steamAppId, string? dir, bool cover, bool alreadyRunning = false, string? name = null)
     {
         StopGameWatch();
-        var s = new GameState { Id = id, SteamAppId = steamAppId, Dir = GameDir(dir), Cover = cover, Launched = !alreadyRunning, Before = new(Native.VisibleWindows()) };
+        var s = new GameState { Id = id, Name = name, SteamAppId = steamAppId, Dir = GameDir(dir), Cover = cover, Launched = !alreadyRunning, Before = new(Native.VisibleWindows()) };
         if (alreadyRunning)
         {
             // Jeu trouvé en cours (lancé avant, ou KaneMode relancé) : ses fenêtres actuelles restent où elles sont

@@ -5,7 +5,7 @@ import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
-import { renderQam, prefetchQam, startLive, stopLive } from './qam.js';
+import { renderQam, prefetchQam, startLive, stopLive, qamShortcuts } from './qam.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
 import './pages/home.js';
 import './pages/library.js';
@@ -42,9 +42,15 @@ native.on(m => {
     while (topLayer()) closeLayer();
     (m.panel === 'menu' ? hooks.menu : hooks.qam)();
   } else if (m.type === 'home') {
+    // Bouton de la console, ou widget Game Bar (« Ouvrir KaneMode », éventuellement sur une page)
     overlay.active = false;
     while (topLayer()) closeLayer();
-    if (currentPage() && currentPage().id !== 'home') { resetHistory(); go('home', {}, { push: false }); }
+    const target = m.page || 'home';
+    if (currentPage() && currentPage().id !== target) {
+      resetHistory();
+      if (target !== 'home') state.history.push({ id: 'home', params: {} });
+      go(target, {}, { push: false });
+    }
   } else if (m.type === 'desktop-failed') {
     toast('Le mode Xbox est resté actif : KaneMode reste ouvert. Réessayez, ou utilisez la touche Windows.', { error: true });
   }
@@ -114,6 +120,16 @@ async function pollSystem() {
     $('#mem-val').textContent = fmt.gb(s.memUsed).replace(' Go', '') + ' / ' + fmt.gb(s.memTotal);
   } catch { /* hôte injoignable */ }
 }
+// Raccourcis de l'accès rapide dans KaneMode (le widget Game Bar a les siens)
+Object.assign(qamShortcuts, {
+  leave: () => actions['overlay-leave'](),
+  list: [
+    ['i-moon', 'Veille', () => sleepNow(), 'sc-sleep'],
+    ['i-power', 'Alimentation', () => actions['power-open'](), 'sc-power'],
+    ['i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay'],
+    ['i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop'],
+  ],
+});
 hooks.qam = () => openLayer({
   el: $('#qam'), name: 'qam', scrim: true,
   onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); startLive(); },

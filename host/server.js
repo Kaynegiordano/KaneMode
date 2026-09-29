@@ -914,6 +914,14 @@ const routes = {
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
     json(res, 200, r);
   },
+  // Widget Game Bar : version de KaneMode et Lossless Scaling (installé par Steam, lancé ou non)
+  'GET /api/widget': async (req, res) => {
+    const version = (() => { try { return fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim(); } catch { return null; } })();
+    const ls = allEntries(false).byId.get('steam:993090');
+    const running = await new Promise(resolve => execFile('tasklist.exe', ['/FI', 'IMAGENAME eq LosslessScaling.exe', '/NH'], { windowsHide: true, timeout: 4000 },
+      (err, out) => resolve(!err && /LosslessScaling\.exe/i.test(out))));
+    json(res, 200, { version, accent: config().accent || null, lossless: ls || running ? { installed: !!ls, running, id: ls ? ls.id : null } : null });
+  },
   // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
   'POST /api/library/refresh': (req, res) => {
     if (Date.now() - libLast > 60e3) rescanSoon('retour sur KaneMode', 500);

@@ -24,9 +24,6 @@ public partial class MainWindow : Window
     private readonly AllyButtons _buttons = new();
     private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
-    // Start / Select maintenus en jeu : menu et accès rapide par-dessus (réglés dans Paramètres > Manette)
-    private readonly PadHold _padHold = new();
-    private bool _padSwap;
     private bool _ready;
     private bool _failed;
 
@@ -47,9 +44,13 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await StartAsync();
         SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
         Activated += (_, _) => OnActivated();
-        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _buttons.Dispose(); _padHold.Dispose(); _host.Dispose(); };
+        // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
+        // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès)
+        Closing += (_, _) => { try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
+        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; _buttons.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
-        _padHold.Held += b => Dispatcher.BeginInvoke(() => OnPadHeld(b));
+        // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
+        WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));
         // Veille et réveil du système, quelle qu'en soit la cause (menu, bouton d'alimentation, capot…)
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         PreviewKeyDown += OnKeyDown;
@@ -69,7 +70,7 @@ public partial class MainWindow : Window
             await Task.WhenAll(host, web);
             Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
             _buttons.Start();
-            _padHold.Begin();
+            WidgetBridge.Start(_host.Url);
         }
         catch (Exception ex)
         {
@@ -263,24 +264,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Start ou Select maintenu pendant un jeu : menu ou accès rapide de KaneMode par-dessus, et le
-    /// refermer ramène au jeu. Rien quand KaneMode est déjà devant (l'interface lit la manette
-    /// elle-même) ni dans KanePlay (qui a ses propres Start / Select).
-    /// </summary>
-    private void OnPadHeld(string button)
-    {
-        if (!_ready) return;
-        IntPtr front = Native.GetForegroundWindow();
-        if (front == IntPtr.Zero || front == Hwnd) return;
-        string process = Native.ProcessName(Native.WindowProcessId(front));
-        if (process.Equals("KanePlay", StringComparison.OrdinalIgnoreCase)) return;
-        // Select : menu, Start : accès rapide (ou l'inverse, comme dans l'interface)
-        string panel = (button == "select") != _padSwap ? "menu" : "qam";
-        Log.Write($"{(button == "select" ? "Select" : "Start")} maintenu dans « {Native.WindowTitle(front)} » ({process}) : {panel}");
-        OpenOverlay(panel, front);
-    }
-
-    /// <summary>
     /// Sans Armoury Crate SE, les services ASUS proposent de l'installer à chaque appui sur ces
     /// boutons. Pendant quelques secondes, les fenêtres qui apparaissent sont notées dans le journal ;
     /// celles d'Armoury Crate (et le Microsoft Store ouvert sur sa page) sont refermées.
@@ -316,15 +299,46 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() => Post(new { type = e.Mode == PowerModes.Suspend ? "suspend" : "wake" }));
     }
 
-    private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
+
+    // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless" };
+
+    /// <summary>
+    /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
+    /// widget quand il en attend une (état du jeu en cours), sinon null.
+    /// </summary>
+    private string? HandleMessage(string json, bool fromWidget)
     {
         try
         {
-            using var doc = JsonDocument.Parse(e.WebMessageAsJson);
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             string type = root.GetProperty("type").GetString() ?? "";
+            if (fromWidget && !WidgetMessages.Contains(type)) { Log.Write($"Widget : message refusé ({type})"); return null; }
+            if (fromWidget && type != "widget-state") Log.Write($"Widget : {type}"); // l'état est demandé toutes les 3 s
             switch (type)
             {
+                case "widget-state":
+                    // Jeu en cours, pour la section « Jeu » du widget
+                    var g = _game;
+                    return JsonSerializer.Serialize(new { game = g != null && g.Seen ? new { id = g.Id, name = g.Name ?? Native.WindowTitle(g.Window), dir = g.Dir, steamAppId = g.SteamAppId } : null });
+                case "lossless":
+                    // Widget : mise à l'échelle de Lossless Scaling, par son raccourci global (Ctrl + Alt + S par défaut)
+                    Native.SendKeys(0x11 /* Ctrl */, Native.VK_MENU, 0x53 /* S */);
+                    break;
+                case "show":
+                    // Widget : « Ouvrir KaneMode » (accueil, ou une page)
+                    _returnTo = IntPtr.Zero;
+                    StopForegroundWatch();
+                    DropLaunchCover();
+                    StopInsisting();
+                    if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+                    Show();
+                    Native.ForceForeground(Hwnd);
+                    Web.Focus();
+                    Post(new { type = "home", page = Text(root, "page") });
+                    break;
                 case "exit":
                     ExitToDesktop();
                     break;
@@ -344,7 +358,7 @@ public partial class MainWindow : Window
                     break;
                 case "launch":
                     // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture
-                    StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"));
+                    StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"), name: Text(root, "name"));
                     break;
                 case "launch-cancel":
                     DropLaunchCover();
@@ -364,8 +378,6 @@ public partial class MainWindow : Window
                     foreach (string key in new[] { "cc", "ac", "ac-hold" })
                         if (root.TryGetProperty(key, out var v) && v.GetString() is string act) _buttonActions[key] = act;
                     if (root.TryGetProperty("blockPrompt", out var bp)) _blockAsusPrompt = bp.ValueKind == JsonValueKind.True;
-                    if (root.TryGetProperty("padHold", out var ph) && ph.ValueKind == JsonValueKind.Number) _padHold.HoldSeconds = ph.GetDouble();
-                    if (root.TryGetProperty("padSwap", out var ps)) _padSwap = ps.ValueKind == JsonValueKind.True;
                     break;
                 case "stay":
                     _returnTo = IntPtr.Zero; // l'utilisateur est allé ailleurs dans KaneMode
@@ -379,6 +391,7 @@ public partial class MainWindow : Window
         {
             Log.Write("Message de l'interface invalide : " + ex.Message);
         }
+        return null;
     }
 
     private static string? Text(JsonElement o, string name) =>

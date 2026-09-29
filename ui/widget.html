@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Widget Game Bar de KaneMode (native\KaneMode.Widget) : HUD par-dessus les jeux (profils d'énergie,
+     écran, système, son, réseau, jeu en cours). Affiché dans le widget, qui relaie les requêtes vers
+     KaneMode (core.js, WIDGET). -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KaneMode</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="widget">
+  <main id="hud">
+    <header class="hud-head">
+      <svg class="brand-mark"><use href="#i-brand"/></svg>
+      <div><b>KaneMode</b><small id="hud-version"></small></div>
+      <span class="hud-watts" id="hud-watts" hidden></span>
+    </header>
+    <div id="hud-status" class="hud-status" hidden></div>
+    <div id="hud-body"></div>
+  </main>
+  <div id="toast"></div>
+  <div id="busy" hidden><i class="spinner"></i><span></span></div>
+  <script type="module" src="js/widget.js"></script>
+</body>
+</html>

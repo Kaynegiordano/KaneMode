@@ -512,6 +512,60 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 
 #launch { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #000; opacity: 0; pointer-events: none; transition: opacity 300ms ease; }
 #launch.open { opacity: 1; pointer-events: auto; }
+/* Widget Game Bar (widget.html) : HUD façon Winhanced, sur un fond légèrement transparent qui laisse
+   deviner le jeu. Tuiles arrondies, valeur en grand, contour blanc sur l'élément sélectionné. */
+body.widget { background: transparent; }
+#hud { height: 100%; overflow-y: auto; scrollbar-width: none; background: rgba(20, 24, 32, 0.95); padding: 0 14px 18px; }
+#hud::-webkit-scrollbar { display: none; }
+.hud-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 -14px 10px; padding: 14px 18px 12px; background: rgba(30, 35, 45, 0.97); border-bottom: 1px solid var(--line); }
+.hud-head .brand-mark { width: 26px; height: 26px; }
+.hud-head b { font-size: 17px; }
+.hud-head small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.hud-watts { margin-left: auto; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; background: color-mix(in srgb, var(--accent) 35%, #0d1a2b); border: 2px solid var(--accent); }
+.hud-status { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; color: #ffd0d2; background: rgba(229, 72, 77, 0.15); }
+.hud-h { margin: 16px 4px 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #cfd5dd; }
+.hud-card { border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.06); }
+.hud-game { display: flex; align-items: center; gap: 12px; padding: 12px; }
+.hud-game-icon { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15); }
+.hud-game-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.4; color: #cfd5dd; }
+.hud-game-text b { display: block; font-size: 16px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-game-text small { font-size: 11px; }
+.hud-stop { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); font-size: 13px; font-weight: 600; cursor: pointer; }
+.hud-stop.danger { background: rgba(229, 72, 77, 0.25); color: #ffb3b5; }
+.hud-stop.focused { box-shadow: 0 0 0 2px #fff; }
+.hud-stop.danger.focused { background: #e5484d; color: #fff; }
+.hud-i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hud-profiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.hud-profile { display: grid; justify-items: center; gap: 4px; padding: 12px 4px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid transparent; text-align: center; cursor: pointer; }
+.hud-profile .hud-i { width: 26px; height: 26px; }
+.hud-profile b { font-size: 12px; }
+.hud-profile small { font-size: 12px; font-weight: 700; color: #cfd5dd; }
+.hud-profile.active { background: color-mix(in srgb, var(--accent) 30%, #0d1a2b); border-color: var(--accent); color: #fff; }
+.hud-profile.active small { color: #9fd3ff; }
+.hud-profile.focused { border-color: #fff; }
+.hud-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.hud-chip { padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); font-size: 13px; font-weight: 600; cursor: pointer; }
+.hud-chip.active { background: #fff; color: #111; }
+.hud-chip.focused { box-shadow: 0 0 0 2px var(--accent); }
+.hud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hud-tile { position: relative; display: grid; align-content: start; gap: 6px; min-height: 96px; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
+.hud-tile.wide { grid-column: 1 / -1; min-height: 0; }
+.hud-tile-top { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.hud-tile-top span { flex: 1; min-width: 0; }
+.hud-tile-top .hud-i:last-child:not(:first-child) { width: 16px; height: 16px; opacity: 0.7; }
+.hud-tile b { font-size: 15px; color: #cfd5dd; }
+.hud-tile .hud-value { font-size: 24px; font-weight: 700; color: #fff; white-space: nowrap; }
+.hud-tile small { font-size: 11px; color: var(--muted); }
+.hud-dot { width: 10px; height: 10px; border-radius: 50%; background: #e6e9ee; flex: none; }
+.hud-tile.on { background: color-mix(in srgb, var(--accent) 28%, #0d1a2b); border-color: var(--accent); }
+.hud-tile.on b { color: #9fd3ff; }
+.hud-tile.on .hud-dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.hud-tile.focused { border-color: #fff; }
+.hud-empty { padding: 18px 6px; color: var(--muted); font-size: 13px; }
+.hud-shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.hud-short { display: grid; justify-items: center; gap: 6px; padding: 12px 4px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 2px solid transparent; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; }
+.hud-short.focused { border-color: #fff; }
+
 /* Lettre en cours dans la bibliothèque triée par nom (comme SteamOS) */
 .letter-hint { position: fixed; top: 50%; right: 18px; z-index: 40; width: 76px; height: 76px; margin-top: -38px; display: grid; place-items: center; border-radius: 16px; background: rgba(12, 15, 20, 0.85); border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); color: #fff; font-size: 44px; font-weight: 700; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; transform: translateX(12px); transition: opacity 160ms ease, transform 160ms ease, top 180ms ease; pointer-events: none; }
 .letter-hint.show { opacity: 1; transform: none; }
