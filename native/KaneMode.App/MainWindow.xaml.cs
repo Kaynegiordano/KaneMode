@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     // Boutons dédiés de la ROG Ally et ce qu'ils font (réglés dans Paramètres > Console portable)
     private readonly AllyButtons _buttons = new();
     private readonly XInputPads _pads;
+    private readonly CursorOverlay _cursor = new();
     private IntPtr _hwnd; // fenêtre principale, lue par le fil des manettes
     private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
@@ -50,7 +51,11 @@ public partial class MainWindow : Window
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
         _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
         _pads.Knock += () => Dispatcher.BeginInvoke(LogPadKnock);
-        _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() => { if (_ready) Post(new { type = "mouse-mode", on }); });
+        _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() =>
+        {
+            _cursor.Set(on); // curseur de KaneMode quand Windows cache le sien (mode Xbox)
+            if (_ready) Post(new { type = "mouse-mode", on });
+        });
         Activated += (_, _) => OnActivated();
         // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte
         Deactivated += (_, _) => { if (_ready) Post(new { type = "background" }); };
@@ -80,7 +85,8 @@ public partial class MainWindow : Window
             Task host = _host.StartAsync();
             Task web = Web.CoreWebView2 == null ? InitWebViewAsync() : Task.CompletedTask;
             await Task.WhenAll(host, web);
-            Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
+            // Relance après KanePlay : ni logo ni son de démarrage
+            Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1{(App.Restarted ? "&resume=1" : "")}");
             _buttons.Start();
             _pads.Start();
             WidgetBridge.Start(_host.Url);
@@ -320,6 +326,10 @@ public partial class MainWindow : Window
 
     private async void ReloadAfterKanePlay()
     {
+        // 2.2.0 : recharger l'interface ne suffisait pas sur l'Ally ; KaneMode se relance entièrement
+        // (nouveau processus, nouvel hôte, nouveau WebView2), sans logo de démarrage
+        Log.Write("KanePlay fermé : relance complète de KaneMode");
+        if (App.Restart()) { Close(); return; }
         Log.Write("KanePlay fermé : KaneMode reprend la main et recharge son interface");
         _returnTo = IntPtr.Zero;
         StopForegroundWatch();
