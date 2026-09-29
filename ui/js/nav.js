@@ -325,8 +325,27 @@ const axis = (p, i) => {
 };
 const isSony = id => /054c|playstation|dualsense|dualshock|wireless controller/i.test(id);
 
+// Manettes XInput lues par l'app native (native/KaneMode.App/XInputPads.cs) : l'API Gamepad de
+// WebView2 ne les voyait plus toujours au retour d'une autre application (KanePlay). Tant que l'app
+// en signale, elles remplacent celles de l'API Gamepad, sauf les manettes Sony et Nintendo, qui ne
+// passent pas par XInput.
+let xpads = [];
+// Boutons XInput → disposition standard de l'API Gamepad (A, B, X, Y, LB, RB, LT, RT, View, Menu, L3, R3, croix)
+const XBITS = [0x1000, 0x2000, 0x4000, 0x8000, 0x100, 0x200, -1, -2, 0x20, 0x10, 0x40, 0x80, 0x1, 0x2, 0x4, 0x8];
+export function setNativePads(list) {
+  const next = (Array.isArray(list) ? list : []).map(x => ({
+    id: 'Manette XInput', index: 100 + x.i, mapping: 'standard',
+    buttons: XBITS.map(bit => ({ pressed: bit === -1 ? x.lt > 30 : bit === -2 ? x.rt > 30 : (x.b & bit) !== 0 })),
+    axes: [x.lx, x.ly, x.rx, x.ry],
+  }));
+  // Retour au premier plan : un bouton encore enfoncé (celui qui a quitté KanePlay) ne compte pas
+  if (next.length && !xpads.length) swallow = true;
+  xpads = next;
+}
+
 function poll() {
-  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  const web = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  const pads = xpads.length ? [...xpads, ...web.filter(p => isSony(p.id) || /057e|nintendo|pro controller|joy-con/i.test(p.id))] : web;
   const now = performance.now();
   const down = new Set();
   let source = null;

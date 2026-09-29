@@ -72,7 +72,7 @@ export function applyTheme() {
   // Taille de l'interface : celle choisie (Accessibilité), réduite sur un écran plus petit que
   // 1280 × 720 points (résolution abaissée, forte mise à l'échelle de Windows) pour garder la même
   // mise en page ; le widget Game Bar a sa propre taille
-  const fit = /\/widget\.html$/.test(location.pathname) ? 1 : Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
+  const fit = /\/(widget|monitor)\.html$/.test(location.pathname) ? 1 : Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
   const zoom = Math.round(((settings.uiScale || 100) / 100) * (fit > 0 ? fit : 1) * 1000) / 1000;
   document.body.style.zoom = zoom !== 1 ? zoom : '';
   // Les hauteurs en vh ne doivent pas grandir avec le zoom de l'interface (voir --vh dans app.css)
@@ -191,9 +191,9 @@ export function busy(label) {
 // ---------- App native (WebView2) ----------
 // Présent quand l'interface tourne dans l'app KaneMode : actions réelles (bureau, veille, arrêt…).
 const webview = window.chrome && window.chrome.webview;
-// Widget Game Bar (widget.html) : la page tourne dans le widget, isolé du réseau local. Il relaie
+// Widgets Game Bar (widget.html, monitor.html) : la page tourne dans le widget, isolé du réseau local. Il relaie
 // ses requêtes à l'hôte et ses messages à l'app KaneMode (voir native\KaneMode.Widget).
-export const WIDGET = !!webview && /\/widget\.html$/.test(location.pathname);
+export const WIDGET = !!webview && /\/(widget|monitor)\.html$/.test(location.pathname);
 export const native = {
   available: !!webview && !WIDGET,
   send(type, data = {}) { if (webview && !WIDGET) webview.postMessage({ type, ...data }); },

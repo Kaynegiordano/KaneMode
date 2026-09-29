@@ -565,7 +565,7 @@ body.widget { background: transparent; overflow: hidden; }
 
 /* Tuiles : même hauteur, titre sur une ligne, valeur en grand, barre pour les pourcentages */
 .hud-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.hud-tile { position: relative; display: flex; flex-direction: column; gap: 6px; height: 92px; padding: 11px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.05); cursor: pointer; overflow: hidden; transition: background-color 120ms ease, border-color 120ms ease; }
+.hud-tile { position: relative; display: flex; flex-direction: column; gap: 5px; height: 100px; padding: 11px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.05); cursor: pointer; overflow: hidden; transition: background-color 120ms ease, border-color 120ms ease; }
 .hud-tile.wide { grid-column: 1 / -1; height: auto; min-height: 76px; }
 .hud-tile-top { display: flex; align-items: center; gap: 7px; font-size: clamp(12px, 3.5vw, 13px); font-weight: 600; color: #cfd5dd; }
 .hud-tile-top span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -621,6 +621,32 @@ body.widget { background: transparent; overflow: hidden; }
 .hud-option.focused { border-color: #fff; }
 .hud-sheet-done { margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); border: 2px solid transparent; text-align: center; font-weight: 700; cursor: pointer; }
 .hud-sheet-done.focused { border-color: #fff; background: #fff; color: #111; }
+/* Moniteur en direct (monitor.html) : bandeau compact à épingler sur le jeu. Il occupe toute la
+   fenêtre du widget ; la transparence suit celle choisie dans la Game Bar (--mon-opacity). */
+body.monitor { --mon-opacity: 1; overflow: hidden; }
+#mon { height: 100vh; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 6px 10px; border-radius: 12px; background: rgba(12, 15, 20, calc(0.82 * var(--mon-opacity))); }
+body.monitor.pinned #mon { background: rgba(12, 15, 20, calc(0.6 * var(--mon-opacity))); }
+.mon-cells { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+.mon-cell { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
+.mon-cell b { font-size: clamp(15px, 30vh, 30px); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+.mon-cell.fps b { color: #7cf29a; }
+.mon-cell.limit b { color: #9fd3ff; }
+.mon-cell small { font-size: clamp(9px, 11vh, 12px); color: #cfd5dd; white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.mon-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.mon-badges span { padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.mon-change { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-change.ok { color: #7cf29a; }
+.mon-change.ko { color: #ff9ea1; }
+
+/* Vérification d'un réglage sur sa tuile, et historique des mesures du widget */
+.hud-tile .hud-proof { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-proof.ok { color: #7cf29a; }
+.hud-proof.ko { color: #ff9ea1; }
+.hud-proof.sent { color: #ffd68a; }
+.hud-history { position: relative; margin-bottom: 10px; padding: 8px 10px 6px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); }
+.hud-history canvas { display: block; width: 100%; height: 64px; }
+.hud-history-legend { display: flex; gap: 12px; font-size: 10px; color: var(--muted); margin-top: 4px; }
+.hud-history-legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 
 /* Lettre en cours dans la bibliothèque triée par nom (comme SteamOS) */
 .letter-hint { position: fixed; top: 50%; right: 18px; z-index: 40; width: 76px; height: 76px; margin-top: -38px; display: grid; place-items: center; border-radius: 16px; background: rgba(12, 15, 20, 0.85); border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); color: #fff; font-size: 44px; font-weight: 700; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; transform: translateX(12px); transition: opacity 160ms ease, transform 160ms ease, top 180ms ease; pointer-events: none; }

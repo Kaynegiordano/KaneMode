@@ -1,12 +1,15 @@
 // Widget Game Bar de KaneMode (widget.html) : un HUD par-dessus les jeux, façon Winhanced. Mesures en
 // direct (images par seconde, GPU, processeur, puissance), profils d'énergie, tuiles de réglages par
-// catégorie (écran, graphismes AMD, performance, son, réseau), jeu en cours et raccourcis vers
-// KaneMode. Toucher une tuile l'inverse (interrupteur) ou ouvre un panneau avec un curseur ou une liste
-// de choix. La page tourne dans le widget UWP, qui relaie ses requêtes à l'hôte et ses messages à
-// l'app KaneMode (core.js : WIDGET, toApp).
+// catégorie (écran, graphismes AMD, performance, son, réseau, moniteur), jeu en cours et raccourcis
+// vers KaneMode. Toucher une tuile l'inverse (interrupteur) ou ouvre un panneau avec un curseur ou une
+// liste de choix. Chaque réglage est relu après écriture et la tuile dit s'il est vérifié ; un
+// graphique des 60 dernières secondes marque chaque réglage, pour en voir l'effet. La page tourne
+// dans le widget UWP, qui relaie ses requêtes à l'hôte et ses messages à l'app KaneMode (core.js :
+// WIDGET, toApp).
 import { $, el, esc, api, toast, settings, saveSettings, applyTheme, WIDGET, toApp, sfx } from './core.js';
 import { nav, focusIn, focused, openLayer, closeLayer, topLayer } from './nav.js';
 import { PERF_MODES, PROFILE_WATTS, VENDOR_LABELS, vendorFor } from './qam.js';
+import { MONITOR_ITEMS, monitorPrefs, setMonitorPref, noteChange } from './hud.js';
 
 // ---------------------------------------------------------------- icônes (traits, comme la Game Bar)
 const PATHS = {
@@ -40,6 +43,8 @@ const PATHS = {
   settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
   sleep: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   check: 'M5 12l5 5 9-10',
+  monitor: 'M3 5h18v11H3zM8 20h8M12 16v4M6 12l3-3 3 2 5-5',
+  overlay: 'M4 4h16v16H4zM4 9h16M9 9v11',
 };
 const svg = id => `<svg class="hud-i" viewBox="0 0 24 24"><path d="${PATHS[id]}"/></svg>`;
 
@@ -54,7 +59,7 @@ async function loadSprite() {
 
 // ---------------------------------------------------------------- état
 let sys = null, live = null, info = null, game = null, amd = null, gpu = null;
-const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau']];
+const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['monitor', 'Moniteur']];
 const filter = () => (CATS.some(c => c[0] === settings.hudFilter) ? settings.hudFilter : 'all');
 const onBattery = () => live && live.discharging === true;
 const fmtW = w => String(Math.round(w * 10) / 10).replace('.', ',') + ' W';
@@ -69,10 +74,42 @@ const tdpValue = () => {
 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// ---------------------------------------------------------------- vérification des réglages
+// Après chaque réglage, la valeur relue sur le système ou le pilote est comparée à celle demandée ;
+// la tuile l'indique 8 s (✓ vérifié, ✕ différent, ↗ envoyé quand la console ne permet pas de la
+// relire), le moniteur en direct aussi, et le graphique des mesures marque l'instant.
+const proofs = {};
+const marks = [];
+function prove(key, ok, text) {
+  const title = (tiles().find(o => o.key === key) || {}).title || '';
+  proofs[key] = { ok, text, t: Date.now() };
+  marks.push({ t: Date.now(), label: title || text });
+  noteChange(`${title ? title + ' : ' : ''}${text}${ok === null ? ' (envoyé)' : ''}`, ok !== false);
+  setTimeout(render, 8100);
+}
+const pct1 = v => `${v} %`;
+// Relecture de chaque commande : [conforme (null : impossible à relire), valeur relue]
+const CHECK = {
+  refresh: (r, v) => [r.refresh === v, `${r.refresh} Hz`],
+  resolution: (r, v) => [r.resolution === v, String(r.resolution).replace('x', ' × ')],
+  boost: (r, v) => [r.boost === !!v, r.boost ? 'activé' : 'coupé'],
+  cpumax: (r, v) => [r.cpuMax === v, pct1(r.cpuMax)],
+  vendor: (r, v) => [r.mode === v, VENDOR_LABELS[r.mode] || r.mode || '?'],
+  tdp: (r, v) => [null, `${r.tdp ? r.tdp.spl : v} W`], // limites ASUS : écriture seule
+  chargelimit: (r, v) => [r.verified ? r.chargeLimit === v : null, pct1(r.chargeLimit)],
+  hdr: (r, v) => [(r.hdr === 1) === !!v, r.hdr === 1 ? 'activé' : 'coupé'],
+  mute: (r, v) => [r.muted === !!v, r.muted ? 'son coupé' : 'son rétabli'],
+  volume: (r, v) => [Math.abs(r.volume - v) <= 1, pct1(r.volume)],
+  brightness: (r, v) => [r.verified === false ? null : Math.abs(r.brightness - v) <= 1, pct1(r.brightness)],
+  radio: (r, v) => [r.on === !!v, r.on ? 'activé' : 'désactivé'],
+};
+const tileKey = (cmd, extra) => (cmd === 'radio' ? 'radio:' + extra.kind : cmd === 'chargelimit' ? 'charge' : cmd);
+
 /** Un réglage du système ; l'état revient de l'hôte et la page se redessine. */
 async function send(cmd, value, extra = {}) {
   try {
     const r = await api.post('/api/sys', { cmd, value, ...extra });
+    if (CHECK[cmd]) { const [ok, read] = CHECK[cmd](r, value); prove(tileKey(cmd, extra), ok, ok === false ? `relu ${read}` : read); }
     if (cmd === 'radio') { const x = sys.radios.find(o => o.kind === extra.kind); if (x) x.on = !!r.on; }
     else if (cmd === 'refresh') sys.refresh.current = r.refresh;
     else if (cmd === 'resolution') { sys.resolution.current = r.resolution; loadSys(); }
@@ -86,13 +123,21 @@ async function send(cmd, value, extra = {}) {
     else if (cmd === 'volume') sys.volume = r.volume;
     else if (cmd === 'brightness') sys.brightness = r.brightness;
     if (['vendor', 'tdp', 'cpumax', 'boost'].includes(cmd)) sys.mode = 'custom';
-  } catch (e) { toast(e.message, { error: true }); loadSys(); }
+  } catch (e) { toast(e.message, { error: true }); prove(tileKey(cmd, extra), false, e.message); loadSys(); }
   render();
 }
-/** Réglage AMD : l'hôte renvoie l'état complet (une fonction peut en couper une autre). */
+/** Réglage AMD : l'hôte renvoie l'état complet relu dans le pilote (une fonction peut en couper une autre). */
 async function sendAmd(feature, value) {
-  try { amd = await api.post('/api/amd', { feature, value }); }
-  catch (e) { toast(e.message, { error: true }); loadAmd(true); }
+  const key = feature.replace(/sharp$/, '');
+  try {
+    amd = await api.post('/api/amd', { feature, value });
+    const x = amd[key] || {};
+    let ok, read;
+    if (feature === 'fps') { ok = value > 0 ? x.on && x.value === value : !x.on; read = x.on ? `${x.value} i/s` : 'aucune limite'; }
+    else if (feature.endsWith('sharp')) { ok = x.sharpness === value; read = `netteté ${x.sharpness} %`; }
+    else { ok = !!x.on === !!value; read = x.on ? 'activé' : 'désactivé'; }
+    prove(key, ok, (ok ? '' : 'relu ') + read + ' · pilote AMD');
+  } catch (e) { toast(e.message, { error: true }); prove(key, false, e.message); loadAmd(true); }
   render();
 }
 /** Curseurs : la valeur part 150 ms après le dernier mouvement. */
@@ -142,7 +187,9 @@ function tiles() {
       t({ key: 'fps', cat: 'graphics', icon: 'fps', title: 'Limite d’images', value: f.on ? `${f.value} i/s` : 'Aucune', lit: f.on,
         choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`])], get: () => (amd.fps.on ? amd.fps.value : 0), set: v => sendAmd('fps', v) } });
     }
-    if (amd.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: amd.afmf.on, act: () => sendAmd('afmf', !amd.afmf.on) });
+    // Les images générées par AFMF ne passent pas par le jeu : le pilote ne les compte pas dans les
+    // images par seconde qu'il donne (ADLX). L'overlay d'AMD, lui, les affiche.
+    if (amd.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: amd.afmf.on, sub: amd.afmf.on ? 'Hors compteur : voir overlay AMD' : '', act: () => sendAmd('afmf', !amd.afmf.on) });
     if (amd.antilag) t({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: 'Anti-Lag', on: amd.antilag.on, act: () => sendAmd('antilag', !amd.antilag.on) });
     for (const [key, name, full] of [['rsr', 'Super Resolution', 'Radeon Super Resolution'], ['ris', 'Netteté (RIS)', 'Radeon Image Sharpening']]) {
       const x = amd[key];
@@ -152,6 +199,11 @@ function tiles() {
           set: v => { amd[key].sharpness = v; soon(key, () => sendAmd(key + 'sharp', v)); },
           onOff: { label: full, get: () => amd[key].on, set: on => sendAmd(key, on) } } });
     }
+  }
+  if (amd && amd.available) {
+    t({ key: 'amdoverlay', cat: 'graphics', icon: 'overlay', title: 'Overlay AMD', wide: true, value: 'Afficher / masquer',
+      sub: 'Ctrl + Maj + O : mesures d’AMD Software, images AFMF comprises',
+      act: () => toApp('amd-overlay').then(() => toast('Overlay AMD (Ctrl + Maj + O)')).catch(e => toast(e.message, { error: true })) });
   }
   if (info && info.lossless) {
     const ls = info.lossless;
@@ -200,6 +252,14 @@ function tiles() {
     const wifi = r.kind === 'WiFi';
     t({ key: 'radio:' + r.kind, cat: 'network', icon: wifi ? 'wifi' : 'bluetooth', title: wifi ? 'Wi-Fi' : 'Bluetooth', on: r.on, act: () => send('radio', !r.on, { kind: r.kind }) });
   }
+
+  // Moniteur en direct : autre widget, à épingler sur le jeu ; ses mesures se choisissent ici
+  t({ key: 'monitor-open', cat: 'monitor', icon: 'monitor', title: 'Moniteur en direct', wide: true, value: 'Ouvrir',
+    sub: 'Puis épinglez-le (punaise) pour le garder sur le jeu', act: openMonitor });
+  const prefs = monitorPrefs();
+  for (const [k, label] of MONITOR_ITEMS) {
+    t({ key: 'mon:' + k, cat: 'monitor', icon: 'monitor', title: label, on: !!prefs[k], act: () => { setMonitorPref(k, !prefs[k]); render(); } });
+  }
   return out;
 }
 
@@ -209,10 +269,26 @@ function tileEl(o) {
   const d = el('div', `hud-tile${lit ? ' on' : ''}${o.wide ? ' wide' : ''}`,
     `<div class="hud-tile-top">${svg(o.icon)}<span>${esc(o.title)}</span>${toggle ? '<i class="hud-switch"></i>' : ''}</div>` +
     `<b class="hud-value">${esc(toggle ? (o.on ? 'Activé' : 'Désactivé') : o.value)}</b>` +
-    (o.sub ? `<small>${esc(o.sub)}</small>` : '') +
+    proofLine(o) +
     (o.bar != null ? `<i class="hud-bar"><i style="width:${clamp(o.bar, 0, 100)}%"></i></i>` : ''));
   nav(d, () => (o.slider || o.choice ? openSheet(o) : o.act()), 'tile:' + o.key);
   return d;
+}
+
+/** Ligne sous la valeur : la vérification du dernier réglage (8 s), sinon le texte de la tuile. */
+function proofLine(o) {
+  const p = proofs[o.key];
+  if (p && Date.now() - p.t < 8000) {
+    const cls = p.ok === null ? 'sent' : p.ok ? 'ok' : 'ko';
+    return `<small class="hud-proof ${cls}">${p.ok === null ? '↗ Envoyé' : p.ok ? '✓ Vérifié' : '✕'} · ${esc(p.text)}</small>`;
+  }
+  return o.sub ? `<small>${esc(o.sub)}</small>` : '';
+}
+
+function openMonitor() {
+  if (!WIDGET) return toast('Dans la Game Bar seulement');
+  window.chrome.webview.postMessage({ type: 'open-monitor' });
+  toast('Moniteur ouvert : épinglez-le pour le garder sur le jeu');
 }
 
 // ---------------------------------------------------------------- panneau d'un réglage
@@ -318,8 +394,8 @@ function render() {
   const chipScroll = oldChips ? oldChips.scrollLeft : 0;
   const parts = [];
 
-  // Mesures en direct
-  parts.push(liveStrip());
+  // Mesures en direct et leur historique
+  parts.push(liveStrip(), historyBox());
 
   // Jeu en cours
   const card = el('div', 'hud-card hud-game');
@@ -353,7 +429,7 @@ function render() {
     chips.append(c);
   }
   parts.push(chips);
-  const list = all.filter(o => filter() === 'all' || o.cat === filter());
+  const list = all.filter(o => (filter() === 'all' ? o.cat !== 'monitor' : o.cat === filter()));
   const grid = el('div', 'hud-grid');
   list.forEach(o => grid.append(tileEl(o)));
   parts.push(list.length ? grid : el('div', 'hud-empty', sys ? 'Rien à régler dans cette catégorie sur ce PC.' : 'Lecture des réglages…'));
@@ -395,7 +471,64 @@ function liveStrip() {
 function paintLive() {
   const old = $('#hud-live');
   if (old) old.replaceWith(liveStrip());
+  const h = $('#hud-history');
+  if (h) h.replaceWith(historyBox());
   paintHead();
+}
+
+// Historique des 60 dernières secondes : images par seconde et consommation, avec un trait à chaque
+// réglage. Un changement de puissance ou de limite d'images se voit tout de suite sur les courbes.
+const hist = [];
+const HISTORY_MS = 60000;
+function record() {
+  const w = live && onBattery() && live.watts != null ? live.watts : gpu && gpu.gpuPower != null ? gpu.gpuPower : null;
+  hist.push({ t: Date.now(), fps: gpu ? gpu.fps : null, w });
+  while (hist.length && Date.now() - hist[0].t > HISTORY_MS) hist.shift();
+  while (marks.length && Date.now() - marks[0].t > HISTORY_MS) marks.shift();
+}
+function historyBox() {
+  const d = el('div', 'hud-history');
+  d.id = 'hud-history';
+  const hasFps = hist.some(x => x.fps != null), hasW = hist.some(x => x.w != null);
+  d.hidden = hist.length < 2 || (!hasFps && !hasW);
+  if (d.hidden) return d;
+  const c = document.createElement('canvas');
+  d.append(c);
+  const wLabel = live && onBattery() ? 'Batterie (W)' : 'GPU (W)';
+  d.append(el('div', 'hud-history-legend', (hasFps ? '<span><i style="background:#7cf29a"></i>Images/s</span>' : '') +
+    (hasW ? `<span><i style="background:#ffb35c"></i>${wLabel}</span>` : '') + '<span>60 s</span>'));
+  requestAnimationFrame(() => drawHistory(c));
+  return d;
+}
+function drawHistory(c) {
+  const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+  if (!W) return;
+  c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext('2d');
+  g.scale(dpr, dpr);
+  const now = Date.now(), x = t => W - ((now - t) / HISTORY_MS) * W;
+  const line = (key, color) => {
+    const pts = hist.filter(p => p[key] != null);
+    if (pts.length < 2) return;
+    const max = Math.max(...pts.map(p => p[key])) * 1.15 || 1;
+    g.strokeStyle = color; g.lineWidth = 2; g.lineJoin = 'round';
+    g.beginPath();
+    pts.forEach((p, i) => { const y = H - 4 - (p[key] / max) * (H - 16); i ? g.lineTo(x(p.t), y) : g.moveTo(x(p.t), y); });
+    g.stroke();
+  };
+  line('w', '#ffb35c');
+  line('fps', '#7cf29a');
+  // Réglages : trait vertical et nom (les trois derniers)
+  g.font = '600 10px system-ui, sans-serif';
+  marks.slice(-3).forEach(m => {
+    const mx = Math.max(1, x(m.t));
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1; g.setLineDash([3, 3]);
+    g.beginPath(); g.moveTo(mx, 0); g.lineTo(mx, H); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#fff';
+    const label = m.label.length > 18 ? m.label.slice(0, 17) + '…' : m.label;
+    const tw = g.measureText(label).width;
+    g.fillText(label, Math.min(mx + 3, W - tw - 2), 10);
+  });
 }
 
 async function pickMode(mode) {
@@ -410,9 +543,16 @@ async function pickMode(mode) {
     const r = await api.post('/api/power/mode', { mode });
     if (r.state) sys = r.state;
     const name = PERF_MODES.find(m => m[0] === mode)[1];
-    const w = r.applied && r.applied.tdp;
-    if (r.errors && r.errors.length) toast(`Mode ${name} : ${r.errors[0]}`, { error: true });
-    else toast(`Mode ${name} appliqué${w ? ` · ${w} W` : ''}`);
+    const a = r.applied || {};
+    const w = typeof a.tdp === 'object' && a.tdp ? a.tdp.spl : a.tdp;
+    // Le profil de la console est relu après écriture (syscontrol) : il est vérifié s'il a été pris
+    const read = r.state && r.state.vendor && r.state.vendor.mode;
+    const ok = !(r.errors && r.errors.length) && (!a.vendor || read === a.vendor);
+    const text = `Mode ${name}${a.vendor ? ` · profil ${VENDOR_LABELS[read] || read || '?'}` : ''}${w ? ` · ${w} W` : ''}`;
+    marks.push({ t: Date.now(), label: name });
+    noteChange(text, ok);
+    if (!ok) toast(`${text} : ${(r.errors && r.errors[0]) || 'profil relu différent'}`, { error: true });
+    else toast(`✓ ${text}`);
   } catch (e) { toast(e.message, { error: true }); }
   render();
 }
@@ -466,6 +606,7 @@ async function loadLive() {
   ]);
   const wasBattery = onBattery();
   live = a; gpu = b;
+  record();
   // Chargeur branché ou débranché : les watts des profils changent (Turbo : 25 ou 30 W)
   if (onBattery() !== wasBattery) render(); else paintLive();
 }
@@ -492,7 +633,7 @@ function start() {
   loadSys(); loadAmd().then(loadLive); loadGame(); loadInfo();
   // Réglages relus seulement quand aucun panneau n'est ouvert (l'utilisateur règle)
   const idle = fn => () => { if (!sheet) fn(); };
-  timers = [setInterval(loadLive, 2000), setInterval(loadGame, 3000), setInterval(idle(loadSys), 15000),
+  timers = [setInterval(loadLive, 1000), setInterval(loadGame, 3000), setInterval(idle(loadSys), 15000),
     setInterval(idle(() => loadAmd()), 20000), setInterval(idle(loadInfo), 20000)];
 }
 function stop() { timers.forEach(clearInterval); timers = []; }

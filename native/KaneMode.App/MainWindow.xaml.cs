@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private IntPtr _returnTo;
     // Boutons dédiés de la ROG Ally et ce qu'ils font (réglés dans Paramètres > Console portable)
     private readonly AllyButtons _buttons = new();
+    private readonly XInputPads _pads;
+    private IntPtr _hwnd; // fenêtre principale, lue par le fil des manettes
     private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
     private bool _ready;
@@ -42,12 +44,15 @@ public partial class MainWindow : Window
             Height = 800;
         }
         Loaded += async (_, _) => await StartAsync();
-        SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WndProc);
+        SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); };
+        // Manettes XInput lues par l'app tant que KaneMode est au premier plan (voir XInputPads)
+        _pads = new XInputPads(() => _ready && _hwnd != IntPtr.Zero && Native.GetForegroundWindow() == _hwnd);
+        _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
         Activated += (_, _) => OnActivated();
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès)
         Closing += (_, _) => { try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
-        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _host.Dispose(); };
+        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
         WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));
@@ -72,6 +77,7 @@ public partial class MainWindow : Window
             await Task.WhenAll(host, web);
             Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
             _buttons.Start();
+            _pads.Start();
             WidgetBridge.Start(_host.Url);
         }
         catch (Exception ex)
@@ -325,7 +331,7 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
 
     // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
-    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless" };
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "amd-overlay" };
 
     /// <summary>
     /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
@@ -349,6 +355,11 @@ public partial class MainWindow : Window
                 case "lossless":
                     // Widget : mise à l'échelle de Lossless Scaling, par son raccourci global (Ctrl + Alt + S par défaut)
                     Native.SendKeys(0x11 /* Ctrl */, Native.VK_MENU, 0x53 /* S */);
+                    break;
+                case "amd-overlay":
+                    // Widget : overlay de mesures d'AMD Software (Ctrl + Maj + O), qui compte aussi les
+                    // images générées par AFMF (le pilote ne les donne pas à ADLX)
+                    Native.SendKeys(0x11 /* Ctrl */, 0x10 /* Maj */, 0x4F /* O */);
                     break;
                 case "show":
                     // Widget : « Ouvrir KaneMode » (accueil, ou une page)

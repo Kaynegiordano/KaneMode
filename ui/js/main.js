@@ -1,6 +1,6 @@
 // Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
 import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native } from './core.js';
-import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input } from './nav.js';
+import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input, setNativePads } from './nav.js';
 import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
@@ -19,6 +19,8 @@ import './pages/emulation.js';
 applyTheme();
 // Résolution ou mise à l'échelle changée (widget Game Bar, Paramètres de Windows) : taille de
 // l'interface recalculée et page redessinée pour la nouvelle taille d'écran
+// Manettes XInput lues par l'app native (voir setNativePads)
+native.on(m => { if (m.type === 'xpad') setNativePads(m.pads); });
 let resizeTimer = 0;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);

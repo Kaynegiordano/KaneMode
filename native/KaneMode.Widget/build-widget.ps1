@@ -84,7 +84,10 @@ $cl = "cl /nologo /std:c++20 /EHsc /O2 /MD /bigobj /utf-8 /permissive- /W3 " +
       "/link /APPCONTAINER /SUBSYSTEM:WINDOWS /ENTRY:wWinMainCRTStartup WindowsApp.lib"
 # Un guillemet égaré dans PATH fait échouer vcvarsall (« \Windows était inattendu »)
 $env:PATH = (($env:PATH -split ';') | Where-Object { $_ -and $_ -notmatch '"' }) -join ';'
-$cmd = "`"$vcvars`" x64 uwp $sdkVersion >nul && $cl"
+# vcvarsall cherche vswhere dans PATH ; ses messages passent sur la sortie normale, sinon PowerShell
+# les prend pour un échec quand la sortie de la compilation est redirigée
+$env:PATH += ";${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer"
+$cmd = "`"$vcvars`" x64 uwp $sdkVersion >nul 2>&1 && $cl 2>&1"
 cmd /c $cmd
 if ($LASTEXITCODE -ne 0) { throw 'Échec de la compilation du widget' }
 

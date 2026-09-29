@@ -437,7 +437,10 @@ function Run($c) {
         'brightness' {
             $m = Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods -ErrorAction Stop | Select-Object -First 1
             $null = Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{ Timeout = [uint32]0; Brightness = [byte][Math]::Max(0, [Math]::Min(100, [int]$c.value)) }
-            return @{ brightness = [int]$c.value }
+            # Relue sur l'écran : la valeur renvoyée est celle qui est vraiment appliquée
+            $read = $null
+            try { $read = [int](Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness } catch { }
+            return @{ brightness = if ($null -ne $read) { $read } else { [int]$c.value }; verified = $null -ne $read }
         }
         'powermode' {
             if ($c.value -notin 'efficiency', 'balanced', 'performance') { throw 'Mode inconnu' }
@@ -519,13 +522,13 @@ function Run($c) {
         'cpumax' {
             $v = [Math]::Max(30, [Math]::Min(100, [int]$c.value))
             [KaneMode.Cpu]::Write([KaneMode.Cpu]::MaxState, [uint32]$v)
-            return @{ cpuMax = $v }
+            return @{ cpuMax = [int][KaneMode.Cpu]::Read([KaneMode.Cpu]::MaxState, $true); verified = $true }
         }
         'boost' {
             # 0 : désactivé ; 2 : agressif (valeur par défaut de Windows sur la plupart des PC)
             $v = if ($c.value) { 2 } else { 0 }
             [KaneMode.Cpu]::Write([KaneMode.Cpu]::Boost, [uint32]$v)
-            return @{ boost = [bool]$c.value }
+            return @{ boost = [KaneMode.Cpu]::Read([KaneMode.Cpu]::Boost, $true) -ne 0; verified = $true }
         }
         'live' {
             # Mesures en direct pour l'accès rapide : fréquence réelle, charge, puissance sur batterie
@@ -558,7 +561,9 @@ function Run($c) {
             if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }
             $p = [Math]::Max(40, [Math]::Min(100, [int]$c.value))
             $null = [KaneMode.Asus]::Set([KaneMode.Asus]::ChargeLimit, $p)
-            return @{ chargeLimit = $p }
+            $read = [KaneMode.Asus]::Get([KaneMode.Asus]::ChargeLimit)
+            if ($read -ge 20 -and $read -le 100) { return @{ chargeLimit = $read; verified = $true } }
+            return @{ chargeLimit = $p; verified = $false }
         }
         default { throw "Commande inconnue : $($c.cmd)" }
     }

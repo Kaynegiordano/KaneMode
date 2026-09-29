@@ -104,6 +104,32 @@
             </uap3:Properties>
           </uap3:AppExtension>
         </uap3:Extension>
+        <!-- Moniteur en direct : petit bandeau (images par seconde, GPU, processeur, puissance) à épingler sur le jeu -->
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="microsoft.gameBarUIExtension" Id="KaneModeMonitor" DisplayName="KaneMode · Moniteur"
+                             Description="Images par seconde, GPU, processeur et puissance en direct, par-dessus le jeu" PublicFolder="GameBar">
+            <uap3:Properties>
+              <GameBarWidget Type="Standard">
+                <HomeMenuVisible>true</HomeMenuVisible>
+                <PinningSupported>true</PinningSupported>
+                <Window>
+                  <Size>
+                    <Height>96</Height>
+                    <Width>420</Width>
+                    <MinHeight>56</MinHeight>
+                    <MinWidth>160</MinWidth>
+                    <MaxHeight>480</MaxHeight>
+                    <MaxWidth>1000</MaxWidth>
+                  </Size>
+                  <ResizeSupported>
+                    <Horizontal>true</Horizontal>
+                    <Vertical>true</Vertical>
+                  </ResizeSupported>
+                </Window>
+              </GameBarWidget>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
       </Extensions>
     </Application>
     <!-- /WIDGET -->

@@ -1,5 +1,8 @@
-// Widget Game Bar de KaneMode : l'interface de KaneMode (ui\widget.html : accès rapide, jeu en
-// cours, raccourcis) dans un WebView2 de WinUI 2, par-dessus les jeux.
+// Widgets Game Bar de KaneMode : l'interface de KaneMode dans un WebView2 de WinUI 2, par-dessus les
+// jeux. Deux widgets dans la même application :
+//   - KaneModeWidget : ui\widget.html (accès rapide, jeu en cours, raccourcis) ;
+//   - KaneModeMonitor : ui\monitor.html (moniteur en direct, compact, à épingler sur le jeu).
+// Chaque widget ouvert a sa propre vue (fenêtre) et son propre objet Widget.
 //
 // Le widget est une application UWP isolée : il ne peut pas joindre l'hôte KaneMode sur 127.0.0.1.
 // Les fichiers de l'interface sont donc lus directement dans le paquet (nom d'hôte virtuel
@@ -112,6 +115,27 @@ struct Widget
     XboxGameBarWidget widget{ nullptr };
     mux::Controls::WebView2 web;
     Windows::UI::Core::CoreDispatcher dispatcher{ nullptr };
+    std::wstring page = L"widget.html";
+
+    /// Message sans réponse à la page (état de la Game Bar : épinglé, opacité choisie).
+    void Tell(hstring const& type, IJsonValue const& value)
+    {
+        try {
+            auto core = web.CoreWebView2();
+            if (!core) return;
+            JsonObject m;
+            m.SetNamedValue(L"type", JsonValue::CreateStringValue(type));
+            m.SetNamedValue(L"value", value);
+            core.PostWebMessageAsJson(m.Stringify());
+        } catch (hresult_error const&) { /* widget fermé */ }
+    }
+    /// Épinglé ou non, et transparence demandée dans la Game Bar (moniteur par-dessus le jeu)
+    void TellWindowState()
+    {
+        if (!widget) return;
+        Tell(L"pinned", JsonValue::CreateBooleanValue(widget.Pinned()));
+        Tell(L"opacity", JsonValue::CreateNumberValue(widget.RequestedOpacity()));
+    }
 
     fire_and_forget Start()
     {
@@ -134,14 +158,19 @@ struct Widget
             core.NavigationStarting([](auto&&, wv::CoreWebView2NavigationStartingEventArgs const& a) {
                 if (!std::wstring_view(a.Uri()).starts_with(L"https://kanemode.widget/")) a.Cancel(true);
             });
-            core.NavigationCompleted([](auto&&, wv::CoreWebView2NavigationCompletedEventArgs const& a) {
-                Log(a.IsSuccess() ? L"Page chargée" : L"Page non chargée : erreur " + std::to_wstring((int)a.WebErrorStatus()));
+            core.NavigationCompleted([this](auto&&, wv::CoreWebView2NavigationCompletedEventArgs const& a) {
+                Log(a.IsSuccess() ? L"Page chargée : " + page : L"Page non chargée : erreur " + std::to_wstring((int)a.WebErrorStatus()));
+                if (a.IsSuccess()) TellWindowState();
             });
+            // Épinglé sur le jeu, transparence choisie : la page s'adapte (fond, bordure)
+            auto disp = dispatcher;
+            widget.PinnedChanged([this, disp](auto&&, auto&&) { disp.RunAsync(Windows::UI::Core::CoreDispatcherPriority::Normal, [this] { TellWindowState(); }); });
+            widget.RequestedOpacityChanged([this, disp](auto&&, auto&&) { disp.RunAsync(Windows::UI::Core::CoreDispatcherPriority::Normal, [this] { TellWindowState(); }); });
             core.ProcessFailed([](auto&&, wv::CoreWebView2ProcessFailedEventArgs const& a) {
                 Log(L"WebView2 : processus arrêté (" + std::to_wstring((int)a.ProcessFailedKind()) + L")");
             });
             Log(L"Interface : " + std::wstring(ui));
-            web.Source(Uri(L"https://kanemode.widget/widget.html"));
+            web.Source(Uri(L"https://kanemode.widget/" + page));
             web.Focus(FocusState::Programmatic);
         }
         catch (hresult_error const& e) { LogError(L"WebView2", e); } // le widget reste vide
@@ -157,6 +186,12 @@ struct Widget
         if (first) { first = false; Log(L"Premier message de la page : " + std::wstring(args.WebMessageAsJson()).substr(0, 120)); }
         hstring type = msg.GetNamedString(L"type", L"");
         double id = msg.GetNamedNumber(L"id", 0);
+        if (type == L"open-monitor") {
+            // Le widget principal ouvre le moniteur (autre widget du même paquet)
+            try { co_await XboxGameBarWidgetControl(widget).ActivateAsync(L"KaneModeMonitor"); }
+            catch (hresult_error const& e) { LogError(L"Ouverture du moniteur", e); }
+            co_return;
+        }
         JsonObject req;
         if (type == L"api") {
             req.SetNamedValue(L"method", JsonValue::CreateStringValue(msg.GetNamedString(L"method", L"GET")));
@@ -188,7 +223,6 @@ struct Widget
 struct App : ApplicationT<App, Markup::IXamlMetadataProvider>
 {
     mux::XamlTypeInfo::XamlControlsXamlMetaDataProvider provider{ nullptr };
-    Widget* hud = nullptr;
     bool styled = false;
 
     App()
@@ -230,17 +264,19 @@ struct App : ApplicationT<App, Markup::IXamlMetadataProvider>
             }
             if (!widgetArgs) { Log(L"Activation hors de la Game Bar : ignorée"); return; }
             if (widgetArgs.IsLaunchActivation()) {
+                // Une vue par widget ouvert (accès rapide ou moniteur), chacune avec son WebView2
                 Style();
                 Frame frame;
                 Window::Current().Content(frame);
-                hud = new Widget();
+                auto hud = new Widget();
+                if (widgetArgs.AppExtensionId() == L"KaneModeMonitor") hud->page = L"monitor.html";
                 hud->dispatcher = Window::Current().Dispatcher();
                 hud->widget = XboxGameBarWidget(widgetArgs, Window::Current().CoreWindow(), frame);
-                Log(L"Widget Game Bar créé");
+                Log(L"Widget Game Bar créé : " + std::wstring(widgetArgs.AppExtensionId()));
                 Grid root;
                 root.Children().Append(hud->web);
                 frame.Content(root);
-                Window::Current().Closed([this](auto&&, auto&&) { if (hud) hud->widget = nullptr; });
+                Window::Current().Closed([hud](auto&&, auto&&) { hud->widget = nullptr; });
                 hud->Start();
             }
             Window::Current().Activate();
