@@ -10,6 +10,20 @@ const KINDS = [
   { id: 'header', label: 'Bannière', f: true }, { id: 'icon', label: 'Icône', f: true },
 ];
 const label = k => KINDS.find(x => x.id === k).label;
+
+// Vignettes SteamGridDB : leur serveur est lent (environ une seconde chacune). Elles ne sont
+// demandées qu'à l'approche de l'écran, et les premières sont préchargées à l'ouverture.
+const thumbs = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    const img = e.target;
+    thumbs.unobserve(img);
+    img.onload = () => img.classList.add('ready');
+    img.src = img.dataset.src;
+  }
+}, { rootMargin: '300px' });
+const preloaded = new Set();
+const preload = urls => { for (const u of urls) if (!preloaded.has(u)) { preloaded.add(u); new Image().src = u; } };
 const applied = k => `${label(k)} appliqué${KINDS.find(x => x.id === k).f ? 'e' : ''}`;
 const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.glyph = k; return s; };
 
@@ -70,9 +84,22 @@ definePage('artpicker', {
   async matchLine(p) {
     try {
       if (this.game === undefined) this.game = (await api.get('/api/sgdb/game?id=' + encodeURIComponent(this.g.id))).game;
+      if (this.game) this.prefetch();
       if (this.mode !== 'overview' || !p.isConnected) return;
       p.innerHTML = this.game ? `Visuels · SteamGridDB : <b>${esc(this.game.name)}</b>` : 'Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)';
     } catch (e) { if (p.isConnected) p.textContent = 'Visuels · ' + e.message; }
+  },
+  /** Liste des visuels d'un type (une seule requête par type, partagée). */
+  list(kind) {
+    if (!this.items[kind]) {
+      this.items[kind] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}`);
+      this.items[kind].catch(() => { delete this.items[kind]; }); // réessayée à la prochaine demande
+    }
+    return this.items[kind];
+  },
+  /** Pendant qu'on regarde l'aperçu : toutes les listes, et les premières vignettes des jaquettes. */
+  prefetch() {
+    for (const k of KINDS) this.list(k.id).then(list => { if (k.id === 'portrait') preload(list.slice(0, 10).map(a => a.thumb)); }).catch(() => {});
   },
   browse(kind) {
     this.kind = kind;
@@ -111,14 +138,22 @@ definePage('artpicker', {
         return;
       }
       p.innerHTML = `SteamGridDB : <b>${esc(this.game.name)}</b> · ${esc(label(kind))}`;
-      const list = this.items[kind] || (this.items[kind] = await api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}`));
+      const list = await this.list(kind);
       if (kind !== this.kind || this.mode !== 'browse') return; // onglet changé entre-temps
       const grid = el('div', 'art-grid ' + kind);
       for (const a of list.slice(0, 96)) {
-        const item = el('div', 'art-item', `<img src="${esc(a.thumb)}" alt="" loading="lazy"><small>${esc([a.author, a.style, a.width && `${a.width}×${a.height}`].filter(Boolean).join(' · '))}</small>`);
+        const item = el('div', 'art-item', `<img alt="" decoding="async"><small>${esc([a.author, a.style, a.width && `${a.width}×${a.height}`].filter(Boolean).join(' · '))}</small>`);
+        const img = item.firstElementChild;
+        img.dataset.src = a.thumb;
+        thumbs.observe(img);
         grid.append(nav(item, () => this.choose(a), 'asset:' + a.id));
       }
       this.body.replaceChildren(list.length ? grid : el('div', 'empty', `Aucun visuel « ${esc(label(kind).toLowerCase())} » pour ce jeu sur SteamGridDB.`));
+      // Onglets voisins : leurs premières vignettes arrivent pendant qu'on regarde celui-ci
+      const i = KINDS.findIndex(x => x.id === kind);
+      for (const n of [KINDS[(i + 1) % KINDS.length], KINDS[(i + KINDS.length - 1) % KINDS.length]]) {
+        this.list(n.id).then(l => preload(l.slice(0, 8).map(a => a.thumb))).catch(() => {});
+      }
       if (focusKey && focusKey.startsWith('asset:')) focusIn(this.el, focusKey);
     } catch (e) {
       p.textContent = e.message;

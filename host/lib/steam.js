@@ -109,11 +109,27 @@ function gridDir(userdata) {
   const u = users(userdata)[0];
   return u ? path.join(userdata, u.uid, 'config', 'grid') : null;
 }
+// Contenu du dossier grid, relu seulement quand il change : une recherche par jeu et par visuel
+// y coûtait sinon une vingtaine d'accès disque par jeu
+const gridMemo = { dir: null, mtime: 0, at: 0, files: new Map() };
+function gridFiles(dir) {
+  if (gridMemo.dir === dir && Date.now() - gridMemo.at < 2000) return gridMemo.files;
+  let mtime = 0;
+  try { mtime = fs.statSync(dir).mtimeMs; } catch { /* pas de dossier grid */ }
+  if (gridMemo.dir !== dir || gridMemo.mtime !== mtime) {
+    const files = new Map();
+    try { for (const f of fs.readdirSync(dir)) files.set(f.toLowerCase(), f); } catch { /* absent */ }
+    Object.assign(gridMemo, { dir, mtime, files });
+  }
+  gridMemo.at = Date.now();
+  return gridMemo.files;
+}
 function gridArt(dir, appid) {
   const art = {};
   if (!dir) return art;
+  const files = gridFiles(dir);
   const find = suffix => {
-    for (const ext of IMAGE_EXT) { const f = path.join(dir, appid + suffix + ext); if (isFile(f)) return f; }
+    for (const ext of IMAGE_EXT) { const f = files.get((appid + suffix + ext).toLowerCase()); if (f) return path.join(dir, f); }
     return null;
   };
   art.portrait = find('p'); art.hero = find('_hero'); art.logo = find('_logo'); art.header = find(''); art.icon = find('_icon');

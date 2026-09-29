@@ -53,10 +53,14 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - `config.perfMode` passe à `custom` dès qu'un réglage est changé à la main.
   - Le « mode d'alimentation Windows » n'est plus exposé séparément dans l'interface : doublon.
 - Bibliothèque à jour toute seule (`rescanLibrary` dans `server.js`) : `fs.watch` sur les `steamapps` de chaque bibliothèque Steam (seulement quand un jeu devient installé ou disparaît : bit 4 de `StateFlags`), les `shortcuts.vdf`, les manifestes Epic et les dossiers `XboxGames`. Analyse complète au démarrage, au retour sur KaneMode (`/api/library/refresh`, une fois par minute au plus) et toutes les 10 minutes. `scan.ps1` ignore un jeu Steam pas fini de télécharger.
+- Performances de l'hôte (1.5.0) :
+  - `allEntries` est gardé en mémoire (refait quand `version` change, au plus tard après 5 s) avec un index `byId` pour `findEntry` : chaque image `/art/…` reconstruisait toute la bibliothèque (171 jaquettes : 15,7 s → 0,17 s). **Toute écriture de `library.json`, `custom.json` ou `roms.json` doit faire `version++`.**
+  - `sendFile` envoie un `ETag` (taille + date) et répond 304 : jaquettes et fichiers de l'interface ne sont plus retéléchargés à chaque affichage.
+  - `steam.gridArt` lit le dossier `grid` une fois (cache par date du dossier) au lieu d'une vingtaine d'accès disque par jeu.
 - `lib/device.js` : console reconnue (catalogue `HANDHELDS`) + `device.ps1` (WMI). Résultat mis en cache dans `DATA/device.json` et servi immédiatement au démarrage.
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
 - `lib/update.js` : GitHub Releases (canaux stable/bêta), vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance.
-- `lib/sgdb.js` : SteamGridDB par l'API publique, sans clé.
+- `lib/sgdb.js` : SteamGridDB par l'API publique, sans clé. Les 3 pages de résultats sont demandées en parallèle (~0,3 s). Le CDN est lent (~1 s par vignette, 200 Ko ; image entière 2-3 Mo) : `artpicker.js` ne charge une vignette qu'à l'approche de l'écran (`IntersectionObserver`), précharge toutes les listes à l'ouverture des visuels et les premières vignettes des onglets voisins.
 - `lib/oem.js` + `inventory.ps1` : mises à jour officielles du constructeur (ASUS seulement pour l'instant).
   - API publique du site ROG (`rog.asus.com/support/webapi/product/GetPDBIOS` et `GetPDDrivers`, `osid=52`, `systemCode=rog`), celle de G-Helper. Modèle = début de la version du BIOS (`RC72LA.312` → `RC72LA`, BIOS 312).
   - Versions installées : `Win32_PnPSignedDriver` (identifiants matériels sans `&REV_`). Résultat dans `DATA/oem.json`, vérifié une fois par jour à l'ouverture des réglages.
@@ -68,7 +72,9 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - le défilement quand plus rien n'est focalisable ;
   - la manette (API Gamepad) : **Select = menu, Start = accès rapide**, inversable avec `settings.padSwap`. Un bouton encore enfoncé au retour de focus est ignoré ;
   - le clavier : M = menu, Q = accès rapide, Échap = retour. B sur l'accueil ouvre le menu.
-- `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas), `native` (messages WebView2).
+- `js/core.js` : `api`, `settings` (localStorage `km.settings`), `applyTheme` (CSS `--zoom`/`--vh` pour que l'interface agrandie ne déborde pas), `native` (messages WebView2), `sfx` : sons d'interface façon Switch 2 (« tocs » de marimba, partiels 1 et 4, attaque de 2 ms, petit clic, écho court étouffé), calculés une fois (`OfflineAudioContext`, table `SOUNDS`) puis rejoués.
+- `js/pages/library.js` : tri par nom, la lettre en cours s'affiche au centre en changeant de rangée (`.letter-hint`, comme SteamOS) ; LT/RT sautent à la lettre suivante ou précédente.
+- `js/pages/settings.js` : une catégorie s'affiche tout de suite ; les blocs lents (mises à jour, pilotes, ASUS) se remplissent ensuite, et « Console portable » lit la description en cache (l'analyse WMI est relancée en arrière-plan).
 - `js/main.js` : menus, accès rapide, relais « par-dessus KanePlay » (`overlay`), mises à jour (vérification au démarrage, au retour d'un jeu, au réveil et toutes les heures, au plus une fois par heure ; entrée « Mise à jour disponible » dans le menu), démarrage.
 - `js/qam.js` : accès rapide (sections ordonnables), bandeau en direct `/api/sys/live`, modes avec leurs watts (`PROFILE_WATTS` par console).
 - `js/boot.js` : sons **synthétisés et calculés hors ligne** (OfflineAudioContext) ; le logo apparaît sur le pic du son (`playSynced`, horodatage de sortie audio).
@@ -170,4 +176,5 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.3.0 : widget Game Bar retiré, boutons Command Center / Armoury Crate de l'Ally, sortie du mode Xbox avant de quitter, KanePlay au premier plan même à la relance, mises à jour officielles ASUS (BIOS, pilotes) ;
   - 1.3.1 : double lancement bloqué, écran de lancement par-dessus Steam avec un fond SteamGridDB au hasard, retour systématique à KaneMode quand le jeu se ferme, Command Center = vue des tâches ;
   - 1.4.0 : jeu suivi par son dossier d'installation, jeu toujours mis au premier plan, Reprendre / Arrêter sur la fiche, bibliothèque mise à jour toute seule ;
-  - 1.4.1 : Steam reste en arrière-plan (démarrage `-silent`, fenêtre réduite si elle passe devant), retour immédiat sur KaneMode à la fin du jeu, journal des changements de premier plan (mode Xbox à valider sur l'Ally).
+  - 1.4.1 : Steam reste en arrière-plan (démarrage `-silent`, fenêtre réduite si elle passe devant), retour immédiat sur KaneMode à la fin du jeu, journal des changements de premier plan (mode Xbox à valider sur l'Ally) ;
+  - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2.

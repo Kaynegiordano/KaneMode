@@ -512,6 +512,10 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 
 #launch { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #000; opacity: 0; pointer-events: none; transition: opacity 300ms ease; }
 #launch.open { opacity: 1; pointer-events: auto; }
+/* Lettre en cours dans la bibliothèque triée par nom (comme SteamOS) */
+.letter-hint { position: fixed; top: 50%; left: 50%; z-index: 40; width: 120px; height: 120px; margin: -60px 0 0 -60px; display: grid; place-items: center; border-radius: 20px; background: rgba(12, 15, 20, 0.82); border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); color: #fff; font-size: 68px; font-weight: 700; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); opacity: 0; transform: scale(0.9); transition: opacity 160ms ease, transform 160ms ease; pointer-events: none; }
+.letter-hint.show { opacity: 1; transform: none; }
+
 /* Fond du jeu tiré au hasard sur SteamGridDB, net ; un voile sombre au centre garde le logo lisible */
 #launch .launch-bg { position: absolute; inset: -40px; background: center / cover no-repeat; filter: brightness(0.6); transform: scale(1.05); transition: background-image 500ms ease; animation: slowzoom 30s linear both; }
 #launch::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.15) 70%); }
@@ -604,7 +608,12 @@ body.night::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer
 .art-grid.hero .art-item { aspect-ratio: 96 / 31; }
 .art-grid.header .art-item { aspect-ratio: 460 / 215; }
 .art-grid.logo .art-item, .art-grid.icon .art-item { aspect-ratio: 16 / 10; background: repeating-conic-gradient(#232833 0 25%, #1b2029 0 50%) 50% / 20px 20px; }
-.art-item img { width: 100%; height: 100%; object-fit: cover; }
+.art-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 200ms ease; }
+.art-item img.ready { opacity: 1; }
+/* Vignette pas encore arrivée : reflet discret qui passe (désactivé en effets allégés) */
+.art-item:has(img:not(.ready))::before { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.06) 50%, transparent 70%) -100% 0 / 200% 100%; animation: shimmer 1.2s linear infinite; }
+body.lowfx .art-item::before, body.reduce-motion .art-item::before { animation: none; }
+@keyframes shimmer { to { background-position: 100% 0; } }
 .art-grid.logo .art-item img, .art-grid.icon .art-item img { object-fit: contain; padding: 14px; }
 .art-item small { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 10px 6px; font-size: 11px; color: #cfd5dd; background: linear-gradient(transparent, rgba(0, 0, 0, 0.8)); opacity: 0; transition: opacity 150ms; }
 .art-item.focused { transform: scale(1.05); box-shadow: 0 0 0 3px #fff, 0 14px 40px rgba(0, 0, 0, 0.6); z-index: 2; }

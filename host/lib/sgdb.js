@@ -94,13 +94,14 @@ async function assets(key, gameId, kind, { style } = {}) {
       const params = [k.q, 'nsfw=false', 'humor=false', 'types=static'].filter(Boolean).join('&');
       return ((await v2(key, `/${k.ep}/game/${gameId}?${params}`)) || []).map(shape);
     }
-    // Accès public : pages de 48 (la première est la page 0), filtres appliqués ici
-    const out = [];
-    for (let page = 0; page < 3; page++) {
-      const d = await publicAssets(k.type, gameId, page);
-      const batch = (d && d.assets) || [];
-      for (const a of batch) if (clean(a) && k.keep(a)) out.push(shape(a));
-      if (batch.length < ((d && d.limit) || 48) || out.length >= 36) break;
+    // Accès public : pages de 48 (la première est la page 0), filtres appliqués ici. Les trois pages
+    // sont demandées en même temps (l'une après l'autre, il fallait attendre trois allers-retours) ;
+    // une page en échec n'empêche pas d'afficher les autres.
+    const pages = await Promise.all([0, 1, 2].map(page => publicAssets(k.type, gameId, page).catch(e => (page ? null : Promise.reject(e)))));
+    const out = [], seen = new Set();
+    for (const d of pages) {
+      for (const a of (d && d.assets) || []) if (!seen.has(a.id) && clean(a) && k.keep(a)) { seen.add(a.id); out.push(shape(a)); }
+      if (!d || ((d.assets || []).length < (d.limit || 48))) break;
     }
     return out;
   });

@@ -6,6 +6,21 @@ import { openGame, setBackground, heroUrl } from './game.js';
 
 const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.glyph = k; return s; };
 const clean = n => n.replace(/[™®]/g, '');
+/** Initiale d'un jeu pour le tri par nom : lettre sans accent, « # » pour un chiffre ou un symbole. */
+const initial = g => {
+  const c = clean(g.name).trim().normalize('NFD').replace(/[̀-ͯ]/g, '').charAt(0).toUpperCase();
+  return /[A-Z]/.test(c) ? c : '#';
+};
+
+// Comme sur SteamOS : en parcourant la liste triée par nom, la lettre en cours s'affiche en grand
+let letterEl, letterTimer;
+function showLetter(ch) {
+  if (!letterEl) { letterEl = el('div', 'letter-hint'); document.body.append(letterEl); }
+  if (letterEl.textContent !== ch) letterEl.textContent = ch;
+  letterEl.classList.add('show');
+  clearTimeout(letterTimer);
+  letterTimer = setTimeout(() => letterEl.classList.remove('show'), 750);
+}
 
 const SORTS = [
   { id: 'name', label: 'Nom', fn: (a, b) => clean(a.name).localeCompare(clean(b.name), 'fr') },
@@ -105,9 +120,40 @@ definePage('library', {
   },
   onFocus(t) {
     const g = t.dataset.id && lib.byId(t.dataset.id);
-    if (g) setBackground(heroUrl(g));
+    if (!g) return;
+    setBackground(heroUrl(g));
+    // Lettre en cours, seulement quand on change de rangée (pas en allant à gauche ou à droite)
+    if (settings.sort === 'name' && t.closest('.grid')) {
+      const top = t.offsetTop;
+      if (this.lastTop !== undefined && top !== this.lastTop) showLetter(initial(g));
+      this.lastTop = top;
+    }
+  },
+  /** Gâchettes (tri par nom) : début de la lettre suivante, ou de la lettre en cours puis de la précédente. */
+  jumpLetter(dir) {
+    if (settings.sort !== 'name') return false;
+    const cards = [...this.el.querySelectorAll('.grid [data-id]')];
+    if (!cards.length) return true;
+    const letters = cards.map(c => { const g = lib.byId(c.dataset.id); return g ? initial(g) : '#'; });
+    let i = Math.max(0, cards.findIndex(c => c.classList.contains('focused')));
+    const start = j => { while (j > 0 && letters[j - 1] === letters[j]) j--; return j; };
+    if (dir > 0) {
+      const here = letters[i];
+      while (i < cards.length && letters[i] === here) i++;
+      if (i >= cards.length) return true;
+    } else {
+      const s = start(i);
+      if (s === i && i === 0) return true;
+      i = s === i ? start(i - 1) : s;
+    }
+    sfx('move');
+    focusIn(this.el, cards[i].dataset.key);
+    this.lastTop = cards[i].offsetTop;
+    showLetter(letters[i]);
+    return true;
   },
   button(k) {
+    if (k === 'lt' || k === 'rt') return this.jumpLetter(k === 'rt' ? 1 : -1);
     if (k !== 'lb' && k !== 'rb') return false;
     const list = tabs();
     const i = list.findIndex(t => t.id === this.tab);
@@ -117,5 +163,5 @@ definePage('library', {
     this.setTab(next.id, !!onTab);
     return true;
   },
-  hints: () => [[['lb', 'rb'], '<span class="label-long">Onglets</span>'], ['y', 'Rechercher'], ['a', 'Ouvrir'], ['b', 'Retour']],
+  hints: () => [[['lb', 'rb'], '<span class="label-long">Onglets</span>'], ...(settings.sort === 'name' ? [[['lt', 'rt'], '<span class="label-long">Lettres</span>']] : []), ['y', 'Rechercher'], ['a', 'Ouvrir'], ['b', 'Retour']],
 });

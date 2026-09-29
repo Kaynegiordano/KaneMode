@@ -83,24 +83,77 @@ export function applyTheme() {
 }
 
 // ---------- Sons d'interface ----------
-let ac;
+// Façon Switch 2 : petits « tocs » ronds et boisés. Chaque note a le timbre d'une lame de marimba
+// (fondamentale + partiel à 4 fois la fréquence qui s'éteint vite), une attaque de 2 ms avec un
+// léger glissé vers le bas, un petit clic et un écho court et étouffé qui arrondit le tout.
+// Les sons sont calculés une fois (OfflineAudioContext) puis rejoués : bien plus léger que
+// de créer des oscillateurs à chaque déplacement.
+const SOUNDS = {
+  //       notes : [fréquence, départ (s), volume, durée]          volume général
+  move: { notes: [[1760, 0, 1, 0.045]], vol: 0.045 },
+  key: { notes: [[2349, 0, 1, 0.03]], vol: 0.035 },
+  select: { notes: [[1319, 0, 0.9, 0.08], [1976, 0.04, 1, 0.13]], vol: 0.07 },
+  back: { notes: [[1319, 0, 0.9, 0.07], [988, 0.04, 1, 0.11]], vol: 0.065 },
+  open: { notes: [[1047, 0, 0.7, 0.09], [1568, 0.035, 0.8, 0.1], [2093, 0.07, 0.9, 0.16]], vol: 0.055 },
+  error: { notes: [[415, 0, 1, 0.1], [349, 0.1, 1, 0.14]], vol: 0.09, dull: true },
+};
+const SR = 44100;
+let ac, sounds = null, rendering = null;
+
+function renderSounds() {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OAC) return Promise.resolve({});
+  return Promise.all(Object.entries(SOUNDS).map(async ([name, s]) => {
+    const end = Math.max(...s.notes.map(([, t0, , dec]) => t0 + dec)) + 0.12;
+    const o = new OAC(1, Math.ceil(end * SR), SR);
+    const out = o.createGain();
+    out.gain.value = s.vol;
+    out.connect(o.destination);
+    // Écho court, étouffé, qui s'éteint vite
+    const delay = o.createDelay(0.1), fb = o.createGain(), lp = o.createBiquadFilter(), wet = o.createGain();
+    delay.delayTime.value = 0.03; fb.gain.value = 0.25; lp.type = 'lowpass'; lp.frequency.value = 2400; wet.gain.value = 0.3;
+    out.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(wet); wet.connect(o.destination);
+    // Bruit pour le clic d'attaque
+    const noise = o.createBuffer(1, Math.ceil(0.006 * SR), SR);
+    const nd = noise.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+    for (const [f, t0, amp, dec] of s.notes) {
+      // Partiels : marimba (1 et 4) ; son d'erreur plus mat (1 et 3)
+      for (const [mult, pa, pd] of s.dull ? [[1, 1, 1], [3, 0.3, 0.5]] : [[1, 1, 1], [4, 0.22, 0.3]]) {
+        const osc = o.createOscillator(), g = o.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f * mult * 1.05, t0);
+        osc.frequency.exponentialRampToValueAtTime(f * mult, t0 + 0.012);
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(amp * pa, t0 + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dec * pd);
+        osc.connect(g).connect(out);
+        osc.start(t0); osc.stop(t0 + dec * pd + 0.01);
+      }
+      const click = o.createBufferSource(), bp = o.createBiquadFilter(), cg = o.createGain();
+      click.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = s.dull ? 1200 : 3800; bp.Q.value = 1.2; cg.gain.value = amp * 0.35;
+      click.connect(bp).connect(cg).connect(out);
+      click.start(t0);
+    }
+    return [name, await o.startRendering()];
+  })).then(Object.fromEntries);
+}
+function prepareSounds() {
+  if (!rendering) rendering = renderSounds().then(b => { sounds = b; }).catch(() => { sounds = {}; });
+  return rendering;
+}
+setTimeout(prepareSounds, 0);
+
 export function sfx(type) {
   if (!settings.sounds) return;
-  try { ac = ac || new AudioContext(); if (ac.state === 'suspended') ac.resume(); } catch { return; }
-  const cfg = {
-    move: [900, 900, 0.035, 0.025], select: [660, 1320, 0.09, 0.05], back: [520, 300, 0.09, 0.045],
-    open: [440, 880, 0.12, 0.04], key: [1200, 1200, 0.025, 0.02], error: [300, 200, 0.18, 0.05],
-  }[type];
-  if (!cfg) return;
-  const [f0, f1, dur, vol] = cfg;
-  const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
-  o.type = type === 'error' ? 'triangle' : 'sine';
-  o.frequency.setValueAtTime(f0, t);
-  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.9);
-  g.gain.setValueAtTime(vol, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(ac.destination);
-  o.start(t); o.stop(t + dur + 0.02);
+  try { ac = ac || new AudioContext({ latencyHint: 'interactive' }); if (ac.state === 'suspended') ac.resume(); } catch { return; }
+  if (!sounds) { prepareSounds(); return; }
+  const buf = sounds[type];
+  if (!buf) return;
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.connect(ac.destination);
+  src.start();
 }
 
 // ---------- Toasts & notifications ----------

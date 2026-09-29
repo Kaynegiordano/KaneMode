@@ -564,7 +564,10 @@ const BUILDERS = {
 
   async device(s) {
     h2(s, 'i-battery', 'Console portable');
-    const d = await device(true);
+    // Description en cache (immédiate) ; l'analyse complète (WMI, plusieurs secondes sur une
+    // console) est relancée en arrière-plan pour la prochaine visite
+    const d = await device();
+    if (!this.deviceRefreshed) { this.deviceRefreshed = true; setTimeout(() => device(true), 1500); }
     if (!d || !d.ok) { s.append(el('div', 'notice', 'Impossible de décrire cet appareil.')); return; }
     const hh = d.handheld;
     const bat = d.battery ? ` · batterie ${d.battery.percent} %${d.battery.charging ? ' (en charge)' : ''}` : '';
@@ -585,7 +588,7 @@ const BUILDERS = {
         settings.uiScale = 125; settings.badges = false; saveSettings(); toast('Interface adaptée à la console');
       }, 'hh-scale');
       if (hh.id.startsWith('rog-')) buttonsBlock(s);
-      if (hh.maker === 'ASUS') await oemBlock(s, hh);
+      if (hh.maker === 'ASUS') oemBlock(s, hh); // se remplit tout seul, sans retenir l'affichage
     }
 
     h2(s, 'i-download2', 'Pilotes');
@@ -598,7 +601,7 @@ const BUILDERS = {
       else infoRow(s, esc(g.name), desc);
     }
     if (hh && d.gpus.some(g => g.vendor === '1002')) s.append(el('div', 'notice', `Sur une ${esc(hh.name)}, préférez les pilotes graphiques proposés par ${esc(hh.maker)} (${hh.maker === 'ASUS' ? 'Mises à jour officielles ASUS, plus haut' : esc(hh.tool ? hh.tool.name : 'site officiel')}) : ils sont réglés pour la console (consommation, écran, boutons).`));
-    await driversBlock(s);
+    driversBlock(s);
   },
 
   async storage(s) {
@@ -645,7 +648,7 @@ const BUILDERS = {
         + cell('Système', x.os) + cell('Allumé depuis', fmt.duration(x.uptime)) + cell('Hôte', `Node ${x.node}`) + cell('Données', x.dataDir);
     }
     s.append(grid);
-    await updatesBlock(s);
+    updatesBlock(s);
     h2(s, 'i-cpu', 'Interface');
     actionRow(s, 'i-restart', 'Redémarrer l’interface', 'Recharge KaneMode sans quitter', () => location.reload(), 'reload');
     actionRow(s, 'i-exit', 'Quitter vers le bureau Windows', 'Ferme KaneMode', exitToDesktop, 'exit');

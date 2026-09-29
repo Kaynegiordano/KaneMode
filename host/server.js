@@ -194,7 +194,21 @@ async function pump() {
 const mergeArt = (base = {}, over = {}) => { const a = { ...base }; for (const k of ART_KINDS) if (str(over[k])) a[k] = over[k]; return a; };
 const isUri = t => /^[a-z][\w+.-]*:/i.test(t) && !/^[a-z]:\\/i.test(t);
 
+// La bibliothèque assemblée est gardée en mémoire : chaque image (/art/…) en a besoin pour trouver
+// son jeu, et la reconstruire (fichiers, visuels Steam) coûtait ~100 ms par image. Elle est
+// refaite dès que quelque chose change (`version`), et au plus tard après quelques secondes (visuels
+// ajoutés dans Steam, raccourcis non-Steam).
+const entriesCache = new Map();
 function allEntries(withDemo) {
+  const key = withDemo ? 'demo' : 'real';
+  const hit = entriesCache.get(key);
+  if (hit && hit.version === version && Date.now() - hit.at < 5000) return hit.value;
+  const value = buildEntries(withDemo);
+  value.byId = new Map(value.games.map(g => [g.id, g]));
+  entriesCache.set(key, { version, at: Date.now(), value });
+  return value;
+}
+function buildEntries(withDemo) {
   const lib = readJson(FILES.library, { games: [], launchers: [] });
   const ud = str(lib.steamUserdata);
   const steamRoot = ud ? path.dirname(ud) : null;
@@ -235,7 +249,7 @@ function allEntries(withDemo) {
 function findEntry(id) {
   const all = allEntries(true);
   if (id.startsWith('launcher:')) return all.launchers.find(l => l.id === id.slice(9));
-  return all.games.find(g => g.id === id);
+  return all.byId.get(id);
 }
 
 // Pas de recherche SteamGridDB pour le bureau à distance de KanePlay (aucun jeu de ce nom)
@@ -598,7 +612,14 @@ function sendFile(res, file, req) {
       res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1 });
       return fs.createReadStream(file, { start, end }).pipe(res);
     }
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes' });
+    // Empreinte (taille + date) : le navigateur garde le fichier et demande seulement s'il a changé
+    // (réponse 304 sans contenu). Sans elle, chaque jaquette était retéléchargée à chaque affichage.
+    const etag = `W/"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    if (req && req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+      return res.end();
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': 'no-cache', ETag: etag, 'Accept-Ranges': 'bytes' });
     fs.createReadStream(file).pipe(res);
   });
 }
@@ -830,11 +851,13 @@ const routes = {
     };
     writeJson(FILES.custom, [...custom.filter(c => c.id !== id), entry]);
     delete meta[id];
+    version++;
     json(res, 200, publicEntry({ ...entry, installed: true }, state(), config()));
   },
   'DELETE /api/custom': (req, res, q) => {
     const id = q.get('id');
     writeJson(FILES.custom, readJson(FILES.custom, []).filter(c => c.id !== id));
+    version++;
     json(res, 200, { ok: true });
   },
   'POST /api/override': async (req, res) => {
