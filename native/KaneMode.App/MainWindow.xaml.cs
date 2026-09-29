@@ -172,6 +172,8 @@ public partial class MainWindow : Window
         if (!_ready || me == IntPtr.Zero) return XInputPads.Focus.Hidden;
         IntPtr f = Native.GetForegroundWindow();
         if (f == me) return XInputPads.Focus.Ours;
+        // Autre fenêtre de KaneMode (curseur du mode souris) : c'est toujours nous
+        if (f != IntPtr.Zero && Native.WindowProcessId(f) == (uint)Environment.ProcessId) return XInputPads.Focus.Ours;
         // Jeu suivi ou KanePlay qu'on met devant : c'est à eux, KaneMode n'y touche pas
         if (_game != null || _watch != null) return XInputPads.Focus.Hidden;
         if (!Native.IsMinimized(me) && Native.IsAppWindow(me))

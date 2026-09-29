@@ -68,7 +68,14 @@ public sealed class CursorOverlay
     {
         if (_window != null)
         {
-            if (!_shown) { _window.Show(); _shown = true; }
+            if (!_shown)
+            {
+                IntPtr front = Native.GetForegroundWindow();
+                _window.Show();
+                MakeInert();
+                if (Native.GetForegroundWindow() == _hwnd && front != IntPtr.Zero) Native.Activate(front);
+                _shown = true;
+            }
             return;
         }
         // Flèche blanche bordée de noir, pointe en haut à gauche (le point cliqué)
@@ -91,12 +98,29 @@ public sealed class CursorOverlay
         _window.SourceInitialized += (_, _) =>
         {
             _hwnd = new WindowInteropHelper(_window).Handle;
-            // Transparente aux clics, sans activation, hors de Alt+Tab
-            const long TRANSPARENT = 0x20, TOOLWINDOW = 0x80, LAYERED = 0x80000, NOACTIVATE = 0x8000000;
-            long ex = (long)GetWindowLongPtr(_hwnd, -20);
-            SetWindowLongPtr(_hwnd, -20, new IntPtr(ex | TRANSPARENT | TOOLWINDOW | LAYERED | NOACTIVATE));
+            MakeInert();
+            // Jamais activée, jamais touchée par la souris (les clics passent à la fenêtre dessous)
+            HwndSource.FromHwnd(_hwnd)?.AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
+            {
+                if (msg == 0x0021 /* WM_MOUSEACTIVATE */) { handled = true; return new IntPtr(3 /* MA_NOACTIVATE */); }
+                if (msg == 0x0084 /* WM_NCHITTEST */) { handled = true; return new IntPtr(-1 /* HTTRANSPARENT */); }
+                return IntPtr.Zero;
+            });
         };
+        // En 2.2.0, la fenêtre du curseur prenait le premier plan en apparaissant : on le rend
+        IntPtr before = Native.GetForegroundWindow();
         _window.Show();
+        MakeInert();
+        if (Native.GetForegroundWindow() == _hwnd && before != IntPtr.Zero) Native.Activate(before);
         _shown = true;
+    }
+
+    /// <summary>Transparente aux clics, sans activation, hors de Alt+Tab (WPF peut retoucher ces styles).</summary>
+    private void MakeInert()
+    {
+        const long TRANSPARENT = 0x20, TOOLWINDOW = 0x80, LAYERED = 0x80000, NOACTIVATE = 0x8000000;
+        long ex = (long)GetWindowLongPtr(_hwnd, -20);
+        long want = ex | TRANSPARENT | TOOLWINDOW | LAYERED | NOACTIVATE;
+        if (want != ex) SetWindowLongPtr(_hwnd, -20, new IntPtr(want));
     }
 }

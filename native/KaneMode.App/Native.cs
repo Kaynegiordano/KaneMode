@@ -265,11 +265,18 @@ public static class Native
             if (attached) AttachThreadInput(ours, theirs, false);
         }
         if (GetForegroundWindow() == hwnd) return true;
-        // Dernier recours : un appui simulé sur Alt compte comme une action de l'utilisateur
+        // Un appui simulé sur Alt compte comme une action de l'utilisateur
         SendKeys(0x12 /* VK_MENU */);
         SetForegroundWindow(hwnd);
+        if (GetForegroundWindow() == hwnd) return true;
+        // Dernier recours (premier plan tenu par une fenêtre d'application UWP, ex. celle du widget
+        // Game Bar) : la bascule qu'utilise Alt+Tab
+        SwitchToThisWindow(hwnd, true);
         return GetForegroundWindow() == hwnd;
     }
+
+    [DllImport("user32.dll")]
+    private static extern void SwitchToThisWindow(IntPtr hwnd, bool altTab);
 
     // ---------- Clavier simulé (raccourcis de Windows : Game Bar, mode Xbox…) ----------
     [StructLayout(LayoutKind.Sequential)]
