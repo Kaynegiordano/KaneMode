@@ -521,6 +521,7 @@ function readPads() {
   }
   swallow = false;
   for (const id in heldBy) if (!seen.has(id)) delete heldBy[id];
+  if (mouseMode.on) relayMouse(web, now);
   // Start relâché : appui court = son action (accès rapide ou menu) ; appui long = mode souris
   for (const id in startAt) {
     if (seen.has(id)) {
@@ -536,6 +537,33 @@ function readPads() {
     press(padAction('start'));
   }
 }
+
+// Mode souris : la manette vue par WebView2 est relayée à l'app, qui déplace la souris. En mode Xbox,
+// l'app ne recevait rien par XInput : le curseur apparaissait mais ni le stick ni les boutons ne
+// répondaient. Envoyé à chaque changement, et 10 fois par seconde tant qu'un stick est poussé.
+let relayed = '', relayedAt = 0;
+function relayMouse(web, now) {
+  const p = web.find(g => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.2)) || web[0];
+  if (!p) return;
+  let b = 0;
+  p.buttons.forEach((x, i) => { if (x.pressed && XBITS[i] > 0) b |= XBITS[i]; });
+  const r = v => Math.round((v || 0) * 100) / 100;
+  const msg = { b, lx: r(p.axes[0]), ly: r(p.axes[1]), rx: r(p.axes[2]), ry: r(p.axes[3]) };
+  const key = JSON.stringify(msg), moving = [msg.lx, msg.ly, msg.rx, msg.ry].some(a => Math.abs(a) > 0.2);
+  if (key === relayed && !(moving || b) ) return;
+  if (key === relayed && now - relayedAt < 100) return;
+  relayed = key; relayedAt = now;
+  native.send('mouse-pad', msg);
+}
+
+// Manettes déconnectées puis reconnectées par l'app (retour de KanePlay) : état remis à zéro
+native.on(m => {
+  if (m.type !== 'pads-reset') return;
+  xpads = [];
+  for (const o of [heldBy, lastPress, lastRepeat, armed, startAt]) for (const k in o) delete o[k];
+  swallow = true;
+  logged.clear();
+});
 
 // Mode souris (Start maintenu, voir native/KaneMode.App/XInputPads.cs) : l'app le signale
 export const mouseMode = { on: false };

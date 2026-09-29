@@ -144,6 +144,8 @@ Object.assign(qamShortcuts, {
     ['i-power', 'Alimentation', () => actions['power-open'](), 'sc-power'],
     ['i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay'],
     ['i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop'],
+    // Manette qui ne répond plus (retour d'une autre application) : déconnexion puis reconnexion
+    ['i-refresh', 'Reconnecter les manettes', () => { native.send('pads-reconnect'); toast('Manettes reconnectées'); }, 'sc-pads'],
   ],
 });
 hooks.qam = () => openLayer({

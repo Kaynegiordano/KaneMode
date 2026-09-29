@@ -53,12 +53,17 @@ public sealed class XInputPads : IDisposable
 
     private readonly Func<Focus> _focus;
     private readonly CancellationTokenSource _stop = new();
-    private readonly bool[] _connected = new bool[4];
+    // Emplacements : 0-3 XInput, 4-7 manettes HID (voir HidGamepads), 8 manette vue par l'interface
+    private const int SLOTS = 9, HID0 = 4, UI = 8;
+    private readonly bool[] _connected = new bool[SLOTS];
     private readonly long[] _nextScan = new long[4];
     private readonly bool[] _announced = new bool[4];
-    private readonly State[] _state = new State[4];
-    private readonly long[] _startSince = new long[4];
-    private readonly bool[] _startUsed = new bool[4];
+    private readonly State[] _state = new State[SLOTS];
+    private readonly long[] _startSince = new long[SLOTS];
+    private readonly bool[] _startUsed = new bool[SLOTS];
+    private readonly HidGamepads _hid = new();
+    private State _ui;
+    private long _uiAt = -1000;
 
     private volatile bool _mouse;
     private ushort _mouseButtons;       // boutons de souris tenus (bits de la manette)
@@ -85,7 +90,7 @@ public sealed class XInputPads : IDisposable
     public void SetMouseMode(bool on, string why)
     {
         _lastToggle = Environment.TickCount64;
-        for (int i = 0; i < 4; i++) { _startUsed[i] = true; _startSince[i] = 1; }
+        for (int i = 0; i < SLOTS; i++) { _startUsed[i] = true; _startSince[i] = 1; }
         if (on == _mouse) return;
         _restX = _restY = 0;
         _mouse = on;
@@ -96,6 +101,25 @@ public sealed class XInputPads : IDisposable
     {
         var thread = new Thread(Loop) { IsBackground = true, Name = "Manettes XInput", Priority = ThreadPriority.AboveNormal };
         thread.Start();
+        _hid.Start();
+    }
+
+    /// <summary>
+    /// Déconnexion puis reconnexion de toutes les manettes, côté KaneMode (retour de KanePlay, ou
+    /// « Reconnecter les manettes ») : manettes HID rouvertes, XInput réinterrogé.
+    /// </summary>
+    public void Reconnect()
+    {
+        for (int i = 0; i < 4; i++) { _connected[i] = false; _announced[i] = false; _nextScan[i] = 0; }
+        _hid.Reconnect();
+    }
+
+    /// <summary>Manette vue par l'interface (API Gamepad de WebView2), relayée pendant le mode souris.</summary>
+    public void SetUiPad(ushort buttons, double lx, double ly, double rx, double ry)
+    {
+        static short A(double v) => (short)Math.Round(Math.Clamp(v, -1, 1) * 32767);
+        _ui = new State { Pad = new Gamepad { Buttons = buttons, ThumbLX = A(lx), ThumbLY = A(-ly), ThumbRX = A(rx), ThumbRY = A(-ry) } };
+        _uiAt = Environment.TickCount64;
     }
 
     private void Loop()
@@ -108,16 +132,17 @@ public sealed class XInputPads : IDisposable
             long t = Environment.TickCount64;
             double dt = Math.Min(50, t - lastTick);
             lastTick = t;
-            Focus focus = dllMissing ? Focus.Hidden : _focus();
+            Focus focus = _focus();
             bool ours = focus == Focus.Ours || focus == Focus.Orphan;
             string now = "[]";
-            if (!dllMissing && (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop))
+            if (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop)
             {
                 try
                 {
-                    ReadAll(t);
+                    if (!dllMissing) ReadAll(t);
+                    ReadOthers(t);
                     ushort all = 0;
-                    for (int i = 0; i < 4; i++) if (_connected[i]) all |= _state[i].Pad.Buttons;
+                    for (int i = 0; i < SLOTS; i++) if (_connected[i]) all |= _state[i].Pad.Buttons;
                     bool pressed = (all & ~_prevAll) != 0;
                     _prevAll = all;
                     // Start maintenu : seulement quand KaneMode a la main (ou pour quitter le mode souris)
@@ -156,10 +181,26 @@ public sealed class XInputPads : IDisposable
         }
     }
 
+    /// <summary>Manettes HID et manette de l'interface, au format XInput.</summary>
+    private void ReadOthers(long t)
+    {
+        for (int k = 0; k < HidGamepads.Max; k++)
+        {
+            bool ok = _hid.Connected[k];
+            _connected[HID0 + k] = ok;
+            if (!ok) continue;
+            var h = _hid.States[k];
+            _state[HID0 + k] = new State { Pad = new Gamepad { Buttons = h.Buttons, ThumbLX = h.LX, ThumbLY = h.LY, ThumbRX = h.RX, ThumbRY = h.RY } };
+        }
+        // Relais de l'interface : seulement pendant le mode souris, et s'il est récent
+        _connected[UI] = _mouse && t - _uiAt < 400;
+        _state[UI] = _ui;
+    }
+
     private string Json()
     {
         var sb = new StringBuilder("[");
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < UI; i++)
         {
             if (!_connected[i]) continue;
             var p = _state[i].Pad;
@@ -175,7 +216,7 @@ public sealed class XInputPads : IDisposable
     /// <summary>Start maintenu 1 s sur une manette : bascule le mode souris (une fois par appui).</summary>
     private void CheckHold(long t)
     {
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < SLOTS; i++)
         {
             bool down = _connected[i] && (_state[i].Pad.Buttons & START) != 0;
             if (!down) { _startSince[i] = 0; _startUsed[i] = false; continue; }
@@ -191,7 +232,7 @@ public sealed class XInputPads : IDisposable
         // Toutes les manettes branchées pilotent la souris ; le stick le plus poussé déplace le curseur
         ushort buttons = 0;
         int sx = 0, sy = 0, best = 0;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < SLOTS; i++)
         {
             if (!_connected[i]) continue;
             var p = _state[i].Pad;

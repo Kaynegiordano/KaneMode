@@ -85,8 +85,7 @@ public partial class MainWindow : Window
             Task host = _host.StartAsync();
             Task web = Web.CoreWebView2 == null ? InitWebViewAsync() : Task.CompletedTask;
             await Task.WhenAll(host, web);
-            // Relance après KanePlay : ni logo ni son de démarrage
-            Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1{(App.Restarted ? "&resume=1" : "")}");
+            Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
             _buttons.Start();
             _pads.Start();
             WidgetBridge.Start(_host.Url);
@@ -324,26 +323,29 @@ public partial class MainWindow : Window
         _kanePlayTimer.Start();
     }
 
+    /// <summary>
+    /// KanePlay fermé. La recharge de l'interface (2.1.0) puis la relance complète de KaneMode (2.2.0)
+    /// n'ont pas suffi, la relance a même fait pire. Désormais : KaneMode reprend le premier plan, puis
+    /// déconnecte et reconnecte ses manettes (HID rouvertes, XInput réinterrogé, état de l'interface
+    /// remis à zéro). Les manettes HID ne dépendent pas de WebView2 ni du premier plan.
+    /// </summary>
     private async void ReloadAfterKanePlay()
     {
-        // 2.2.0 : recharger l'interface ne suffisait pas sur l'Ally ; KaneMode se relance entièrement
-        // (nouveau processus, nouvel hôte, nouveau WebView2), sans logo de démarrage
-        Log.Write("KanePlay fermé : relance complète de KaneMode");
-        if (App.Restart()) { Close(); return; }
-        Log.Write("KanePlay fermé : KaneMode reprend la main et recharge son interface");
+        Log.Write("KanePlay fermé : KaneMode reprend la main et reconnecte les manettes");
         _returnTo = IntPtr.Zero;
         StopForegroundWatch();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
         Show();
         Native.ForceForeground(Hwnd);
-        // WebView2 masqué puis réaffiché : Chromium refait son état de visibilité (fenêtre qui était
-        // recouverte par KanePlay), puis la page repart de zéro
-        Web.Visibility = Visibility.Hidden;
-        await Task.Delay(50);
-        Web.Visibility = Visibility.Visible;
-        try { Web.CoreWebView2?.Navigate($"{_host.Url}/?native=1&resume=1"); }
-        catch (InvalidOperationException) { }
         Web.Focus();
+        await Task.Delay(400); // KanePlay a fini de lâcher la manette
+        ReconnectPads();
+    }
+
+    private void ReconnectPads()
+    {
+        _pads.Reconnect();
+        Post(new { type = "pads-reset" });
     }
 
     private void StopForegroundWatch()
@@ -548,6 +550,19 @@ public partial class MainWindow : Window
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });
                     if (_pads.MouseMode) Post(new { type = "mouse-mode", on = true });
                     break;
+                case "pads-reconnect":
+                    // Accès rapide : « Reconnecter les manettes »
+                    Log.Write("Manettes : reconnexion demandée");
+                    ReconnectPads();
+                    break;
+                case "mouse-pad":
+                {
+                    // Manette vue par l'interface pendant le mode souris (mode Xbox : XInput muet)
+                    var r = root;
+                    double D(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+                    _pads.SetUiPad((ushort)D("b"), D("lx"), D("ly"), D("rx"), D("ry"));
+                    break;
+                }
                 case "mouse-mode":
                     // Interface (Start maintenu vu par WebView2, quand l'app ne l'a pas vu elle-même) ou
                     // widget Game Bar (interrupteur « Mode souris »)
