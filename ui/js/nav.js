@@ -316,6 +316,8 @@ export function press(k) {
   const L = topLayer(), P = currentPage();
   const owner = L || P;
   if (owner && owner.button && owner.button(k) === true) return;
+  // Widget Game Bar : pas de pages, ses boutons propres (LB / RB : catégories) passent par hooks.button
+  if (!owner && hooks.button && hooks.button(k) === true) return;
   if (DIRS.includes(k)) return move(k);
   switch (k) {
     case 'a': return activate(focused);
@@ -477,14 +479,15 @@ function tickPads() {
 }
 // Widgets Game Bar, par-dessus un jeu : pas de lecture à chaque image (120 fois par seconde sur la
 // ROG Ally), qui prenait du temps au jeu. Le moniteur n'a pas besoin de manette ; le widget la lit
-// 20 fois par seconde, seulement quand il a le focus.
+// 60 fois par seconde, seulement quand il a le focus (à 20, un appui bref pouvait être manqué et la
+// navigation paraissait molle).
 const GAMEBAR_PAGE = /\/(widget|monitor)\.html$/.exec(location.pathname);
 if (!GAMEBAR_PAGE) {
   rafOn = true;
   requestAnimationFrame(poll);
   setTimeout(tickPads, 50);
 } else if (GAMEBAR_PAGE[1] === 'widget') {
-  setInterval(() => { if (!document.hidden && document.hasFocus()) readPads(); }, 50);
+  setInterval(() => { if (!document.hidden && document.hasFocus()) readPads(); }, 16);
 }
 
 function readPads() {

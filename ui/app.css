@@ -573,6 +573,9 @@ body.widget *, body.widget *::before, body.widget *::after { animation: none !im
 .hud-chip { flex: none; padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); border: 2px solid transparent; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .hud-chip.active { background: #fff; color: #111; }
 .hud-chip.focused { border-color: var(--accent); }
+/* Repères des gâchettes hautes : seulement à la manette */
+.hud-chip-key { flex: none; align-self: center; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); color: var(--muted); font-size: 11px; font-weight: 700; display: none; }
+body.pad-mode .hud-chip-key { display: inline-block; }
 
 /* Tuiles : même hauteur, titre sur une ligne, valeur en grand, barre pour les pourcentages */
 .hud-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

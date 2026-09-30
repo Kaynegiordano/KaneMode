@@ -6,7 +6,7 @@
 // graphique des 60 dernières secondes marque chaque réglage, pour en voir l'effet. La page tourne
 // dans le widget UWP, qui relaie ses requêtes à l'hôte et ses messages à l'app KaneMode (core.js :
 // WIDGET, toApp).
-import { $, el, esc, api, toast, settings, saveSettings, applyTheme, WIDGET, toApp, sfx } from './core.js';
+import { $, el, esc, api, toast, settings, saveSettings, applyTheme, WIDGET, toApp, sfx, store } from './core.js';
 import { nav, focusIn, focused, openLayer, closeLayer, topLayer, hooks } from './nav.js';
 import { PERF_MODES, PROFILE_WATTS, VENDOR_LABELS, vendorFor } from './qam.js';
 import { MONITOR_ITEMS, monitorPrefs, setMonitorPref, noteChange } from './hud.js';
@@ -48,17 +48,24 @@ const PATHS = {
 };
 const svg = id => `<svg class="hud-i" viewBox="0 0 24 24"><path d="${PATHS[id]}"/></svg>`;
 
-// Icônes de marque (logo) : le même jeu de symboles que l'interface de KaneMode, repris d'index.html
-async function loadSprite() {
-  try {
-    const doc = new DOMParser().parseFromString(await (await fetch('index.html')).text(), 'text/html');
-    const s = doc.querySelector('body > svg');
-    if (s) document.body.prepend(document.importNode(s, true));
-  } catch { /* sans logo */ }
-}
-
 // ---------------------------------------------------------------- état
 let sys = null, live = null, info = null, game = null, amd = null, gpu = null, mouse = null;
+
+// Derniers réglages connus, gardés d'une ouverture à l'autre : le widget s'affiche tout de suite avec
+// eux, puis se met à jour dès que KaneMode répond. Avant, il restait sur « Lecture des réglages… »
+// plusieurs secondes au premier lancement (service des réglages de KaneMode encore froid).
+const SNAPSHOT_MAX_AGE = 24 * 3600e3;
+function restoreSnapshot() {
+  const s = store.get('hudSnapshot', null);
+  if (!s || Date.now() - s.t > SNAPSHOT_MAX_AGE) return false;
+  ({ sys = null, amd = null, info = null } = s);
+  return !!sys;
+}
+let snapTimer = 0;
+function saveSnapshot() {
+  clearTimeout(snapTimer);
+  snapTimer = setTimeout(() => store.set('hudSnapshot', { t: Date.now(), sys, amd, info }), 500);
+}
 const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['pad', 'Manette'], ['monitor', 'Moniteur']];
 const filter = () => (CATS.some(c => c[0] === settings.hudFilter) ? settings.hudFilter : 'all');
 const onBattery = () => live && live.discharging === true;
@@ -436,12 +443,14 @@ function render() {
   // Catégories (une seule ligne, défilante) et tuiles
   const all = tiles();
   const chips = el('div', 'hud-chips');
+  chips.append(el('span', 'hud-chip-key', 'LB')); // LB / RB changent de catégorie (hooks.button)
   for (const [id, label] of CATS) {
     if (id !== 'all' && sys && !all.some(o => o.cat === id)) continue;
     const c = el('div', 'hud-chip' + (filter() === id ? ' active' : ''), esc(label));
     nav(c, () => { settings.hudFilter = id; saveSettings(); render(); focusIn($('#hud-body'), 'cat:' + id, { scroll: false }); }, 'cat:' + id);
     chips.append(c);
   }
+  chips.append(el('span', 'hud-chip-key', 'RB'));
   parts.push(chips);
   const list = all.filter(o => (filter() === 'all' ? o.cat !== 'monitor' : o.cat === filter()));
   const grid = el('div', 'hud-grid');
@@ -619,12 +628,12 @@ async function loadSys() {
   let next = sys;
   try { next = await api.get('/api/sys'); status(''); }
   catch (e) { status(WIDGET ? 'KaneMode n’est pas ouvert : ouvrez-le pour régler le système.' : e.message); }
-  if (!same(next, sys)) { sys = next; render(); }
+  if (!same(next, sys)) { const first = !sys; sys = next; render(); saveSnapshot(); if (first) focusStart(); }
 }
 async function loadAmd(force) {
   let next = null;
-  try { next = await api.get('/api/amd' + (force ? '?refresh=1' : '')); } catch { next = null; }
-  if (!same(next, amd)) { amd = next; render(); }
+  try { next = await api.get('/api/amd' + (force ? '?refresh=1' : '')); } catch { next = amd; } // injoignable : on garde ce qu'on a
+  if (!same(next, amd)) { amd = next; render(); saveSnapshot(); }
 }
 async function loadLive() {
   // Processeur, batterie et GPU en une requête (l'hôte la partage avec le moniteur)
@@ -653,8 +662,37 @@ async function loadInfo() {
   try { next = await api.get('/api/widget'); } catch { next = null; }
   // Même couleur d'accent que KaneMode (pour ce widget seulement, sans la renvoyer)
   if (next && next.accent && next.accent !== settings.accent) { settings.accent = next.accent; applyTheme(); }
-  if (!same(next, info)) { info = next; render(); }
+  if (!same(next, info)) { info = next; render(); if (info) saveSnapshot(); }
 }
+
+// Premier focus : le profil d'énergie en cours (sinon la première tuile), tant que l'utilisateur
+// n'a encore rien fait dans le widget
+let touched = false;
+function focusStart() {
+  if (touched || topLayer()) return;
+  const body = $('#hud-body');
+  focusIn(body, sys && sys.mode ? 'mode:' + sys.mode : null, { scroll: false });
+}
+
+// LB / RB : catégorie précédente ou suivante, d'où que l'on soit (comme les onglets de la bibliothèque)
+function stepCategory(dir) {
+  const cats = [...$('#hud-body').querySelectorAll('.hud-chip')].map(c => c.dataset.key.slice(4));
+  if (!cats.length) return;
+  const i = Math.max(0, cats.indexOf(filter()));
+  const next = cats[(i + dir + cats.length) % cats.length];
+  settings.hudFilter = next; saveSettings();
+  sfx('move');
+  render();
+  // Focus sur la première tuile de la catégorie (ou sa pastille s'il n'y en a pas)
+  const body = $('#hud-body'), first = body.querySelector('.hud-grid [data-nav]');
+  focusIn(body, first ? first.dataset.key : 'cat:' + next);
+}
+hooks.button = k => {
+  touched = true;
+  if (topLayer()) return false;
+  if (k === 'lb' || k === 'rb') { stepCategory(k === 'rb' ? 1 : -1); return true; }
+  return false;
+};
 
 let timers = [];
 function start() {
@@ -675,10 +713,11 @@ hooks.back = () => {
   toApp('gamebar-close').catch(() => {});
 };
 
-(async () => {
+(() => {
   applyTheme();
-  await loadSprite();
+  // Derniers réglages connus tout de suite, puis relus (start)
+  const cached = restoreSnapshot();
   render();
-  focusIn($('#hud-body'));
+  if (cached) focusStart(); else focusIn($('#hud-body'));
   start();
 })();
