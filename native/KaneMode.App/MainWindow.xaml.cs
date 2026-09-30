@@ -295,7 +295,6 @@ public partial class MainWindow : Window
 
     private static bool IsShell(IntPtr f) =>
         f != IntPtr.Zero && string.Equals(Native.ProcessName(Native.WindowProcessId(f)), "explorer", StringComparison.OrdinalIgnoreCase);
-    }
 
     private DateTime _reclaimedAt;
     private void ReclaimForeground()
