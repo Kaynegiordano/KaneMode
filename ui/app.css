@@ -152,6 +152,24 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 .capsule { height: var(--capsule-h); aspect-ratio: 2 / 3; }
 .wide { height: calc(var(--capsule-h) * 0.48); aspect-ratio: 460 / 215; }
 .tile { height: calc(var(--capsule-h) * 0.48); aspect-ratio: 16 / 9; }
+/* Rangée « Bons plans et nouveautés » (js/deals.js) : visuel de la boutique, boutique, remise, titre et prix */
+.deal-card.wide { height: calc(var(--capsule-h) * 0.6); aspect-ratio: 16 / 9; }
+.deal-card .deal-store, .deal-card .deal-badge {
+  position: absolute; top: 8px; z-index: 2; padding: 2px 8px; border-radius: 6px;
+  font-size: 12px; font-weight: 700; color: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.deal-card .deal-store { left: 8px; background: var(--src); }
+.deal-card .deal-badge { right: 8px; background: #4c6b22; color: #d4ff4a; font-weight: 800; }
+.deal-card .deal-badge.free { background: #1f9d55; color: #fff; }
+.deal-card .deal-badge.new { background: var(--accent); color: #fff; }
+.deal-card .deal-badge.soon { background: rgba(0, 0, 0, 0.7); }
+.deal-card .deal-foot {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 26px 10px 8px;
+  display: flex; flex-direction: column; gap: 2px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.88));
+}
+.deal-foot b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deal-foot small { font-size: 12px; font-weight: 600; color: #d4ff4a; }
+.deal-foot s, .home-info s { opacity: 0.6; font-weight: 400; }
 
 /* Jaquette générée (jeux sans visuel) */
 .gen {

@@ -1,5 +1,5 @@
 // Paramètres, organisés comme SteamOS : catégories à gauche, réglages à droite.
-import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy, fmt, native } from '../core.js';
+import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy, fmt, native, mergeOrder } from '../core.js';
 import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog } from '../widgets.js';
 import { pickFile } from './add.js';
@@ -55,8 +55,7 @@ function orderList(s, items, orderKey, hiddenKey, prefix) {
   const box = el('div', 'order-list');
   s.append(box);
   const draw = focus => {
-    const order = (Array.isArray(settings[orderKey]) ? settings[orderKey] : []).filter(id => items.some(i => i.id === id));
-    for (const i of items) if (!order.includes(i.id)) order.push(i.id);
+    const order = mergeOrder(items.map(i => i.id), settings[orderKey]);
     const hidden = new Set(settings[hiddenKey] || []);
     if (prefix === 'home') {
       if (settings.homeApps === false) hidden.add('apps');
@@ -430,6 +429,18 @@ const BUILDERS = {
     orderList(s, HOME_ROWS, 'homeRows', 'homeHidden', 'home');
     toggle(s, 'sounds', 'Sons de l’interface', 'Petits sons de navigation et de validation');
     toggle(s, 'notifications', 'Notifications', 'Nouveaux jeux détectés, ajouts…');
+
+    h2(s, 'i-store', 'Bons plans et nouveautés');
+    s.append(el('div', 'notice', 'Rangée de l’accueil : promotions, nouveautés, sorties à venir et jeux gratuits, relus toutes les 4 heures au plus (jamais pendant un jeu). A sur une offre ouvre sa page dans l’application de la boutique si elle est installée, sinon dans le navigateur.'));
+    toggle(s, 'dealsSteam', 'Steam', 'Promotions, nouveautés et sorties à venir');
+    toggle(s, 'dealsEpic', 'Epic Games Store', 'Jeux gratuits de la semaine et à venir');
+    toggle(s, 'dealsGog', 'GOG', 'Promotions et nouveautés');
+    toggle(s, 'dealsOther', 'Jeux offerts ailleurs', 'IndieGala, itch.io, Prime Gaming… (GamerPower)');
+    toggle(s, 'dealsFree', 'Jeux gratuits', '');
+    toggle(s, 'dealsPromo', 'Promotions', '');
+    toggle(s, 'dealsNew', 'Nouveautés', '');
+    toggle(s, 'dealsSoon', 'Sorties à venir', '');
+    toggle(s, 'dealsAuto', 'Défilement automatique', 'Une carte toutes les 5 secondes quand la rangée n’est pas parcourue (jamais en effets allégés)');
   },
 
   async qam(s) {

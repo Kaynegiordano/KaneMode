@@ -21,6 +21,20 @@ export const on = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); 
 export const emit = (ev, data) => (listeners[ev] || []).forEach(fn => fn(data));
 
 // ---------- Stockage local (préférences par appareil) ----------
+/**
+ * Ordre choisi par l'utilisateur complété des éléments qu'il n'a jamais vus : chacun est placé avant
+ * celui qui le suit dans l'ordre par défaut (une nouvelle rangée ne tombe pas en dernier).
+ */
+export function mergeOrder(defaults, saved) {
+  const order = (Array.isArray(saved) ? saved : []).filter(id => defaults.includes(id));
+  defaults.forEach((id, i) => {
+    if (order.includes(id)) return;
+    const next = defaults.slice(i + 1).find(n => order.includes(n));
+    order.splice(next ? order.indexOf(next) : order.length, 0, id);
+  });
+  return order;
+}
+
 export const store = {
   get(k, d) { try { const v = localStorage.getItem('km.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem('km.' + k, JSON.stringify(v)); } catch { /* ignoré */ } },
@@ -32,6 +46,9 @@ export const settings = Object.assign({
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
   // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Console portable
   btnCC: 'taskview', btnAC: 'gamebar', btnACHold: 'home', blockAsusPrompt: true,
+  // Rangée « Bons plans et nouveautés » de l'accueil : sources, catégories, avance automatique
+  dealsSteam: true, dealsEpic: true, dealsGog: true, dealsOther: true,
+  dealsFree: true, dealsPromo: true, dealsNew: true, dealsSoon: true, dealsAuto: true,
 }, store.get('settings', {}));
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {

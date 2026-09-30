@@ -1,8 +1,9 @@
 // Accueil : jeux récents (et KanePlay), émulation, applications, boutiques, sortie vers le bureau.
-import { el, esc, icon, lib, fmt, sourceOf, settings } from '../core.js';
+import { el, esc, icon, lib, fmt, sourceOf, settings, mergeOrder } from '../core.js';
 import { definePage, nav, go, hooks } from '../nav.js';
 import { gameCard } from '../cards.js';
 import { openGame, openLauncher, setBackground, heroUrl, exitToDesktop } from './game.js';
+import { dealsRow, findDeal, dealLine } from '../deals.js';
 
 const byRecent = (a, b) => b.lastPlayed - a.lastPlayed || a.name.localeCompare(b.name, 'fr');
 
@@ -10,11 +11,12 @@ const byRecent = (a, b) => b.lastPlayed - a.lastPlayed || a.name.localeCompare(b
 export const HOME_ROWS = [
   { id: 'emulation', label: 'Émulation', desc: 'Vos ROMs, par dernière partie' },
   { id: 'apps', label: 'Applications', desc: 'Applis et raccourcis ajoutés' },
+  { id: 'deals', label: 'Bons plans et nouveautés', desc: 'Promos, nouveautés et jeux gratuits de Steam, Epic, GOG…' },
   { id: 'stores', label: 'Boutiques et plateformes', desc: 'Lanceurs détectés et tuile Bureau' },
 ];
 export function homeRows() {
-  const order = (Array.isArray(settings.homeRows) ? settings.homeRows : []).filter(id => HOME_ROWS.some(r => r.id === id));
-  for (const r of HOME_ROWS) if (!order.includes(r.id)) order.push(r.id);
+  // Une rangée nouvelle (ex. bons plans) prend sa place par défaut, pas la dernière
+  const order = mergeOrder(HOME_ROWS.map(r => r.id), settings.homeRows);
   const hidden = new Set(settings.homeHidden || []);
   if (settings.homeApps === false) hidden.add('apps');
   if (settings.homeStores === false) hidden.add('stores');
@@ -41,6 +43,7 @@ const ROWS = {
     arow.append(nav(add, () => go('add'), 'add'));
     root.append(arow);
   },
+  deals(root) { dealsRow(root); },
   stores(root, vis) {
     const installed = lib.launchers.filter(l => l.installed);
     root.append(el('h2', 'row-title', `Boutiques et plateformes <small>${installed.length} détectées sur ce PC</small>`));
@@ -95,7 +98,15 @@ definePage('home', {
 
     // Rangées suivantes, dans l'ordre et avec l'affichage choisis (Paramètres → Apparence)
     for (const id of homeRows()) ROWS[id](root, vis);
-  },  onFocus(t) {
+  },
+  onFocus(t) {
+    // Offre d'une boutique (rangée des bons plans) : son visuel et ses informations
+    const d = t.dataset.deal && findDeal(t.dataset.deal);
+    if (d) {
+      if (d.image) setBackground(d.image);
+      this.info.innerHTML = `<h1>${esc(d.title)}</h1><p>${dealLine(d)}</p>`;
+      return;
+    }
     const g = t.dataset.id && lib.byId(t.dataset.id);
     if (!g) return;
     setBackground(heroUrl(g));

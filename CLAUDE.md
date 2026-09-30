@@ -64,6 +64,14 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - Routes `GET /api/amd` (`available:false` + `reason` sans GPU AMD), `GET /api/amd/live`, `POST /api/amd {feature, value}` (renvoie l'état complet : une fonction peut en couper une autre).
   - **Limite d'images : jeux seulement** (1.9.0). Radeon Chill vaut pour toute application 3D : réglée à 60 i/s, elle bridait l'interface de KaneMode (120 Hz sur l'Ally, plainte de l'utilisateur). La limite choisie est dans `config.fpsLimit` ; `applyFpsScope` la met dans le pilote seulement quand KaneMode n'est pas au premier plan (`fpsScope.front`, `POST /api/amd/front`, envoyé par l'interface sur les messages natifs `resume` et `background` — `Deactivated` de la fenêtre). `GET/POST /api/amd` renvoient `fpsLimit` et `kanemodeFront`. Au premier passage, une limite déjà dans le pilote devient `fpsLimit`.
   - **Jamais testé sur un vrai GPU AMD** : le PC de développement a une RTX 5080 (ADLX se charge, « Pas de GPU AMD »).
+- `lib/deals.js` : **bons plans et nouveautés** (2.5.0, rangée de l'accueil). API publiques sans clé :
+  - Steam `store.steampowered.com/api/featuredcategories?cc=fr` (promos, nouveautés, sorties à venir ; applications seulement, `type === 0`) ;
+  - Epic `freeGamesPromotions` (gratuits du moment et à venir ; image réduite par `?h=360&w=640&resize=1`, 40 Ko au lieu de 3 Mo) ;
+  - GOG `catalog.gog.com/v1/catalog` (promos, nouveautés ; image `_ggvgm.jpg`, 40 Ko au lieu de 1,4 Mo) ;
+  - GamerPower (jeux offerts ailleurs, hors Epic).
+  - **Instant Gaming n'a pas d'API publique** : pas lu (lire leurs pages serait fragile et contraire à leurs conditions).
+  - Cache `DATA/deals.json`, relu au-delà de 4 h, jamais avec un jeu devant (`GET /api/deals`, préparé 15 s après le démarrage). `POST /api/deals/open {id}` : adresse construite par l'hôte (`target`) : `steam://store/<id>` et `com.epicgames.launcher://store/p/<slug>` si la boutique est installée, sinon la page web ; GOG et GamerPower seulement si l'adresse lue est bien sur leur domaine.
+  - Interface `js/deals.js` : liste gardée (`km.deals`) affichée tout de suite, 24 cartes au plus (gratuits, meilleures promos, nouveautés, gratuits à venir, sorties à venir), avance d'une carte toutes les 5 s au repos (pas en effets allégés, ni hors de l'accueil ou en arrière-plan). Réglages : Paramètres → Apparence → Bons plans (sources, catégories, défilement). `mergeOrder` (core.js) place une nouvelle rangée à sa place par défaut dans l'ordre choisi par l'utilisateur.
 - `lib/device.js` : console reconnue (catalogue `HANDHELDS`) + `device.ps1` (WMI). Résultat mis en cache dans `DATA/device.json` et servi immédiatement au démarrage.
 - `lib/kaneplay.js` : trouve `KanePlay.exe`, lit les PC appairés, prépare l'environnement (`KANEMODE_COMMAND`, accent…).
 - `lib/update.js` : GitHub Releases, vérification SHA256SUMS ; `apply-update.ps1` installe hors du paquet puis relance. **Canal stable seulement** depuis 2.0.0 (le choix bêta a été retiré des Paramètres ; l'hôte vérifie toujours `stable`). Les blocs redessinés des Paramètres (mises à jour, pilotes, ASUS) gardent focus et position (`snapshot`/`restore` dans `settings.js`) : valider une mise à jour ramenait tout en haut.
@@ -244,6 +252,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
   - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally) ;
   - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant ;
+  - 2.5.0 : rangée « Bons plans et nouveautés » sur l'accueil (Steam, Epic, GOG, jeux offerts ailleurs) ;
   - 2.4.2 : widget Game Bar affiché tout de suite (derniers réglages connus), manette plus réactive dans le widget, LB / RB pour les catégories ;
   - 2.4.1 : démarrage plus rapide (hôte et WebView2 lancés plus tôt, ReadyToRun, cache de Node), relance automatique de l'hôte s'il plante, durées de démarrage dans le journal ;
   - 2.4.0 : allègement (manette lue moins souvent, fenêtres énumérées moins souvent, mémoire de WebView2 rendue en arrière-plan, analyses de l'hôte espacées et suspendues en jeu), fermeture et démarrage plus sûrs ;

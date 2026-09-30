@@ -17,6 +17,7 @@ const update = require('./lib/update');
 const syscontrol = require('./lib/syscontrol');
 const oem = require('./lib/oem');
 const amd = require('./lib/amd');
+const dealsLib = require('./lib/deals');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -353,6 +354,7 @@ const setPerfMode = mode => {
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
+const deals = dealsLib.create(DATA); // bons plans des boutiques (GET /api/deals)
 const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
 
 // ---------------------------------------------------------------- limite d'images, jeux seulement
@@ -1171,6 +1173,17 @@ const routes = {
     try { json(res, 200, await sysctl.live()); }
     catch (e) { json(res, 500, { error: e.message }); }
   },
+  // Bons plans et nouveautés des boutiques (rangée de l'accueil, voir lib/deals.js) : la liste en
+  // cache est rendue tout de suite ; relue en arrière-plan au-delà de 4 h, jamais avec un jeu devant
+  'GET /api/deals': async (req, res) => json(res, 200, deals.get({ allowRefresh: fpsScope.front })),
+  'POST /api/deals/open': async (req, res) => {
+    const b = await readBody(req);
+    const lib = readJson(FILES.library, { launchers: [] });
+    const installed = Object.fromEntries((lib.launchers || []).map(l => [l.id, !!l.installed]));
+    const target = dealsLib.target(deals.find(String(b.id || '')), installed);
+    if (!target) return json(res, 404, { error: 'Offre introuvable : la liste a peut-être changé' });
+    json(res, 200, { ...(await run({ kind: 'uri', target })), app: /^(steam|com\.epicgames)/.test(target) });
+  },
   // Connexion réseau (icône de la barre du haut) : filaire, Wi-Fi (avec le signal) ou aucune
   'GET /api/net': async (req, res) => {
     if (!netState.p || Date.now() - netState.t > 5000) {
@@ -1466,5 +1479,8 @@ if (!isFile(FILES.library)) {
 setInterval(() => { if (fpsScope.front) rescanLibrary('vérification périodique'); }, 30 * 60e3);
 refreshKanePlay();
 setInterval(() => { if (fpsScope.front) refreshKanePlay(); }, 5 * 60e3);
+// Bons plans : préparés peu après le démarrage, puis relus au-delà de 4 h (jamais avec un jeu devant)
+setTimeout(() => { if (fpsScope.front) deals.get(); }, 15000);
+setInterval(() => { if (fpsScope.front) deals.get(); }, 3600e3);
 // Préchauffage : appareil et réglages système prêts avant que l'accès rapide ne les demande
 setTimeout(() => { device.info().then(() => sysctl.state()).catch(() => {}); }, 1500); // nouveaux PC appairés, nouvelles applis sur l'hôte
