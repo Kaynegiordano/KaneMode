@@ -425,14 +425,19 @@ function Lenovo-Mode([int]$set = -1) {
 }
 
 $asusModes = @{ performance = 0; turbo = 1; silent = 2 }
+$asusWritten = $null # dernier profil ASUS écrit (console qui ne permet pas de le relire)
 $lenovoModes = @{ quiet = 1; balanced = 2; performance = 3; custom = 255 }
 
 function Vendor-State {
     if ($Vendor -eq 'asus' -and [KaneMode.Asus]::Available()) {
         $m = [KaneMode.Asus]::Get([KaneMode.Asus]::ThrottlePolicy)
         $name = ($asusModes.GetEnumerator() | Where-Object { $_.Value -eq $m } | Select-Object -First 1).Key
+        # Certains BIOS (ROG Ally X) ne permettent pas de relire le profil : c'est le dernier écrit
+        # par KaneMode qui est donné, marqué « non relu » (readable = false)
+        $readable = [bool]$name
+        if (-not $readable -and $script:asusWritten) { $name = $script:asusWritten }
         $limit = [KaneMode.Asus]::Get([KaneMode.Asus]::ChargeLimit)
-        return [ordered]@{ vendor = 'asus'; modes = @('silent', 'performance', 'turbo'); mode = $name; tdp = @{ min = 7; max = 30; boostMax = 35 }; chargeLimit = if ($limit -ge 20 -and $limit -le 100) { $limit } else { $null } }
+        return [ordered]@{ vendor = 'asus'; modes = @('silent', 'performance', 'turbo'); mode = $name; readable = $readable; tdp = @{ min = 7; max = 30; boostMax = 35 }; chargeLimit = if ($limit -ge 20 -and $limit -le 100) { $limit } else { $null } }
     }
     if ($Vendor -eq 'lenovo') {
         try {
@@ -521,6 +526,7 @@ function Run($c) {
                     $ok = $got -eq $asusModes[$c.value] -or $got -notin $asusModes.Values
                 }
                 if (-not $ok) { throw "La console n'a pas accepté le profil $($c.value)" }
+                $script:asusWritten = "$($c.value)"
             } elseif ($Vendor -eq 'lenovo') {
                 if (-not $lenovoModes.ContainsKey($c.value)) { throw 'Profil inconnu' }
                 $null = Lenovo-Mode $lenovoModes[$c.value]

@@ -172,6 +172,17 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - Select/Start : menu et accès rapide de KaneMode par-dessus (`KaneModeBridge::openInKaneMode`).
 - Pause en jeu : LB+RB+Select+Y.
 
+## Allègement et stabilité (2.4.0)
+
+- **Manette dans l'interface** (`nav.js`) : quand l'app fournit les manettes (messages `xpad`), WebView2 n'est plus lu à chaque image mais toutes les 50 ms (16 ms tant qu'une direction est tenue, pour la répétition) ; sans manette de l'app, lecture à chaque image comme avant.
+- **Fil des manettes** (`XInputPads`) : 60 Hz quand KaneMode a la main (125 Hz seulement en mode souris). `PadFocus` n'énumère les fenêtres que si le premier plan change, au plus une fois par seconde sinon (cache `_focusFor`/`_focusAt`). Recherche des manettes HID : 3 s tant qu'aucune n'est ouverte, 20 s ensuite.
+- **Surveillance de KanePlay** : plus d'énumération des fenêtres chaque seconde ; KanePlay est repéré quand sa fenêtre a le premier plan, puis on attend la fin de son processus.
+- **WebView2 en arrière-plan** : après 15 s hors du premier plan, `MemoryUsageTargetLevel = Low` (caches rendus) ; `Normal` au retour.
+- **Hôte** : analyse de la bibliothèque toutes les 30 min (au lieu de 10) et jamais avec un jeu devant (`fpsScope.front`) ; PC de streaming relus toutes les 5 min (au lieu de chaque minute) et au retour sur KaneMode.
+- **Profil ASUS non relisible** (ROG Ally X) : la relecture du profil (`Get(ThrottlePolicy)`) renvoie une valeur inconnue ; le widget affichait « profil ? · profil relu différent » à chaque mode. `Vendor-State` donne alors le dernier profil écrit (`$script:asusWritten`) avec `readable = false`, et le widget le montre « envoyé » (↗) au lieu d'une erreur. Le mode tenu (`policy`) ne peut donc rien vérifier sur cette console.
+- **KanePlay, une seule manette sur le PC hôte** (`streamingpreferences.cpp`) : intégré à KaneMode, `multiController` passe une fois à faux (clé `kanemodesinglecontroller`) : toutes les manettes locales sont le joueur 1, le PC hôte ne crée qu'une manette virtuelle (il en avait parfois plusieurs). L'avertissement de Steam sur l'hôte (« ne parvient pas à lire le bouton Xbox ») vient de la Game Bar de l'hôte, qui garde le bouton Xbox : réglage de Windows sur le PC hôte.
+- **Stabilité** : plus d'`ObjectDisposedException` à la fermeture (`Core` renvoie null une fois `_closing`, `Post` protégé ; vue dans le journal de l'Ally à chaque fermeture) ; tactile WPF par `WM_POINTER` (`EnablePointerSupport` dans le .csproj) au lieu de WISP, qui a fait échouer une fois l'ouverture de la fenêtre sur l'Ally.
+
 ## Travailler sur le projet
 
 - Interface seule, dans un navigateur : lancer la commande ci-dessous puis ouvrir http://localhost:5173 (réglages simulés quand ils sont impossibles).
@@ -224,6 +235,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
   - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally) ;
   - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant ;
+  - 2.4.0 : allègement (manette lue moins souvent, fenêtres énumérées moins souvent, mémoire de WebView2 rendue en arrière-plan, analyses de l'hôte espacées et suspendues en jeu), fermeture et démarrage plus sûrs ;
   - 2.3.1 : KanePlay rend la main à la vraie fenêtre de KaneMode (pas à celle du widget Game Bar), le curseur du mode souris ne prend plus le premier plan ;
   - 2.3.0 : manettes lues aussi en HID brut, mode souris piloté par la manette en mode Xbox, reconnexion des manettes après KanePlay (au lieu de la relance) et dans l'accès rapide ;
   - 2.2.0 : KaneMode se relance entièrement après KanePlay (retiré en 2.3.0), curseur dessiné par KaneMode en mode souris quand Windows cache le sien (mode Xbox) ;

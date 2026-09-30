@@ -48,7 +48,7 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); };
         // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
         _pads = new XInputPads(PadFocus);
-        _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
+        _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
         _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
         _pads.Knock += () => Dispatcher.BeginInvoke(LogPadKnock);
         _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() =>
@@ -57,11 +57,14 @@ public partial class MainWindow : Window
             if (_ready) Post(new { type = "mouse-mode", on });
         });
         Activated += (_, _) => OnActivated();
-        // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte
-        Deactivated += (_, _) => { if (_ready) Post(new { type = "background" }); };
+        // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte, et
+        // WebView2 rend de la mémoire s'il y reste (voir LightenInBackground)
+        Deactivated += (_, _) => { if (!_ready) return; Post(new { type = "background" }); _lighten.Stop(); _lighten.Start(); };
+        _lighten.Tick += (_, _) => { _lighten.Stop(); SetMemoryLow(true); };
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
-        // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès)
-        Closing += (_, _) => { try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
+        // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès). Plus aucun
+        // message ne lui est envoyé ensuite (Deactivated arrivait après et levait ObjectDisposedException).
+        Closing += (_, _) => { _closing = true; _lighten.Stop(); try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
         Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
@@ -176,7 +179,23 @@ public partial class MainWindow : Window
         if (f != IntPtr.Zero && Native.WindowProcessId(f) == (uint)Environment.ProcessId) return XInputPads.Focus.Ours;
         // Jeu suivi ou KanePlay qu'on met devant : c'est à eux, KaneMode n'y touche pas
         if (_game != null || _watch != null) return XInputPads.Focus.Hidden;
-        if (!Native.IsMinimized(me) && Native.IsAppWindow(me))
+        // Le reste énumère les fenêtres : refait seulement quand le premier plan change, ou après 1 s
+        // (le fil des manettes le demande jusqu'à 20 fois par seconde)
+        long now = Environment.TickCount64;
+        bool minimized = Native.IsMinimized(me);
+        if (f == _focusFor && minimized == _focusMinimized && now - _focusAt < 1000) return _focusCached;
+        var result = ComputeOtherFocus(me, f, minimized);
+        (_focusFor, _focusMinimized, _focusAt, _focusCached) = (f, minimized, now, result);
+        return result;
+    }
+    private IntPtr _focusFor;
+    private bool _focusMinimized;
+    private long _focusAt;
+    private XInputPads.Focus _focusCached;
+
+    private static XInputPads.Focus ComputeOtherFocus(IntPtr me, IntPtr f, bool minimized)
+    {
+        if (!minimized && Native.IsAppWindow(me))
         {
             if (Native.IsOrphanForeground(f)) return XInputPads.Focus.Orphan;
             // Fenêtre d'application cachée derrière KaneMode : on peut reprendre la main. Sinon (fenêtre
@@ -214,6 +233,8 @@ public partial class MainWindow : Window
     private void OnActivated()
     {
         if (!_ready) return;
+        _lighten.Stop();
+        SetMemoryLow(false);
         Web.Focus();
         Post(new { type = "resume" });
     }
@@ -317,8 +338,14 @@ public partial class MainWindow : Window
         _kanePlayTimer.Tick += (_, _) =>
         {
             if (!_ready) return;
-            if (Native.FindVisibleWindow(KanePlayTitle) != IntPtr.Zero) { _kanePlayOpen = true; return; }
-            if (!_kanePlayOpen || System.Diagnostics.Process.GetProcessesByName("KanePlay").Length > 0) return;
+            // Léger : KanePlay est repéré quand sa fenêtre a le premier plan (pas d'énumération des
+            // fenêtres chaque seconde), puis on attend seulement la fin de son processus
+            IntPtr front = Native.GetForegroundWindow();
+            if (front != Hwnd && Native.WindowTitle(front) == KanePlayTitle) { _kanePlayOpen = true; return; }
+            if (!_kanePlayOpen) return;
+            var running = System.Diagnostics.Process.GetProcessesByName("KanePlay");
+            foreach (var p in running) p.Dispose();
+            if (running.Length > 0) return;
             _kanePlayOpen = false;
             ReloadAfterKanePlay();
         };
@@ -590,8 +617,41 @@ public partial class MainWindow : Window
 
     private void Post(object message)
     {
-        if (Web.CoreWebView2 == null) return;
-        Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message));
+        var core = Core;
+        if (core == null) return;
+        try { core.PostWebMessageAsJson(JsonSerializer.Serialize(message)); }
+        catch (InvalidOperationException) { /* moteur arrêté ou en train de redémarrer */ }
+    }
+
+    private bool _closing;
+    /// <summary>Moteur de l'interface, ou null quand KaneMode se ferme (WebView2 déjà libéré).</summary>
+    private CoreWebView2? Core
+    {
+        get
+        {
+            if (_closing) return null;
+            try { return Web.CoreWebView2; }
+            catch (ObjectDisposedException) { return null; }
+        }
+    }
+
+    // ---------- Mémoire de WebView2 en arrière-plan ----------
+    // KaneMode reste ouvert derrière les jeux : après 15 s en arrière-plan, WebView2 est prié de rendre
+    // la mémoire qu'il peut (caches), et reprend son niveau normal dès le retour sur KaneMode.
+    private readonly System.Windows.Threading.DispatcherTimer _lighten = new() { Interval = TimeSpan.FromSeconds(15) };
+    private bool _memoryLow;
+
+    private void SetMemoryLow(bool low)
+    {
+        if (low == _memoryLow || IsActive && low) return;
+        var core = Core;
+        if (core == null) return;
+        try
+        {
+            core.MemoryUsageTargetLevel = low ? CoreWebView2MemoryUsageTargetLevel.Low : CoreWebView2MemoryUsageTargetLevel.Normal;
+            _memoryLow = low;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or NotImplementedException) { }
     }
 
     private bool _leaving;

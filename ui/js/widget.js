@@ -94,7 +94,7 @@ const CHECK = {
   resolution: (r, v) => [r.resolution === v, String(r.resolution).replace('x', ' × ')],
   boost: (r, v) => [r.boost === !!v, r.boost ? 'activé' : 'coupé'],
   cpumax: (r, v) => [r.cpuMax === v, pct1(r.cpuMax)],
-  vendor: (r, v) => [r.mode === v, VENDOR_LABELS[r.mode] || r.mode || '?'],
+  vendor: (r, v) => [r.readable === false ? null : r.mode === v, VENDOR_LABELS[r.mode] || r.mode || '?'], // Ally X : profil non relisible
   tdp: (r, v) => [null, `${r.tdp ? r.tdp.spl : v} W`], // limites ASUS : écriture seule
   chargelimit: (r, v) => [r.verified ? r.chargeLimit === v : null, pct1(r.chargeLimit)],
   hdr: (r, v) => [(r.hdr === 1) === !!v, r.hdr === 1 ? 'activé' : 'coupé'],
@@ -565,10 +565,13 @@ async function pickMode(mode) {
     const name = PERF_MODES.find(m => m[0] === mode)[1];
     const a = r.applied || {};
     const w = typeof a.tdp === 'object' && a.tdp ? a.tdp.spl : a.tdp;
-    // Le profil de la console est relu après écriture (syscontrol) : il est vérifié s'il a été pris
-    const read = r.state && r.state.vendor && r.state.vendor.mode;
+    // Le profil de la console est relu après écriture (syscontrol) : il est vérifié s'il a été pris.
+    // La ROG Ally X ne permet pas de le relire (readable = false) : « envoyé », pas une erreur.
+    const v = (r.state && r.state.vendor) || {};
+    const unread = v.readable === false;
+    const read = unread ? a.vendor : v.mode;
     const ok = !(r.errors && r.errors.length) && (!a.vendor || read === a.vendor);
-    const text = `Mode ${name}${a.vendor ? ` · profil ${VENDOR_LABELS[read] || read || '?'}` : ''}${w ? ` · ${w} W` : ''}`;
+    const text = `Mode ${name}${a.vendor ? ` · profil ${VENDOR_LABELS[read] || read || '?'}${unread ? ' (envoyé)' : ''}` : ''}${w ? ` · ${w} W` : ''}`;
     marks.push({ t: Date.now(), label: name });
     noteChange(text, ok);
     if (!ok) toast(`${text} : ${(r.errors && r.errors[0]) || 'profil relu différent'}`, { error: true });

@@ -459,17 +459,30 @@ const SAME_PRESS_MS = 90;
 // retour de KanePlay), requestAnimationFrame s'arrête : une minuterie prend alors le relais, et les
 // messages de manette de l'app sont traités dès leur arrivée.
 let lastRead = 0;
+// Allègement (2.4.0) : quand l'app fournit les manettes (XInput et HID, messages `xpad` traités dès
+// leur arrivée), WebView2 n'est plus lu à chaque image (120 fois par seconde sur la ROG Ally) mais
+// 20 fois par seconde, 60 tant qu'une direction est tenue (répétition). Sans manette de l'app
+// (manette PlayStation, navigateur), lecture à chaque image comme avant.
+let rafOn = false;
+const nativeFeed = () => xpads.length > 0;
 function poll() {
+  rafOn = false;
   readPads();
-  requestAnimationFrame(poll);
+  if (!nativeFeed()) { rafOn = true; requestAnimationFrame(poll); }
+}
+function tickPads() {
+  if (performance.now() - lastRead > (nativeFeed() ? 40 : 100) && (!document.hidden || xpads.length)) readPads();
+  if (!rafOn && !nativeFeed() && !document.hidden) { rafOn = true; requestAnimationFrame(poll); }
+  setTimeout(tickPads, Object.keys(heldBy).length ? 16 : 50);
 }
 // Widgets Game Bar, par-dessus un jeu : pas de lecture à chaque image (120 fois par seconde sur la
 // ROG Ally), qui prenait du temps au jeu. Le moniteur n'a pas besoin de manette ; le widget la lit
 // 20 fois par seconde, seulement quand il a le focus.
 const GAMEBAR_PAGE = /\/(widget|monitor)\.html$/.exec(location.pathname);
 if (!GAMEBAR_PAGE) {
+  rafOn = true;
   requestAnimationFrame(poll);
-  setInterval(() => { if (performance.now() - lastRead > 100 && (!document.hidden || xpads.length)) readPads(); }, 16);
+  setTimeout(tickPads, 50);
 } else if (GAMEBAR_PAGE[1] === 'widget') {
   setInterval(() => { if (!document.hidden && document.hasFocus()) readPads(); }, 50);
 }

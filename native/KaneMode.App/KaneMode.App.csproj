@@ -29,4 +29,10 @@
     <Resource Include="..\..\setup\kanemode.png" Link="kanemode.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Tactile et stylet par WM_POINTER au lieu de l'ancienne pile WISP : sur la ROG Ally, WISP a fait
+         échouer l'ouverture de la fenêtre au démarrage (« L'entrée du stylet a rencontré une erreur ») -->
+    <RuntimeHostConfigurationOption Include="Switch.System.Windows.Input.Stylus.EnablePointerSupport" Value="true" />
+  </ItemGroup>
+
 </Project>

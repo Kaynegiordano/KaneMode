@@ -457,7 +457,9 @@ const KANEPLAY_DEV = path.join(ROOT, 'engine', 'out', 'KanePlay.exe');
 const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup', 'kanemode.ico')].find(isFile) || null;
 const KANEPLAY_COVER = path.join(UI, 'media', 'kaneplay.png');
 const kp = { exe: null, entries: [], hosts: [] };
+let kpLast = 0;
 async function refreshKanePlay() {
+  kpLast = Date.now();
   try {
     const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
@@ -1037,6 +1039,8 @@ const routes = {
   // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
   'POST /api/library/refresh': (req, res) => {
     if (Date.now() - libLast > 60e3) rescanSoon('retour sur KaneMode', 500);
+    // PC de streaming appairés (retour de KanePlay) : relus ici plutôt que chaque minute
+    if (Date.now() - kpLast > 30e3) refreshKanePlay();
     json(res, 200, { ok: true });
   },
   // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
@@ -1456,8 +1460,11 @@ if (!isFile(FILES.library)) {
   watchStores();
   setTimeout(() => rescanLibrary('démarrage'), 8000); // jeux installés pendant que KaneMode était fermé
 }
-setInterval(() => rescanLibrary('vérification périodique'), 10 * 60e3);
+// Filet de sécurité (la surveillance des dossiers et le retour sur KaneMode suffisent d'habitude) :
+// toutes les 30 min, et jamais pendant qu'un jeu est devant (l'analyse lance PowerShell, ~1 s de
+// processeur qui pouvait faire saccader le jeu sur une console portable)
+setInterval(() => { if (fpsScope.front) rescanLibrary('vérification périodique'); }, 30 * 60e3);
 refreshKanePlay();
-setInterval(refreshKanePlay, 60e3);
+setInterval(() => { if (fpsScope.front) refreshKanePlay(); }, 5 * 60e3);
 // Préchauffage : appareil et réglages système prêts avant que l'accès rapide ne les demande
 setTimeout(() => { device.info().then(() => sysctl.state()).catch(() => {}); }, 1500); // nouveaux PC appairés, nouvelles applis sur l'hôte

@@ -32,7 +32,11 @@ public sealed class HidGamepads : IDisposable
             while (!_stop.IsCancellationRequested)
             {
                 try { Scan(); } catch (Exception ex) { Log.Write("Manettes HID : " + ex.Message); }
-                _stop.Token.WaitHandle.WaitOne(3000); // nouvelles manettes, manettes revenues
+                // Nouvelles manettes, manettes revenues : toutes les 3 s tant qu'aucune n'est ouverte,
+                // toutes les 20 s ensuite (la recherche parcourt tous les périphériques HID)
+                bool any;
+                lock (_lock) any = _open.Count > 0;
+                _stop.Token.WaitHandle.WaitOne(any ? 20000 : 3000);
             }
         }) { IsBackground = true, Name = "Manettes HID (recherche)" };
         t.Start();

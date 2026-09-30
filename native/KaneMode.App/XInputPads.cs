@@ -162,7 +162,9 @@ public sealed class XInputPads : IDisposable
             if (now != last) { last = now; Changed?.Invoke(now); }
             // KaneMode ou mode souris : lecture à 125 Hz ; autre fenêtre : un coup d'œil (journal) ; sinon rien
             // (derrière une fenêtre ordinaire : 20 fois par seconde, assez pour un appui long sur Start)
-            Thread.Sleep(ours || _mouse ? 8 : focus == Focus.Desktop ? 50 : 150);
+            // Mode souris : 125 Hz (curseur fluide) ; interface : 60 Hz, assez pour naviguer et deux fois
+            // moins de réveils du processeur
+            Thread.Sleep(_mouse ? 8 : ours ? 16 : focus == Focus.Desktop ? 50 : 150);
         }
         if (_mouseButtons != 0) ReleaseMouse();
     }
