@@ -19,6 +19,8 @@
     <ApplicationIcon>..\..\setup\kanemode.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
+    <!-- Paquet (dotnet publish) : code précompilé, moins de compilation à la volée au démarrage -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

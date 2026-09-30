@@ -44,7 +44,10 @@ public partial class MainWindow : Window
             Width = 1280;
             Height = 800;
         }
+        // L'hôte (Node) et le moteur de WebView2 démarrent dès maintenant, pendant que la fenêtre se crée
+        BeginStart();
         Loaded += async (_, _) => await StartAsync();
+        _host.Crashed += code => Dispatcher.BeginInvoke(() => OnHostCrashed(code));
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); };
         // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
         _pads = new XInputPads(PadFocus);
@@ -76,6 +79,43 @@ public partial class MainWindow : Window
         PreviewKeyDown += OnKeyDown;
     }
 
+    // ---------- Démarrage ----------
+    private Task? _hostStart;
+    private Task<CoreWebView2Environment>? _envStart;
+    private bool _servicesStarted;
+
+    /// <summary>Millisecondes écoulées depuis le lancement du processus (mesures dans le journal).</summary>
+    private static long SinceLaunch()
+    {
+        using var me = System.Diagnostics.Process.GetCurrentProcess();
+        return (long)(DateTime.Now - me.StartTime).TotalMilliseconds;
+    }
+
+    /// <summary>
+    /// Lance l'hôte (Node) et le moteur de WebView2 en parallèle, sans attendre que la fenêtre soit
+    /// affichée (auparavant : après l'évènement Loaded). Chacun note sa durée dans le journal.
+    /// </summary>
+    private void BeginStart()
+    {
+        if (_hostStart == null && _envStart == null && !_failed)
+            Log.Write($"Lancement de KaneMode {typeof(App).Assembly.GetName().Version?.ToString(3)} ({SinceLaunch()} ms depuis le démarrage du processus)");
+        _hostStart ??= Task.Run(async () =>
+        {
+            Paths.ImportPrototypeData();
+            await _host.StartAsync();
+            Log.Write($"Hôte prêt ({SinceLaunch()} ms)");
+        });
+        if (_envStart == null && Web.CoreWebView2 == null)
+        {
+            // Son de démarrage (et vidéo perso) joués sans clic préalable.
+            string browserArgs = "--autoplay-policy=no-user-gesture-required";
+            // Développement : --debug-port=9229 permet d'inspecter l'interface depuis l'extérieur.
+            string? debugPort = Args.FirstOrDefault(a => a.StartsWith("--debug-port="))?.Split('=')[1];
+            if (debugPort != null && int.TryParse(debugPort, out _)) browserArgs += $" --remote-debugging-port={debugPort}";
+            _envStart = CoreWebView2Environment.CreateAsync(null, Paths.WebViewData, new CoreWebView2EnvironmentOptions(browserArgs));
+        }
+    }
+
     private async Task StartAsync()
     {
         _failed = false;
@@ -83,37 +123,81 @@ public partial class MainWindow : Window
         try
         {
             Status.Text = "Démarrage de KaneMode…";
-            await Task.Run(Paths.ImportPrototypeData);
-            // L'hôte (Node) et le moteur web (WebView2) démarrent en même temps : une à deux secondes de gagnées
-            Task host = _host.StartAsync();
+            BeginStart(); // nouvel essai après une erreur : ce qui a échoué repart
             Task web = Web.CoreWebView2 == null ? InitWebViewAsync() : Task.CompletedTask;
-            await Task.WhenAll(host, web);
+            await Task.WhenAll(_hostStart!, web);
             Web.CoreWebView2!.Navigate($"{_host.Url}/?native=1");
-            _buttons.Start();
-            _pads.Start();
             WidgetBridge.Start(_host.Url);
-            WatchKanePlay();
+            if (!_servicesStarted)
+            {
+                // Une seule fois, même si l'écran d'erreur fait réessayer (hôte qui plantait)
+                _servicesStarted = true;
+                _buttons.Start();
+                _pads.Start();
+                WatchKanePlay();
+            }
         }
         catch (Exception ex)
         {
             Log.Write("Échec du démarrage : " + ex);
-            _failed = true;
-            Status.Text = "KaneMode n’a pas pu démarrer :\n" + ex.Message;
-            Hint.Visibility = Visibility.Visible;
+            // Le prochain essai (Entrée) repart de zéro pour ce qui a échoué
+            if (_hostStart is { IsFaulted: true }) _hostStart = null;
+            if (_envStart is { IsFaulted: true }) _envStart = null;
+            ShowFailure("KaneMode n’a pas pu démarrer :\n" + ex.Message);
         }
+    }
+
+    private void ShowFailure(string text)
+    {
+        _failed = true;
+        Status.Text = text;
+        Hint.Visibility = Visibility.Visible;
+        Loading.Visibility = Visibility.Visible;
+        Web.Visibility = Visibility.Collapsed;
     }
 
     private async Task InitWebViewAsync()
     {
-        // Son de démarrage (et vidéo perso) joués sans clic préalable.
-        string browserArgs = "--autoplay-policy=no-user-gesture-required";
-        // Développement : --debug-port=9229 permet d'inspecter l'interface depuis l'extérieur.
-        string? debugPort = Args.FirstOrDefault(a => a.StartsWith("--debug-port="))?.Split('=')[1];
-        if (debugPort != null && int.TryParse(debugPort, out _)) browserArgs += $" --remote-debugging-port={debugPort}";
-        var options = new CoreWebView2EnvironmentOptions(browserArgs);
-        var env = await CoreWebView2Environment.CreateAsync(null, Paths.WebViewData, options);
+        var env = await _envStart!;
         await Web.EnsureCoreWebView2Async(env);
         ConfigureWebView(Web.CoreWebView2!);
+        Log.Write($"WebView2 prêt ({SinceLaunch()} ms)");
+    }
+
+    // ---------- Plantage de l'hôte ----------
+    private readonly List<DateTime> _hostCrashes = new();
+
+    /// <summary>
+    /// L'hôte (Node) s'est arrêté tout seul : l'interface ne répondait plus. Il est relancé (nouveau
+    /// port) et l'interface rechargée sans logo ; au-delà de 3 plantages en 5 minutes, l'écran
+    /// d'erreur s'affiche (Entrée pour réessayer).
+    /// </summary>
+    private async void OnHostCrashed(int code)
+    {
+        if (_closing) return;
+        _hostCrashes.RemoveAll(t => DateTime.UtcNow - t > TimeSpan.FromMinutes(5));
+        _hostCrashes.Add(DateTime.UtcNow);
+        Log.Write($"L'hôte s'est arrêté (code {code}) : relance");
+        if (_hostCrashes.Count > 3)
+        {
+            Log.Write("L'hôte s'arrête sans cesse : relance abandonnée");
+            _hostStart = null;
+            ShowFailure("Le cœur de KaneMode s’arrête sans cesse.\nDétails dans le journal : " + Log.FilePath);
+            return;
+        }
+        try
+        {
+            await _host.StartAsync();
+            WidgetBridge.Start(_host.Url);
+            Core?.Navigate($"{_host.Url}/?native=1&resume=1");
+            Log.Write($"Hôte relancé ({_host.Url})");
+        }
+        catch (Exception ex)
+        {
+            Log.Write("Relance de l'hôte impossible : " + ex.Message);
+            _hostStart = null;
+            ShowFailure("KaneMode n’a pas pu relancer son hôte :\n" + ex.Message);
+        }
     }
 
     private void ConfigureWebView(CoreWebView2 core)
@@ -134,7 +218,7 @@ public partial class MainWindow : Window
         core.NavigationCompleted += (_, e) =>
         {
             if (!e.IsSuccess) { Log.Write($"Navigation : {e.WebErrorStatus}"); return; }
-            Log.Write("Interface chargée");
+            Log.Write($"Interface chargée ({SinceLaunch()} ms)");
             _ready = true;
             Loading.Visibility = Visibility.Collapsed;
             Web.Visibility = Visibility.Visible;

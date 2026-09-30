@@ -183,6 +183,13 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - **KanePlay, une seule manette sur le PC hôte** (`streamingpreferences.cpp`) : intégré à KaneMode, `multiController` passe une fois à faux (clé `kanemodesinglecontroller`) : toutes les manettes locales sont le joueur 1, le PC hôte ne crée qu'une manette virtuelle (il en avait parfois plusieurs). L'avertissement de Steam sur l'hôte (« ne parvient pas à lire le bouton Xbox ») vient de la Game Bar de l'hôte, qui garde le bouton Xbox : réglage de Windows sur le PC hôte.
 - **Stabilité** : plus d'`ObjectDisposedException` à la fermeture (`Core` renvoie null une fois `_closing`, `Post` protégé ; vue dans le journal de l'Ally à chaque fermeture) ; tactile WPF par `WM_POINTER` (`EnablePointerSupport` dans le .csproj) au lieu de WISP, qui a fait échouer une fois l'ouverture de la fenêtre sur l'Ally.
 
+## Démarrage et relance de l'hôte (2.4.1)
+
+- **Démarrage anticipé** (`BeginStart` dans `MainWindow`) : l'hôte (Node) et l'environnement WebView2 partent dès le constructeur de la fenêtre, plus après `Loaded`. Mesures dans le journal : « Lancement de KaneMode x.y.z (N ms depuis le démarrage du processus) », « WebView2 prêt (N ms) », « Hôte prêt (N ms) », « Interface chargée (N ms) ». Sur le PC de développement : 0,8 s avant le code de KaneMode (runtime .NET et WPF), interface chargée à 1,4 s.
+- **ReadyToRun** (`PublishReadyToRun` dans le .csproj) : `KaneMode.dll` précompilée au `dotnet publish` de `build.ps1`, moins de compilation à la volée au lancement.
+- **Cache de compilation de Node** : `NODE_COMPILE_CACHE` = `%LOCALAPPDATA%\KaneMode\cache\node` (Node 22+), le code de l'hôte n'est plus recompilé à chaque démarrage.
+- **Relance de l'hôte** (`HostProcess.Crashed`, `OnHostCrashed`) : si Node s'arrête tout seul, il est relancé (nouveau port), le widget suit (`WidgetBridge.Start`) et l'interface est rechargée sans logo (`resume=1`). Plus de 3 plantages en 5 minutes : écran d'erreur (Entrée pour réessayer ; les services manettes/boutons ne sont démarrés qu'une fois, `_servicesStarted`). Testé en tuant Node : relance en moins d'une seconde ; les enfants de l'ancien hôte (PowerShell `syscontrol`, `kanemode-amd`) s'arrêtent d'eux-mêmes (fin de leur entrée standard).
+
 ## Travailler sur le projet
 
 - Interface seule, dans un navigateur : lancer la commande ci-dessous puis ouvrir http://localhost:5173 (réglages simulés quand ils sont impossibles).
@@ -235,6 +242,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - 1.5.0 : hôte beaucoup plus rapide (bibliothèque en mémoire, ETag), paramètres immédiats, SteamGridDB plus rapide, lettre façon SteamOS dans la bibliothèque, sons façon Switch 2 ;
   - 1.5.1 : sons plus doux, lettre sur le côté et seulement à partir de 40 jeux, Start / Select maintenus en jeu pour ouvrir menu et accès rapide par-dessus (à tester sur l'Ally) ;
   - 1.6.0 : widget Game Bar façon Winhanced (profils, écran, HDR, système, son, réseau, Lossless Scaling, jeu en cours), Start / Select en jeu retirés, KaneMode ne plante plus en se fermant ;
+  - 2.4.1 : démarrage plus rapide (hôte et WebView2 lancés plus tôt, ReadyToRun, cache de Node), relance automatique de l'hôte s'il plante, durées de démarrage dans le journal ;
   - 2.4.0 : allègement (manette lue moins souvent, fenêtres énumérées moins souvent, mémoire de WebView2 rendue en arrière-plan, analyses de l'hôte espacées et suspendues en jeu), fermeture et démarrage plus sûrs ;
   - 2.3.1 : KanePlay rend la main à la vraie fenêtre de KaneMode (pas à celle du widget Game Bar), le curseur du mode souris ne prend plus le premier plan ;
   - 2.3.0 : manettes lues aussi en HID brut, mode souris piloté par la manette en mode Xbox, reconnexion des manettes après KanePlay (au lieu de la relance) et dans l'accès rapide ;

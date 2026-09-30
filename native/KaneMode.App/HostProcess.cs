@@ -13,12 +13,18 @@ namespace KaneMode;
 public sealed class HostProcess : IDisposable
 {
     private Process? _process;
+    private bool _disposed;
 
     public int Port { get; private set; }
     public string Url => $"http://127.0.0.1:{Port}";
 
+    /// <summary>L'hôte s'est arrêté tout seul (plantage), code de sortie ; pas levé à la fermeture de KaneMode.</summary>
+    public event Action<int>? Crashed;
+
     public async Task StartAsync(CancellationToken token = default)
     {
+        // Relance après un plantage : l'ancien processus est oublié
+        if (_process != null) { var old = _process; _process = null; try { if (!old.HasExited) old.Kill(); } catch (InvalidOperationException) { } old.Dispose(); }
         string node = Paths.Node ?? throw new InvalidOperationException("Node.js est introuvable. Installez-le (winget install OpenJS.NodeJS.LTS).");
         string server = Path.Combine(Paths.Root, "host", "server.js");
         if (!File.Exists(server)) throw new FileNotFoundException("Fichiers de KaneMode introuvables", server);
@@ -41,12 +47,22 @@ public sealed class HostProcess : IDisposable
         // Version de l'app installée : l'hôte la compare aux versions publiées (mises à jour)
         psi.Environment["KANEMODE_VERSION"] = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
         psi.Environment["KANEMODE_PACKAGED"] = Paths.Packaged ? "1" : "0";
+        // Code de l'hôte compilé une fois et gardé sur le disque (Node 22+) : démarrages suivants plus rapides
+        psi.Environment["NODE_COMPILE_CACHE"] = Path.Combine(Paths.LocalRoot, "cache", "node");
         // Identité de l'app : l'écran de streaming s'y rattache (barre des tâches, Alt+Tab)
         if (Paths.AppUserModelId is string aumid) psi.Environment["KANEMODE_AUMID"] = aumid;
 
         Log.Write($"Hôte : {node} {server} (port {Port})");
-        _process = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de démarrer l'hôte");
+        var process = _process = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de démarrer l'hôte");
         Native.TieToApp(_process);
+        _process.EnableRaisingEvents = true;
+        _process.Exited += (_, _) =>
+        {
+            if (_disposed || _process != process) return; // fermeture de KaneMode, ou déjà remplacé
+            int code = -1;
+            try { code = process.ExitCode; } catch (InvalidOperationException) { }
+            Crashed?.Invoke(code);
+        };
         _process.OutputDataReceived += (_, e) => { if (e.Data != null) Log.Write("[hôte] " + e.Data); };
         _process.ErrorDataReceived += (_, e) => { if (e.Data != null) Log.Write("[hôte:erreur] " + e.Data); };
         _process.BeginOutputReadLine();
@@ -83,6 +99,7 @@ public sealed class HostProcess : IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         try { if (_process is { HasExited: false }) _process.Kill(); }
         catch (InvalidOperationException) { /* déjà arrêté */ }
         _process?.Dispose();
