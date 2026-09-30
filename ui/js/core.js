@@ -1,6 +1,7 @@
 // Briques partagées : DOM, stockage, réglages, sons, toasts, API de l'hôte, bibliothèque.
 import { t, tx, locale, lang } from './i18n.js';
 import { streamingArt } from './streamcover.js';
+import { SOUNDS, SOFT } from './soundtable.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -126,15 +127,6 @@ export function applyTheme() {
 // léger glissé vers le bas, un clic à peine audible, des aigus filtrés et un écho court et étouffé.
 // Les sons sont calculés une fois (OfflineAudioContext) puis rejoués : bien plus léger que
 // de créer des oscillateurs à chaque déplacement.
-const SOUNDS = {
-  //       notes : [fréquence, départ (s), volume, durée]          volume général
-  move: { notes: [[1175, 0, 1, 0.055]], vol: 0.03 },
-  key: { notes: [[1568, 0, 1, 0.035]], vol: 0.022 },
-  select: { notes: [[988, 0, 0.85, 0.09], [1319, 0.045, 1, 0.15]], vol: 0.045 },
-  back: { notes: [[988, 0, 0.85, 0.08], [740, 0.045, 1, 0.13]], vol: 0.042 },
-  open: { notes: [[784, 0, 0.7, 0.1], [1175, 0.04, 0.8, 0.12], [1568, 0.08, 0.8, 0.18]], vol: 0.036 },
-  error: { notes: [[392, 0, 1, 0.1], [330, 0.1, 1, 0.14]], vol: 0.055, dull: true },
-};
 const SR = 44100;
 let ac, sounds = null, rendering = null;
 
@@ -148,11 +140,11 @@ function renderSounds() {
     out.gain.value = s.vol;
     // Aigus adoucis : plus rond, moins « clic »
     const soft = o.createBiquadFilter();
-    soft.type = 'lowpass'; soft.frequency.value = 4200; soft.Q.value = 0.5;
+    soft.type = 'lowpass'; soft.frequency.value = SOFT.lowpass; soft.Q.value = 0.5;
     out.connect(soft).connect(o.destination);
     // Écho court, étouffé, qui s'éteint vite
     const delay = o.createDelay(0.1), fb = o.createGain(), lp = o.createBiquadFilter(), wet = o.createGain();
-    delay.delayTime.value = 0.03; fb.gain.value = 0.25; lp.type = 'lowpass'; lp.frequency.value = 2400; wet.gain.value = 0.3;
+    delay.delayTime.value = SOFT.echoDelay; fb.gain.value = SOFT.echoFeedback; lp.type = 'lowpass'; lp.frequency.value = SOFT.echoLowpass; wet.gain.value = SOFT.echoWet;
     out.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(wet); wet.connect(o.destination);
     // Bruit pour le clic d'attaque
     const noise = o.createBuffer(1, Math.ceil(0.006 * SR), SR);
@@ -210,6 +202,7 @@ export function toast(msg, { error = false, notify = false } = {}) {
   toastTimer = setTimeout(() => t.classList.remove('show'), error ? 4000 : 2600);
   if (error) sfx('error');
   if (notify && settings.notifications) {
+    sfx('notify');
     notifications.unshift({ msg, at: new Date() });
     notifications.length = Math.min(notifications.length, 8);
     emit('notifications', notifications);

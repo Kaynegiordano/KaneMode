@@ -1475,6 +1475,14 @@ const routes = {
       source: m.label, game: m.appid ? names.get(m.appid) || null : null, name: m.name,
     })));
   },
+  // Supprime des captures (corbeille Windows). Les adresses /mediafile?path=… de la liste sont acceptées.
+  'POST /api/media/delete': async (req, res) => {
+    const b = await readBody(req);
+    const urls = Array.isArray(b.urls) ? b.urls.slice(0, 500) : [];
+    const files = urls.map(u => { try { return new URL(String(u), 'http://localhost').searchParams.get('path') || ''; } catch { return ''; } });
+    const done = await sys.deleteMedia(files, allEntries(false).steamUserdata);
+    json(res, 200, { deleted: done.length, failed: urls.length - done.length });
+  },
 };
 
 http.createServer(async (req, res) => {

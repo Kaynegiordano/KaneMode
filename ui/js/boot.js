@@ -269,8 +269,9 @@ async function playSynced(box, snd) {
   timer = setTimeout(() => show(true), untilShow * 1000 + 250);
   const tail = (snd.length || snd.buffer.duration) - snd.peak; // son restant après le pic
   return {
-    // Le logo reste un peu plus d'une seconde après le pic ; la fin du son continue sur l'accueil
-    total: untilShow + appear + Math.min(1.3, Math.max(0.8, tail)),
+    // Le logo reste assez longtemps pour finir toute son animation (le nom se pose ~1,7 s après l'éclat,
+    // l'éclat lumineux dure 1,9 s), puis un instant de plus ; la fin du son continue sur l'accueil
+    total: untilShow + appear + Math.min(3.2, Math.max(2.4, tail)),
     cancel: () => { cancelAnimationFrame(raf); clearTimeout(timer); }, // fin normale : plus rien à insérer
     stop: () => {
       cancelAnimationFrame(raf); clearTimeout(timer);
@@ -315,7 +316,7 @@ function showLogo(box, kind) {
     if (skipped) return;
     box.insertAdjacentHTML('beforeend', LOGO_HTML);
     if (settings.bootSound !== 'none') chime(kind);
-    t = setTimeout(resolve, kind === 'wake' ? 1500 : 2900);
+    t = setTimeout(resolve, kind === 'wake' ? 1800 : 3800);
   });
 }
 

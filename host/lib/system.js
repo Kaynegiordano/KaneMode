@@ -93,6 +93,20 @@ function isMediaPath(p, steamUserdata) {
   return !!MEDIA_EXT[path.extname(full)] && mediaRoots(steamUserdata).some(r => full.startsWith(path.resolve(r.dir).toLowerCase() + path.sep));
 }
 
+/**
+ * Envoie des captures à la corbeille de Windows (elles restent récupérables). Seuls les fichiers des
+ * dossiers de captures connus sont acceptés. Renvoie les chemins réellement supprimés.
+ */
+async function deleteMedia(paths, steamUserdata) {
+  const files = [...new Set(paths)].filter(f => typeof f === 'string' && isMediaPath(f, steamUserdata) && isFile(f));
+  if (!files.length) return [];
+  // Liste passée par l'environnement : aucun nom de fichier n'est interprété comme du code
+  const ps = "Add-Type -AssemblyName Microsoft.VisualBasic; foreach ($f in ($env:KANEMODE_DELETE | ConvertFrom-Json)) { try { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($f, 'OnlyErrorDialogs', 'SendToRecycleBin') } catch {} }";
+  await new Promise(res => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps],
+    { windowsHide: true, env: { ...process.env, KANEMODE_DELETE: JSON.stringify(files) } }, () => res()));
+  return files.filter(f => !isFile(f));
+}
+
 // ---------- Retour au bureau ----------
 async function explorerRunning() {
   const out = await run('tasklist.exe', ['/FI', 'IMAGENAME eq explorer.exe', '/NH']);
@@ -111,4 +125,4 @@ async function toDesktop(profileDir, dry) {
   return steps;
 }
 
-module.exports = { xboxMode, storage, listMedia, isMediaPath, toDesktop };
+module.exports = { xboxMode, storage, listMedia, isMediaPath, deleteMedia, toDesktop };
