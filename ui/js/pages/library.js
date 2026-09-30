@@ -1,4 +1,5 @@
 // Bibliothèque : onglets (installés, types, favoris, émulation, collections, boutiques), tri, grille.
+import { t } from '../i18n.js';
 import { el, esc, icon, lib, favs, settings, saveSettings, sourceOf, store, sfx } from '../core.js';
 import { definePage, nav, go, focusIn, glyph, renderHints } from '../nav.js';
 import { gameCard } from '../cards.js';
@@ -26,42 +27,42 @@ function showLetter(ch, ratio) {
 }
 
 const SORTS = [
-  { id: 'name', label: 'Nom', fn: (a, b) => clean(a.name).localeCompare(clean(b.name), 'fr') },
-  { id: 'recent', label: 'Dernière session', fn: (a, b) => b.lastPlayed - a.lastPlayed },
-  { id: 'playtime', label: 'Temps de jeu', fn: (a, b) => b.playtime - a.playtime },
-  { id: 'size', label: 'Taille', fn: (a, b) => b.sizeOnDisk - a.sizeOnDisk },
+  { id: 'name', label: t('Nom'), fn: (a, b) => clean(a.name).localeCompare(clean(b.name), 'fr') },
+  { id: 'recent', label: t('Dernière session'), fn: (a, b) => b.lastPlayed - a.lastPlayed },
+  { id: 'playtime', label: t('Temps de jeu'), fn: (a, b) => b.playtime - a.playtime },
+  { id: 'size', label: t('Taille'), fn: (a, b) => b.sizeOnDisk - a.sizeOnDisk },
 ];
 
 function tabs() {
   const vis = lib.visible();
   const has = f => vis.some(f);
   const list = [
-    { id: 'installed', label: 'Installés', filter: g => g.installed },
-    { id: 'all', label: 'Tout', filter: () => true },
-    { id: 'favs', label: 'Favoris', filter: g => favs.has(g.id) },
-    { id: 'games', label: 'Jeux', filter: g => g.type === 'game' && g.installed },
-    { id: 'apps', label: 'Applications', filter: g => g.type === 'app' },
+    { id: 'installed', label: t('Installés'), filter: g => g.installed },
+    { id: 'all', label: t('Tout'), filter: () => true },
+    { id: 'favs', label: t('Favoris'), filter: g => favs.has(g.id) },
+    { id: 'games', label: t('Jeux'), filter: g => g.type === 'game' && g.installed },
+    { id: 'apps', label: t('Applications'), filter: g => g.type === 'app' },
   ];
-  if (has(g => !g.installed)) list.push({ id: 'uninstalled', label: 'Non installés', filter: g => !g.installed });
+  if (has(g => !g.installed)) list.push({ id: 'uninstalled', label: t('Non installés'), filter: g => !g.installed });
   // Équivalent de « Great on Deck » : jeux notés compatibles manette par la boutique Steam.
-  if (has(g => g.meta && g.meta.controller === 'full')) list.push({ id: 'pad', label: 'Compatibles manette', filter: g => g.installed && g.meta && g.meta.controller === 'full' });
-  if (has(g => g.source === 'rom')) list.push({ id: 'rom', label: 'Émulation', color: sourceOf('rom').color, filter: g => g.source === 'rom' });
+  if (has(g => g.meta && g.meta.controller === 'full')) list.push({ id: 'pad', label: t('Compatibles manette'), filter: g => g.installed && g.meta && g.meta.controller === 'full' });
+  if (has(g => g.source === 'rom')) list.push({ id: 'rom', label: t('Émulation'), color: sourceOf('rom').color, filter: g => g.source === 'rom' });
   for (const c of lib.collections) list.push({ id: 'col:' + c.id, label: c.name, collection: true, filter: g => c.ids.includes(g.id) });
   const sources = [...new Set(vis.map(g => g.source))].filter(s => s !== 'rom')
     .sort((a, b) => (a === 'steam' ? -1 : b === 'steam' ? 1 : a.localeCompare(b)));
   for (const s of sources) list.push({ id: 'src:' + s, label: sourceOf(s).label, color: sourceOf(s).color, filter: g => g.source === s });
-  if (lib.games.some(g => g.hidden)) list.push({ id: 'hidden', label: 'Masqués', filter: g => g.hidden, all: true });
+  if (lib.games.some(g => g.hidden)) list.push({ id: 'hidden', label: t('Masqués'), filter: g => g.hidden, all: true });
   return list;
 }
 
 definePage('library', {
   libBound: true,
-  title: () => 'Bibliothèque',
+  title: () => t('Bibliothèque'),
   render(params = {}) {
     if (params.tab) { this.tab = params.tab; params.tab = null; }
     this.tab = this.tab || store.get('libtab', 'installed');
     const list = tabs();
-    const cur = list.find(t => t.id === this.tab) || list[0];
+    const cur = list.find(x => x.id === this.tab) || list[0];
     this.tab = cur.id;
     store.set('libtab', this.tab);
     const root = this.el;
@@ -69,22 +70,22 @@ definePage('library', {
 
     const bar = el('div', 'toolbar');
     bar.append(shoulder('lb'));
-    for (const t of list) {
-      const pool = t.all ? lib.games : lib.visible();
-      const b = el('div', 'tab' + (t.id === cur.id ? ' active' : ''),
-        `${t.color ? `<span class="dot" style="--src:${t.color}"></span>` : ''}${t.collection ? icon('i-collection') : ''}${esc(t.label)}<span class="count">${pool.filter(t.filter).length}</span>`);
-      bar.append(nav(b, () => this.setTab(t.id, true), 'tab:' + t.id));
+    for (const entry of list) {
+      const pool = entry.all ? lib.games : lib.visible();
+      const b = el('div', 'tab' + (entry.id === cur.id ? ' active' : ''),
+        `${entry.color ? `<span class="dot" style="--src:${entry.color}"></span>` : ''}${entry.collection ? icon('i-collection') : ''}${esc(entry.label)}<span class="count">${pool.filter(entry.filter).length}</span>`);
+      bar.append(nav(b, () => this.setTab(entry.id, true), 'tab:' + entry.id));
     }
     bar.append(shoulder('rb'), el('span', 'spacer'));
     const sort = SORTS.find(s => s.id === settings.sort) || SORTS[0];
-    const sb = el('div', 'chip-btn', `${icon('i-sort')}Tri : ${sort.label}`);
+    const sb = el('div', 'chip-btn', t('{a}Tri : {label}', { a: icon('i-sort'), label: sort.label }));
     bar.append(nav(sb, () => {
       settings.sort = SORTS[(SORTS.indexOf(sort) + 1) % SORTS.length].id;
       saveSettings();
       this.render();
       focusIn(this.el, 'sort');
     }, 'sort'));
-    const add = el('div', 'chip-btn primary', `${icon('i-plus')}Ajouter`);
+    const add = el('div', 'chip-btn primary', t('{a}Ajouter', { a: icon('i-plus') }));
     bar.append(nav(add, () => go('add'), 'add'));
     root.append(bar);
 
@@ -94,10 +95,10 @@ definePage('library', {
       const systems = [...new Map(items.map(g => [g.system, g.systemName])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));
       if (!systems.some(([id]) => id === this.sys)) this.sys = 'all';
       const sub = el('div', 'subtabs');
-      for (const [id, name] of [['all', 'Toutes les consoles'], ...systems]) {
+      for (const [id, name] of [['all', t('Toutes les consoles')], ...systems]) {
         const n = id === 'all' ? items.length : items.filter(g => g.system === id).length;
-        const t = el('div', 'tab' + (this.sys === id ? ' active' : ''), `${esc(name)}<span class="count">${n}</span>`);
-        sub.append(nav(t, () => { this.sys = id; this.render(); focusIn(this.el, 'sys:' + id); }, 'sys:' + id));
+        const entry = el('div', 'tab' + (this.sys === id ? ' active' : ''), `${esc(name)}<span class="count">${n}</span>`);
+        sub.append(nav(entry, () => { this.sys = id; this.render(); focusIn(this.el, 'sys:' + id); }, 'sys:' + id));
       }
       root.append(sub);
       if (this.sys !== 'all') items = items.filter(g => g.system === this.sys);
@@ -108,9 +109,9 @@ definePage('library', {
     root.append(grid);
     if (!items.length) {
       root.append(el('div', 'empty',
-        cur.id === 'favs' ? `Aucun favori pour l’instant. Sur la fiche d’un jeu, appuyez sur ${glyph('x')} pour l’ajouter.`
-          : cur.collection ? 'Collection vide. Sur la fiche d’un jeu, choisissez « Collections » pour l’y ranger.'
-            : 'Rien ici pour le moment.'));
+        cur.id === 'favs' ? t('Aucun favori pour l’instant. Sur la fiche d’un jeu, appuyez sur {glyph} pour l’ajouter.', { glyph: glyph('x') })
+          : cur.collection ? t('Collection vide. Sur la fiche d’un jeu, choisissez « Collections » pour l’y ranger.')
+            : t('Rien ici pour le moment.')));
     }
     renderHints(); // « Lettres » selon la taille de la liste affichée
   },
@@ -122,15 +123,15 @@ definePage('library', {
     if (keepOnTab) focusIn(this.el, 'tab:' + id);
     else focusIn(this.el.querySelector('.grid') || this.el);
   },
-  onFocus(t) {
-    const g = t.dataset.id && lib.byId(t.dataset.id);
+  onFocus(target) {
+    const g = target.dataset.id && lib.byId(target.dataset.id);
     if (!g) return;
     setBackground(heroUrl(g));
     // Lettre en cours, seulement quand on change de rangée (pas en allant à gauche ou à droite)
-    const grid = t.closest('.grid');
+    const grid = target.closest('.grid');
     if (settings.sort === 'name' && grid && grid.children.length >= MANY) {
-      const top = t.offsetTop;
-      if (this.lastTop !== undefined && top !== this.lastTop) showLetter(initial(g), [...grid.children].indexOf(t) / (grid.children.length - 1));
+      const top = target.offsetTop;
+      if (this.lastTop !== undefined && top !== this.lastTop) showLetter(initial(g), [...grid.children].indexOf(target) / (grid.children.length - 1));
       this.lastTop = top;
     }
   },
@@ -161,7 +162,7 @@ definePage('library', {
     if (k === 'lt' || k === 'rt') return this.jumpLetter(k === 'rt' ? 1 : -1);
     if (k !== 'lb' && k !== 'rb') return false;
     const list = tabs();
-    const i = list.findIndex(t => t.id === this.tab);
+    const i = list.findIndex(x => x.id === this.tab);
     const next = list[(i + (k === 'rb' ? 1 : -1) + list.length) % list.length];
     const onTab = this.el.querySelector('.tab.focused');
     sfx('move');
@@ -170,6 +171,6 @@ definePage('library', {
   },
   hints() {
     const many = settings.sort === 'name' && this.el.querySelectorAll('.grid [data-id]').length >= MANY;
-    return [[['lb', 'rb'], '<span class="label-long">Onglets</span>'], ...(many ? [[['lt', 'rt'], '<span class="label-long">Lettres</span>']] : []), ['y', 'Rechercher'], ['a', 'Ouvrir'], ['b', 'Retour']];
+    return [[['lb', 'rb'], t('<span class="label-long">Onglets</span>')], ...(many ? [[['lt', 'rt'], t('<span class="label-long">Lettres</span>')]] : []), ['y', t('Rechercher')], ['a', t('Ouvrir')], ['b', t('Retour')]];
   },
 });

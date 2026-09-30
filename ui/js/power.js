@@ -1,5 +1,6 @@
 // Veille et réveil façon SteamOS : veille immédiate, écran qui s'éteint en fondu, réveil animé,
 // manettes et bibliothèque rafraîchies ; atténuation puis veille automatiques après inactivité.
+import { t } from './i18n.js';
 import { $, api, lib, settings, toast, native } from './core.js';
 import { inputLock } from './nav.js';
 import { playBoot, sleepCurtain, clearCurtain } from './boot.js';
@@ -20,7 +21,7 @@ export async function sleepNow() {
   if (native.available) native.send('power', { action: 'sleep' });
   else {
     await api.post('/api/action', { action: 'sleep' }).catch(() => {});
-    $('#boot').dataset.hint = 'Veille simulée · appuyez sur un bouton pour réveiller';
+    $('#boot').dataset.hint = t('Veille simulée · appuyez sur un bouton pour réveiller');
   }
   // Si le PC ne s'endort pas (veille désactivée, navigateur…), n'importe quel bouton réveille l'écran.
   setTimeout(armWakeInputs, 1500);
@@ -63,8 +64,8 @@ export async function wake({ fromSystem = false } = {}) {
   setTimeout(() => {
     const now = padIds();
     const back = now.filter(id => !before.has(id));
-    if (back.length) toast(`Manette reconnectée : ${back[0].replace(/\s*\(.*$/, '')}`);
-    else if (!now.length && before.size) toast('Manette non détectée · appuyez sur un bouton de la manette', { error: true });
+    if (back.length) toast(t('Manette reconnectée : {replace}', { replace: back[0].replace(/\s*\(.*$/, '') }));
+    else if (!now.length && before.size) toast(t('Manette non détectée · appuyez sur un bouton de la manette'), { error: true });
   }, 4000);
 }
 
@@ -96,7 +97,7 @@ function dim(secondsLeft) {
   if (!b.classList.contains('dimmed')) b.classList.add('dimmed');
   let veil = $('#dim-veil');
   if (!veil) { veil = document.createElement('div'); veil.id = 'dim-veil'; document.body.append(veil); }
-  veil.textContent = secondsLeft != null ? `Mise en veille dans ${secondsLeft} s · appuyez sur un bouton pour l’annuler` : '';
+  veil.textContent = secondsLeft != null ? t('Mise en veille dans {secondsLeft} s · appuyez sur un bouton pour l’annuler', { secondsLeft }) : '';
 }
 function undim() {
   document.body.classList.remove('dimmed');

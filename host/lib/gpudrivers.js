@@ -63,7 +63,7 @@ async function nvidia(g) {
   const month = dm ? MONTHS.indexOf(dm[2].toLowerCase()) : -1;
   const date = month >= 0 ? `${dm[1]}-${String(month + 1).padStart(2, '0')}-${dm[3].padStart(2, '0')}` : null;
   return {
-    installed, latest: d.Version, date, dateText: date ? null : d.ReleaseDateTime || null, size: d.DownloadURLFileSize ? d.DownloadURLFileSize.replace(/\s*MB$/i, ' Mo').replace('.', ',') : null,
+    installed, latest: d.Version, date, dateText: date ? null : d.ReleaseDateTime || null, sizeMb: parseFloat(d.DownloadURLFileSize) || null, // mis en forme par l'interface (langue)
     title: decodeURIComponent(d.Name || 'Pilote NVIDIA'),
     url: /^https:\/\/[a-z]+\.download\.nvidia\.com\/[\w./-]+\.exe$/.test(d.DownloadURL || '') ? d.DownloadURL : null,
     page: /^https:\/\/www\.nvidia\.com\//.test(d.DetailsURL || '') ? d.DetailsURL : PAGES.nvidia,

@@ -64,7 +64,9 @@ cd /d "$src"
 call scripts\build-arch.bat release
 exit /b %ERRORLEVEL%
 "@
-& cmd.exe /c $cmd
+# Messages d'erreur de cmd sur la sortie normale : sinon PowerShell les prend pour un échec quand la
+# sortie de la compilation est redirigée (ex. « le dossier build existe déjà »)
+& cmd.exe /c "`"$cmd`" 2>&1"
 $code = $LASTEXITCODE
 Remove-Item $cmd -ErrorAction SilentlyContinue
 $exe = Join-Path $deploy 'KanePlay.exe'

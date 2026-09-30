@@ -19,8 +19,13 @@ const clean = s => String(s || '').replace(/[™®]/g, '').trim();
 const key = s => clean(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
 
 // ---------------------------------------------------------------- sources
+// Langue des titres et descriptions de chaque boutique (prix et région : France)
+const STEAM_LANG = { fr: 'french', en: 'english', es: 'spanish', de: 'german', it: 'italian', pt: 'brazilian', ja: 'japanese', zh: 'schinese' };
+const WEB_LANG = { fr: 'fr', en: 'en-US', es: 'es-ES', de: 'de', it: 'it', pt: 'pt-BR', ja: 'ja', zh: 'zh-CN' };
+let lang = 'fr';
+
 async function steam() {
-  const j = await getJson('https://store.steampowered.com/api/featuredcategories?cc=fr&l=french');
+  const j = await getJson(`https://store.steampowered.com/api/featuredcategories?cc=fr&l=${STEAM_LANG[lang] || 'french'}`);
   const out = [];
   const add = (list, kind, limit) => {
     for (const x of ((list && list.items) || []).filter(x => x.type === 0).slice(0, limit)) {
@@ -40,7 +45,7 @@ async function steam() {
 }
 
 async function epic() {
-  const j = await getJson('https://store-site-backend-static-ipv4.ak.epicgames.com/freeGamesPromotions?locale=fr&country=FR&allowCountries=FR');
+  const j = await getJson(`https://store-site-backend-static-ipv4.ak.epicgames.com/freeGamesPromotions?locale=${WEB_LANG[lang] || 'fr'}&country=FR&allowCountries=FR`);
   const out = [];
   for (const e of (j.data && j.data.Catalog && j.data.Catalog.searchStore && j.data.Catalog.searchStore.elements) || []) {
     const p = e.promotions || {};
@@ -65,7 +70,7 @@ async function epic() {
 }
 
 async function gog() {
-  const q = 'productType=in:game,pack&countryCode=FR&locale=fr-FR&currencyCode=EUR';
+  const q = `productType=in:game,pack&countryCode=FR&locale=${lang === 'fr' ? 'fr-FR' : WEB_LANG[lang] || 'en-US'}&currencyCode=EUR`;
   const [promo, fresh] = await Promise.all([
     getJson(`https://catalog.gog.com/v1/catalog?limit=10&order=desc:trending&discounted=eq:true&${q}`),
     getJson(`https://catalog.gog.com/v1/catalog?limit=6&order=desc:releaseDate&releaseStatuses=in:new-arrival&${q}`).catch(() => ({ products: [] })),
@@ -103,7 +108,9 @@ async function gamerpower() {
 const SOURCES = { steam, epic, gog, gamerpower };
 
 // ---------------------------------------------------------------- cache et rafraîchissement
-function create(dataDir) {
+/** opts.lang : langue de l'interface (fonction), pour les titres des offres */
+function create(dataDir, opts = {}) {
+  const curLang = () => (opts.lang ? opts.lang() : 'fr');
   const FILE = path.join(dataDir, 'deals.json');
   let cache = null;
   try { cache = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { cache = null; }
@@ -112,6 +119,7 @@ function create(dataDir) {
   async function refresh() {
     if (running) return running;
     running = (async () => {
+      lang = curLang();
       const results = await Promise.allSettled(Object.entries(SOURCES).map(async ([name, fn]) => [name, await fn()]));
       const items = [], sources = {};
       for (const r of results) {
@@ -123,7 +131,7 @@ function create(dataDir) {
       const unique = items.filter(x => { const k = x.store + ':' + key(x.title); if (seen.has(k)) return false; seen.add(k); return true; });
       // Rien obtenu (hors ligne) : on garde l'ancienne liste
       if (unique.length || !cache) {
-        cache = { t: Date.now(), items: unique, sources };
+        cache = { t: Date.now(), lang, items: unique, sources };
         try { fs.writeFileSync(FILE, JSON.stringify(cache)); } catch { /* disque plein ou protégé */ }
       }
       return cache;
@@ -133,7 +141,8 @@ function create(dataDir) {
 
   /** Liste en cache (même ancienne) ; rafraîchie en arrière-plan quand elle a plus de 4 h. */
   function get({ allowRefresh = true } = {}) {
-    const stale = !cache || Date.now() - cache.t > MAX_AGE;
+    // Au-delà de 4 h, ou préparée dans une autre langue que celle de l'interface
+    const stale = !cache || Date.now() - cache.t > MAX_AGE || (cache.lang || 'fr') !== curLang();
     if (stale && allowRefresh) refresh().catch(() => {});
     return cache ? { ...cache, stale } : { t: 0, items: [], sources: {}, stale: true, loading: !!running };
   }
@@ -149,7 +158,7 @@ function create(dataDir) {
 function target(item, installed = {}) {
   if (!item) return null;
   if (item.store === 'steam' && Number.isInteger(item.app)) return installed.steam ? `steam://store/${item.app}` : `https://store.steampowered.com/app/${item.app}/`;
-  if (item.store === 'epic' && /^[a-z0-9-]+$/i.test(item.slug || '')) return installed.epic ? `com.epicgames.launcher://store/p/${item.slug}` : `https://store.epicgames.com/fr/p/${item.slug}`;
+  if (item.store === 'epic' && /^[a-z0-9-]+$/i.test(item.slug || '')) return installed.epic ? `com.epicgames.launcher://store/p/${item.slug}` : `https://store.epicgames.com/${WEB_LANG[lang] || 'fr'}/p/${item.slug}`;
   if ((item.store === 'gog' || item.store === 'gamerpower') && item.url) return item.url;
   return null;
 }

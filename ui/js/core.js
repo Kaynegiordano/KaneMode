@@ -1,4 +1,6 @@
 // Briques partagées : DOM, stockage, réglages, sons, toasts, API de l'hôte, bibliothèque.
+import { t, tx, locale, lang } from './i18n.js';
+import { streamingArt } from './streamcover.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -75,6 +77,12 @@ function syncAccent() {
   api.post('/api/config', { accent: settings.accent }).catch(() => { sentAccent = null; });
 }
 setTimeout(syncAccent, 0);
+// Langue en cours : l'hôte la transmet aux widgets Game Bar et au moteur de streaming
+function syncLang() {
+  if (WIDGET) return;
+  api.post('/api/config', { lang }).catch(() => setTimeout(syncLang, 5000));
+}
+setTimeout(syncLang, 0);
 // L'app native lit les boutons de la console : elle apprend ici ce qu'ils doivent faire
 let sentButtons = null;
 function syncButtons() {
@@ -192,6 +200,7 @@ export function sfx(type) {
 let toastTimer;
 const notifications = [];
 export function toast(msg, { error = false, notify = false } = {}) {
+  msg = tx(msg); // message de l'hôte (en français) : traduit s'il est connu
   const t = $('#toast');
   t.textContent = msg;
   t.classList.toggle('error', error);
@@ -227,7 +236,7 @@ export const native = {
 /** Widget : message à l'app KaneMode (veille, ouvrir KaneMode, état du jeu…), avec sa réponse. */
 export const toApp = (type, data = {}) => (WIDGET
   ? relay({ type: 'native', message: { type, ...data } }).then(r => r.body || {})
-  : Promise.reject(new Error('Hors de la Game Bar')));
+  : Promise.reject(new Error(t('Hors de la Game Bar'))));
 
 let relayId = 0;
 const waiting = new Map();
@@ -242,7 +251,7 @@ function relay(message) {
     const id = ++relayId;
     waiting.set(id, resolve);
     webview.postMessage({ ...message, id });
-    setTimeout(() => { if (waiting.delete(id)) resolve({ status: 504, body: { error: 'KaneMode ne répond pas' } }); }, 20000);
+    setTimeout(() => { if (waiting.delete(id)) resolve({ status: 504, body: { error: t('KaneMode ne répond pas') } }); }, 20000);
   });
 }
 
@@ -251,7 +260,7 @@ async function request(method, url, body) {
   if (WIDGET) {
     const r = await relay({ type: 'api', method, path: url, body: body || null });
     const j = r.body || {};
-    if (!r.status || r.status >= 400) throw Object.assign(new Error(j.error || 'Erreur ' + r.status), { data: j });
+    if (!r.status || r.status >= 400) throw Object.assign(new Error(j.error || t('Erreur {status}', { status: r.status })), { data: j });
     return j;
   }
   const r = await fetch(url, {
@@ -260,7 +269,7 @@ async function request(method, url, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.error || 'Erreur ' + r.status), { data: j });
+  if (!r.ok) throw Object.assign(new Error(j.error || t('Erreur {status}', { status: r.status })), { data: j });
   return j;
 }
 export const api = {
@@ -271,39 +280,39 @@ export const api = {
 
 // ---------- Boutiques ----------
 export const SOURCES = {
-  steam: { label: 'Steam', color: '#1a9fff' },
-  epic: { label: 'Epic Games', color: '#b8bec6' },
+  steam: { label: t('Steam'), color: '#1a9fff' },
+  epic: { label: t('Epic Games'), color: '#b8bec6' },
   gog: { label: 'GOG', color: '#a55cf2' },
-  ubisoft: { label: 'Ubisoft', color: '#2b7de8' },
+  ubisoft: { label: t('Ubisoft'), color: '#2b7de8' },
   ea: { label: 'EA', color: '#ff4d4d' },
-  battlenet: { label: 'Battle.net', color: '#00aeff' },
-  xbox: { label: 'Xbox', color: '#22b422' },
-  amazon: { label: 'Amazon', color: '#ff9900' },
-  rockstar: { label: 'Rockstar', color: '#fcaf17' },
-  riot: { label: 'Riot', color: '#eb0029' },
-  custom: { label: 'Ajouts perso', short: 'Perso', color: '#f0a030' },
-  rom: { label: 'Émulation', short: 'Émulation', color: '#e05a2b' },
-  kaneplay: { label: 'KanePlay', short: 'Streaming', color: '#8a5cff' },
+  battlenet: { label: t('Battle.net'), color: '#00aeff' },
+  xbox: { label: t('Xbox'), color: '#22b422' },
+  amazon: { label: t('Amazon'), color: '#ff9900' },
+  rockstar: { label: t('Rockstar'), color: '#fcaf17' },
+  riot: { label: t('Riot'), color: '#eb0029' },
+  custom: { label: t('Ajouts perso'), short: t('Perso'), color: '#f0a030' },
+  rom: { label: t('Émulation'), short: t('Émulation'), color: '#e05a2b' },
+  kaneplay: { label: t('Streaming local'), short: t('Streaming'), color: 'var(--accent)' },
 };
 export const sourceOf = id => SOURCES[id] || { label: id, color: '#888' };
 
 // ---------- Formats ----------
 export const fmt = {
   played(ts) {
-    if (!ts) return 'Jamais joué';
+    if (!ts) return t('Jamais joué');
     const d = new Date(ts * 1000), now = new Date();
     const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
     const diff = Math.round((day(now) - day(d)) / 86400000);
-    if (diff <= 0) return "Aujourd'hui";
-    if (diff === 1) return 'Hier';
-    if (diff < 7) return `Il y a ${diff} jours`;
+    if (diff <= 0) return t('Aujourd\'hui');
+    if (diff === 1) return t('Hier');
+    if (diff < 7) return t('Il y a {diff} jours', { diff });
     const opts = { day: 'numeric', month: 'long' };
     if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
-    return 'Le ' + d.toLocaleDateString('fr-FR', opts);
+    return t('Le {date}', { date: d.toLocaleDateString(locale, opts) });
   },
-  size: b => b ? (b / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: b >= 1e10 ? 0 : 1 }) + ' Go' : '—',
+  size: b => b ? (b / 1e9).toLocaleString(locale, { maximumFractionDigits: b >= 1e10 ? 0 : 1 }) + t(' Go') : '—',
   playtime: m => !m ? null : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`,
-  gb: b => (b / 1073741824).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Go',
+  gb: b => (b / 1073741824).toLocaleString(locale, { maximumFractionDigits: 1 }) + t(' Go'),
   duration(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; },
 };
 
@@ -326,6 +335,13 @@ export const lib = {
     const old = new Map(this.games.map(g => [g.id, g]));
     const layout = layoutSig(d);
     const first = !this.games.length;
+    // Streaming local : nom donné par l'hôte en français, traduit ici, et jaquette aux couleurs de
+    // KaneMode dans la langue de l'interface (sauf visuel choisi par l'utilisateur, « ?v= »)
+    for (const g of d.games) {
+      if (g.id !== 'kaneplay') continue;
+      g.name = t('Streaming local');
+      if (!/\?v=/.test((g.art && g.art.portrait) || '')) g.art = { ...g.art, ...streamingArt(settings.accent) };
+    }
     Object.assign(this, { games: d.games, launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });
     if (first || layout !== this.layout) {
       this.layout = layout;

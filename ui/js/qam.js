@@ -1,6 +1,7 @@
 // Accès rapide façon SteamOS : de vrais réglages du système (volume, luminosité, Wi-Fi, Bluetooth,
 // mode d'alimentation, profil de la console, puissance, fréquence de l'écran, limite de charge),
 // en sections que l'utilisateur choisit et ordonne (Paramètres → Accès rapide).
+import { t, locale } from './i18n.js';
 import { $, el, esc, icon, api, settings, saveSettings, toast, sfx, getNotifications } from './core.js';
 import { nav, focusIn } from './nav.js';
 
@@ -12,12 +13,12 @@ import { nav, focusIn } from './nav.js';
 export const qamShortcuts = { list: [], leave: () => {} };
 
 export const QAM_SECTIONS = [
-  { id: 'quick', label: 'Réglages rapides', desc: 'Volume, luminosité, Wi-Fi, Bluetooth, mode nuit' },
-  { id: 'perf', label: 'Performance', desc: 'Mode d’alimentation, profil de la console, puissance, fréquence de l’écran' },
-  { id: 'battery', label: 'Batterie', desc: 'Niveau, source, limite de charge' },
-  { id: 'shortcuts', label: 'Raccourcis', desc: 'Veille, KanePlay, bureau Windows' },
-  { id: 'monitor', label: 'Moniteur', desc: 'Processeur et mémoire en direct' },
-  { id: 'notifs', label: 'Notifications', desc: 'Dernières notifications de KaneMode' },
+  { id: 'quick', label: t('Réglages rapides'), desc: t('Volume, luminosité, Wi-Fi, Bluetooth, mode nuit') },
+  { id: 'perf', label: t('Performance'), desc: t('Mode d’alimentation, profil de la console, puissance, fréquence de l’écran') },
+  { id: 'battery', label: t('Batterie'), desc: t('Niveau, source, limite de charge') },
+  { id: 'shortcuts', label: t('Raccourcis'), desc: t('Veille, streaming local, bureau Windows') },
+  { id: 'monitor', label: t('Moniteur'), desc: t('Processeur et mémoire en direct') },
+  { id: 'notifs', label: t('Notifications'), desc: t('Dernières notifications de KaneMode') },
 ];
 export const QAM_DEFAULT = ['quick', 'perf', 'battery', 'shortcuts', 'monitor', 'notifs'];
 
@@ -28,7 +29,7 @@ export function qamOrder() {
   return order.filter(id => !(settings.qamHidden || []).includes(id));
 }
 
-export const VENDOR_LABELS = { silent: 'Silencieux', quiet: 'Silencieux', balanced: 'Équilibré', performance: 'Performance', turbo: 'Turbo' };
+export const VENDOR_LABELS = { silent: t('Silencieux'), quiet: t('Silencieux'), balanced: t('Équilibré'), performance: t('Performance'), turbo: t('Turbo') };
 
 let sys = null;
 async function send(cmd, value, extra = {}) {
@@ -37,15 +38,15 @@ async function send(cmd, value, extra = {}) {
 }
 
 // ---------------------------------------------------------------- modes de performance
-export const PERF_MODES = [['eco', 'Économie'], ['balanced', 'Équilibré'], ['performance', 'Performance']];
+export const PERF_MODES = [['eco', t('Économie')], ['balanced', t('Équilibré')], ['performance', t('Performance')]];
 /** Ce que règle chaque mode (même définition que perfPreset côté hôte). */
 export function modeSummary(mode, st = sys) {
   const v = st && st.vendor && st.vendor.modes ? st.vendor.modes : null;
   const pick = (...n) => (v ? n.find(x => v.includes(x)) : null);
   const parts = {
-    eco: ['Windows en économie d’énergie', 'processeur limité à 70 %', 'turbo coupé', pick('silent', 'quiet') && 'profil Silencieux'],
-    balanced: ['Windows équilibré', 'processeur à 100 %', 'turbo activé', pick('performance', 'balanced') && `profil ${VENDOR_LABELS[pick('performance', 'balanced')]}`],
-    performance: ['Windows en performances maximales', 'processeur à 100 %', 'turbo activé', pick('turbo', 'performance') && `profil ${VENDOR_LABELS[pick('turbo', 'performance')]}`],
+    eco: [t('Windows en économie d’énergie'), t('processeur limité à 70 %'), t('turbo coupé'), pick('silent', 'quiet') && 'profil Silencieux'],
+    balanced: [t('Windows équilibré'), t('processeur à 100 %'), t('turbo activé'), pick('performance', 'balanced') && `profil ${VENDOR_LABELS[pick('performance', 'balanced')]}`],
+    performance: [t('Windows en performances maximales'), t('processeur à 100 %'), t('turbo activé'), pick('turbo', 'performance') && `profil ${VENDOR_LABELS[pick('turbo', 'performance')]}`],
   }[mode];
   return parts ? parts.filter(Boolean).join(' · ') : '';
 }
@@ -64,26 +65,26 @@ export const vendorFor = (mode, st = sys) => {
   return want.find(n => v.includes(n)) || null;
 };
 function profileWatts(vmode, st = sys) {
-  const t = st && PROFILE_WATTS[st.handheld];
-  const w = t && vmode && t[vmode];
+  const watts = st && PROFILE_WATTS[st.handheld];
+  const w = watts && vmode && watts[vmode];
   return w ? w[live && live.discharging === false ? 1 : 0] : null;
 }
-const fmtW = w => (w == null ? '—' : String(Math.round(w * 10) / 10).replace('.', ',') + ' W');
-const fmtGhz = mhz => (mhz ? (mhz / 1000).toFixed(2).replace('.', ',') + ' GHz' : '—');
+const fmtW = w => (w == null ? '—' : (Math.round(w * 10) / 10).toLocaleString(locale) + ' W');
+const fmtGhz = mhz => (mhz ? (mhz / 1000).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' GHz' : '—');
 
 /** Bandeau en direct : consommation (sur batterie), fréquence réelle, limite de puissance. */
 function paintLive(flash = false) {
   const strip = $('#qam .live-strip');
   if (!strip || !sys) return;
   const cells = [];
-  if (live && live.watts != null && live.discharging) cells.push([fmtW(live.watts), 'Consommation']);
-  else if (live && live.discharging === false) cells.push(['Secteur', 'Alimentation']);
-  else cells.push([live && live.load != null ? live.load + ' %' : '—', 'Charge du processeur']);
-  cells.push([fmtGhz(live && live.mhz), 'Fréquence réelle']);
+  if (live && live.watts != null && live.discharging) cells.push([fmtW(live.watts), t('Consommation')]);
+  else if (live && live.discharging === false) cells.push([t('Secteur'), t('Alimentation')]);
+  else cells.push([live && live.load != null ? live.load + ' %' : '—', t('Charge du processeur')]);
+  cells.push([fmtGhz(live && live.mhz), t('Fréquence réelle')]);
   const vm = sys.vendor && sys.vendor.mode;
   const tdp = settings.tdpActive && sys.mode === 'custom' ? settings.tdpActive : profileWatts(vm);
-  if (tdp) cells.push([fmtW(tdp), settings.tdpActive && sys.mode === 'custom' ? 'Limite réglée' : `Profil ${VENDOR_LABELS[vm] || vm}`]);
-  else if (sys.cpu) cells.push([sys.cpu.maxAc + ' %' + (sys.cpu.boostAc ? ' · turbo' : ''), 'Limite du processeur']);
+  if (tdp) cells.push([fmtW(tdp), settings.tdpActive && sys.mode === 'custom' ? t('Limite réglée') : t('Profil {a}', { a: VENDOR_LABELS[vm] || vm })]);
+  else if (sys.cpu) cells.push([sys.cpu.maxAc + ' %' + (sys.cpu.boostAc ? ' · turbo' : ''), t('Limite du processeur')]);
   strip.innerHTML = cells.map(([v, l]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
   if (flash) { strip.classList.remove('flash'); void strip.offsetWidth; strip.classList.add('flash'); }
 }
@@ -104,13 +105,13 @@ function markCustom() {
   const seg = $('#qam .perf-mode');
   if (seg) seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
   const note = $('#qam .perf-note');
-  if (note) note.textContent = 'Personnalisé : réglages ajustés à la main ci-dessous';
+  if (note) note.textContent = t('Personnalisé : réglages ajustés à la main ci-dessous');
   const list = $('#qam .applied');
   if (list) list.remove();
   paintLive(true);
 }
 const sendPerf = (cmd, value, extra) => send(cmd, value, extra).then(r => { markCustom(); return r; });
-const WIN_LABELS = { efficiency: 'Windows : économie d’énergie', balanced: 'Windows : équilibré', performance: 'Windows : performances maximales' };
+const WIN_LABELS = { efficiency: t('Windows : économie d’énergie'), balanced: t('Windows : équilibré'), performance: t('Windows : performances maximales') };
 async function applyMode(mode) {
   const name = PERF_MODES.find(m => m[0] === mode)[1];
   try {
@@ -122,13 +123,13 @@ async function applyMode(mode) {
     const a = r.applied || {}, done = new Set(r.done || []);
     const items = [];
     if (a.powerMode) items.push([done.has('powermode'), WIN_LABELS[a.powerMode]]);
-    if (a.cpuMax != null) items.push([done.has('cpumax'), a.cpuMax < 100 ? `Processeur limité à ${a.cpuMax} %` : 'Processeur sans limite']);
-    if (a.boost != null) items.push([done.has('boost'), a.boost ? 'Turbo activé' : 'Turbo coupé']);
-    if (a.vendor) { const w = a.tdp == null && profileWatts(a.vendor); items.push([done.has('vendor'), `Profil ${VENDOR_LABELS[a.vendor] || a.vendor}${w ? ` · ${w} W` : ''}`]); }
-    if (a.tdp != null) items.push([done.has('tdp'), `Puissance fixée à ${typeof a.tdp === 'object' ? a.tdp.spl : a.tdp} W`]);
+    if (a.cpuMax != null) items.push([done.has('cpumax'), a.cpuMax < 100 ? t('Processeur limité à {cpuMax} %', { cpuMax: a.cpuMax }) : t('Processeur sans limite')]);
+    if (a.boost != null) items.push([done.has('boost'), a.boost ? t('Turbo activé') : t('Turbo coupé')]);
+    if (a.vendor) { const w = a.tdp == null && profileWatts(a.vendor); items.push([done.has('vendor'), t('Profil {a}{b}', { a: VENDOR_LABELS[a.vendor] || a.vendor, b: w ? ` · ${w} W` : '' })]); }
+    if (a.tdp != null) items.push([done.has('tdp'), t('Puissance fixée à {a} W', { a: typeof a.tdp === 'object' ? a.tdp.spl : a.tdp })]);
     applied = { mode, items };
-    if (r.errors && r.errors.length) toast(`Mode ${name} : ${r.errors[0]}`, { error: true });
-    else toast(`Mode ${name} appliqué`);
+    if (r.errors && r.errors.length) toast(t('Mode {name} : {a}', { name, a: r.errors[0] }), { error: true });
+    else toast(t('Mode {name} appliqué', { name }));
   } catch (e) { toast(e.message, { error: true }); }
   renderQam('mode:' + mode, false);
   paintLive(true);
@@ -184,11 +185,11 @@ function slider(iconId, value, { min = 0, max = 100, step = 5, unit = '', onChan
 }
 
 function toggle(iconId, label, on, onToggle, key) {
-  const t = el('div', 'toggle' + (on ? ' on' : ''), `${icon(iconId)}<span>${esc(label)}</span>`);
-  return nav(t, async () => {
-    const next = !t.classList.contains('on');
-    t.classList.toggle('on', next);
-    try { await onToggle(next); } catch { t.classList.toggle('on', !next); }
+  const tile = el('div', 'toggle' + (on ? ' on' : ''), `${icon(iconId)}<span>${esc(label)}</span>`);
+  return nav(tile, async () => {
+    const next = !tile.classList.contains('on');
+    tile.classList.toggle('on', next);
+    try { await onToggle(next); } catch { tile.classList.toggle('on', !next); }
   }, key);
 }
 
@@ -197,7 +198,7 @@ const section = (title, ...children) => {
   s.append(el('h3', '', esc(title)), ...children.filter(Boolean));
   return s;
 };
-const label = t => el('div', 'seg-label', esc(t));
+const label = text => el('div', 'seg-label', esc(text));
 
 // ---------------------------------------------------------------- sections
 const BUILD = {
@@ -205,21 +206,21 @@ const BUILD = {
     const kids = [];
     const toggles = el('div', 'toggles');
     for (const r of (sys && sys.radios) || []) {
-      const name = r.kind === 'WiFi' ? 'Wi-Fi' : 'Bluetooth';
+      const name = r.kind === 'WiFi' ? t('Wi-Fi') : t('Bluetooth');
       toggles.append(toggle(r.kind === 'WiFi' ? 'i-wifi' : 'i-bluetooth', name, r.on, on => send('radio', on, { kind: r.kind }), 'radio:' + r.kind));
     }
-    if (sys && sys.volume != null) toggles.append(toggle('i-volume', 'Sourdine', sys.muted, on => send('mute', on), 'mute'));
-    toggles.append(toggle('i-moon', 'Mode nuit', settings.night, on => { settings.night = on; saveSettings(); }, 'night'));
-    toggles.append(toggle('i-music', 'Sons de l’interface', settings.sounds, on => { settings.sounds = on; saveSettings(); }, 'sounds'));
+    if (sys && sys.volume != null) toggles.append(toggle('i-volume', t('Sourdine'), sys.muted, on => send('mute', on), 'mute'));
+    toggles.append(toggle('i-moon', t('Mode nuit'), settings.night, on => { settings.night = on; saveSettings(); }, 'night'));
+    toggles.append(toggle('i-music', t('Sons de l’interface'), settings.sounds, on => { settings.sounds = on; saveSettings(); }, 'sounds'));
     kids.push(toggles);
     if (sys && sys.volume != null) kids.push(slider('i-volume', sys.volume, { unit: ' %', onChange: v => send('volume', v).catch(() => {}), key: 'volume' }));
     if (sys && sys.brightness != null) kids.push(slider('i-sun', sys.brightness, { unit: ' %', onChange: v => send('brightness', v).catch(() => {}), key: 'brightness' }));
-    return section('Réglages rapides', ...kids);
+    return section(t('Réglages rapides'), ...kids);
   },
 
   perf() {
     const kids = [];
-    if (!sys) return section('Performance', el('div', 'qam-note', 'Lecture des réglages du système…'));
+    if (!sys) return section(t('Performance'), el('div', 'qam-note', t('Lecture des réglages du système…')));
     // Mode de performance : règle tout d'un coup (Windows, processeur, profil de la console)
     const modeSeg = segment(PERF_MODES, sys.mode, applyMode, 'mode');
     modeSeg.classList.add('perf-mode', 'big');
@@ -228,74 +229,74 @@ const BUILD = {
       const w = profileWatts(vendorFor(PERF_MODES[i][0]));
       if (w) b.insertAdjacentHTML('beforeend', `<small>${w} W</small>`);
     });
-    kids.push(el('div', 'live-strip'), label('Mode de performance'), modeSeg,
-      el('div', 'qam-note perf-note', sys.mode === 'custom' ? 'Personnalisé : réglages ajustés à la main ci-dessous'
-        : sys.mode ? esc(modeSummary(sys.mode)) : 'Choisissez un mode : il règle Windows, le processeur et le profil de la console'));
+    kids.push(el('div', 'live-strip'), label(t('Mode de performance')), modeSeg,
+      el('div', 'qam-note perf-note', sys.mode === 'custom' ? t('Personnalisé : réglages ajustés à la main ci-dessous')
+        : sys.mode ? esc(modeSummary(sys.mode)) : t('Choisissez un mode : il règle Windows, le processeur et le profil de la console')));
     // Le mode est tenu par l'hôte ; un autre programme qui impose le sien est signalé
-    if (sys.modeConflict) kids.push(el('div', 'qam-note', 'Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.'));
+    if (sys.modeConflict) kids.push(el('div', 'qam-note', t('Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.')));
     if (applied && applied.mode === sys.mode) {
-      kids.push(el('ul', 'applied', applied.items.map(([ok, t]) => `<li class="${ok ? 'ok' : 'ko'}">${ok ? '✓' : '✕'} ${esc(t)}</li>`).join('')));
+      kids.push(el('ul', 'applied', applied.items.map(([ok, text]) => `<li class="${ok ? 'ok' : 'ko'}">${ok ? '✓' : '✕'} ${esc(text)}</li>`).join('')));
     }
     const details = el('div', 'toggles');
-    details.append(toggle('i-gear', 'Réglages détaillés', settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
+    details.append(toggle('i-gear', t('Réglages détaillés'), settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
     kids.push(details);
-    if (settings.qamPerfDetails === false) return section('Performance', ...kids);
+    if (settings.qamPerfDetails === false) return section(t('Performance'), ...kids);
     const vendor = sys.vendor;
     if (vendor && vendor.modes) {
-      kids.push(label('Profil de la console'), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v).then(st => { if (st && st.modes) sys.vendor = st; settings.tdpActive = 0; saveSettings(); paintLive(true); }), 'vendor'));
+      kids.push(label(t('Profil de la console')), segment(vendor.modes.map(m => [m, VENDOR_LABELS[m] || m]), vendor.mode, v => sendPerf('vendor', v).then(st => { if (st && st.modes) sys.vendor = st; settings.tdpActive = 0; saveSettings(); paintLive(true); }), 'vendor'));
     } else if (vendor && vendor.error) {
-      kids.push(el('div', 'qam-note', `Profil de la console indisponible : ${esc(vendor.error)}`));
+      kids.push(el('div', 'qam-note', t('Profil de la console indisponible : {a}', { a: esc(vendor.error) })));
     }
     if (vendor && vendor.tdp) {
       // Puissance (TDP) : un curseur, ou les trois limites en mode avancé
-      const t = vendor.tdp;
-      const cur = Object.assign({ spl: Math.round((t.min + t.max) / 2) }, settings.tdpLimits || {});
+      const lim = vendor.tdp;
+      const cur = Object.assign({ spl: Math.round((lim.min + lim.max) / 2) }, settings.tdpLimits || {});
       cur.sppt = cur.sppt || cur.spl;
       cur.fppt = cur.fppt || cur.sppt;
       const sendTdp = () => { settings.tdpLimits = { ...cur }; saveSettings(); sendPerf('tdp', settings.tdpAdvanced ? { ...cur } : cur.spl).then(() => { settings.tdpActive = cur.spl; saveSettings(); paintLive(true); }).catch(() => {}); };
-      kids.push(label(`Puissance (TDP, expérimental)`));
+      kids.push(label(t('Puissance (TDP, expérimental)')));
       if (!settings.tdpAdvanced) {
-        kids.push(slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { cur.spl = cur.sppt = cur.fppt = v; sendTdp(); } }));
+        kids.push(slider('i-cpu', cur.spl, { min: lim.min, max: lim.max, step: 1, unit: ' W', key: 'tdp', onChange: v => { cur.spl = cur.sppt = cur.fppt = v; sendTdp(); } }));
       } else {
-        kids.push(el('div', 'qam-note', 'Soutenue'), slider('i-cpu', cur.spl, { min: t.min, max: t.max, step: 1, unit: ' W', key: 'tdp-spl', onChange: v => { cur.spl = v; cur.sppt = Math.max(cur.sppt, v); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
-        kids.push(el('div', 'qam-note', 'Boost court (quelques secondes)'), slider('i-cpu', cur.sppt, { min: t.min, max: t.boostMax, step: 1, unit: ' W', key: 'tdp-sppt', onChange: v => { cur.sppt = Math.max(v, cur.spl); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
-        kids.push(el('div', 'qam-note', 'Boost bref (pics)'), slider('i-cpu', cur.fppt, { min: t.min, max: t.boostMax, step: 1, unit: ' W', key: 'tdp-fppt', onChange: v => { cur.fppt = Math.max(v, cur.sppt); sendTdp(); } }));
+        kids.push(el('div', 'qam-note', t('Soutenue')), slider('i-cpu', cur.spl, { min: lim.min, max: lim.max, step: 1, unit: ' W', key: 'tdp-spl', onChange: v => { cur.spl = v; cur.sppt = Math.max(cur.sppt, v); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
+        kids.push(el('div', 'qam-note', t('Boost court (quelques secondes)')), slider('i-cpu', cur.sppt, { min: lim.min, max: lim.boostMax, step: 1, unit: ' W', key: 'tdp-sppt', onChange: v => { cur.sppt = Math.max(v, cur.spl); cur.fppt = Math.max(cur.fppt, cur.sppt); sendTdp(); } }));
+        kids.push(el('div', 'qam-note', 'Boost bref (pics)'), slider('i-cpu', cur.fppt, { min: lim.min, max: lim.boostMax, step: 1, unit: ' W', key: 'tdp-fppt', onChange: v => { cur.fppt = Math.max(v, cur.sppt); sendTdp(); } }));
       }
       kids.push(el('div', 'toggles'));
-      kids[kids.length - 1].append(toggle('i-gear', 'Réglage avancé', !!settings.tdpAdvanced, on => { settings.tdpAdvanced = on; saveSettings(); renderQam('tdp-adv'); }, 'tdp-adv'));
+      kids[kids.length - 1].append(toggle('i-gear', t('Réglage avancé'), !!settings.tdpAdvanced, on => { settings.tdpAdvanced = on; saveSettings(); renderQam('tdp-adv'); }, 'tdp-adv'));
     }
     // Processeur : pour tous les PC, par Windows (sans pilote ni droits administrateur)
     if (sys.cpu) {
-      kids.push(label('Limite du processeur'),
+      kids.push(label(t('Limite du processeur')),
         slider('i-cpu', sys.cpu.maxAc, { min: 30, max: 100, step: 5, unit: ' %', key: 'cpumax', onChange: v => sendPerf('cpumax', v).catch(() => {}) }));
       const tg = el('div', 'toggles');
-      tg.append(toggle('i-cpu', 'Turbo du processeur', sys.cpu.boostAc !== 0, on => sendPerf('boost', on), 'boost'));
+      tg.append(toggle('i-cpu', t('Turbo du processeur'), sys.cpu.boostAc !== 0, on => sendPerf('boost', on), 'boost'));
       kids.push(tg);
     }
     if (sys.refresh && sys.refresh.available.length > 1) {
       const rates = sys.refresh.available.filter(hz => hz >= 30).slice(-5);
-      kids.push(label('Fréquence de l’écran'), segment(rates.map(hz => [hz, hz + ' Hz']), sys.refresh.current, v => send('refresh', +v), 'refresh'));
+      kids.push(label(t('Fréquence de l’écran')), segment(rates.map(hz => [hz, hz + t(' Hz')]), sys.refresh.current, v => send('refresh', +v), 'refresh'));
     }
-    if (!kids.length) kids.push(el('div', 'qam-note', 'Aucun réglage de performance disponible sur ce PC.'));
-    return section('Performance', ...kids);
+    if (!kids.length) kids.push(el('div', 'qam-note', t('Aucun réglage de performance disponible sur ce PC.')));
+    return section(t('Performance'), ...kids);
   },
 
   battery() {
-    const box = el('div', 'qam-battery', '<span class="qam-note">Pas de batterie</span>');
+    const box = el('div', 'qam-battery', t('<span class="qam-note">Pas de batterie</span>'));
     if (navigator.getBattery) {
       navigator.getBattery().then(b => {
         if (b.charging && b.level === 1) return; // PC fixe (ou batterie pleine sur secteur)
         const pct = Math.round(b.level * 100);
-        box.innerHTML = `<div class="meter"><span>${b.charging ? 'En charge' : 'Sur batterie'}</span><div class="bar"><i style="width:${pct}%"></i></div><output>${pct} %</output></div>`;
+        box.innerHTML = `<div class="meter"><span>${b.charging ? t('En charge') : t('Sur batterie')}</span><div class="bar"><i style="width:${pct}%"></i></div><output>${pct} %</output></div>`;
       }).catch(() => {});
     }
     const kids = [box];
     const v = sys && sys.vendor;
     if (v && v.chargeLimit != null) {
-      kids.push(label('Limite de charge (préserve la batterie)'),
+      kids.push(label(t('Limite de charge (préserve la batterie)')),
         segment([[60, '60 %'], [80, '80 %'], [100, '100 %']], v.chargeLimit, p => send('chargelimit', +p), 'charge'));
     }
-    return section('Batterie', ...kids);
+    return section(t('Batterie'), ...kids);
   },
 
   shortcuts() {
@@ -304,13 +305,13 @@ const BUILD = {
     for (const [iconId, text, act, key] of qamShortcuts.list) {
       row.append(nav(el('div', 'chip-btn', `${icon(iconId)}${esc(text)}`), () => { qamShortcuts.leave(); act(); }, key));
     }
-    return section('Raccourcis', row);
+    return section(t('Raccourcis'), row);
   },
 
   monitor() {
-    return section('Moniteur',
-      el('div', 'meter', '<span>Processeur</span><div class="bar"><i id="cpu-bar"></i></div><output id="cpu-val">—</output>'),
-      el('div', 'meter', '<span>Mémoire</span><div class="bar"><i id="mem-bar"></i></div><output id="mem-val">—</output>'));
+    return section(t('Moniteur'),
+      el('div', 'meter', t('<span>Processeur</span><div class="bar"><i id="cpu-bar"></i></div><output id="cpu-val">—</output>')),
+      el('div', 'meter', t('<span>Mémoire</span><div class="bar"><i id="mem-bar"></i></div><output id="mem-val">—</output>')));
   },
 
   notifs() {
@@ -318,9 +319,9 @@ const BUILD = {
     const box = el('div', list.length ? '' : 'notif-empty');
     box.id = 'notifs';
     box.innerHTML = list.length
-      ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
-      : 'Aucune nouvelle notification';
-    return section('Notifications', box);
+      ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
+      : t('Aucune nouvelle notification');
+    return section(t('Notifications'), box);
   },
 };
 

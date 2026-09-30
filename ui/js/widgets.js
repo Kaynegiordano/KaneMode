@@ -1,4 +1,5 @@
 // Composants réutilisables : clavier virtuel, dialogues, sélecteurs, interrupteurs.
+import { t } from './i18n.js';
 import { $, el, esc, icon, sfx } from './core.js';
 import { nav, openLayer, closeLayer, focusIn } from './nav.js';
 
@@ -6,7 +7,7 @@ import { nav, openLayer, closeLayer, focusIn } from './nav.js';
 const LAYOUTS = {
   abc: ['1234567890', 'azertyuiop', 'qsdfghjklm', "wxcvbn,.'-"],
   sym: ['1234567890', '@#&_/:;?!=', '()[]{}%*+"', '<>|\\~^$€£§'],
-  acc: ['éèêëàâäîïô', 'öùûüçœæÿ«»', 'ÉÈÊÀÂÇÎÔÙÛ', '’…–—·°²³µ¤'],
+  acc: [t('éèêëàâäîïô'), t('öùûüçœæÿ«»'), t('ÉÈÊÀÂÇÎÔÙÛ'), '’…–—·°²³µ¤'],
 };
 
 export function keyboard({ onChar, onBackspace, onSubmit, submitLabel = 'OK' }) {
@@ -32,7 +33,7 @@ export function keyboard({ onChar, onBackspace, onSubmit, submitLabel = 'OK' }) 
     last.append(
       key(icon('i-shift'), () => { shift = !shift; render('shift'); }, 'shift', 'mod w2' + (shift ? ' on' : '')),
       key(layout === 'sym' ? 'abc' : '&amp;123', () => { layout = layout === 'sym' ? 'abc' : 'sym'; render('sym'); }, 'sym', 'mod w2'),
-      key(layout === 'acc' ? 'abc' : 'àé', () => { layout = layout === 'acc' ? 'abc' : 'acc'; render('acc'); }, 'acc', 'mod'),
+      key(layout === 'acc' ? 'abc' : t('àé'), () => { layout = layout === 'acc' ? 'abc' : 'acc'; render('acc'); }, 'acc', 'mod'),
       key('espace', () => onChar(' '), 'space', 'mod w5'),
       key(icon('i-backspace'), onBackspace, 'bksp', 'mod w2'),
       key(esc(submitLabel), onSubmit, 'ok', 'ok w2'),
@@ -82,7 +83,7 @@ export function openKeyboard({ title, value = '', placeholder = '', submitLabel 
     layer = openLayer({
       el: host, name: 'osk', noGlobal: true, focusKey: 'k1-0',
       onClose: r => resolve(r === undefined ? null : r),
-      hints: () => [['x', 'Effacer'], ['y', 'Espace'], ['view', 'Valider'], ['a', 'Saisir'], ['b', 'Annuler']],
+      hints: () => [['x', t('Effacer')], ['y', t('Espace')], ['view', t('Valider')], ['a', t('Saisir')], ['b', t('Annuler')]],
       button: k => {
         if (k === 'x') { set(v.slice(0, -1)); sfx('key'); return true; }
         if (k === 'y') { set(v + ' '); sfx('key'); return true; }
@@ -113,14 +114,14 @@ export function dialog({ title, text = '', buttons, inline = false }) {
     layer = openLayer({
       el: $('#dialog'), name: 'dialog', focusKey: 'b' + Math.max(0, primary),
       onClose: r => resolve(r === undefined ? null : r),
-      hints: () => [['a', 'Valider'], ['b', 'Annuler']],
+      hints: () => [['a', t('Valider')], ['b', t('Annuler')]],
     });
   });
 }
-export async function confirmDialog(title, text, okLabel = 'Confirmer', danger = false) {
+export async function confirmDialog(title, text, okLabel = t('Confirmer'), danger = false) {
   const r = await dialog({
     title, text, inline: true,
-    buttons: [{ label: 'Annuler', value: false }, { label: okLabel, value: true, primary: !danger, danger }],
+    buttons: [{ label: t('Annuler'), value: false }, { label: okLabel, value: true, primary: !danger, danger }],
   });
   return r === true;
 }

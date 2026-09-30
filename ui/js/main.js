@@ -1,4 +1,5 @@
 // Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
+import { t, locale, translateDom } from './i18n.js';
 import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native, store } from './core.js';
 import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input, setNativePads } from './nav.js';
 import { swapArt } from './cards.js';
@@ -31,6 +32,8 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => { applyTheme(); refresh(); }, 250);
 });
+// Textes écrits dans index.html (menus, barre d'état…) : dans la langue choisie
+translateDom(document.body);
 // L'écran de démarrage couvre tout dès le chargement.
 // Interface rechargée par l'app (fermeture de KanePlay) : ni logo ni son de démarrage
 const RELOADED = new URLSearchParams(location.search).has('resume');
@@ -68,7 +71,7 @@ native.on(m => {
       go(target, {}, { push: false });
     }
   } else if (m.type === 'desktop-failed') {
-    toast('Le mode Xbox est resté actif : KaneMode reste ouvert. Réessayez, ou utilisez la touche Windows.', { error: true });
+    toast(t('Le mode Xbox est resté actif : KaneMode reste ouvert. Réessayez, ou utilisez la touche Windows.'), { error: true });
   }
 });
 
@@ -78,12 +81,12 @@ actions['stream-open'] = () => { actions['overlay-leave'](); closeLayer(); openS
 // ---------- Menu principal ----------
 hooks.menu = () => openLayer({
   el: $('#menu'), name: 'menu', scrim: true, focusKey: state.page, onClose: overlayClosed,
-  hints: () => [['a', 'Sélectionner'], ['b', 'Fermer']],
+  hints: () => [['a', t('Sélectionner')], ['b', t('Fermer')]],
 });
-actions['menu-go'] = t => {
+actions['menu-go'] = elm => {
   actions['overlay-leave']();
   closeLayer();
-  const target = t.dataset.page;
+  const target = elm.dataset.page;
   resetHistory();
   if (target !== 'home') state.history.push({ id: 'home', params: {} });
   go(target, {}, { push: false });
@@ -93,26 +96,26 @@ export function openPowerMenu() {
   actions['overlay-leave']();
   closeLayer();
   if (topLayer()) closeLayer();
-  openLayer({ el: $('#power'), name: 'power', scrim: true, focusKey: 'sleep', hints: () => [['a', 'Choisir'], ['b', 'Annuler']] });
+  openLayer({ el: $('#power'), name: 'power', scrim: true, focusKey: 'sleep', hints: () => [['a', t('Choisir')], ['b', t('Annuler')]] });
 }
 actions['power-open'] = openPowerMenu;
 actions['power-close'] = () => closeLayer();
 const SYSTEM = {
-  desktop: ['Aller au bureau Windows ?', 'KaneMode sort du mode Xbox et reste ouvert.', 'Aller au bureau'],
-  sleep: ['Mettre en veille ?', 'Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.', 'Mettre en veille'],
-  restart: ['Redémarrer le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Redémarrer'],
-  shutdown: ['Éteindre le PC ?', 'Pensez à sauvegarder vos parties en cours.', 'Éteindre'],
+  desktop: [t('Aller au bureau Windows ?'), t('KaneMode sort du mode Xbox et reste ouvert.'), t('Aller au bureau')],
+  sleep: [t('Mettre en veille ?'), t('Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.'), t('Mettre en veille')],
+  restart: [t('Redémarrer le PC ?'), t('Pensez à sauvegarder vos parties en cours.'), t('Redémarrer')],
+  shutdown: [t('Éteindre le PC ?'), t('Pensez à sauvegarder vos parties en cours.'), t('Éteindre')],
 };
-actions.system = async t => {
-  const [title, text, ok] = SYSTEM[t.dataset.system];
+actions.system = async elm => {
+  const [title, text, ok] = SYSTEM[elm.dataset.system];
   closeLayer();
   // Comme sur SteamOS, la veille est immédiate ; redémarrer et éteindre demandent confirmation.
-  if (t.dataset.system === 'sleep') return sleepNow();
-  if (!await confirmDialog(title, text, ok, t.dataset.system !== 'desktop')) return;
+  if (elm.dataset.system === 'sleep') return sleepNow();
+  if (!(await confirmDialog(title, text, ok, elm.dataset.system !== 'desktop'))) return;
   // App native : vraie veille / vrai redémarrage / vraie extinction. Navigateur : simulé.
-  if (native.available) return native.send('power', { action: t.dataset.system });
-  await api.post('/api/action', { action: t.dataset.system });
-  toast(`${ok} : simulé dans le prototype (aucune action réelle)`);
+  if (native.available) return native.send('power', { action: elm.dataset.system });
+  await api.post('/api/action', { action: elm.dataset.system });
+  toast(t('{ok} : simulé dans le prototype (aucune action réelle)', { ok }));
 };
 
 // Retour sur KaneMode (fin d'un jeu, alt-tab) : la bibliothèque se met à jour (temps de jeu, installations…).
@@ -133,40 +136,40 @@ async function pollSystem() {
     $('#cpu-bar').style.width = s.cpu + '%';
     $('#cpu-val').textContent = s.cpu + ' %';
     $('#mem-bar').style.width = Math.round(100 * s.memUsed / s.memTotal) + '%';
-    $('#mem-val').textContent = fmt.gb(s.memUsed).replace(' Go', '') + ' / ' + fmt.gb(s.memTotal);
+    $('#mem-val').textContent = fmt.gb(s.memUsed).replace(t(' Go'), '') + ' / ' + fmt.gb(s.memTotal);
   } catch { /* hôte injoignable */ }
 }
 // Raccourcis de l'accès rapide dans KaneMode (le widget Game Bar a les siens)
 Object.assign(qamShortcuts, {
   leave: () => actions['overlay-leave'](),
   list: [
-    ['i-moon', 'Veille', () => sleepNow(), 'sc-sleep'],
-    ['i-power', 'Alimentation', () => actions['power-open'](), 'sc-power'],
-    ['i-gamepad', 'KanePlay', () => openStreaming(), 'sc-kaneplay'],
-    ['i-desktop', 'Bureau Windows', () => exitToDesktop(), 'sc-desktop'],
+    ['i-moon', t('Veille'), () => sleepNow(), 'sc-sleep'],
+    ['i-power', t('Alimentation'), () => actions['power-open'](), 'sc-power'],
+    ['i-gamepad', t('Streaming local'), () => openStreaming(), 'sc-kaneplay'],
+    ['i-desktop', t('Bureau Windows'), () => exitToDesktop(), 'sc-desktop'],
     // Manette qui ne répond plus (retour d'une autre application) : déconnexion puis reconnexion
-    ['i-refresh', 'Reconnecter les manettes', () => { native.send('pads-reconnect'); toast('Manettes reconnectées'); }, 'sc-pads'],
+    ['i-refresh', t('Reconnecter les manettes'), () => { native.send('pads-reconnect'); toast(t('Manettes reconnectées')); }, 'sc-pads'],
   ],
 });
 hooks.qam = () => openLayer({
   el: $('#qam'), name: 'qam', scrim: true,
   onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); startLive(); },
   onClose: () => { clearInterval(sysTimer); stopLive(); overlayClosed(); },
-  hints: () => [['a', 'Sélectionner'], [['left', 'right'], 'Régler'], ['b', 'Fermer']],
+  hints: () => [['a', t('Sélectionner')], [['left', 'right'], t('Régler')], ['b', t('Fermer')]],
 });
 
 on('notifications', list => {
   if (!$('#notifs')) return;
   $('#notifs').className = list.length ? '' : 'notif-empty';
   $('#notifs').innerHTML = list.length
-    ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
-    : 'Aucune nouvelle notification';
+    ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
+    : t('Aucune nouvelle notification');
 });
 
 // ---------- Barre d'état ----------
 // Horloge : 24 h ou 12 h, secondes au choix (Paramètres → Apparence)
 const tick = () => {
-  $('#clock').textContent = new Date().toLocaleTimeString(settings.clock24 ? 'fr-FR' : 'en-US', {
+  $('#clock').textContent = new Date().toLocaleTimeString(locale, {
     hour: settings.clock24 ? '2-digit' : 'numeric', minute: '2-digit', ...(settings.clockSeconds ? { second: '2-digit' } : {}), hour12: !settings.clock24,
   });
   $('#battery span').hidden = !settings.batteryPct;
@@ -186,7 +189,7 @@ if (navigator.getBattery) {
 }
 // Réseau : câble, Wi-Fi (plus pâle quand le signal est faible) ou hors ligne. Relu toutes les 20 s
 // et au retour sur KaneMode ; l'icône Wi-Fi restait affichée même en filaire.
-const NET = { ethernet: ['i-ethernet', 'Connecté par câble'], wifi: ['i-wifi', 'Wi-Fi'], none: ['i-wifi-off', 'Hors ligne'] };
+const NET = { ethernet: ['i-ethernet', t('Connecté par câble')], wifi: ['i-wifi', t('Wi-Fi')], none: ['i-wifi-off', t('Hors ligne')] };
 async function paintNet() {
   if (document.hidden) return;
   try {
@@ -207,14 +210,14 @@ native.on(m => { if (m.type === 'resume' || m.type === 'wake') paintNet(); });
 native.on(m => {
   if (m.type !== 'mouse-mode') return;
   $('#mouse-pill').hidden = !m.on;
-  toast(m.on ? 'Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter' : 'Mode souris désactivé');
+  toast(m.on ? t('Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter') : t('Mode souris désactivé'));
 });
-addEventListener('gamepadconnected', e => toast(`Manette connectée : ${e.gamepad.id.replace(/\(.*?\)/g, '').trim() || 'manette'}`));
+addEventListener('gamepadconnected', e => toast(t('Manette connectée : {a}', { a: e.gamepad.id.replace(/\(.*?\)/g, '').trim() || t("manette") })));
 
 // ---------- Synchronisation ----------
 function paintMenuFoot() {
   const games = lib.visible().filter(g => g.type === 'game').length;
-  $('#menu-foot').innerHTML = `${games} jeux · ${lib.visible().length - games} applis<br>${lib.launchers.filter(l => l.installed).length} boutiques détectées${settings.demo ? '<br>Bibliothèque de démonstration active' : ''}`;
+  $('#menu-foot').innerHTML = t('{games} jeux · {a} applis<br>{length} boutiques détectées{b}', { games, a: lib.visible().length - games, length: lib.launchers.filter(l => l.installed).length, b: settings.demo ? t("<br>Bibliothèque de démonstration active") : '' });
 }
 // Bibliothèque modifiée. Une action de l'utilisateur redessine tout de suite ; une mise à jour de
 // fond attend qu'il ne navigue plus et qu'aucun menu ne soit ouvert, pour ne jamais saccader.
@@ -262,7 +265,7 @@ function paintUpdate(last) {
   const v = last && last.available && last.latest ? last.latest.version : null;
   $('#menu-update').hidden = !v;
   $('#update-dot').hidden = !v;
-  if (v) $('#menu-update span').textContent = `Mise à jour ${v} disponible`;
+  if (v) $('#menu-update span').textContent = t('Mise à jour {v} disponible', { v });
 }
 async function checkUpdate() {
   try {
@@ -277,7 +280,7 @@ async function checkUpdate() {
     paintUpdate(r);
     if (r.available && localStorage.getItem('km.updateToast') !== r.latest.version) {
       localStorage.setItem('km.updateToast', r.latest.version);
-      toast(`KaneMode ${r.latest.version} disponible · Menu → Mise à jour`, { notify: true });
+      toast(t('KaneMode {version} disponible · Menu → Mise à jour', { version: r.latest.version }), { notify: true });
     }
   } catch { /* hors ligne */ }
 }
@@ -292,8 +295,8 @@ async function checkDrivers() {
     if (!fresh.length) return;
     fresh.forEach(i => seen.add(i.key));
     store.set('driverNotified', [...seen].slice(-50));
-    toast(fresh.length === 1 ? `Nouveau pilote : ${fresh[0].title} · Paramètres → Appareil et pilotes`
-      : `${fresh.length} nouveaux pilotes disponibles · Paramètres → Appareil et pilotes`, { notify: true });
+    toast(fresh.length === 1 ? t('Nouveau pilote : {title} · Paramètres → Appareil et pilotes', { title: fresh[0].title })
+      : t('{length} nouveaux pilotes disponibles · Paramètres → Appareil et pilotes', { length: fresh.length }), { notify: true });
   } catch { /* hôte injoignable */ }
 }
 setTimeout(checkDrivers, 90e3); // l'hôte vérifie une minute après le démarrage
@@ -310,7 +313,7 @@ actions['update-open'] = () => {
 // ---------- Démarrage ----------
 (async () => {
   // La bibliothèque se charge pendant le logo (ou la vidéo) de démarrage.
-  const loading = lib.load().catch(() => toast('Hôte injoignable : lancez « node host/server.js »', { error: true }));
+  const loading = lib.load().catch(() => toast(t('Hôte injoignable : lancez « node host/server.js »'), { error: true }));
   if (!RELOADED) await playBoot();
   const started = performance.now();
   await loading;
@@ -333,6 +336,6 @@ actions['update-open'] = () => {
     if (settings.uiScale === 100) settings.uiScale = 125;
     settings.lowFx = true; // plus fluide et plus économe sur une console portable
     saveSettings();
-    toast(`${hh.name} détectée · interface adaptée (Paramètres → Appareil et pilotes)`, { notify: true });
+    toast(t('{name} détectée · interface adaptée (Paramètres → Appareil et pilotes)', { name: hh.name }), { notify: true });
   }).catch(() => {});
 })();

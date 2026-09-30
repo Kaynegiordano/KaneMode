@@ -112,8 +112,11 @@ const SOFTWARE_GENRES = new Set(['51', '52', '53', '54', '55', '56', '57', '58',
 const queue = [];
 let busy = false;
 
+// Langue des données de Steam (genres, descriptions) : celle de l'interface ; prix toujours pour la France
+const STEAM_LANG = { fr: 'french', en: 'english', es: 'spanish', de: 'german', it: 'italian', pt: 'brazilian', ja: 'japanese', zh: 'schinese' };
+const steamLang = () => STEAM_LANG[config().lang] || 'french';
 async function steamJson(url) {
-  const r = await fetch(url, { headers: { 'Accept-Language': 'fr-FR' }, signal: AbortSignal.timeout(8000) });
+  const r = await fetch(url, { headers: { 'Accept-Language': (config().lang || 'fr') + ',en;q=0.5' }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -121,7 +124,7 @@ async function steamJson(url) {
 async function fetchMeta(entry) {
   let steamId = entry.steamAppId || null;
   if (!steamId) {
-    const s = await steamJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(entry.name)}&l=french&cc=FR`);
+    const s = await steamJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(entry.name)}&l=${steamLang()}&cc=FR`);
     const want = normName(entry.name);
     const items = s.items || [];
     // Sans les mentions d'édition : « X - Complete Edition » correspond bien à « X ».
@@ -133,7 +136,7 @@ async function fetchMeta(entry) {
     if (!hit) return { steamId: null, fetched: Date.now() };
     steamId = hit.id;
   }
-  const d = await steamJson(`https://store.steampowered.com/api/appdetails?appids=${steamId}&l=french&cc=FR`);
+  const d = await steamJson(`https://store.steampowered.com/api/appdetails?appids=${steamId}&l=${steamLang()}&cc=FR`);
   // Steam renvoie parfois la réponse sous une autre clé que l'appid demandé : on prend la première.
   const first = d[steamId] || Object.values(d)[0];
   const info = first && first.success ? first.data : null;
@@ -141,10 +144,11 @@ async function fetchMeta(entry) {
   // Recherche par nom : on refuse un DLC, une bande-son ou une démo pris pour le jeu.
   if (!entry.steamAppId && info.type !== 'game') return { steamId: null, fetched: Date.now() };
   const genres = (info.genres || []).map(g => ({ id: String(g.id), name: g.description }));
-  const software = info.type !== 'game' && info.type !== 'dlc' || (genres.length && genres.every(g => SOFTWARE_GENRES.has(g.id) || ['Indépendant', 'Occasionnel', 'Accès anticipé'].includes(g.name)) && genres.some(g => SOFTWARE_GENRES.has(g.id)));
+  // Genres comparés par identifiant (Indépendant 23, Occasionnel 4, Accès anticipé 70) : pas par leur nom, qui suit la langue
+  const software = info.type !== 'game' && info.type !== 'dlc' || (genres.length && genres.every(g => SOFTWARE_GENRES.has(g.id) || ['23', '4', '70'].includes(g.id)) && genres.some(g => SOFTWARE_GENRES.has(g.id)));
   const cats = info.categories || [];
   return {
-    steamId, fetched: Date.now(), name: info.name, kind: info.type,
+    steamId, fetched: Date.now(), lang: steamLang(), name: info.name, kind: info.type,
     type: software ? 'app' : 'game',
     description: decodeEntities(info.short_description),
     genres: genres.map(g => g.name).slice(0, 4),
@@ -161,7 +165,8 @@ function enqueueMeta(entries) {
   for (const e of entries) {
     if (e.source === 'rom' || (!e.steamAppId && e.type === 'app')) continue; // rien à chercher sur Steam
     const m = meta[e.id];
-    const stale = m && m.steamId && (!m.type || (e.steamAppId && !m.name)) && Date.now() - m.fetched > 3600e3; // données incomplètes
+    // Données incomplètes, ou dans une autre langue que celle de l'interface (genres, description)
+    const stale = m && m.steamId && (((!m.type || (e.steamAppId && !m.name)) && Date.now() - m.fetched > 3600e3) || (m.name && (m.lang || 'french') !== steamLang()));
     if ((m && !stale) || queue.some(q => q.id === e.id)) continue;
     queue.push(e);
   }
@@ -355,7 +360,7 @@ const setPerfMode = mode => {
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
-const deals = dealsLib.create(DATA); // bons plans des boutiques (GET /api/deals)
+const deals = dealsLib.create(DATA, { lang: () => config().lang || 'fr' }); // bons plans des boutiques (GET /api/deals)
 // Réglages graphiques du pilote : outil du fabricant de la carte (voir lib/gpuctl.js)
 const gfx = gpuctl.create({ vendors: async () => { const d = await device.info(); return d && d.ok ? (d.gpus || []).map(g => String(g.vendor || '').toUpperCase()) : null; } });
 const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
@@ -493,15 +498,18 @@ const KANEPLAY_BUNDLED = path.join(ROOT, '..', 'kaneplay', 'KanePlay.exe');
 const KANEPLAY_DEV = path.join(ROOT, 'engine', 'out', 'KanePlay.exe');
 // Icône de KaneMode pour la fenêtre du streaming (paquet : app\kanemode.ico)
 const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup', 'kanemode.ico')].find(isFile) || null;
-const KANEPLAY_COVER = path.join(UI, 'media', 'kaneplay.png');
+// Jaquette : dessinée par l'interface (ui/js/streamcover.js), aux couleurs et dans la langue de KaneMode
+const KANEPLAY_COVER = null;
 const kp = { exe: null, entries: [], hosts: [] };
+// Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
+const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt', 'ja', 'zh'];
 let kpLast = 0;
 async function refreshKanePlay() {
   kpLast = Date.now();
   try {
     const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
-    const one = kaneplay.entry(exe, KANEPLAY_COVER, { icon: KANEMODE_ICON, accent: config().accent });
+    const one = kaneplay.entry(exe, KANEPLAY_COVER, { icon: KANEMODE_ICON, accent: config().accent, lang: config().lang });
     const entries = one ? [one] : [];
     const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
     const changed = sig(exe, hosts, entries) !== sig(kp.exe, kp.hosts, kp.entries);
@@ -899,6 +907,8 @@ const routes = {
     if ('sgdbAuto' in b) c.sgdbAuto = !!b.sgdbAuto;
     // Couleur d'accent de l'interface, reprise par KanePlay
     if ('accent' in b && /^#[0-9a-f]{6}$/i.test(String(b.accent))) { c.accent = b.accent; setTimeout(refreshKanePlay, 0); }
+    // Langue de l'interface : reprise par les widgets Game Bar et le moteur de streaming
+    if ('lang' in b && LANGS.includes(b.lang)) { c.lang = b.lang; setTimeout(refreshKanePlay, 0); }
     if ('sgdbPreferSteam' in b) c.sgdbPreferSteam = !!b.sgdbPreferSteam;
     if ('sgdbStyle' in b) c.sgdbStyle = ['', 'alternate', 'blurred', 'white_logo', 'material', 'no_logo'].includes(b.sgdbStyle) ? b.sgdbStyle : '';
     if (Array.isArray(b.romRoots)) c.romRoots = [...new Set(b.romRoots.filter(r => str(r) && fs.existsSync(r)))];
@@ -1127,7 +1137,7 @@ const routes = {
         (err, out) => resolve(!err && /LosslessScaling\.exe/i.test(out))));
     }
     const running = ls ? await losslessCheck.p : false;
-    json(res, 200, { version, accent: config().accent || null, lossless: ls || running ? { installed: !!ls, running, id: ls ? ls.id : null } : null });
+    json(res, 200, { version, accent: config().accent || null, lang: config().lang || null, lossless: ls || running ? { installed: !!ls, running, id: ls ? ls.id : null } : null });
   },
   // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
   'POST /api/library/refresh': (req, res) => {
@@ -1411,7 +1421,7 @@ const routes = {
   // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
   'POST /api/stream/open': async (req, res) => {
     if (!kp.exe) return json(res, 404, { error: 'Moteur de streaming absent' });
-    const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', { icon: KANEMODE_ICON, accent: config().accent }) });
+    const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', { icon: KANEMODE_ICON, accent: config().accent, lang: config().lang }) });
     if (r.ok) recordPlay('kaneplay');
     json(res, 200, r);
   },

@@ -1,4 +1,5 @@
 // Cartes de jeux : jaquettes, jaquettes générées quand il n'y a pas de visuel, badges.
+import { t } from './i18n.js';
 import { el, esc, favs, sourceOf } from './core.js';
 import { nav } from './nav.js';
 
@@ -88,7 +89,7 @@ export function badges(card, g) {
   card.querySelectorAll('.badges, .src-badge, .sys-badge').forEach(b => b.remove());
   card.classList.toggle('uninstalled', !g.installed);
   const b = el('div', 'badges');
-  if (g.demo) b.append(el('span', 'badge-demo', 'DÉMO'));
+  if (g.demo) b.append(el('span', 'badge-demo', t('DÉMO')));
   if (!g.installed) b.append(el('span', 'badge-dl', '<svg><use href="#i-download2"/></svg>'));
   if (favs.has(g.id)) b.append(el('span', 'badge-fav', '★'));
   if (b.children.length) card.append(b);

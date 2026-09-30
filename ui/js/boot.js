@@ -1,5 +1,6 @@
 // Démarrage : logo KaneMode animé, calé sur le pic du son (son KaneMode synthétisé ou son perso), ou vidéo perso.
 // Les mêmes sons servent à la mise en veille et au réveil.
+import { t } from './i18n.js';
 import { $, api, settings, saveSettings } from './core.js';
 import { inputLock } from './nav.js';
 
@@ -170,7 +171,7 @@ async function ready(volume) {
  */
 export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
   const ac = await ready(volume);
-  const buffer = ac && await renderSound(kind);
+  const buffer = ac && (await renderSound(kind));
   if (!buffer) return false;
   const src = ac.createBufferSource(), g = ac.createGain();
   src.buffer = buffer; g.gain.value = volume;
@@ -282,7 +283,7 @@ async function playSynced(box, snd) {
 async function bootSource(cfg) {
   if (settings.bootSound === 'custom') {
     const ac = audio();
-    try { const c = ac && await loadCustom(ac, cfg); if (c) return c; } catch { /* fichier illisible : son KaneMode */ }
+    try { const c = ac && (await loadCustom(ac, cfg)); if (c) return c; } catch { /* fichier illisible : son KaneMode */ }
   }
   const buffer = await renderSound('boot');
   // La réverbération prolonge le son : l'écran de logo s'arrête un peu avant la fin du calcul
@@ -342,7 +343,7 @@ export function playBoot({ force = false, kind = 'boot', mode = settings.bootMod
   return new Promise(async resolve => {
     if (!force && mode === 'none') return resolve();
     const box = $('#boot');
-    box.replaceChildren(Object.assign(document.createElement('div'), { className: 'boot-skip', textContent: 'Appuyez sur un bouton pour passer' }));
+    box.replaceChildren(Object.assign(document.createElement('div'), { className: 'boot-skip', textContent: t('Appuyez sur un bouton pour passer') }));
     box.hidden = false;
     box.classList.remove('fade', 'sleeping', 'sync');
     box._skip = null;
@@ -376,7 +377,7 @@ export function playBoot({ force = false, kind = 'boot', mode = settings.bootMod
     const safety = setTimeout(finish, 30000);
     raf = requestAnimationFrame(pollPad);
 
-    if (kind === 'boot' && mode === 'video' && await playVideo(box)) return finish();
+    if (kind === 'boot' && mode === 'video' && (await playVideo(box))) return finish();
     if (done) return;
     box.querySelector('video')?.remove();
     await showLogo(box, kind);

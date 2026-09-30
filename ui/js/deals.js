@@ -2,17 +2,18 @@
 // gratuits de Steam, Epic, GOG et d'autres boutiques (hôte : GET /api/deals, lib/deals.js). La liste
 // gardée s'affiche tout de suite ; la rangée avance d'une carte toutes les 5 s tant qu'on ne la
 // parcourt pas (pas en effets allégés, ni KaneMode en arrière-plan).
+import { t, tn, locale } from './i18n.js';
 import { el, esc, api, toast, settings, store, native, reduceMotion } from './core.js';
 import { nav, focused, input, scrollToPos, currentPage } from './nav.js';
 
 export const STORES = {
-  steam: { label: 'Steam', color: '#1a9fff' },
-  epic: { label: 'Epic', color: '#3a3a3a' },
+  steam: { label: t('Steam'), color: '#1a9fff' },
+  epic: { label: t('Epic'), color: '#3a3a3a' },
   gog: { label: 'GOG', color: '#8f3fd1' },
-  gamerpower: { label: 'Offert', color: '#1f9d55' },
+  gamerpower: { label: t('Offert'), color: '#1f9d55' },
 };
 const KIND = {
-  free: ['Gratuit', 'free'], 'soon-free': ['Gratuit bientôt', 'soon'], promo: [null, 'promo'], new: ['Nouveau', 'new'], soon: ['Bientôt', 'soon'],
+  free: [t('Gratuit'), 'free'], 'soon-free': [t('Gratuit bientôt'), 'soon'], promo: [null, 'promo'], new: [t('Nouveau'), 'new'], soon: [t('Bientôt'), 'soon'],
 };
 // Ordre : gratuits du moment, meilleures promos, nouveautés, gratuits à venir, sorties à venir
 const RANK = { free: 0, promo: 1, new: 2, 'soon-free': 3, soon: 4 };
@@ -44,16 +45,16 @@ function load() {
   return loading;
 }
 
-const dateFr = iso => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+const dateFr = iso => new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 /** Ligne d'information d'une offre (panneau de l'accueil). */
 export function dealLine(d) {
   const s = STORES[d.store] || {};
   const bits = [`<span class="pill src" style="--src:${s.color}">${esc(d.shop || s.label)}</span>`];
   if (d.price && d.price.final) bits.push(`<span>${d.price.base && d.price.base !== d.price.final ? `<s>${esc(d.price.base)}</s> ` : ''}<b>${esc(d.price.final)}</b>${d.price.pct && d.price.pct < 100 ? ` · −${d.price.pct} %` : ''}</span>`);
-  if (d.kind === 'soon-free' && d.from) bits.push(`<span>Gratuit à partir du <b>${dateFr(d.from)}</b></span>`);
-  else if (d.until) bits.push(`<span>Jusqu’au <b>${dateFr(d.until)}</b></span>`);
-  if (d.kind === 'new') bits.push('<span>Nouveauté</span>');
-  if (d.kind === 'soon') bits.push('<span>Sortie à venir</span>');
+  if (d.kind === 'soon-free' && d.from) bits.push(t('<span>Gratuit à partir du <b>{dateFr}</b></span>', { dateFr: dateFr(d.from) }));
+  else if (d.until) bits.push(t('<span>Jusqu’au <b>{dateFr}</b></span>', { dateFr: dateFr(d.until) }));
+  if (d.kind === 'new') bits.push(t('<span>Nouveauté</span>'));
+  if (d.kind === 'soon') bits.push(t('<span>Sortie à venir</span>'));
   return bits.join('');
 }
 
@@ -77,7 +78,7 @@ async function openDeal(d) {
   native.send('foreground'); // la boutique pourra passer au premier plan
   try {
     const r = await api.post('/api/deals/open', { id: d.id });
-    toast(r.app ? `Ouverture dans ${s.label}…` : `Ouverture de la page ${d.shop || s.label}…`);
+    toast(r.app ? t('Ouverture dans {label}…', { label: s.label }) : t('Ouverture de la page {a}…', { a: d.shop || s.label }));
   } catch (e) { toast(e.message, { error: true }); }
 }
 
@@ -99,7 +100,7 @@ function fill() {
   const free = list.filter(d => d.kind === 'free').length;
   const row = el('div', 'row deals-row');
   list.forEach(d => row.append(card(d)));
-  block.replaceChildren(el('h2', 'row-title', `Bons plans et nouveautés <small>${free ? `${free} gratuit${free > 1 ? 's' : ''} · ` : ''}Steam, Epic, GOG et plus</small>`), row);
+  block.replaceChildren(el('h2', 'row-title', `${t('Bons plans et nouveautés')} <small>${free ? `${tn(free, '{n} gratuit', '{n} gratuits')} · ` : ''}${t('Steam, Epic, GOG et plus')}</small>`), row);
 }
 
 // Avance automatique : une carte toutes les 5 s, seulement sur l'accueil affiché et au repos

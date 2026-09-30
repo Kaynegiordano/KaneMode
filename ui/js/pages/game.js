@@ -1,4 +1,5 @@
 // Fiche d'un jeu + actions partagées : lancement, favoris, fond d'écran, lanceurs.
+import { t } from '../i18n.js';
 import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native } from '../core.js';
 import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh } from '../nav.js';
 import { art, badges } from '../cards.js';
@@ -37,7 +38,7 @@ export function toggleFav(g) {
   $$(`.card[data-id="${CSS.escape(g.id)}"]`).forEach(c => badges(c, g));
   const btn = $('#page-game [data-key="fav"]');
   if (btn) btn.classList.toggle('on', on);
-  toast(on ? `★ ${g.name} ajouté aux favoris` : `${g.name} retiré des favoris`);
+  toast(on ? t('★ {name} ajouté aux favoris', { name: g.name }) : t('{name} retiré des favoris', { name: g.name }));
 }
 
 // ---------- Fond du lancement : une image du jeu tirée au hasard sur SteamGridDB ----------
@@ -72,13 +73,13 @@ export function resumeGame(g) { native.send('game-front', gameRef(g)); }
 let stopTimer = null;
 /** Arrête le jeu : fermeture demandée au jeu, puis proposée de force s'il ne répond pas. */
 export async function stopGame(g) {
-  if (!await confirmDialog(`Arrêter ${g.name} ?`, 'Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.', 'Arrêter')) return;
+  if (!(await confirmDialog(t('Arrêter {name} ?', { name: g.name }), t('Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.'), t('Arrêter')))) return;
   native.send('game-stop', { ...gameRef(g), force: false });
-  toast(`Fermeture de ${g.name}…`);
+  toast(t('Fermeture de {name}…', { name: g.name }));
   clearTimeout(stopTimer);
   stopTimer = setTimeout(async () => {
     if (!running.has(g.id)) return;
-    if (!await confirmDialog(`${g.name} ne s’est pas fermé`, 'Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.', 'Forcer la fermeture')) return;
+    if (!(await confirmDialog(t('{name} ne s’est pas fermé', { name: g.name }), t('Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.'), t('Forcer la fermeture')))) return;
     native.send('game-stop', { ...gameRef(g), force: true });
   }, 8000);
 }
@@ -93,11 +94,11 @@ native.on(m => {
     api.post('/api/launch/ended', { id: m.id }).catch(() => {});
     lib.load({ background: true }).catch(() => {});
   } else if (m.type === 'game-stop' && m.force && m.failed) {
-    toast('Windows a refusé d’arrêter une partie du jeu (anti-triche ou droits administrateur)', { error: true });
+    toast(t('Windows a refusé d’arrêter une partie du jeu (anti-triche ou droits administrateur)'), { error: true });
   } else if (m.type === 'game-front-failed') {
     const g = lib.byId(m.id);
     if (g) queryGame(g);
-    toast('La fenêtre du jeu est introuvable', { error: true });
+    toast(t('La fenêtre du jeu est introuvable'), { error: true });
   }
 });
 // Retour sur KaneMode : le jeu de la fiche ouverte tourne-t-il encore ?
@@ -113,7 +114,7 @@ let launching = null;
 native.on(m => {
   if (!launching || m.id !== launching.g.id) return;
   if (m.type === 'game-started') {
-    $('#launch-status').textContent = 'Bon jeu !';
+    $('#launch-status').textContent = t('Bon jeu !');
     const L = launching.layer;
     launching = null;
     setTimeout(() => { if (topLayer() === L) closeLayer(L); }, 700);
@@ -125,7 +126,7 @@ native.on(m => {
 });
 
 export async function launch(g) {
-  if (g.demo) return toast('Entrée de démonstration : il n’y a rien à lancer', { error: true });
+  if (g.demo) return toast(t('Entrée de démonstration : il n’y a rien à lancer'), { error: true });
   if (launching) return;
   if (running.has(g.id)) return resumeGame(g);
   // Jeu installé : l'écran de lancement cache Steam et reste là jusqu'à ce que le jeu s'affiche
@@ -148,11 +149,11 @@ export async function launch(g) {
     img.src = g.art.logo;
   }
   const status = $('#launch-status');
-  status.textContent = g.streamHost ? `Connexion à ${g.streamHost}…`
-    : !g.installed ? `Ouverture de Steam pour installer ${g.name}…`
-    : g.emulator ? `Lancement de ${g.name} avec ${g.emulator}…` : `Lancement de ${g.name}…`;
+  status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
+    : !g.installed ? t('Ouverture de Steam pour installer {name}…', { name: g.name })
+    : g.emulator ? t('Lancement de {name} avec {emulator}…', { name: g.name, emulator: g.emulator }) : t('Lancement de {name}…', { name: g.name });
   const layer = openLayer({
-    el: L, name: 'launch', noGlobal: true, hints: () => [['b', 'Fermer']],
+    el: L, name: 'launch', noGlobal: true, hints: () => [['b', t('Fermer')]],
     onClose() {
       delete L.dataset.game;
       // Fermé à la main (B) : KaneMode ne reste plus au-dessus, mais suit toujours le jeu
@@ -165,17 +166,17 @@ export async function launch(g) {
     native.send('foreground'); // le jeu lancé pourra passer au premier plan
     const r = await api.post('/api/launch', { id: g.id });
     if (r.already || r.running) {
-      status.textContent = `${g.name} est déjà lancé`;
+      status.textContent = t('{name} est déjà lancé', { name: g.name });
       if (cover) { queryGame(g); resumeGame(g); }
     } else if (r.ok && cover) {
       native.send('launch', { ...gameRef(g), name: g.name, cover: true });
       waitForGame = true;
     } else {
-      status.textContent = r.ok ? (g.installed ? 'Bon jeu !' : 'Suivez l’installation dans Steam') : `Impossible de lancer : ${r.error || 'erreur inconnue'}`;
+      status.textContent = r.ok ? (g.installed ? t('Bon jeu !') : t('Suivez l’installation dans Steam')) : t('Impossible de lancer : {a}', { a: r.error || 'erreur inconnue' });
     }
     if (r.ok) lib.load({ background: true });
   } catch (e) {
-    status.textContent = `Impossible de lancer : ${e.message}`;
+    status.textContent = t('Impossible de lancer : {message}', { message: e.message });
   }
   if (waitForGame) return; // l'app native dira quand le jeu est là (ou au bout de 25 s)
   // Navigateur, installation, streaming : pas de suivi, l'écran se ferme tout seul
@@ -190,15 +191,15 @@ export async function launch(g) {
  * ouvert ; déjà sur le bureau, il se réduit. Il ne se ferme plus (2.1.0).
  */
 export async function exitToDesktop() {
-  if (native.available) { toast('Bureau Windows · KaneMode reste ouvert'); return native.send('exit'); }
-  if (!await confirmDialog('Quitter KaneMode ?', 'Hors de l’app, l’hôte s’arrête et cette page se ferme.', 'Quitter')) return;
+  if (native.available) { toast(t('Bureau Windows · KaneMode reste ouvert')); return native.send('exit'); }
+  if (!(await confirmDialog(t('Quitter KaneMode ?'), t('Hors de l’app, l’hôte s’arrête et cette page se ferme.'), t('Quitter')))) return;
   try { await api.post('/api/exit'); } catch { /* l'hôte s'arrête peut-être déjà */ }
-  const bye = el('div', 'bye', '<svg class="brand-mark"><use href="#i-brand"/></svg><h1>À bientôt</h1><p>KaneMode est fermé, le bureau Windows a repris la main.<br>Vous pouvez fermer cette fenêtre.</p>');
+  const bye = el('div', 'bye', t('<svg class="brand-mark"><use href="#i-brand"/></svg><h1>À bientôt</h1><p>KaneMode est fermé, le bureau Windows a repris la main.<br>Vous pouvez fermer cette fenêtre.</p>'));
   document.body.append(bye);
   setTimeout(() => window.close(), 600);
 }
 
-const KANEPLAY_WINDOW = 'KaneMode · KanePlay';
+const KANEPLAY_WINDOW = 'KaneMode · Streaming'; // titre de la fenêtre du moteur intégré (engine/KanePlay, main.qml)
 let streamRetry = 0;
 /**
  * Écran de streaming (KanePlay intégré) : un fondu au noir, puis il prend le relais en plein écran.
@@ -228,8 +229,8 @@ native.on(m => {
 });
 
 export async function openLauncher(l) {
-  if (!l.installed) return toast(`${l.name} n’est pas installé sur ce PC`, { error: true });
-  toast(`Ouverture de ${l.name}…`);
+  if (!l.installed) return toast(t('{name} n’est pas installé sur ce PC', { name: l.name }), { error: true });
+  toast(t('Ouverture de {name}…', { name: l.name }));
   native.send('foreground');
   try { await api.post('/api/launch', { id: 'launcher:' + l.id }); }
   catch (e) { toast(e.message, { error: true }); }
@@ -246,24 +247,24 @@ async function openThing(g, what, label) {
 export async function collectionsDialog(g) {
   const cols = lib.collections;
   const choice = await dialog({
-    title: `Collections : ${g.name}`,
-    text: 'Choisissez une collection pour y ajouter le jeu, ou l’en retirer.',
+    title: t('Collections : {name}', { name: g.name }),
+    text: t('Choisissez une collection pour y ajouter le jeu, ou l’en retirer.'),
     buttons: [
       ...cols.map(c => ({ label: `${c.ids.includes(g.id) ? '✓ ' : ''}${c.name} (${c.ids.length})`, value: c.id, icon: 'i-collection' })),
-      { label: 'Nouvelle collection…', value: '__new', icon: 'i-plus', primary: !cols.length },
-      { label: 'Fermer', value: null },
+      { label: t('Nouvelle collection…'), value: '__new', icon: 'i-plus', primary: !cols.length },
+      { label: t('Fermer'), value: null },
     ],
   });
   if (!choice) return;
   if (choice === '__new') {
-    const name = await openKeyboard({ title: 'Nom de la nouvelle collection', placeholder: 'Coop canapé, À finir, Rétro…' });
+    const name = await openKeyboard({ title: t('Nom de la nouvelle collection'), placeholder: t('Coop canapé, À finir, Rétro…') });
     if (!name || !name.trim()) return;
     await api.post('/api/collections', { action: 'create', name: name.trim(), entryId: g.id });
-    toast(`Collection « ${name.trim()} » créée`);
+    toast(t('Collection « {trim} » créée', { trim: name.trim() }));
   } else {
     const c = cols.find(x => x.id === choice);
     await api.post('/api/collections', { action: 'toggle', collection: choice, entryId: g.id });
-    toast(c.ids.includes(g.id) ? `Retiré de « ${c.name} »` : `Ajouté à « ${c.name} »`);
+    toast(c.ids.includes(g.id) ? t('Retiré de « {name} »', { name: c.name }) : t('Ajouté à « {name} »', { name: c.name }));
   }
   await lib.load();
 }
@@ -274,37 +275,37 @@ async function options(g) {
   const choice = await dialog({
     title: g.name,
     buttons: [
-      { label: favs.has(g.id) ? 'Retirer des favoris' : 'Ajouter aux favoris', value: 'fav', icon: 'i-star' },
-      { label: 'Collections…', value: 'collections', icon: 'i-collection' },
-      ...(!g.demo ? [{ label: 'Visuels (SteamGridDB, image perso)…', value: 'art', icon: 'i-image' }] : []),
-      ...(steamInstalled ? [{ label: 'Désinstaller (via Steam)', value: 'uninstall', icon: 'i-trash' }] : []),
-      { label: g.type === 'app' ? 'Classer comme jeu' : 'Classer comme application', value: 'type', icon: 'i-sort' },
-      { label: g.hidden ? 'Réafficher dans la bibliothèque' : 'Masquer de la bibliothèque', value: 'hide', icon: 'i-eye-off' },
-      ...(custom ? [{ label: 'Modifier', value: 'edit', icon: 'i-edit' }, { label: 'Supprimer de la bibliothèque', value: 'delete', icon: 'i-trash', danger: true }] : []),
-      { label: 'Fermer', value: null },
+      { label: favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), value: 'fav', icon: 'i-star' },
+      { label: t('Collections…'), value: 'collections', icon: 'i-collection' },
+      ...(!g.demo ? [{ label: t('Visuels (SteamGridDB, image perso)…'), value: 'art', icon: 'i-image' }] : []),
+      ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
+      { label: g.type === 'app' ? t('Classer comme jeu') : t('Classer comme application'), value: 'type', icon: 'i-sort' },
+      { label: g.hidden ? t('Réafficher dans la bibliothèque') : t('Masquer de la bibliothèque'), value: 'hide', icon: 'i-eye-off' },
+      ...(custom ? [{ label: t('Modifier'), value: 'edit', icon: 'i-edit' }, { label: t('Supprimer de la bibliothèque'), value: 'delete', icon: 'i-trash', danger: true }] : []),
+      { label: t('Fermer'), value: null },
     ],
   });
   if (choice === 'fav') toggleFav(g);
   if (choice === 'collections') collectionsDialog(g);
   if (choice === 'art') go('artpicker', { id: g.id });
-  if (choice === 'uninstall' && await confirmDialog(`Désinstaller ${g.name} ?`, 'Steam va s’ouvrir pour confirmer la désinstallation.', 'Continuer', true)) {
-    openThing(g, 'uninstall', 'Ouverture de Steam…');
+  if (choice === 'uninstall' && (await confirmDialog(t('Désinstaller {name} ?', { name: g.name }), t('Steam va s’ouvrir pour confirmer la désinstallation.'), t('Continuer'), true))) {
+    openThing(g, 'uninstall', t('Ouverture de Steam…'));
   }
   if (choice === 'type' || choice === 'hide') {
     const body = choice === 'type' ? { id: g.id, type: g.type === 'app' ? 'game' : 'app' } : { id: g.id, hidden: !g.hidden };
     await api.post('/api/override', body);
     await lib.load();
-    toast(choice === 'type' ? `Classé comme ${body.type === 'app' ? 'application' : 'jeu'}` : body.hidden ? 'Masqué (visible dans l’onglet « Masqués »)' : 'Réaffiché');
+    toast(choice === 'type' ? t('Classé comme {a}', { a: body.type === 'app' ? 'application' : t("jeu") }) : body.hidden ? t('Masqué (visible dans l’onglet « Masqués »)') : t('Réaffiché'));
   }
   if (choice === 'edit') go('details', { editId: g.id, nonce: Math.random() });
   if (choice === 'delete') deleteCustom(g);
 }
 
 export async function deleteCustom(g) {
-  if (!await confirmDialog(`Supprimer « ${g.name} » ?`, 'L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.', 'Supprimer', true)) return false;
+  if (!(await confirmDialog(t('Supprimer « {name} » ?', { name: g.name }), t('L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.'), t('Supprimer'), true))) return false;
   await api.del('/api/custom?id=' + encodeURIComponent(g.id));
   await lib.load();
-  toast(`${g.name} supprimé`);
+  toast(t('{name} supprimé', { name: g.name }));
   if (currentPage().id === 'game' || currentPage().id === 'details') back();
   return true;
 }
@@ -315,7 +316,7 @@ definePage('game', {
   render({ id }) {
     const root = this.el;
     const g = this.g = lib.byId(id);
-    if (!g) { root.innerHTML = '<div class="empty" style="padding-top:120px">Cet élément n’existe plus.</div>'; return; }
+    if (!g) { root.innerHTML = t('<div class="empty" style="padding-top:120px">Cet élément n’existe plus.</div>'); return; }
     const src = sourceOf(g.source);
     const m = g.meta || {};
     if (g.installed && !g.streamHost) prepareWallpaper(g);
@@ -339,44 +340,44 @@ definePage('game', {
     const noEmu = g.source === 'rom' && !g.demo && !g.launch;
     queryGame(g);
     const isRunning = running.has(g.id);
-    const label = g.demo ? 'DÉMO' : noEmu ? 'ÉMULATEUR MANQUANT' : isRunning ? 'REPRENDRE' : !g.installed ? 'INSTALLER' : g.streamHost ? 'STREAMER' : g.type === 'app' ? 'LANCER' : 'JOUER';
+    const label = g.demo ? t('DÉMO') : noEmu ? t('ÉMULATEUR MANQUANT') : isRunning ? 'REPRENDRE' : !g.installed ? t('INSTALLER') : g.streamHost ? 'STREAMER' : g.type === 'app' ? t('LANCER') : 'JOUER';
     const play = el('div', 'btn-play' + (g.demo || noEmu ? ' disabled' : isRunning ? ' running' : !g.installed ? ' install' : ''), `${icon(!g.installed && !noEmu ? 'i-download2' : 'i-play')}${label}`);
     nav(play, () => (noEmu ? go('emulation') : isRunning ? resumeGame(g) : launch(g)), 'play');
     play.dataset.autofocus = '';
     // Jeu en cours : l'arrêter (fermeture propre, puis forcée s'il ne répond pas)
     const stop = isRunning ? nav(el('div', 'btn-icon stop', icon('i-power')), () => stopGame(g), 'stop') : null;
-    if (stop) stop.title = 'Arrêter le jeu';
+    if (stop) stop.title = t('Arrêter le jeu');
     const fav = el('div', 'btn-icon' + (favs.has(g.id) ? ' on' : ''), icon('i-star'));
     nav(fav, () => toggleFav(g), 'fav');
     const more = el('div', 'btn-icon', icon('i-more'));
     nav(more, () => options(g), 'more');
     const stat = (label, value) => `<div class="stat"><small>${label}</small><b>${value}</b></div>`;
     const stats = el('div', 'stats',
-      stat('Dernière session', fmt.played(g.lastPlayed)) +
-      (g.playtime ? stat('Temps de jeu', fmt.playtime(g.playtime)) : '') +
-      (g.playCount ? stat('Lancements', g.playCount) : '') +
-      (g.sizeOnDisk ? stat('Taille', fmt.size(g.sizeOnDisk)) : '') +
-      (g.streamHost ? stat('Streaming', `KanePlay · ${esc(g.streamHost)}`) : '') +
-      (g.systemName ? stat('Console', esc(g.systemName) + (g.region ? ` · ${esc(g.region)}` : '')) : '') +
-      (g.source === 'rom' ? stat('Émulateur', g.emulator ? esc(g.emulator + (g.core ? ` (${g.core})` : '')) : '<span style="color:#ff9a9d">Non trouvé</span>') : '') +
-      stat('Boutique', `<span class="pill src" style="--src:${src.color}">${esc(src.label)}${g.shortcut ? ' · non-Steam' : ''}</span>`));
+      stat(t('Dernière session'), fmt.played(g.lastPlayed)) +
+      (g.playtime ? stat(t('Temps de jeu'), fmt.playtime(g.playtime)) : '') +
+      (g.playCount ? stat(t('Lancements'), g.playCount) : '') +
+      (g.sizeOnDisk ? stat(t('Taille'), fmt.size(g.sizeOnDisk)) : '') +
+      (g.streamHost ? stat(t('Streaming'), t('Streaming local · {host}', { host: esc(g.streamHost) })) : '') +
+      (g.systemName ? stat(t('Console'), esc(g.systemName) + (g.region ? ` · ${esc(g.region)}` : '')) : '') +
+      (g.source === 'rom' ? stat(t('Émulateur'), g.emulator ? esc(g.emulator + (g.core ? ` (${g.core})` : '')) : t('<span style="color:#ff9a9d">Non trouvé</span>')) : '') +
+      stat(t('Boutique'), `<span class="pill src" style="--src:${src.color}">${esc(src.label)}${g.shortcut ? t(' · non-Steam') : ''}</span>`));
     bar.append(...[play, stop, fav, more, stats].filter(Boolean));
-    if (isRunning) stats.insertAdjacentHTML('afterbegin', stat('État', '<span class="now-playing">En cours</span>'));
+    if (isRunning) stats.insertAdjacentHTML('afterbegin', stat(t('État'), t('<span class="now-playing">En cours</span>')));
 
     root.replaceChildren(hero, bar);
 
     if (m.description || (m.genres && m.genres.length) || g.demo) {
-      root.append(el('h2', 'row-title', 'À propos'));
+      root.append(el('h2', 'row-title', t('À propos')));
       const about = el('div', 'about');
       const facts = [
-        m.developers && m.developers.length && ['Développeur', m.developers.join(', ')],
-        m.publishers && m.publishers.length && ['Éditeur', m.publishers.join(', ')],
-        m.release && ['Sortie', m.release],
-        m.controller && ['Manette', m.controller === 'full' ? 'Compatible manette' : 'Compatibilité partielle'],
-        m.metacritic && ['Metacritic', `<span class="score">${m.metacritic}</span>`],
+        m.developers && m.developers.length && [t('Développeur'), m.developers.join(', ')],
+        m.publishers && m.publishers.length && [t('Éditeur'), m.publishers.join(', ')],
+        m.release && [t('Sortie'), m.release],
+        m.controller && [t('Manette'), m.controller === 'full' ? t('Compatible manette') : t('Compatibilité partielle')],
+        m.metacritic && [t('Metacritic'), `<span class="score">${m.metacritic}</span>`],
       ].filter(Boolean);
       about.innerHTML = `<div>
-          <p>${esc(m.description || (g.demo ? 'Entrée de démonstration : elle montre comment un jeu de cette boutique apparaîtrait dans la bibliothèque.' : ''))}</p>
+          <p>${esc(m.description || (g.demo ? t('Entrée de démonstration : elle montre comment un jeu de cette boutique apparaîtrait dans la bibliothèque.') : ''))}</p>
           ${m.genres && m.genres.length ? `<div class="chips">${m.genres.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}
         </div>
         <dl>${facts.map(([k, v]) => `<dt>${k}</dt><dd>${k === 'Metacritic' ? v : esc(v)}</dd>`).join('')}</dl>`;
@@ -388,25 +389,25 @@ definePage('game', {
       const l = el('div', 'link ' + cls, `${icon(iconId)}<div><span>${esc(label)}</span><small>${esc(sub)}</small></div>`);
       links.append(nav(l, act, key));
     };
-    if (g.installDir && !g.demo) link('i-folder', 'Fichiers locaux', g.installDir, () => openThing(g, 'folder', 'Ouverture du dossier…'), 'folder');
-    if (m.steamId && !g.demo) link('i-store', 'Page du magasin', 'Boutique Steam : actualités, DLC, avis', () => openThing(g, 'store', 'Ouverture de la boutique Steam…'), 'store');
+    if (g.installDir && !g.demo) link('i-folder', t('Fichiers locaux'), g.installDir, () => openThing(g, 'folder', t('Ouverture du dossier…')), 'folder');
+    if (m.steamId && !g.demo) link('i-store', t('Page du magasin'), t('Boutique Steam : actualités, DLC, avis'), () => openThing(g, 'store', t('Ouverture de la boutique Steam…')), 'store');
     const launcher = lib.launcher(g.source);
-    if (launcher && launcher.installed && !g.demo) link('i-open', `Ouvrir ${launcher.name}`, 'Lanceur de la boutique', () => openLauncher(launcher), 'launcher');
-    if (!g.demo) link('i-image', 'Visuels', g.customArt && g.customArt.length ? 'Personnalisés · SteamGridDB ou image perso' : 'SteamGridDB ou image perso', () => go('artpicker', { id: g.id }), 'art');
-    link('i-collection', 'Collections', (lib.collections.filter(c => c.ids.includes(g.id)).map(c => c.name).join(', ')) || 'Ranger ce jeu dans une collection', () => collectionsDialog(g), 'collections');
+    if (launcher && launcher.installed && !g.demo) link('i-open', t('Ouvrir {name}', { name: launcher.name }), t('Lanceur de la boutique'), () => openLauncher(launcher), 'launcher');
+    if (!g.demo) link('i-image', t('Visuels'), g.customArt && g.customArt.length ? t('Personnalisés · SteamGridDB ou image perso') : t('SteamGridDB ou image perso'), () => go('artpicker', { id: g.id }), 'art');
+    link('i-collection', t('Collections'), (lib.collections.filter(c => c.ids.includes(g.id)).map(c => c.name).join(', ')) || t('Ranger ce jeu dans une collection'), () => collectionsDialog(g), 'collections');
     if (g.source === 'custom' && !g.demo) {
-      link('i-edit', 'Modifier', 'Nom, type, jaquette, arguments', () => go('details', { editId: g.id, nonce: Math.random() }), 'edit');
-      link('i-trash', 'Supprimer', 'Retirer de la bibliothèque', () => deleteCustom(g), 'delete', 'danger');
+      link('i-edit', t('Modifier'), t('Nom, type, jaquette, arguments'), () => go('details', { editId: g.id, nonce: Math.random() }), 'edit');
+      link('i-trash', t('Supprimer'), t('Retirer de la bibliothèque'), () => deleteCustom(g), 'delete', 'danger');
     }
     if (links.children.length) {
-      root.append(el('h2', 'row-title', 'Raccourcis'), links);
+      root.append(el('h2', 'row-title', t('Raccourcis')), links);
     }
     if (g.launch && g.source === 'custom') {
-      root.append(el('div', 'empty', `Cible : ${esc(g.launch.target)} ${esc(g.launch.args || '')}`));
+      root.append(el('div', 'empty', t('Cible : {a} {b}', { a: esc(g.launch.target), b: esc(g.launch.args || '') })));
     }
     if (g.romPath) root.append(el('div', 'empty', `ROM : ${esc(g.romPath)}`));
     setBackground(heroUrl(g));
   },
-  hints: () => [['x', 'Favori'], ['a', 'Sélectionner'], ['b', 'Retour']],
+  hints: () => [['x', t('Favori')], ['a', t('Sélectionner')], ['b', t('Retour')]],
   button(k) { if (k === 'x' && this.g) { toggleFav(this.g); return true; } return false; },
 });

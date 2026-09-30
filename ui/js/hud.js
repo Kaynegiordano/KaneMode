@@ -1,12 +1,13 @@
 // Réglages partagés du widget KaneMode (widget.js) et du moniteur en direct (monitor.js). Les deux
 // pages ont la même origine dans la Game Bar, donc le même stockage local : le widget choisit les
 // mesures du moniteur et lui signale chaque réglage fait, que le moniteur affiche un instant sur le jeu.
+import { t } from './i18n.js';
 import { store } from './core.js';
 
 // Mesures du moniteur, dans l'ordre d'affichage
 export const MONITOR_ITEMS = [
-  ['fps', 'Images/s'], ['gpu', 'GPU'], ['cpu', 'Processeur'],
-  ['power', 'Consommation'], ['limit', 'Puissance'], ['badges', 'Réglages actifs'],
+  ['fps', t('Images/s')], ['gpu', 'GPU'], ['cpu', t('Processeur')],
+  ['power', t('Consommation')], ['limit', t('Puissance')], ['badges', t('Réglages actifs')],
 ];
 // chart : graphique du widget KaneMode (pas une mesure du moniteur), désactivé par défaut
 export const monitorPrefs = () => ({ fps: true, gpu: true, cpu: true, power: true, limit: true, badges: true, chart: false, ...store.get('monitor', {}) });

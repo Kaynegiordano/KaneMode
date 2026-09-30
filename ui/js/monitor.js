@@ -1,12 +1,13 @@
 // Moniteur en direct de KaneMode (monitor.html), widget Game Bar à épingler sur le jeu : images par
 // seconde (AMD) et GPU (pilote AMD, NVIDIA ou Intel), processeur, consommation, puissance du mode, réglages actifs, et un
 // rappel de chaque réglage fait dans le widget KaneMode avec sa vérification.
+import { t, locale } from './i18n.js';
 import { $, api, esc, applyTheme, WIDGET } from './core.js';
 import { PERF_MODES, PROFILE_WATTS } from './qam.js';
 import { monitorPrefs, lastChange } from './hud.js';
 
 let live = null, gpu = null, sys = null, gfx = null;
-const fmtW = w => String(Math.round(w * 10) / 10).replace('.', ',') + ' W';
+const fmtW = w => (Math.round(w * 10) / 10).toLocaleString(locale) + ' W';
 const onBattery = () => live && live.discharging === true;
 
 /** Puissance du mode en cours : réglée à la main, sinon celle du profil de la console. */
@@ -16,7 +17,7 @@ function limitWatts() {
   const t = PROFILE_WATTS[sys.handheld], v = sys.vendor && sys.vendor.mode;
   return t && t[v] ? t[v][onBattery() ? 0 : 1] : null;
 }
-const modeName = () => (sys && sys.mode === 'custom' ? 'Personnalisé' : ((PERF_MODES.find(m => sys && m[0] === sys.mode) || [])[1] || 'Mode'));
+const modeName = () => (sys && sys.mode === 'custom' ? t('Personnalisé') : ((PERF_MODES.find(m => sys && m[0] === sys.mode) || [])[1] || t('Mode')));
 
 function paint() {
   const p = monitorPrefs();
@@ -25,14 +26,14 @@ function paint() {
   // Images par seconde : seul le pilote AMD les donne (ADLX), pas NVIDIA ni Intel
   if (p.fps && gfx && gfx.available && gfx.vendor === 'amd') cells.push(['fps', gpu && gpu.fps != null ? String(gpu.fps) : '—', afmf ? 'i/s rendues' : 'i/s']);
   if (p.gpu && gpu && gpu.gpuUsage != null) cells.push(['gpu', `${gpu.gpuUsage} %`, gpu.gpuTemp != null ? `GPU ${gpu.gpuTemp} °C` : 'GPU']);
-  if (p.cpu && live && live.mhz) cells.push(['cpu', (live.mhz / 1000).toFixed(1).replace('.', ',') + ' GHz', live.load != null ? `CPU ${live.load} %` : 'CPU']);
+  if (p.cpu && live && live.mhz) cells.push(['cpu', (live.mhz / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' GHz', live.load != null ? `CPU ${live.load} %` : 'CPU']);
   if (p.power) {
-    if (onBattery() && live.watts != null) cells.push(['power', fmtW(live.watts), 'Batterie']);
+    if (onBattery() && live.watts != null) cells.push(['power', fmtW(live.watts), t('Batterie')]);
     else if (gpu && gpu.gpuPower != null) cells.push(['power', fmtW(gpu.gpuPower), 'GPU']);
   }
   if (p.limit) { const w = limitWatts(); if (w) cells.push(['limit', `${w} W`, modeName()]); }
   $('#mon-cells').innerHTML = cells.map(([k, v, l]) => `<div class="mon-cell ${k}"><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('')
-    || '<div class="mon-cell"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>';
+    || t('<div class="mon-cell"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>');
 
   // Réglages actifs : ce que le pilote applique en ce moment
   const badges = [];
@@ -40,9 +41,9 @@ function paint() {
     if (gfx.fpsLimit) badges.push(`≤ ${gfx.fpsLimit} i/s`);
     if (afmf) badges.push('AFMF');
     if (gfx.rsr && gfx.rsr.on) badges.push('RSR');
-    if (gfx.antilag && gfx.antilag.on) badges.push(gfx.vendor === 'amd' ? 'Anti-Lag' : 'Faible latence');
+    if (gfx.antilag && gfx.antilag.on) badges.push(gfx.vendor === 'amd' ? t('Anti-Lag') : t('Faible latence'));
     if (gfx.vsync && gfx.vsync.value === 1) badges.push('V-Sync');
-    if (gfx.ris && gfx.ris.on) badges.push('Netteté');
+    if (gfx.ris && gfx.ris.on) badges.push(t('Netteté'));
   }
   const b = $('#mon-badges');
   b.hidden = !badges.length;

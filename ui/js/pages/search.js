@@ -1,4 +1,5 @@
 // Recherche : clavier virtuel intégré, résultats en direct (nom, genres, développeur, boutique).
+import { t, tn } from '../i18n.js';
 import { el, lib, normName, sourceOf, sfx } from '../core.js';
 import { definePage, focusIn } from '../nav.js';
 import { gameCard } from '../cards.js';
@@ -12,11 +13,11 @@ function matches(g, q) {
 
 definePage('search', {
   libBound: true,
-  title: () => 'Rechercher',
+  title: () => t('Rechercher'),
   q: '',
   render() {
     const root = this.el;
-    this.field = textField('Rechercher un jeu, une appli, un genre, une boutique…', 'i-search');
+    this.field = textField(t('Rechercher un jeu, une appli, un genre, une boutique…'), 'i-search');
     this.count = el('div', 'row-title');
     this.results = el('div', 'results');
     const dock = el('div', 'dock');
@@ -24,7 +25,7 @@ definePage('search', {
       onChar: c => this.set(this.q + c),
       onBackspace: () => this.set(this.q.slice(0, -1)),
       onSubmit: () => focusIn(this.results),
-      submitLabel: 'Résultats',
+      submitLabel: t('Résultats'),
     }));
     dock.querySelector('[data-key="k1-0"]').dataset.autofocus = '';
     root.replaceChildren(this.field, this.count, this.results, dock);
@@ -38,7 +39,7 @@ definePage('search', {
     const q = normName(v);
     const pool = lib.visible();
     const found = q ? pool.filter(g => matches(g, q)) : [...pool].sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 12);
-    this.count.innerHTML = q ? `${found.length} résultat${found.length > 1 ? 's' : ''}` : 'Récemment joués <small>tapez pour rechercher</small>';
+    this.count.innerHTML = q ? tn(found.length, '{n} résultat', '{n} résultats') : t('Récemment joués <small>tapez pour rechercher</small>');
     const grid = el('div', 'grid');
     found.slice(0, 40).forEach(g => grid.append(gameCard(g, 'capsule', openGame)));
     this.results.replaceChildren(grid);
@@ -53,5 +54,5 @@ definePage('search', {
     if (k === 'y') { this.set(this.q + ' '); sfx('key'); return true; }
     return false;
   },
-  hints: () => [['x', 'Effacer'], ['y', 'Espace'], ['a', 'Sélectionner'], ['b', 'Retour']],
+  hints: () => [['x', t('Effacer')], ['y', t('Espace')], ['a', t('Sélectionner')], ['b', t('Retour')]],
 });

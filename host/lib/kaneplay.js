@@ -26,11 +26,15 @@ function findExe(bundled, dev) {
   return null;
 }
 
-/** Environnement du mode intégré : icône, identité et couleur d'accent de KaneMode, commande à exécuter. */
-function env(command, { icon, accent } = {}) {
+// Langue de KaneMode → traduction du moteur (fichiers qml_<langue> de KanePlay)
+const ENGINE_LANG = { fr: 'fr', en: 'en', es: 'es', de: 'de', it: 'it', pt: 'pt_BR', ja: 'ja', zh: 'zh_CN' };
+
+/** Environnement du mode intégré : icône, identité, couleur d'accent et langue de KaneMode, commande à exécuter. */
+function env(command, { icon, accent, lang } = {}) {
   const e = { KANEPLAY_EMBEDDED: '1', KANEMODE_COMMAND: command };
   if (icon && isFile(icon)) e.KANEMODE_ICON = icon;
   if (/^#[0-9a-f]{6}$/i.test(accent || '')) e.KANEMODE_ACCENT = accent;
+  if (ENGINE_LANG[lang]) e.KANEMODE_LANG = ENGINE_LANG[lang];
   if (process.env.KANEMODE_AUMID) e.KANEMODE_AUMID = process.env.KANEMODE_AUMID;
   return e;
 }
@@ -62,13 +66,14 @@ async function hosts() {
 }
 
 /**
- * Entrée de bibliothèque : KanePlay lui-même, avec sa jaquette. Les jeux des PC se choisissent
- * dans KanePlay (bibliothèque de chaque PC, reprise d'une session en pause).
+ * Entrée de bibliothèque : le streaming local (moteur KanePlay intégré), avec sa jaquette. Les jeux
+ * des PC se choisissent dans le moteur (bibliothèque de chaque PC, reprise d'une session en pause).
+ * Nom en français, traduit par l'interface (core.js, lib.load).
  */
 function entry(exe, art, opts) {
   if (!exe) return null;
   return {
-    id: 'kaneplay', source: 'kaneplay', name: 'KanePlay', type: 'app', installed: true,
+    id: 'kaneplay', source: 'kaneplay', name: 'Streaming local', type: 'app', installed: true,
     launch: { kind: 'exe', target: exe, args: '', env: env('show', opts) },
     art: art && isFile(art) ? { portrait: art, hero: art } : {},
   };

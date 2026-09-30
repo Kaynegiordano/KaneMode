@@ -409,7 +409,7 @@ public partial class MainWindow : Window
     }
 
     // ---------- Fermeture de KanePlay : KaneMode se recharge ----------
-    private const string KanePlayTitle = "KaneMode · KanePlay";
+    private const string KanePlayTitle = "KaneMode · Streaming"; // titre de la fenêtre du moteur intégré (engine/KanePlay, main.qml)
     private System.Windows.Threading.DispatcherTimer? _kanePlayTimer;
     private bool _kanePlayOpen;
 

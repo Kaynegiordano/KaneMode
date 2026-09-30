@@ -1,0 +1,3317 @@
+{
+ " · à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ " · dernier scan le {toLocaleString}": [
+  "ui/js/pages/settings.js"
+ ],
+ " · écran {screenInches}″": [
+  "ui/js/pages/settings.js"
+ ],
+ " · non-Steam": [
+  "ui/js/pages/game.js"
+ ],
+ " · nouvelle version": [
+  "ui/js/pages/settings.js"
+ ],
+ " · pilote {name}": [
+  "ui/js/widget.js"
+ ],
+ " · réglé automatiquement": [
+  "ui/js/pages/settings.js"
+ ],
+ " · télécharger sur le site officiel": [
+  "ui/js/pages/settings.js"
+ ],
+ " · vérifié le {day}": [
+  "ui/js/pages/settings.js"
+ ],
+ " (en charge)": [
+  "ui/js/pages/settings.js"
+ ],
+ " (envoyé)": [
+  "ui/js/widget.js"
+ ],
+ " (moteur compilé : engine\\out)": [
+  "ui/js/pages/settings.js"
+ ],
+ " du {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ " du {day}": [
+  "ui/js/pages/settings.js"
+ ],
+ " Go": [
+  "ui/js/core.js",
+  "ui/js/main.js",
+  "ui/js/pages/settings.js"
+ ],
+ " Hz": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ " Ko": [
+  "ui/js/pages/add.js"
+ ],
+ " Mo": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/settings.js"
+ ],
+ "{a} · installé : {b}": [
+  "host/server.js"
+ ],
+ "{a} introuvable": [
+  "host/syscontrol.ps1"
+ ],
+ "{a} KaneMode les cherche dans Program Files, AppData, Scoop, <code>C:\\Emulators</code>, <code>D:\\Emulation</code>, RetroBat… Si un émulateur portable n’est pas détecté, indiquez son exécutable. Pour RetroArch, les cœurs doivent être installés (Menu principal → Charger un cœur → Télécharger).": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{a}<div>Ajouter un jeu ou une appli</div>": [
+  "ui/js/pages/home.js"
+ ],
+ "{a}<div>Toute l’émulation</div>": [
+  "ui/js/pages/home.js"
+ ],
+ "{a}<div>Toute la bibliothèque</div><small>{length} éléments</small>": [
+  "ui/js/pages/home.js"
+ ],
+ "{a}<span>Bureau Windows<small>KaneMode reste ouvert</small></span>": [
+  "ui/js/pages/home.js"
+ ],
+ "{a}Actualiser": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/media.js"
+ ],
+ "{a}Ajouter": [
+  "ui/js/pages/library.js"
+ ],
+ "{a}Ajouter ({size})": [
+  "ui/js/pages/add.js"
+ ],
+ "{a}Annuler les modifications": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Automatique": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Bureau Windows": [
+  "ui/js/pages/home.js"
+ ],
+ "{a}Changer de jeu…": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Image du disque…": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Parcourir SteamGridDB": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Récupérer à nouveau": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{a}Supprimer": [
+  "ui/js/pages/add.js"
+ ],
+ "{a}Tri : {label}": [
+  "ui/js/pages/library.js"
+ ],
+ "{current} Hz": [
+  "ui/js/widget.js"
+ ],
+ "{desc} · ouvrir {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "{desc} · page officielle de {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "{desc} · télécharger sur le site officiel de {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "{fpsLimit} i/s en jeu": [
+  "ui/js/widget.js"
+ ],
+ "{games} jeux · {a} applis<br>{length} boutiques détectées{b}": [
+  "ui/js/main.js"
+ ],
+ "{hz} Hz": [
+  "ui/js/widget.js"
+ ],
+ "{label} appliqué{a}": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "{length} nouveaux pilotes disponibles · Paramètres → Appareil et pilotes": [
+  "ui/js/main.js"
+ ],
+ "{min} à {max} W, les trois limites égales": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} application": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} applications": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} autre pilote publié": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} autres pilotes publiés": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} console": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} consoles": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} dossier de ROMs": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} dossiers de ROMs": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} élément": [
+  "ui/js/pages/home.js",
+  "ui/js/pages/settings.js"
+ ],
+ "{n} élément ajouté à la bibliothèque": [
+  "ui/js/pages/add.js"
+ ],
+ "{n} éléments": [
+  "ui/js/pages/home.js",
+  "ui/js/pages/settings.js"
+ ],
+ "{n} éléments ajoutés à la bibliothèque": [
+  "ui/js/pages/add.js"
+ ],
+ "{n} émulateur": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} émulateur détecté": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} émulateur trouvé.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} émulateurs détectés": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} émulateurs trouvés.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} gratuit": [
+  "ui/js/deals.js"
+ ],
+ "{n} gratuits": [
+  "ui/js/deals.js"
+ ],
+ "{n} jeu": [
+  "ui/js/i18n.js",
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} jeu trouvé": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} jeux": [
+  "ui/js/i18n.js",
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} jeux trouvés": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} jouable": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} jouables": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} manette connectée": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} manettes connectées": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} mise à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} mise à jour proposée": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} mises à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} mises à jour proposées": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} nouveau pilote": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} nouveauté": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} nouveautés": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} nouveaux pilotes": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} pilote installé": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} pilotes installés": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} résultat": [
+  "ui/js/pages/search.js"
+ ],
+ "{n} résultats": [
+  "ui/js/pages/search.js"
+ ],
+ "{n} ROM": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} ROM trouvée": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} ROMs": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} ROMs trouvées": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{name} ajouté à la bibliothèque": [
+  "ui/js/pages/add.js"
+ ],
+ "{name} détectée · interface adaptée (Paramètres → Appareil et pilotes)": [
+  "ui/js/main.js"
+ ],
+ "{name} est déjà lancé": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} mis à jour": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{name} n’est pas installé sur ce PC": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} ne s’est pas fermé": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} ne sera plus démarré à l’avance": [
+  "ui/js/pages/settings.js"
+ ],
+ "{name} prêt en arrière-plan": [
+  "ui/js/pages/settings.js"
+ ],
+ "{name} retiré des favoris": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} sera prêt pour vos jeux": [
+  "ui/js/pages/settings.js"
+ ],
+ "{name} supprimé": [
+  "ui/js/pages/game.js"
+ ],
+ "{ok} : simulé dans le prototype (aucune action réelle)": [
+  "ui/js/main.js"
+ ],
+ "{p} ajouté : {jeux}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{refresh} Hz": [
+  "ui/js/widget.js"
+ ],
+ "{size} · empreinte SHA-256 vérifiée": [
+  "ui/js/pages/settings.js"
+ ],
+ "{size} sur {size2}": [
+  "ui/js/pages/settings.js"
+ ],
+ "{status} · afficher dans la bibliothèque": [
+  "ui/js/pages/settings.js"
+ ],
+ "{trim} ({cores} cœurs)": [
+  "ui/js/pages/settings.js"
+ ],
+ "↗ Envoyé": [
+  "ui/js/widget.js"
+ ],
+ "<b>{a}</b><small>dossier « {b} » · .{join}{c}</small>": [
+  "ui/js/pages/emulation.js"
+ ],
+ "<b>Testeur de boutons</b><small>Les boutons s’allument quand vous appuyez dessus</small>": [
+  "ui/js/pages/settings.js"
+ ],
+ "<br>Bibliothèque de démonstration active": [
+  "ui/js/main.js"
+ ],
+ "<div class=\"drive-head\"><b>Disque {letter}</b><small>{gb} libres sur {gb2}</small></div>\n        <div class=\"drive-bar\"><i class=\"games\" style=\"width:{toFixed}%\"></i><i class=\"other\" style=\"width:{toFixed2}%\"></i></div>\n        <div class=\"legend\"><span style=\"--c:var(--accent)\">Jeux {gb3}</span><span style=\"--c:rgba(255,255,255,.28)\">Autres {gb4}</span><span style=\"--c:rgba(255,255,255,.08)\">Libre {gb5}</span></div>": [
+  "ui/js/pages/settings.js"
+ ],
+ "<div class=\"empty\" style=\"padding-top:120px\">Cet élément n’existe plus.</div>": [
+  "ui/js/pages/game.js"
+ ],
+ "<div class=\"empty\">Élément introuvable.</div>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "<div class=\"hud-game-text\"><small class=\"now-playing\">En cours</small><b>{a}</b></div>": [
+  "ui/js/widget.js"
+ ],
+ "<div class=\"hud-game-text\"><span>Aucun jeu lancé depuis KaneMode</span></div>": [
+  "ui/js/widget.js"
+ ],
+ "<div class=\"loading\"><i class=\"spinner big\"></i>Chargement des visuels…</div>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "<div class=\"loading\"><i class=\"spinner big\"></i>Recherche des captures…</div>": [
+  "ui/js/pages/media.js"
+ ],
+ "<div class=\"loading\"><i class=\"spinner big\"></i>Recherche des émulateurs…</div>": [
+  "ui/js/pages/emulation.js"
+ ],
+ "<div class=\"mon-cell\"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>": [
+  "ui/js/monitor.js"
+ ],
+ "<div class=\"notice\">Utilisez <b>Changer de jeu…</b> pour le chercher sous un autre nom.</div>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "<div class=\"page-head\"><h1>Ajouter à la bibliothèque</h1>\n      <p>Jeux hors boutiques, émulateurs, applis du Microsoft Store, sites web : tout ce qui se lance peut rejoindre votre bibliothèque, avec sa jaquette.</p></div>": [
+  "ui/js/pages/add.js"
+ ],
+ "<div class=\"stick\"><i></i></div>Stick gauche<div class=\"stick\"><i></i></div>Stick droit": [
+  "ui/js/pages/settings.js"
+ ],
+ "<h1>{a}</h1>\n      <p><span class=\"pill src\" style=\"--src:{color}\">{b}</span>\n      {c}\n      <span>Dernière session : <b>{played}</b></span>\n      {d}\n      {e}\n      {f}</p>": [
+  "ui/js/pages/home.js"
+ ],
+ "<h1>{a}</h1><p>Recherche sur SteamGridDB…</p>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "<h1>{a}</h1><p>Visuels · SteamGridDB, sans compte ni clé</p>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "<h1>Bibliothèque vide</h1><p>Aucun jeu détecté. Ajoutez-en un, ou activez la bibliothèque de démonstration dans les Paramètres.</p>": [
+  "ui/js/pages/home.js"
+ ],
+ "<h1>Émulation</h1><p>Vos ROMs apparaissent dans la bibliothèque (onglet Émulation) avec leurs jaquettes SteamGridDB, et se lancent directement dans le bon émulateur.</p>": [
+  "ui/js/pages/emulation.js"
+ ],
+ "<h1>Médias</h1><p>Vos captures d’écran et vidéos de jeu, rassemblées depuis Steam (F12), la Xbox Game Bar (Win + Alt + Impr. écran) et les captures Windows.</p>": [
+  "ui/js/pages/media.js"
+ ],
+ "<h1>Paramètres</h1>": [
+  "ui/js/pages/settings.js"
+ ],
+ "<p>Sélectionnez une ou plusieurs applications, puis {glyph} ou « Ajouter ». Les entrées grisées sont déjà dans votre bibliothèque.</p>": [
+  "ui/js/pages/add.js"
+ ],
+ "<small>Déjà dans la bibliothèque</small>": [
+  "ui/js/pages/add.js"
+ ],
+ "<span class=\"dot-ko\"></span>Échec du téléchargement": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ko\"></span>Mode Xbox non activé": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ko\"></span>Moteur de streaming absent": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ko\"></span>Pas une console portable": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ko\"></span>Version navigateur (prototype)": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ok\"></span>{a} détectée{b}": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ok\"></span>App native KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ok\"></span>Mode Xbox activé": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ok\"></span>Streaming intégré{a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"label-long\">Accès rapide</span>": [
+  "ui/js/nav.js"
+ ],
+ "<span class=\"label-long\">Lettres</span>": [
+  "ui/js/pages/library.js"
+ ],
+ "<span class=\"label-long\">Onglets</span>": [
+  "ui/js/pages/library.js"
+ ],
+ "<span class=\"now-playing\">En cours</span>": [
+  "ui/js/pages/game.js"
+ ],
+ "<span class=\"pill demo\">Démo</span>": [
+  "ui/js/pages/home.js"
+ ],
+ "<span class=\"qam-note\">Pas de batterie</span>": [
+  "ui/js/qam.js"
+ ],
+ "<span style=\"color:#ff9a9d\">Non trouvé</span>": [
+  "ui/js/pages/game.js"
+ ],
+ "<span><i style=\"background:#7cf29a\"></i>Images/s</span>": [
+  "ui/js/widget.js"
+ ],
+ "<span>Gratuit à partir du <b>{dateFr}</b></span>": [
+  "ui/js/deals.js"
+ ],
+ "<span>Jusqu’au <b>{dateFr}</b></span>": [
+  "ui/js/deals.js"
+ ],
+ "<span>Mémoire</span><div class=\"bar\"><i id=\"mem-bar\"></i></div><output id=\"mem-val\">—</output>": [
+  "ui/js/qam.js"
+ ],
+ "<span>Nouveauté</span>": [
+  "ui/js/deals.js"
+ ],
+ "<span>Processeur</span><div class=\"bar\"><i id=\"cpu-bar\"></i></div><output id=\"cpu-val\">—</output>": [
+  "ui/js/qam.js"
+ ],
+ "<span>Sortie à venir</span>": [
+  "ui/js/deals.js"
+ ],
+ "<span>Type</span>": [
+  "ui/js/pages/add.js"
+ ],
+ "<svg class=\"brand-mark\"><use href=\"#i-brand\"/></svg><h1>À bientôt</h1><p>KaneMode est fermé, le bureau Windows a repris la main.<br>Vous pouvez fermer cette fenêtre.</p>": [
+  "ui/js/pages/game.js"
+ ],
+ "★ {name} ajouté aux favoris": [
+  "ui/js/pages/game.js"
+ ],
+ "✓ Vérifié": [
+  "ui/js/widget.js"
+ ],
+ "32 caractères": [
+  "ui/js/pages/settings.js"
+ ],
+ "À côté de l’icône, sur les consoles et PC portables": [
+  "ui/js/pages/settings.js"
+ ],
+ "À jour · dernière version {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "À propos": [
+  "ui/js/pages/game.js"
+ ],
+ "Accès rapide": [
+  "ui/index.html",
+  "ui/js/pages/settings.js"
+ ],
+ "Accessibilité": [
+  "ui/js/pages/settings.js"
+ ],
+ "Accueil": [
+  "ui/index.html",
+  "ui/js/pages/settings.js"
+ ],
+ "activé": [
+  "ui/js/widget.js"
+ ],
+ "Activé": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Actualiser la bibliothèque": [
+  "ui/js/pages/settings.js"
+ ],
+ "Actuel : {a} · A pour en choisir un autre": [
+  "ui/js/pages/settings.js"
+ ],
+ "Actuelle : {a} · A pour en choisir une autre": [
+  "ui/js/pages/settings.js"
+ ],
+ "Adapter l’interface à cet écran": [
+  "ui/js/pages/settings.js"
+ ],
+ "Adresse": [
+  "ui/js/pages/add.js"
+ ],
+ "Adresse ou lien": [
+  "ui/js/pages/add.js"
+ ],
+ "Adresse web ou lien": [
+  "ui/js/pages/add.js"
+ ],
+ "àé": [
+  "ui/js/widgets.js"
+ ],
+ "Affichée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Afficher": [
+  "ui/js/pages/media.js"
+ ],
+ "Afficher les secondes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ajout {a}/{length}…": [
+  "ui/js/pages/add.js"
+ ],
+ "Ajouté à « {name} »": [
+  "ui/js/pages/game.js"
+ ],
+ "Ajoute des jeux fictifs de toutes les boutiques et des ROMs pour voir une grosse bibliothèque. Marqués « DÉMO », ils ne se lancent pas.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ajouter": [
+  "ui/js/pages/add.js"
+ ],
+ "Ajouter à la bibliothèque": [
+  "ui/js/pages/add.js"
+ ],
+ "Ajouter aux favoris": [
+  "ui/js/pages/game.js"
+ ],
+ "Ajouter comme jeux": [
+  "ui/js/pages/add.js"
+ ],
+ "Ajouter la sélection": [
+  "ui/js/pages/add.js"
+ ],
+ "Ajouter un dossier de ROMs…": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Ajouter un jeu ou une appli": [
+  "ui/index.html"
+ ],
+ "Ajouts perso": [
+  "ui/js/core.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Alimentation": [
+  "ui/index.html",
+  "ui/js/main.js",
+  "ui/js/qam.js"
+ ],
+ "Aller au bureau": [
+  "ui/js/main.js"
+ ],
+ "Aller au bureau Windows ?": [
+  "ui/js/main.js"
+ ],
+ "Allumé depuis": [
+  "ui/js/pages/settings.js"
+ ],
+ "Alternatif": [
+  "ui/js/pages/settings.js"
+ ],
+ "Amazon": [
+  "ui/js/core.js"
+ ],
+ "AMD Fluid Motion Frames non pris en charge": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Analyse de la bibliothèque…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Animation": [
+  "ui/js/pages/settings.js"
+ ],
+ "Animation de réveil": [
+  "ui/js/pages/settings.js"
+ ],
+ "Annuler": [
+  "ui/index.html",
+  "ui/js/main.js",
+  "ui/js/pages/add.js",
+  "ui/js/pages/artpicker.js",
+  "ui/js/widgets.js"
+ ],
+ "Annuler les modifications": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Annuler les modifications ?": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Anti-Lag": [
+  "ui/js/monitor.js",
+  "ui/js/widget.js"
+ ],
+ "Aperçu": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "App installée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Appairé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Appareil et pilotes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Apparence": [
+  "ui/js/pages/settings.js"
+ ],
+ "Application": [
+  "ui/js/pages/add.js"
+ ],
+ "Application du profil…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Applications": [
+  "ui/js/pages/home.js",
+  "ui/js/pages/library.js"
+ ],
+ "Applications <small>{length}</small>": [
+  "ui/js/pages/home.js"
+ ],
+ "Applications installées": [
+  "ui/js/pages/add.js"
+ ],
+ "Appliquer": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Appliquer maintenant": [
+  "ui/js/pages/settings.js"
+ ],
+ "Applis et raccourcis ajoutés": [
+  "ui/js/pages/home.js"
+ ],
+ "Applis web populaires <small>un clic pour les ajouter</small>": [
+  "ui/js/pages/add.js"
+ ],
+ "Appuyez sur un bouton de la manette pour la réveiller": [
+  "ui/js/pages/settings.js"
+ ],
+ "Appuyez sur un bouton pour passer": [
+  "ui/js/boot.js"
+ ],
+ "Arguments": [
+  "ui/js/pages/add.js"
+ ],
+ "Arguments de lancement (facultatif)": [
+  "ui/js/pages/add.js"
+ ],
+ "Armoury Crate, appui long": [
+  "ui/js/pages/settings.js"
+ ],
+ "Arrêter": [
+  "ui/js/pages/game.js",
+  "ui/js/widget.js"
+ ],
+ "Arrêter {name} ?": [
+  "ui/js/pages/game.js"
+ ],
+ "Arrêter le jeu": [
+  "ui/js/pages/game.js"
+ ],
+ "Arrondis": [
+  "ui/js/pages/settings.js"
+ ],
+ "Assistance {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Associé à « {name} »": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "ASUS : HTTP {a}": [
+  "host/lib/oem.js"
+ ],
+ "Atténuer l’écran après": [
+  "ui/js/pages/settings.js"
+ ],
+ "Au lancement de KaneMode · n’importe quel bouton la passe": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucun": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Aucun émulateur trouvé pour {a}": [
+  "host/server.js"
+ ],
+ "Aucun favori pour l’instant. Sur la fiche d’un jeu, appuyez sur {glyph} pour l’ajouter.": [
+  "ui/js/pages/library.js"
+ ],
+ "Aucun jeu correspondant sur SteamGridDB.": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Aucun programme (.exe, .lnk, .bat, .url) dans ce dossier.": [
+  "ui/js/pages/add.js"
+ ],
+ "Aucun réglage de performance disponible sur ce PC.": [
+  "ui/js/qam.js"
+ ],
+ "Aucun résultat sur SteamGridDB": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Aucun son (.mp3, .wav, .ogg, .m4a) dans ce dossier.": [
+  "ui/js/pages/add.js"
+ ],
+ "Aucun sous-dossier.": [
+  "ui/js/pages/add.js"
+ ],
+ "Aucun visuel « {a} » pour ce jeu sur SteamGridDB.": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Aucun visuel personnalisé pour ce jeu": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Aucune": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Aucune capture trouvée pour l’instant. Prenez une capture en jeu avec <b>F12</b> (Steam) ou <b>Win + Alt + Impr. écran</b> (Xbox Game Bar), elle apparaîtra ici.": [
+  "ui/js/pages/media.js"
+ ],
+ "Aucune cible de lancement": [
+  "host/server.js"
+ ],
+ "Aucune image (.png, .jpg, .webp) dans ce dossier.": [
+  "ui/js/pages/add.js"
+ ],
+ "aucune limite": [
+  "ui/js/widget.js"
+ ],
+ "Aucune manette détectée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucune mise à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucune mise à jour à télécharger": [
+  "host/server.js"
+ ],
+ "Aucune mise à jour choisie": [
+  "host/server.js"
+ ],
+ "Aucune mise à jour de pilote en attente": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucune mise à jour téléchargée": [
+  "host/lib/update.js"
+ ],
+ "Aucune nouvelle notification": [
+  "ui/js/main.js",
+  "ui/js/qam.js"
+ ],
+ "Aucune version publiée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucune vidéo (.mp4, .webm) dans ce dossier.": [
+  "ui/js/pages/add.js"
+ ],
+ "Aujourd'hui": [
+  "ui/js/core.js"
+ ],
+ "Aussi réglable dans Apparence": [
+  "ui/js/pages/settings.js"
+ ],
+ "Automatique": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Automatique : langue de Windows": [
+  "ui/js/pages/settings.js"
+ ],
+ "Automatique : selon la manette utilisée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Automatique (langue de Windows)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Autre": [
+  "ui/js/widget.js"
+ ],
+ "autre réglage": [
+  "ui/js/widget.js"
+ ],
+ "Autres pilotes (Windows Update)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Avancé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Avec Boost": [
+  "ui/js/widget.js"
+ ],
+ "Bannière": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Barre des boutons": [
+  "ui/js/pages/settings.js"
+ ],
+ "Barre du bas": [
+  "ui/js/pages/settings.js"
+ ],
+ "Barre du haut": [
+  "ui/js/pages/settings.js"
+ ],
+ "Batterie": [
+  "ui/js/monitor.js",
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "batterie {p} %": [
+  "ui/js/pages/settings.js"
+ ],
+ "Battle.net": [
+  "ui/js/core.js"
+ ],
+ "Bibliothèque": [
+  "ui/index.html",
+  "ui/js/pages/library.js",
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Bibliothèque à jour, rien de nouveau": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bibliothèque de démonstration": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bientôt": [
+  "ui/js/deals.js"
+ ],
+ "BIOS et pilotes publiés par {a} pour cette console": [
+  "ui/js/pages/settings.js"
+ ],
+ "BIOS, pilotes et manuels sur le site officiel": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bloquer l’invite Armoury Crate SE": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bluetooth": [
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Bon jeu !": [
+  "ui/js/pages/game.js"
+ ],
+ "Bons plans et nouveautés": [
+  "ui/js/deals.js",
+  "ui/js/pages/home.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Boost court (quelques secondes)": [
+  "ui/js/qam.js"
+ ],
+ "Boutique": [
+  "ui/js/pages/game.js"
+ ],
+ "Boutique Steam : actualités, DLC, avis": [
+  "ui/js/pages/game.js"
+ ],
+ "Boutiques et lanceurs": [
+  "ui/js/pages/settings.js"
+ ],
+ "Boutiques et plateformes": [
+  "ui/js/pages/home.js"
+ ],
+ "Boutiques et plateformes <small>{length} détectées sur ce PC</small>": [
+  "ui/js/pages/home.js"
+ ],
+ "Bouton Armoury Crate": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bouton Command Center": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bouton d’alimentation, écran, veille du système": [
+  "ui/js/pages/settings.js"
+ ],
+ "Boutons de la console": [
+  "ui/js/pages/settings.js"
+ ],
+ "Boutons Select et Start": [
+  "ui/js/pages/settings.js"
+ ],
+ "Boutons, curseurs et reflets · repris par le streaming local": [
+  "ui/js/pages/settings.js"
+ ],
+ "build compatible (ancienne méthode)": [
+  "ui/js/pages/settings.js"
+ ],
+ "build non compatible : mettez Windows à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Bureau": [
+  "ui/js/pages/add.js"
+ ],
+ "Bureau Windows": [
+  "ui/index.html",
+  "ui/js/main.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Bureau Windows · KaneMode reste ouvert": [
+  "ui/js/pages/game.js"
+ ],
+ "c’est déjà fait": [
+  "ui/js/pages/settings.js"
+ ],
+ "Capture": [
+  "ui/js/pages/settings.js"
+ ],
+ "Captures": [
+  "ui/js/pages/media.js"
+ ],
+ "Carrés": [
+  "ui/js/pages/settings.js"
+ ],
+ "Carte introuvable dans le sélecteur de NVIDIA": [
+  "host/lib/gpudrivers.js"
+ ],
+ "Ce PC ne propose pas de veille (voir les options d’alimentation).": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ces boutons fonctionnent partout, même en jeu, tant que KaneMode est ouvert. <b>Vue des tâches</b> montre les fenêtres ouvertes, comme un appui long sur la touche Xbox. <b>Accès rapide</b> et <b>Menu</b> s’ouvrent par-dessus le jeu, et le refermer y ramène. <b>KaneMode</b> revient à l’accueil.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Cet appareil": [
+  "ui/js/pages/settings.js"
+ ],
+ "Charge du processeur": [
+  "ui/js/qam.js"
+ ],
+ "Chercher le jeu sur SteamGridDB": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Choisir": [
+  "ui/js/main.js",
+  "ui/js/pages/artpicker.js"
+ ],
+ "Choisir : {toLowerCase}": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/artpicker.js"
+ ],
+ "Choisir ce dossier": [
+  "ui/js/pages/add.js"
+ ],
+ "Choisir la vidéo de démarrage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Choisir le son de démarrage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Choisir un dossier avec la manette": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Choisir un dossier de ROMs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Choisir un programme": [
+  "ui/js/pages/add.js"
+ ],
+ "Choisir une image sur le disque…": [
+  "ui/js/pages/add.js"
+ ],
+ "Choisissez la vidéo plus bas (« Vidéo perso… »)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Choisissez le son plus bas (« Son perso… »)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Choisissez parmi les programmes et les applis du Microsoft Store installés sur ce PC. Sélection multiple possible.": [
+  "ui/js/pages/add.js"
+ ],
+ "Choisissez un mode : il règle Windows, le processeur et le profil de la console": [
+  "ui/js/qam.js"
+ ],
+ "Choisissez une collection pour y ajouter le jeu, ou l’en retirer.": [
+  "ui/js/pages/game.js"
+ ],
+ "Choix du jeu": [
+  "ui/js/widget.js"
+ ],
+ "Cible : {a} {b}": [
+  "ui/js/pages/game.js"
+ ],
+ "Cible non autorisée": [
+  "host/server.js"
+ ],
+ "Classé comme {a}": [
+  "ui/js/pages/game.js"
+ ],
+ "Classer comme application": [
+  "ui/js/pages/game.js"
+ ],
+ "Classer comme jeu": [
+  "ui/js/pages/game.js"
+ ],
+ "Clé API personnelle (facultative)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Clé API SteamGridDB (Ctrl+V pour coller)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Clé SteamGridDB enregistrée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Cocher": [
+  "ui/js/pages/add.js"
+ ],
+ "Coins": [
+  "ui/js/pages/settings.js"
+ ],
+ "Collection « {trim} » créée": [
+  "ui/js/pages/game.js"
+ ],
+ "Collection inconnue": [
+  "host/server.js"
+ ],
+ "Collection vide. Sur la fiche d’un jeu, choisissez « Collections » pour l’y ranger.": [
+  "ui/js/pages/library.js"
+ ],
+ "Collections": [
+  "ui/js/pages/game.js"
+ ],
+ "Collections : {name}": [
+  "ui/js/pages/game.js"
+ ],
+ "Collections…": [
+  "ui/js/pages/game.js"
+ ],
+ "Commande incomplète": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Commande inconnue": [
+  "host/lib/syscontrol.js"
+ ],
+ "Commande inconnue : {a}": [
+  "host/syscontrol.ps1",
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Comme applis": [
+  "ui/js/pages/add.js"
+ ],
+ "Comme sur SteamOS, <b>Mettre en veille</b> agit tout de suite, sans confirmation. Réglez le <b>bouton d’alimentation</b> de la console sur « Veille » dans les options d’alimentation de Windows pour retrouver le même geste.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Comme une console : le PC s’endort et se réveille en une seconde, les téléchargements peuvent continuer.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Compacte": [
+  "ui/js/pages/settings.js"
+ ],
+ "Compatibilité partielle": [
+  "ui/js/pages/game.js"
+ ],
+ "Compatible manette": [
+  "ui/js/pages/game.js"
+ ],
+ "Compatibles manette": [
+  "ui/js/pages/library.js"
+ ],
+ "Compilée et prête (setup\\bin\\xfset)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Complète": [
+  "ui/js/pages/settings.js"
+ ],
+ "Complète automatiquement les jaquettes, fonds et logos manquants": [
+  "ui/js/pages/settings.js"
+ ],
+ "Confirmer": [
+  "ui/js/widget.js",
+  "ui/js/widgets.js"
+ ],
+ "Connecté par câble": [
+  "ui/js/main.js"
+ ],
+ "Connexion à {streamHost}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Conseillé sur secteur": [
+  "ui/js/widget.js"
+ ],
+ "Console": [
+  "ui/js/pages/game.js"
+ ],
+ "Consoles portables et PC portables · jamais pendant un jeu": [
+  "ui/js/pages/settings.js"
+ ],
+ "Consoles prises en charge": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Consommation": [
+  "ui/js/hud.js",
+  "ui/js/qam.js"
+ ],
+ "Continuer": [
+  "ui/js/pages/game.js"
+ ],
+ "Contraste élevé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Coop canapé, À finir, Rétro…": [
+  "ui/js/pages/game.js"
+ ],
+ "Couleur d’accent": [
+  "ui/js/pages/settings.js"
+ ],
+ "coupé": [
+  "ui/js/widget.js"
+ ],
+ "Coupée": [
+  "ui/js/widget.js"
+ ],
+ "Ctrl + Alt + S sur le jeu en cours": [
+  "ui/js/widget.js"
+ ],
+ "Dans la Game Bar seulement": [
+  "ui/js/widget.js"
+ ],
+ "de la console": [
+  "ui/js/pages/settings.js"
+ ],
+ "Début": [
+  "ui/js/nav.js"
+ ],
+ "Déclarée à Windows comme application de jeu : elle peut devenir l’application d’accueil du mode Xbox.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Défilement automatique": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dégradé animé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Démarrage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Démarrage, mise en veille et réveil": [
+  "ui/js/pages/settings.js"
+ ],
+ "Démarré sans fenêtre peu après KaneMode{a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "démo": [
+  "ui/js/pages/settings.js"
+ ],
+ "DÉMO": [
+  "ui/js/cards.js",
+  "ui/js/pages/game.js"
+ ],
+ "Démo : pour voir ces réglages sur un PC de bureau": [
+  "ui/js/pages/settings.js"
+ ],
+ "Démo activée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Démo désactivée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dernier scan : {toLocaleString}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Dernière installation échouée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dernière installation réussie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dernière session": [
+  "ui/js/pages/game.js",
+  "ui/js/pages/library.js"
+ ],
+ "dernière version à vérifier sur le site": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dernières notifications de KaneMode": [
+  "ui/js/qam.js"
+ ],
+ "Derrière les menus": [
+  "ui/js/pages/settings.js"
+ ],
+ "désactivé": [
+  "ui/js/widget.js"
+ ],
+ "Désactivé": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Désactivé : plus frais et plus économe, un peu moins rapide": [
+  "ui/js/pages/settings.js"
+ ],
+ "Désinstaller (via Steam)": [
+  "ui/js/pages/game.js"
+ ],
+ "Désinstaller {name} ?": [
+  "ui/js/pages/game.js"
+ ],
+ "Détecte les jeux de toutes les boutiques et les ROMs{a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Détection automatique": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Développeur": [
+  "ui/js/pages/game.js"
+ ],
+ "Disney+": [
+  "ui/js/pages/add.js"
+ ],
+ "Données": [
+  "ui/js/pages/settings.js"
+ ],
+ "Dossier inaccessible": [
+  "host/server.js",
+  "ui/js/pages/add.js"
+ ],
+ "Dossier parent": [
+  "ui/js/pages/add.js"
+ ],
+ "Dossier retiré": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Dossiers de ROMs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Dossiers de ROMs, émulateurs, consoles prises en charge": [
+  "ui/js/pages/settings.js"
+ ],
+ "Doux": [
+  "ui/js/pages/settings.js"
+ ],
+ "du {day}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Échap": [
+  "ui/js/nav.js"
+ ],
+ "Échec : {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Échec de l’installation : {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Économie": [
+  "ui/js/qam.js"
+ ],
+ "Écran": [
+  "ui/js/widget.js"
+ ],
+ "Éditeur": [
+  "ui/js/pages/game.js"
+ ],
+ "ÉÈÊÀÂÇÎÔÙÛ": [
+  "ui/js/widgets.js"
+ ],
+ "éèêëàâäîïô": [
+  "ui/js/widgets.js"
+ ],
+ "Effacer": [
+  "ui/js/pages/search.js",
+  "ui/js/widgets.js"
+ ],
+ "Effets allégés": [
+  "ui/js/pages/settings.js"
+ ],
+ "Emplacement": [
+  "ui/js/pages/add.js"
+ ],
+ "Emplacements": [
+  "ui/js/pages/add.js"
+ ],
+ "Empreinte du paquet absente de SHA256SUMS": [
+  "host/lib/update.js"
+ ],
+ "Empreinte SHA-256 absente : mise à jour refusée": [
+  "host/lib/update.js"
+ ],
+ "Empreinte SHA-256 incorrecte : fichier rejeté": [
+  "host/lib/update.js"
+ ],
+ "Émulateur": [
+  "ui/js/pages/game.js"
+ ],
+ "ÉMULATEUR MANQUANT": [
+  "ui/js/pages/game.js"
+ ],
+ "Émulateur non détecté.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Émulation": [
+  "ui/index.html",
+  "ui/js/core.js",
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/home.js",
+  "ui/js/pages/library.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Émulation <small>{length} jeux · {size} consoles</small>": [
+  "ui/js/pages/home.js"
+ ],
+ "En branchant ou débranchant le chargeur, KaneMode applique le profil correspondant": [
+  "ui/js/pages/settings.js"
+ ],
+ "En charge": [
+  "ui/js/qam.js"
+ ],
+ "Énergie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Enregistrement…": [
+  "ui/js/pages/add.js"
+ ],
+ "Enregistrer": [
+  "ui/js/pages/add.js"
+ ],
+ "Entrée": [
+  "ui/js/nav.js"
+ ],
+ "Entrée de démonstration": [
+  "host/server.js"
+ ],
+ "Entrée de démonstration : elle montre comment un jeu de cette boutique apparaîtrait dans la bibliothèque.": [
+  "ui/js/pages/game.js"
+ ],
+ "Entrée de démonstration : il n’y a rien à lancer": [
+  "ui/js/pages/game.js"
+ ],
+ "Entrée inconnue": [
+  "host/server.js"
+ ],
+ "Epic": [
+  "ui/js/deals.js"
+ ],
+ "Epic Games": [
+  "ui/js/core.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Équilibré": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Erreur {status}": [
+  "ui/js/core.js"
+ ],
+ "Espace": [
+  "ui/js/pages/search.js",
+  "ui/js/widgets.js"
+ ],
+ "État": [
+  "ui/js/pages/game.js"
+ ],
+ "Éteindre": [
+  "ui/index.html",
+  "ui/js/main.js"
+ ],
+ "Éteindre le PC ?": [
+  "ui/js/main.js"
+ ],
+ "Exécutable de {name}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Faible latence": [
+  "ui/js/monitor.js",
+  "ui/js/widget.js"
+ ],
+ "Favori": [
+  "ui/js/pages/game.js"
+ ],
+ "Favoris": [
+  "ui/js/pages/library.js"
+ ],
+ "Ferme la Game Bar (dans la Game Bar seulement)": [
+  "ui/js/widget.js"
+ ],
+ "Fermer": [
+  "ui/js/main.js",
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js",
+  "ui/js/pages/media.js"
+ ],
+ "Fermeture de {a}…": [
+  "ui/js/widget.js"
+ ],
+ "Fermeture de {name}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Fermeture forcée": [
+  "ui/js/widget.js"
+ ],
+ "Fichiers locaux": [
+  "ui/js/pages/game.js"
+ ],
+ "Filtre de netteté": [
+  "ui/js/widget.js"
+ ],
+ "Filtre de netteté non pris en charge par ce pilote Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Fin": [
+  "ui/js/nav.js"
+ ],
+ "Flou": [
+  "ui/js/pages/settings.js"
+ ],
+ "Fonction {a} inconnue": [
+  "host/lib/gpuctl.js"
+ ],
+ "Fonction AMD inconnue : {a}": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Fonction Intel inconnue : {a}": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Fonction NVIDIA inconnue : {a}": [
+  "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Fond": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Fond d’écran": [
+  "ui/js/pages/settings.js"
+ ],
+ "Forcée": [
+  "ui/js/widget.js"
+ ],
+ "Forcer": [
+  "ui/js/widget.js"
+ ],
+ "Forcer la fermeture": [
+  "ui/js/pages/game.js"
+ ],
+ "Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.": [
+  "ui/js/pages/game.js"
+ ],
+ "Fréquence": [
+  "ui/js/widget.js"
+ ],
+ "Fréquence de l’écran": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Fréquence non proposée par l'écran : {a} Hz": [
+  "host/syscontrol.ps1"
+ ],
+ "Fréquence réelle": [
+  "ui/js/qam.js"
+ ],
+ "Game Bar": [
+  "ui/js/pages/settings.js"
+ ],
+ "Gérer l’émulation": [
+  "ui/js/pages/settings.js"
+ ],
+ "GitHub a répondu {a}": [
+  "host/lib/update.js"
+ ],
+ "GitHub injoignable (connexion Internet ?)": [
+  "host/lib/update.js"
+ ],
+ "GitHub limite les vérifications : réessayez dans une heure": [
+  "host/lib/update.js"
+ ],
+ "GPU AMD illisible": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "GPU Intel illisible": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Grande": [
+  "ui/js/pages/settings.js"
+ ],
+ "Graphismes": [
+  "ui/js/widget.js"
+ ],
+ "Gratuit": [
+  "ui/js/deals.js"
+ ],
+ "Gratuit bientôt": [
+  "ui/js/deals.js"
+ ],
+ "Guide": [
+  "ui/js/pages/settings.js"
+ ],
+ "Hier": [
+  "ui/js/core.js"
+ ],
+ "Horloge": [
+  "ui/js/pages/settings.js"
+ ],
+ "Hors de l’app, l’hôte s’arrête et cette page se ferme.": [
+  "ui/js/pages/game.js"
+ ],
+ "Hors de la Game Bar": [
+  "ui/js/core.js"
+ ],
+ "Hors ligne": [
+  "ui/js/main.js"
+ ],
+ "Hôte": [
+  "ui/js/pages/settings.js"
+ ],
+ "Hôte injoignable : lancez « node host/server.js »": [
+  "ui/js/main.js"
+ ],
+ "HTTP {a}": [
+  "host/lib/deals.js",
+  "host/lib/gpudrivers.js"
+ ],
+ "Icône": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Il faut un nom et un programme ou une adresse": [
+  "ui/js/pages/add.js"
+ ],
+ "Il y a {diff} jours": [
+  "ui/js/core.js"
+ ],
+ "Image de fond": [
+  "ui/js/pages/add.js"
+ ],
+ "Image du disque": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Image invalide": [
+  "host/server.js"
+ ],
+ "Images ajoutées non comptées": [
+  "ui/js/widget.js"
+ ],
+ "Images/s": [
+  "ui/js/hud.js"
+ ],
+ "Importer une jaquette": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Importer votre image <small>PNG, JPG ou WebP depuis le disque</small>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Impossible de charger cette section : {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Impossible de décrire cet appareil": [
+  "host/server.js"
+ ],
+ "Impossible de décrire cet appareil.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Impossible de lancer : {a}": [
+  "ui/js/pages/game.js"
+ ],
+ "Impossible de lancer : {message}": [
+  "ui/js/pages/game.js"
+ ],
+ "Inchangé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Indications des boutons · compacte : plus de place pour l’interface": [
+  "ui/js/pages/settings.js"
+ ],
+ "IndieGala, itch.io, Prime Gaming… (GamerPower)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Indiquer l’exécutable…": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Installateur KaneMode-Setup sur GitHub": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installation annulée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installation de la mise à jour…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installation déjà en cours": [
+  "host/server.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Installation en cours…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installation lancée · acceptez la demande de Windows": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installé": [
+  "ui/js/pages/settings.js"
+ ],
+ "installé : {a}": [
+  "host/server.js"
+ ],
+ "Installé : {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installé : {a} · publié : {b}{c}{d}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installé : {a}{when} · {published}": [
+  "ui/js/pages/settings.js"
+ ],
+ "installé : {installed}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer": [
+  "ui/js/pages/settings.js"
+ ],
+ "INSTALLER": [
+  "ui/js/pages/game.js"
+ ],
+ "Installer {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer la mise à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer la mise à jour ?": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer la version {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer les {length} mises à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer les pilotes ?": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installés": [
+  "ui/js/pages/library.js"
+ ],
+ "Intel": [
+  "ui/js/widget.js"
+ ],
+ "Interface": [
+  "ui/js/pages/settings.js"
+ ],
+ "Interface adaptée à la console": [
+  "ui/js/pages/settings.js"
+ ],
+ "Inutile au quotidien · utile seulement si l’accès public venait à changer": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jamais": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jamais joué": [
+  "ui/js/core.js"
+ ],
+ "Jamais scanné": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Jamais vérifié": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jamais vérifié sur ce PC · via Windows Update, sans droits administrateur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jaquette": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/artpicker.js"
+ ],
+ "Jaquette floue": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jaquettes, boutons et panneaux": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jaquettes, fonds, logos et icônes de la communauté SteamGridDB pour <b>tous</b> vos jeux (Steam, autres boutiques, ajouts perso, ROMs). <b>Rien à configurer</b> : ni compte, ni clé. Pour un jeu précis : fiche du jeu → <b>Visuels</b> (Récupérer à nouveau, Parcourir SteamGridDB, Importer votre image).": [
+  "ui/js/pages/settings.js"
+ ],
+ "jeu": [
+  "ui/js/pages/game.js",
+  "ui/js/widget.js"
+ ],
+ "Jeu": [
+  "ui/js/pages/add.js",
+  "ui/js/widget.js"
+ ],
+ "Jeux": [
+  "ui/js/pages/library.js"
+ ],
+ "Jeux de vos PC": [
+  "ui/js/streamcover.js"
+ ],
+ "Jeux gratuits": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jeux gratuits de la semaine et à venir": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jeux offerts ailleurs": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jeux récents": [
+  "ui/js/pages/home.js"
+ ],
+ "jeux seulement": [
+  "ui/js/widget.js"
+ ],
+ "Jeux seulement": [
+  "ui/js/widget.js"
+ ],
+ "Joué avec le logo, qui apparaît pile sur son éclat, façon console de salon": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran": [
+  "ui/js/pages/settings.js"
+ ],
+ "KaneMode": [
+  "ui/index.html",
+  "ui/widget.html"
+ ],
+ "KaneMode · Moniteur": [
+  "ui/monitor.html"
+ ],
+ "KaneMode {version} disponible · Menu → Mise à jour": [
+  "ui/js/main.js"
+ ],
+ "KaneMode n’est pas ouvert : ouvrez-le pour régler le système.": [
+  "ui/js/widget.js"
+ ],
+ "KaneMode ne répond pas": [
+  "ui/js/core.js"
+ ],
+ "KaneMode reste ouvert": [
+  "ui/index.html"
+ ],
+ "KaneMode se ferme, s’installe et se relance tout seul (environ 30 secondes)": [
+  "ui/js/pages/settings.js"
+ ],
+ "KaneMode sort du mode Xbox et reste ouvert.": [
+  "ui/js/main.js"
+ ],
+ "KaneMode va se fermer pendant l’installation, puis se relancer. Les jeux en cours ne sont pas fermés.": [
+  "ui/js/pages/settings.js"
+ ],
+ "L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1": [
+  "ui/js/pages/settings.js"
+ ],
+ "L’écran s’éteint en fondu ; au réveil, KaneMode revient là où vous étiez": [
+  "ui/js/pages/settings.js"
+ ],
+ "L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.": [
+  "ui/js/pages/game.js"
+ ],
+ "La console n'a pas accepté le profil {a}": [
+  "host/syscontrol.ps1"
+ ],
+ "La fenêtre du jeu est introuvable": [
+  "ui/js/pages/game.js"
+ ],
+ "Lancement de {name} avec {emulator}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Lancement de {name}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Lancement de l'installation impossible (code {a})": [
+  "host/lib/update.js"
+ ],
+ "Lancement des jeux": [
+  "ui/js/pages/settings.js"
+ ],
+ "Lancements": [
+  "ui/js/pages/game.js"
+ ],
+ "Lancer": [
+  "ui/js/widget.js"
+ ],
+ "LANCER": [
+  "ui/js/pages/game.js"
+ ],
+ "Lanceur de la boutique": [
+  "ui/js/pages/game.js"
+ ],
+ "Lanceurs détectés et tuile Bureau": [
+  "ui/js/pages/home.js"
+ ],
+ "Langue": [
+  "ui/js/pages/settings.js"
+ ],
+ "Langue de l’interface, des widgets Game Bar et du streaming local": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le {date}": [
+  "ui/js/core.js"
+ ],
+ "Le bouton sous Command Center": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.": [
+  "ui/js/pages/game.js"
+ ],
+ "le logiciel du constructeur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le mode Xbox complet (celui qui permet de choisir l’application d’accueil) s’active avec <code>setup\\install.ps1</code>. Sur ce PC, {a}. Ensuite : réglages du mode Xbox → <b>Choisir l’application d’accueil</b> → <b>KaneMode</b>, et « Entrer en mode Xbox au démarrage ». Pour tout annuler : <code>setup\\uninstall.ps1 -RevertXboxMode</code>.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le mode Xbox est resté actif : KaneMode reste ouvert. Réessayez, ou utilisez la touche Windows.": [
+  "ui/js/main.js"
+ ],
+ "Le panneau <b>Accès rapide</b> (bouton {a} de la manette, touche Q) règle vraiment Windows : mode de performance, volume, luminosité, Wi-Fi, Bluetooth, fréquence de l’écran, profil et puissance de la console. Choisissez ses sections et leur ordre.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.": [
+  "ui/js/main.js"
+ ],
+ "Le PC redémarre": [
+  "ui/index.html"
+ ],
+ "Le PC s’endort entièrement ; la manette ou le clavier peuvent le réveiller selon le BIOS.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le PC s’éteint": [
+  "ui/index.html"
+ ],
+ "Le petit bouton en haut à gauche de l’écran": [
+  "ui/js/pages/settings.js"
+ ],
+ "Le pilote AMD a refusé : {a} (code {b})": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Le pilote Intel a refusé : {a} (code 0x{b})": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Le pilote NVIDIA a refusé : {a} ({b})": [
+  "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Lecture des réglages du système…": [
+  "ui/js/qam.js"
+ ],
+ "Lecture des réglages…": [
+  "ui/js/widget.js"
+ ],
+ "Legion Go": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les <b>jeux récents</b> (et le streaming local) restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les jeux de vos PC se choisissent dans le streaming local, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming local, <b>B</b> revient à KaneMode.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les visuels déjà choisis sont conservés.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les visuels posés dans Steam par SGDBoop ou Steam ROM Manager (dossier <code>grid</code>) sont repris automatiquement.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Lien": [
+  "ui/js/pages/add.js"
+ ],
+ "Lien ou appli web": [
+  "ui/js/pages/add.js"
+ ],
+ "Limite CPU": [
+  "ui/js/widget.js"
+ ],
+ "Limite d’images": [
+  "ui/js/widget.js"
+ ],
+ "Limite d'images non prise en charge par ce pilote Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Limite d'images par seconde non prise en charge par ce pilote AMD": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Limite de charge": [
+  "ui/js/widget.js"
+ ],
+ "Limite de charge (préserve la batterie)": [
+  "ui/js/qam.js"
+ ],
+ "Limite de charge réglable seulement sur ROG Ally pour l'instant": [
+  "host/syscontrol.ps1"
+ ],
+ "Limite de puissance réglable seulement sur ROG Ally et Legion Go": [
+  "host/syscontrol.ps1"
+ ],
+ "Limite du processeur": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Limite réglée": [
+  "ui/js/qam.js"
+ ],
+ "Logiciel {a} absent · ouvre la page d’assistance officielle": [
+  "ui/js/pages/settings.js"
+ ],
+ "Logo": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Logo blanc": [
+  "ui/js/pages/settings.js"
+ ],
+ "Logo KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "Logo KaneMode et carillon au retour de veille, puis vérification des manettes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Logo pendant le chargement": [
+  "ui/js/pages/settings.js"
+ ],
+ "Lossless Scaling": [
+  "ui/js/widget.js"
+ ],
+ "Lossless Scaling n’est pas ouvert": [
+  "ui/js/widget.js"
+ ],
+ "Luminosité": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Maintenez Start 1 s, comme dans le streaming local : le stick déplace le curseur, A clique, B fait un clic droit, X un clic du milieu, la croix fait défiler, LB / RB reviennent en arrière ou avancent. Il marche aussi dans les autres fenêtres (lanceurs, connexion à un compte). Maintenez Start de nouveau pour revenir à la manette.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Maintenu une seconde": [
+  "ui/js/pages/settings.js"
+ ],
+ "manette": [
+  "ui/js/main.js"
+ ],
+ "Manette": [
+  "ui/js/pages/game.js",
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Manette : premier appui reçu par {src}": [
+  "ui/js/nav.js"
+ ],
+ "Manette connectée : {a}": [
+  "ui/js/main.js"
+ ],
+ "Manette non détectée · appuyez sur un bouton de la manette": [
+  "ui/js/power.js"
+ ],
+ "Manette reconnectée : {replace}": [
+  "ui/js/power.js"
+ ],
+ "Manette XInput": [
+  "ui/js/pages/settings.js"
+ ],
+ "Manettes reconnectées": [
+  "ui/js/main.js"
+ ],
+ "Masqué (visible dans l’onglet « Masqués »)": [
+  "ui/js/pages/game.js"
+ ],
+ "Masquée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Masquer de la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
+ "Masqués": [
+  "ui/js/pages/library.js"
+ ],
+ "Material": [
+  "ui/js/pages/settings.js"
+ ],
+ "Médias": [
+  "ui/index.html",
+  "ui/js/pages/media.js"
+ ],
+ "Mémoire": [
+  "ui/js/pages/settings.js"
+ ],
+ "Menu": [
+  "ui/js/nav.js",
+  "ui/js/pages/home.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Menu principal et accès rapide": [
+  "ui/js/pages/settings.js"
+ ],
+ "Metacritic": [
+  "ui/js/pages/game.js"
+ ],
+ "Mettre à l’échelle": [
+  "ui/js/widget.js"
+ ],
+ "Mettre en veille": [
+  "ui/js/main.js"
+ ],
+ "Mettre en veille ?": [
+  "ui/js/main.js"
+ ],
+ "Mettre en veille maintenant": [
+  "ui/js/pages/settings.js"
+ ],
+ "Microsoft Store": [
+  "ui/js/pages/add.js"
+ ],
+ "Mise à jour {v} disponible": [
+  "ui/js/main.js"
+ ],
+ "Mise à jour disponible": [
+  "ui/index.html"
+ ],
+ "Mise à jour pas encore téléchargée": [
+  "host/server.js"
+ ],
+ "Mise à l’échelle : Lossless Scaling": [
+  "ui/js/widget.js"
+ ],
+ "Mise en veille dans {secondsLeft} s · appuyez sur un bouton pour l’annuler": [
+  "ui/js/power.js"
+ ],
+ "Mises à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mises à jour du BIOS et des pilotes, performances (TDP), boutons, éclairage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mises à jour facultatives : pilotes proposés par les constructeurs": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mises à jour officielles {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mises à jour officielles ASUS, plus haut": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mode": [
+  "ui/js/monitor.js"
+ ],
+ "Mode {name} : {a}": [
+  "ui/js/qam.js"
+ ],
+ "Mode {name} appliqué": [
+  "ui/js/qam.js"
+ ],
+ "Mode {name}{a}{b}": [
+  "ui/js/widget.js"
+ ],
+ "Mode d’alimentation, profil de la console, puissance, fréquence de l’écran": [
+  "ui/js/qam.js"
+ ],
+ "Mode de performance": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Mode faible latence non pris en charge par ce pilote Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Mode inconnu": [
+  "host/server.js",
+  "host/syscontrol.ps1"
+ ],
+ "Mode nuit": [
+  "ui/js/qam.js"
+ ],
+ "Mode souris": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter": [
+  "ui/js/main.js"
+ ],
+ "Mode souris désactivé": [
+  "ui/js/main.js",
+  "ui/js/widget.js"
+ ],
+ "Mode Xbox": [
+  "ui/js/pages/settings.js"
+ ],
+ "Mode Xbox (plein écran)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Modèle ASUS non reconnu": [
+  "host/lib/oem.js"
+ ],
+ "Modifications enregistrées": [
+  "ui/js/pages/add.js"
+ ],
+ "Modifier": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/game.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Modifier « {a} »": [
+  "ui/js/pages/add.js"
+ ],
+ "Moins d’images par seconde : plus d’autonomie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Moins d’ombres, de flous et de reflets : plus fluide sur une console portable, plus économe en batterie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Moniteur": [
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Moniteur en direct": [
+  "ui/js/widget.js"
+ ],
+ "Moniteur ouvert : épinglez-le pour le garder sur le jeu": [
+  "ui/js/widget.js"
+ ],
+ "Moteur de streaming absent": [
+  "host/server.js"
+ ],
+ "Moyenne": [
+  "ui/js/pages/settings.js"
+ ],
+ "Netflix": [
+  "ui/js/pages/add.js"
+ ],
+ "Netteté": [
+  "ui/js/monitor.js",
+  "ui/js/widget.js"
+ ],
+ "Netteté (RIS)": [
+  "ui/js/widget.js"
+ ],
+ "netteté {sharpness} %": [
+  "ui/js/widget.js"
+ ],
+ "Netteté non réglable sur ce pilote Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Niveau, source, limite de charge": [
+  "ui/js/qam.js"
+ ],
+ "Node {node}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Nom": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/library.js"
+ ],
+ "Nom affiché": [
+  "ui/js/pages/add.js"
+ ],
+ "Nom de la nouvelle collection": [
+  "ui/js/pages/game.js"
+ ],
+ "Nom et cible requis": [
+  "host/server.js"
+ ],
+ "Nom, type, jaquette, arguments": [
+  "ui/js/pages/game.js"
+ ],
+ "Non": [
+  "ui/js/pages/settings.js"
+ ],
+ "Non appairé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Non détecté sur ce PC": [
+  "ui/js/pages/settings.js"
+ ],
+ "Non installé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Non installés": [
+  "ui/js/pages/library.js"
+ ],
+ "Non trouvé": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Notifications": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Nouveau": [
+  "ui/js/deals.js"
+ ],
+ "nouveau pilote": [
+  "ui/js/pages/settings.js"
+ ],
+ "Nouveau pilote : {title} · Paramètres → Appareil et pilotes": [
+  "ui/js/main.js"
+ ],
+ "Nouveautés": [
+  "ui/js/pages/settings.js"
+ ],
+ "Nouveaux jeux détectés, ajouts…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Nouvel élément": [
+  "ui/js/pages/add.js"
+ ],
+ "Nouvelle collection…": [
+  "ui/js/pages/game.js"
+ ],
+ "NVIDIA, AMD et Intel · vérifié chaque jour automatiquement": [
+  "ui/js/pages/settings.js"
+ ],
+ "Offert": [
+  "ui/js/deals.js"
+ ],
+ "Offre introuvable : la liste a peut-être changé": [
+  "host/server.js"
+ ],
+ "Options d’alimentation de Windows": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ou Start maintenu 1 s": [
+  "ui/js/widget.js"
+ ],
+ "Outil {a} absent de cette version": [
+  "host/lib/gpuctl.js"
+ ],
+ "Outils ou matériel non détecté sur cette console : voir le site officiel": [
+  "ui/js/pages/settings.js"
+ ],
+ "öùûüçœæÿ«»": [
+  "ui/js/widgets.js"
+ ],
+ "Ouverture dans {label}…": [
+  "ui/js/deals.js"
+ ],
+ "Ouverture de {name}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouverture de la boutique Steam…": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouverture de la page {a}…": [
+  "ui/js/deals.js"
+ ],
+ "Ouverture de Lossless Scaling…": [
+  "ui/js/widget.js"
+ ],
+ "Ouverture de Steam pour installer {name}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouverture de Steam…": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouverture des Paramètres Windows…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouverture du dossier…": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouverture…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouvrir": [
+  "ui/js/pages/add.js",
+  "ui/js/pages/home.js",
+  "ui/js/pages/library.js",
+  "ui/js/widget.js"
+ ],
+ "Ouvrir {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouvrir {name}": [
+  "ui/js/pages/game.js"
+ ],
+ "Ouvrir la page de téléchargement": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouvrir le streaming local": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouvrir les réglages du mode Xbox": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ouvrir Windows Update": [
+  "ui/js/pages/settings.js"
+ ],
+ "Page du magasin": [
+  "ui/js/pages/game.js"
+ ],
+ "Page inconnue": [
+  "host/server.js"
+ ],
+ "Panneaux opaques": [
+  "ui/js/pages/settings.js"
+ ],
+ "Paquet introuvable pour cette version": [
+  "host/lib/update.js"
+ ],
+ "Paramètres": [
+  "ui/index.html",
+  "ui/js/i18n.js",
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Paramètres Windows > Jeux > Mode Xbox : choisissez KaneMode comme application d’accueil": [
+  "ui/js/pages/settings.js"
+ ],
+ "Parcourir": [
+  "ui/js/pages/add.js"
+ ],
+ "Parcourir les fichiers": [
+  "ui/js/pages/add.js"
+ ],
+ "Pas d'écran HDR": [
+  "host/syscontrol.ps1"
+ ],
+ "Pas de canal officiel pris en charge pour cet appareil": [
+  "host/server.js"
+ ],
+ "Pas de GPU AMD": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Pas de GPU Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Pas de GPU NVIDIA": [
+  "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Pas de pilote AMD Radeon": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Pas de pilote graphique Intel": [
+  "native/KaneMode.Gpu/Intel.cpp"
+ ],
+ "Pas de pilote NVIDIA": [
+  "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Pas de profil constructeur sur cet appareil": [
+  "host/syscontrol.ps1"
+ ],
+ "Pas de réponse du système": [
+  "host/lib/syscontrol.js"
+ ],
+ "Pas encore compilée : setup\\build-xbox-enabler.ps1": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pastille de la boutique sur chaque jaquette de la bibliothèque": [
+  "ui/js/pages/settings.js"
+ ],
+ "PC branché ou console en charge": [
+  "ui/js/pages/settings.js"
+ ],
+ "PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pensez à sauvegarder vos parties en cours.": [
+  "ui/js/main.js"
+ ],
+ "Performance": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Perso": [
+  "ui/js/core.js"
+ ],
+ "Personnalisé": [
+  "ui/js/monitor.js",
+  "ui/js/widget.js"
+ ],
+ "Personnalisé : réglages ajustés à la main ci-dessous": [
+  "ui/js/qam.js"
+ ],
+ "Personnalisée": [
+  "ui/js/pages/add.js"
+ ],
+ "Personnaliser": [
+  "ui/js/pages/settings.js"
+ ],
+ "Personnalisés · SteamGridDB ou image perso": [
+  "ui/js/pages/game.js"
+ ],
+ "Petite": [
+  "ui/js/pages/settings.js"
+ ],
+ "Petits sons de navigation et de validation": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pilote {a}{when}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pilote {v} installé": [
+  "ui/js/i18n.js"
+ ],
+ "Pilotes à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pilotes graphiques": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pleine charge": [
+  "ui/js/widget.js"
+ ],
+ "Plus bas : moins de chaleur et plus d’autonomie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Police": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pour un grand écran vu de loin, ou l’écran d’une console portable": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pourcentage de batterie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Précédente / suivante": [
+  "ui/js/pages/media.js"
+ ],
+ "Préférer les visuels officiels Steam": [
+  "ui/js/pages/settings.js"
+ ],
+ "Prime Video": [
+  "ui/js/pages/add.js"
+ ],
+ "Processeur": [
+  "ui/js/hud.js",
+  "ui/js/pages/settings.js"
+ ],
+ "processeur à 100 %": [
+  "ui/js/qam.js"
+ ],
+ "Processeur et mémoire en direct": [
+  "ui/js/qam.js"
+ ],
+ "Processeur limité à {cpuMax} %": [
+  "ui/js/qam.js"
+ ],
+ "processeur limité à 70 %": [
+  "ui/js/qam.js"
+ ],
+ "Processeur sans limite": [
+  "ui/js/qam.js"
+ ],
+ "Profil « {toLowerCase} » appliqué": [
+  "ui/js/pages/settings.js"
+ ],
+ "Profil {a}": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Profil {a}{b}": [
+  "ui/js/qam.js"
+ ],
+ "Profil console": [
+  "ui/js/widget.js"
+ ],
+ "Profil d’énergie": [
+  "ui/js/widget.js"
+ ],
+ "Profil de la console": [
+  "ui/js/qam.js"
+ ],
+ "Profil de la console indisponible : {a}": [
+  "ui/js/qam.js"
+ ],
+ "Profil inconnu": [
+  "host/syscontrol.ps1"
+ ],
+ "profil relu différent": [
+  "ui/js/widget.js"
+ ],
+ "Profils {a} : les mêmes que dans {b}. La puissance en watts est expérimentale : restez dans les valeurs proposées.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Profils automatiques": [
+  "ui/js/pages/settings.js"
+ ],
+ "Programme": [
+  "ui/js/pages/add.js"
+ ],
+ "Promos, nouveautés et jeux gratuits de Steam, Epic, GOG…": [
+  "ui/js/pages/home.js"
+ ],
+ "Promotions": [
+  "ui/js/pages/settings.js"
+ ],
+ "Promotions et nouveautés": [
+  "ui/js/pages/settings.js"
+ ],
+ "Promotions, nouveautés et sorties à venir": [
+  "ui/js/pages/settings.js"
+ ],
+ "Proposé en premier, automatiquement et dans « Parcourir »": [
+  "ui/js/pages/settings.js"
+ ],
+ "publié : {a}{b}{c}": [
+  "ui/js/pages/settings.js"
+ ],
+ "publié : {version}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Puis épinglez-le (punaise) pour le garder sur le jeu": [
+  "ui/js/widget.js"
+ ],
+ "Puissance": [
+  "ui/js/hud.js"
+ ],
+ "Puissance (TDP, expérimental)": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Puissance du profil": [
+  "ui/js/widget.js"
+ ],
+ "Puissance et ventilateurs réglés par le constructeur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Puissance fixée à {a} W": [
+  "ui/js/qam.js"
+ ],
+ "Puissance GPU": [
+  "ui/js/widget.js"
+ ],
+ "Quand l’animation de démarrage est désactivée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Quel jeu ?": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Quitter": [
+  "ui/js/pages/game.js"
+ ],
+ "Quitter KaneMode ?": [
+  "ui/js/pages/game.js"
+ ],
+ "Raccourcis": [
+  "ui/js/pages/game.js",
+  "ui/js/qam.js"
+ ],
+ "Radeon Anti-Lag non pris en charge": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Radeon Image Sharpening": [
+  "ui/js/widget.js"
+ ],
+ "Radeon Image Sharpening non pris en charge": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Radeon Super Resolution": [
+  "ui/js/widget.js"
+ ],
+ "Radeon Super Resolution non prise en charge": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Rangée de l’accueil : promotions, nouveautés, sorties à venir et jeux gratuits, relus toutes les 4 heures au plus (jamais pendant un jeu). A sur une offre ouvre sa page dans l’application de la boutique si elle est installée, sinon dans le navigateur.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Rangées de l’accueil et de l’émulation": [
+  "ui/js/pages/settings.js"
+ ],
+ "Ranger ce jeu dans une collection": [
+  "ui/js/pages/game.js"
+ ],
+ "Rangez vos jeux dans un sous-dossier par console, comme dans EmulationStation-DE ou RetroBat : <code>D:\\ROMs\\snes</code>, <code>D:\\ROMs\\psx</code>, <code>D:\\ROMs\\gc</code>… Vous pouvez aussi choisir directement un dossier de console.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Réaffiché": [
+  "ui/js/pages/game.js"
+ ],
+ "Réafficher dans la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
+ "Récemment joués <small>tapez pour rechercher</small>": [
+  "ui/js/pages/search.js"
+ ],
+ "Recharge KaneMode sans quitter": [
+  "ui/js/pages/settings.js"
+ ],
+ "Recherche des applications installées…": [
+  "ui/js/pages/add.js"
+ ],
+ "Recherche des applications installées… (quelques secondes la première fois)": [
+  "ui/js/pages/add.js"
+ ],
+ "Recherche des mises à jour…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Recherche des pilotes sur Windows Update…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Recherche en cours sur Windows Update…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Recherche…": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Rechercher": [
+  "ui/index.html",
+  "ui/js/pages/home.js",
+  "ui/js/pages/library.js",
+  "ui/js/pages/search.js"
+ ],
+ "Rechercher des mises à jour": [
+  "ui/js/pages/settings.js"
+ ],
+ "Rechercher des mises à jour de pilotes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Rechercher un jeu, une appli, un genre, une boutique…": [
+  "ui/js/pages/search.js"
+ ],
+ "Reconnecter les manettes": [
+  "ui/js/main.js"
+ ],
+ "Récupération des visuels…": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Récupérer à nouveau": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "redémarrage nécessaire": [
+  "ui/js/pages/settings.js"
+ ],
+ "Redémarrer": [
+  "ui/index.html",
+  "ui/js/main.js"
+ ],
+ "Redémarrer l’interface": [
+  "ui/js/pages/settings.js"
+ ],
+ "Redémarrer le PC ?": [
+  "ui/js/main.js"
+ ],
+ "redémarrez pour terminer": [
+  "ui/js/pages/settings.js"
+ ],
+ "Réduire les animations": [
+  "ui/js/pages/settings.js"
+ ],
+ "Referme la fenêtre qui propose d’installer Armoury Crate quand on appuie sur ces boutons": [
+  "ui/js/pages/settings.js"
+ ],
+ "Réglage avancé": [
+  "ui/js/qam.js"
+ ],
+ "Réglages {a} indisponibles": [
+  "host/lib/gpuctl.js"
+ ],
+ "Réglages 3D AMD indisponibles": [
+  "native/KaneMode.Amd/Amd.cpp"
+ ],
+ "Réglages actifs": [
+  "ui/js/hud.js"
+ ],
+ "Réglages détaillés": [
+  "ui/js/qam.js"
+ ],
+ "Réglages rapides": [
+  "ui/js/qam.js"
+ ],
+ "Réglages système indisponibles": [
+  "host/lib/syscontrol.js"
+ ],
+ "Réglages système interrompus": [
+  "host/lib/syscontrol.js"
+ ],
+ "Règle d’un coup Windows, le processeur et le profil de la console · les réglages suivants le précisent": [
+  "ui/js/pages/settings.js"
+ ],
+ "Régler": [
+  "ui/js/main.js"
+ ],
+ "Rejoue l’animation et le son choisis": [
+  "ui/js/pages/settings.js"
+ ],
+ "Reprise instantanée": [
+  "ui/index.html"
+ ],
+ "Requête invalide": [
+  "host/server.js"
+ ],
+ "Requête refusée": [
+  "host/server.js"
+ ],
+ "Réseau": [
+  "ui/js/widget.js"
+ ],
+ "Résolution": [
+  "ui/js/widget.js"
+ ],
+ "Résolution invalide": [
+  "host/syscontrol.ps1"
+ ],
+ "Résolution non proposée par l'écran : {a}": [
+  "host/syscontrol.ps1"
+ ],
+ "Résultats": [
+  "ui/js/pages/search.js"
+ ],
+ "Retiré de « {name} »": [
+  "ui/js/pages/game.js"
+ ],
+ "Retirer": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retirer ce dossier": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Retirer de la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
+ "Retirer des favoris": [
+  "ui/js/pages/game.js"
+ ],
+ "Retirer la clé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retirer la clé SteamGridDB ?": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retirer la vidéo perso": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retirer le son perso": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retour": [
+  "ui/js/nav.js",
+  "ui/js/pages/add.js",
+  "ui/js/pages/artpicker.js",
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js",
+  "ui/js/pages/library.js",
+  "ui/js/pages/media.js",
+  "ui/js/pages/search.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Revient à l’accès public, sans clé": [
+  "ui/js/pages/settings.js"
+ ],
+ "Revient au logo KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "Revient au son KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "Rien": [
+  "ui/js/pages/settings.js"
+ ],
+ "Rien à ouvrir": [
+  "host/server.js"
+ ],
+ "Rien à régler dans cette catégorie sur ce PC.": [
+  "ui/js/widget.js"
+ ],
+ "Rien ici pour le moment.": [
+  "ui/js/pages/library.js"
+ ],
+ "Riot": [
+  "ui/js/core.js"
+ ],
+ "Rockstar": [
+  "ui/js/core.js"
+ ],
+ "Route inconnue": [
+  "host/server.js"
+ ],
+ "Saisir": [
+  "ui/js/widgets.js"
+ ],
+ "Sans activité dans KaneMode · le moindre bouton le rallume": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sans attendre de brancher ou débrancher le chargeur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sans jaquette choisie, KaneMode cherche un visuel sur la boutique Steam pour les jeux, puis génère une jaquette à partir de l’icône du programme.": [
+  "ui/js/pages/add.js"
+ ],
+ "Sans nom": [
+  "ui/js/pages/add.js"
+ ],
+ "Sans transparence ni flou : plus lisible, un peu plus léger pour la carte graphique": [
+  "ui/js/pages/settings.js"
+ ],
+ "Scan des ROMs…": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Scanner les ROMs et les émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Secteur": [
+  "ui/js/qam.js"
+ ],
+ "Segoe UI": [
+  "ui/js/pages/settings.js"
+ ],
+ "Select": [
+  "ui/js/pages/settings.js"
+ ],
+ "Select : menu · Start : accès rapide": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sélectionner": [
+  "ui/js/main.js",
+  "ui/js/nav.js",
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js",
+  "ui/js/pages/search.js"
+ ],
+ "Sélectionnez au moins une application": [
+  "ui/js/pages/add.js"
+ ],
+ "Seule l’app native peut devenir l’application d’accueil : native\\build.ps1 -Register": [
+  "ui/js/pages/settings.js"
+ ],
+ "Silencieux": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Simulée dans le navigateur : n’importe quel bouton réveille": [
+  "ui/js/pages/settings.js"
+ ],
+ "Simuler une console": [
+  "ui/js/pages/settings.js"
+ ],
+ "site du fabricant injoignable": [
+  "ui/js/pages/settings.js"
+ ],
+ "Son": [
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "son coupé": [
+  "ui/js/widget.js"
+ ],
+ "Son de démarrage enregistré": [
+  "ui/js/pages/settings.js"
+ ],
+ "Son KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "son logiciel": [
+  "ui/js/pages/settings.js"
+ ],
+ "Son perso": [
+  "ui/js/pages/settings.js"
+ ],
+ "Son perso…": [
+  "ui/js/pages/settings.js"
+ ],
+ "son rétabli": [
+  "ui/js/widget.js"
+ ],
+ "Sons de l’interface": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Sort du mode Xbox ; KaneMode reste ouvert": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sortie": [
+  "ui/js/pages/game.js"
+ ],
+ "Sorties à venir": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sourdine": [
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Souris": [
+  "ui/index.html"
+ ],
+ "Soutenue": [
+  "ui/js/qam.js"
+ ],
+ "Spotify": [
+  "ui/js/pages/add.js"
+ ],
+ "Start": [
+  "ui/js/pages/settings.js"
+ ],
+ "Start : menu · Select : accès rapide": [
+  "ui/js/pages/settings.js"
+ ],
+ "Steam": [
+  "ui/js/core.js",
+  "ui/js/deals.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Steam Deck": [
+  "ui/js/pages/settings.js"
+ ],
+ "Steam va s’ouvrir pour confirmer la désinstallation.": [
+  "ui/js/pages/game.js"
+ ],
+ "Steam, Epic, GOG et plus": [
+  "ui/js/deals.js"
+ ],
+ "SteamGridDB ou image perso": [
+  "ui/js/pages/game.js"
+ ],
+ "Stick : curseur · A : clic": [
+  "ui/js/widget.js"
+ ],
+ "Stockage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Streaming": [
+  "ui/js/core.js",
+  "ui/js/pages/game.js"
+ ],
+ "Streaming depuis vos PC": [
+  "ui/js/pages/home.js"
+ ],
+ "Streaming local": [
+  "ui/index.html",
+  "ui/js/core.js",
+  "ui/js/main.js",
+  "ui/js/pages/settings.js",
+  "ui/js/streamcover.js"
+ ],
+ "Streaming local · {host}": [
+  "ui/js/pages/game.js"
+ ],
+ "Style enregistré": [
+  "ui/js/pages/settings.js"
+ ],
+ "Style préféré des jaquettes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Suivez l’installation dans Steam": [
+  "ui/js/pages/game.js"
+ ],
+ "Super Resolution": [
+  "ui/js/widget.js"
+ ],
+ "Supprime les zooms, fondus et reflets": [
+  "ui/js/pages/settings.js"
+ ],
+ "Supprimer": [
+  "ui/js/pages/game.js"
+ ],
+ "Supprimer « {name} » ?": [
+  "ui/js/pages/game.js"
+ ],
+ "Supprimer de la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
+ "Sur {a}, les profils de puissance du constructeur se règlent dans {b} (Paramètres → Appareil et pilotes) : KaneMode règle ici le mode d’alimentation de Windows, la fréquence et la luminosité.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sur batterie": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Sur secteur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sur une {a}, préférez les pilotes graphiques proposés par {b} ({c}) : ils sont réglés pour la console (consommation, écran, boutons). La version générique d’AMD est indiquée sans notification.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Symboles des boutons": [
+  "ui/js/pages/settings.js"
+ ],
+ "Synchro verticale": [
+  "ui/js/widget.js"
+ ],
+ "Système": [
+  "ui/js/pages/settings.js"
+ ],
+ "Taille": [
+  "ui/js/pages/game.js",
+  "ui/js/pages/library.js"
+ ],
+ "Taille de l’interface": [
+  "ui/js/pages/settings.js"
+ ],
+ "Taille des jaquettes": [
+  "ui/js/pages/settings.js"
+ ],
+ "Téléchargement de la version {a}… {pct} %": [
+  "ui/js/pages/settings.js"
+ ],
+ "Téléchargement déjà en cours": [
+  "host/lib/update.js"
+ ],
+ "Téléchargement du visuel…": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Téléchargement impossible ({a})": [
+  "host/lib/update.js"
+ ],
+ "Télécharger la version {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Temps de jeu": [
+  "ui/js/pages/game.js",
+  "ui/js/pages/library.js"
+ ],
+ "Terminé": [
+  "ui/js/widget.js"
+ ],
+ "Tester le démarrage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Textes et jaquettes plus grands pour un écran de {a}″ tenu en main": [
+  "ui/js/pages/settings.js"
+ ],
+ "Textes plus lisibles et contour jaune très visible autour de l’élément sélectionné": [
+  "ui/js/pages/settings.js"
+ ],
+ "Toujours afficher la boutique": [
+  "ui/js/pages/settings.js"
+ ],
+ "Tous": [
+  "ui/js/pages/settings.js"
+ ],
+ "Tous les visuels choisis pour ce jeu reviennent aux visuels automatiques.": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Tout": [
+  "ui/js/pages/library.js",
+  "ui/js/pages/media.js",
+  "ui/js/widget.js"
+ ],
+ "Toutes": [
+  "ui/js/pages/add.js"
+ ],
+ "Toutes les consoles": [
+  "ui/js/pages/library.js"
+ ],
+ "Toutes les versions, notes de version et manuels": [
+  "ui/js/pages/settings.js"
+ ],
+ "Turbo": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "turbo activé": [
+  "ui/js/qam.js"
+ ],
+ "Turbo activé": [
+  "ui/js/qam.js"
+ ],
+ "turbo coupé": [
+  "ui/js/qam.js"
+ ],
+ "Turbo coupé": [
+  "ui/js/qam.js"
+ ],
+ "Turbo CPU": [
+  "ui/js/widget.js"
+ ],
+ "Turbo du processeur": [
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Twitch": [
+  "ui/js/pages/add.js"
+ ],
+ "Type": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Ubisoft": [
+  "ui/js/core.js"
+ ],
+ "Un .exe, un raccourci ou un script, n’importe où sur vos disques : jeux DRM-free, émulateurs, outils…": [
+  "ui/js/pages/add.js"
+ ],
+ "Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.": [
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Un fichier .mp3, .wav, .ogg ou .m4a, idéalement de 2 à 5 secondes · le logo apparaît pile sur le pic du son": [
+  "ui/js/pages/settings.js"
+ ],
+ "Un fichier .mp4 ou .webm sur vos disques (votre ancienne vidéo est dans extras\\ du dossier KaneMode)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Une adresse web ou un lien d’application (steam://, ms-settings:…) qui s’ouvre dans le navigateur ou l’appli associée.": [
+  "ui/js/pages/add.js"
+ ],
+ "Une boutique fermée met du temps à s’ouvrir avant le jeu. Gardée prête en arrière-plan (sans fenêtre, dans la zone de notification), le jeu démarre tout de suite. Par défaut : les boutiques dont vous avez des jeux installés.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Une carte toutes les 5 secondes quand la rangée n’est pas parcourue (jamais en effets allégés)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Une notification signale une nouvelle version": [
+  "ui/js/pages/settings.js"
+ ],
+ "Uni": [
+  "ui/js/pages/settings.js"
+ ],
+ "Utilisée ({a}) · passe par l’API officielle · A pour la remplacer": [
+  "ui/js/pages/settings.js"
+ ],
+ "Valeur invalide": [
+  "host/lib/gpuctl.js"
+ ],
+ "Valider": [
+  "ui/js/widgets.js"
+ ],
+ "Veille": [
+  "ui/index.html",
+  "ui/js/main.js",
+  "ui/js/pages/settings.js",
+  "ui/js/widget.js"
+ ],
+ "Veille automatique sur batterie": [
+  "ui/js/pages/settings.js"
+ ],
+ "Veille automatique sur secteur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Veille classique (S3)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Veille indisponible": [
+  "ui/js/pages/settings.js"
+ ],
+ "Veille moderne (S0)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Veille simulée · appuyez sur un bouton pour réveiller": [
+  "ui/js/power.js"
+ ],
+ "Veille, streaming local, bureau Windows": [
+  "ui/js/qam.js"
+ ],
+ "Vérification de la clé…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérification des pilotes graphiques…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérification sur le site {a}…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérification sur le site {maker}…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérification sur les sites des fabricants…": [
+  "ui/js/pages/settings.js"
+ ],
+ "vérifié le {date}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérifier au démarrage": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérifier les mises à jour du constructeur": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vérifier les pilotes graphiques": [
+  "ui/js/pages/settings.js"
+ ],
+ "Version {a} disponible": [
+  "ui/js/pages/settings.js"
+ ],
+ "Version de développement : mettez à jour avec l’installateur de la page GitHub": [
+  "host/server.js"
+ ],
+ "Version de développement (mise à jour par l’installateur)": [
+  "ui/js/pages/settings.js"
+ ],
+ "version du {day}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vidéo de démarrage enregistrée": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vidéo perso": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vidéo perso…": [
+  "ui/js/pages/settings.js"
+ ],
+ "Vidéos": [
+  "ui/js/pages/media.js"
+ ],
+ "Visuel automatique rétabli": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Visuels": [
+  "ui/js/pages/artpicker.js",
+  "ui/js/pages/game.js"
+ ],
+ "Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Visuels · SteamGridDB : <b>{a}</b>": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Visuels (SteamGridDB, image perso)…": [
+  "ui/js/pages/game.js"
+ ],
+ "Visuels automatiques": [
+  "ui/js/pages/settings.js"
+ ],
+ "Visuels automatiques rétablis": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Visuels récupérés": [
+  "ui/js/pages/artpicker.js"
+ ],
+ "Volume": [
+  "ui/js/widget.js"
+ ],
+ "Volume du son": [
+  "ui/js/pages/settings.js"
+ ],
+ "Volume, luminosité, Wi-Fi, Bluetooth, mode nuit": [
+  "ui/js/qam.js"
+ ],
+ "Vos ROMs, par dernière partie": [
+  "ui/js/pages/home.js"
+ ],
+ "Vue des tâches": [
+  "ui/js/pages/settings.js"
+ ],
+ "Wi-Fi": [
+  "ui/js/main.js",
+  "ui/js/qam.js",
+  "ui/js/widget.js"
+ ],
+ "Windows : économie d’énergie": [
+  "ui/js/qam.js"
+ ],
+ "Windows : équilibré": [
+  "ui/js/qam.js"
+ ],
+ "Windows : performances maximales": [
+  "ui/js/qam.js"
+ ],
+ "Windows {a} · {b}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Windows a refusé ({a})": [
+  "host/syscontrol.ps1"
+ ],
+ "Windows a refusé d’arrêter une partie du jeu (anti-triche ou droits administrateur)": [
+  "ui/js/pages/game.js"
+ ],
+ "Windows a refusé la fréquence (code {a})": [
+  "host/syscontrol.ps1"
+ ],
+ "Windows a refusé la résolution (code {a})": [
+  "host/syscontrol.ps1"
+ ],
+ "Windows a refusé le HDR (code {a})": [
+  "host/syscontrol.ps1"
+ ],
+ "Windows a refusé le mode d'alimentation (code {a}) : il n'existe qu'avec le mode de gestion « Utilisation normale »": [
+  "host/syscontrol.ps1"
+ ],
+ "Windows demande l’accord de l’administrateur ; un redémarrage peut être nécessaire": [
+  "ui/js/pages/settings.js"
+ ],
+ "Windows en économie d’énergie": [
+  "ui/js/qam.js"
+ ],
+ "Windows en performances maximales": [
+  "ui/js/qam.js"
+ ],
+ "Windows équilibré": [
+  "ui/js/qam.js"
+ ],
+ "Windows va demander l’autorisation de l’administrateur. Pendant l’installation, l’écran peut clignoter ou s’éteindre un instant.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Xbox": [
+  "ui/js/core.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Xbox / standard": [
+  "ui/js/pages/settings.js"
+ ],
+ "Xbox Cloud Gaming": [
+  "ui/js/pages/add.js"
+ ]
+}

@@ -6,6 +6,7 @@
 // graphique des 60 dernières secondes marque chaque réglage, pour en voir l'effet. La page tourne
 // dans le widget UWP, qui relaie ses requêtes à l'hôte et ses messages à l'app KaneMode (core.js :
 // WIDGET, toApp).
+import { t, lang, locale } from './i18n.js';
 import { $, el, esc, api, toast, settings, saveSettings, applyTheme, WIDGET, toApp, sfx, store } from './core.js';
 import { nav, focusIn, focused, openLayer, closeLayer, topLayer, hooks } from './nav.js';
 import { PERF_MODES, PROFILE_WATTS, VENDOR_LABELS, vendorFor } from './qam.js';
@@ -67,18 +68,18 @@ function saveSnapshot() {
   clearTimeout(snapTimer);
   snapTimer = setTimeout(() => store.set('hudSnapshot', { t: Date.now(), sys, gfx, info }), 500);
 }
-const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['pad', 'Manette'], ['monitor', 'Moniteur']];
+const CATS = [['all', t('Tout')], ['display', t('Écran')], ['graphics', t('Graphismes')], ['perf', t('Performance')], ['sound', t('Son')], ['network', t('Réseau')], ['pad', t('Manette')], ['monitor', t('Moniteur')]];
 const filter = () => (CATS.some(c => c[0] === settings.hudFilter) ? settings.hudFilter : 'all');
 const onBattery = () => live && live.discharging === true;
-const fmtW = w => String(Math.round(w * 10) / 10).replace('.', ',') + ' W';
-const watts = vmode => { const t = sys && PROFILE_WATTS[sys.handheld]; const w = t && vmode && t[vmode]; return w ? w[onBattery() ? 0 : 1] : null; };
+const fmtW = w => (Math.round(w * 10) / 10).toLocaleString(locale) + ' W';
+const watts = vmode => { const table = sys && PROFILE_WATTS[sys.handheld]; const w = table && vmode && table[vmode]; return w ? w[onBattery() ? 0 : 1] : null; };
 const tdpLimits = () => sys && sys.vendor && sys.vendor.tdp;
 /** Puissance du curseur : celle réglée à la main, sinon celle du profil en cours. */
 const tdpValue = () => {
-  const t = tdpLimits();
-  if (!t) return null;
-  const w = sys.customTdp || (sys.vendor && watts(sys.vendor.mode)) || Math.round((t.min + t.max) / 2);
-  return Math.max(t.min, Math.min(t.max, w));
+  const lim = tdpLimits();
+  if (!lim) return null;
+  const w = sys.customTdp || (sys.vendor && watts(sys.vendor.mode)) || Math.round((lim.min + lim.max) / 2);
+  return Math.max(lim.min, Math.min(lim.max, w));
 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -92,24 +93,24 @@ function prove(key, ok, text) {
   const title = (tiles().find(o => o.key === key) || {}).title || '';
   proofs[key] = { ok, text, t: Date.now() };
   marks.push({ t: Date.now(), label: title || text });
-  noteChange(`${title ? title + ' : ' : ''}${text}${ok === null ? ' (envoyé)' : ''}`, ok !== false);
+  noteChange(`${title ? title + ' : ' : ''}${text}${ok === null ? t(' (envoyé)') : ''}`, ok !== false);
   setTimeout(render, 8100);
 }
 const pct1 = v => `${v} %`;
 // Relecture de chaque commande : [conforme (null : impossible à relire), valeur relue]
 const CHECK = {
-  refresh: (r, v) => [r.refresh === v, `${r.refresh} Hz`],
+  refresh: (r, v) => [r.refresh === v, t('{refresh} Hz', { refresh: r.refresh })],
   resolution: (r, v) => [r.resolution === v, String(r.resolution).replace('x', ' × ')],
-  boost: (r, v) => [r.boost === !!v, r.boost ? 'activé' : 'coupé'],
+  boost: (r, v) => [r.boost === !!v, r.boost ? t('activé') : t('coupé')],
   cpumax: (r, v) => [r.cpuMax === v, pct1(r.cpuMax)],
   vendor: (r, v) => [r.readable === false ? null : r.mode === v, VENDOR_LABELS[r.mode] || r.mode || '?'], // Ally X : profil non relisible
   tdp: (r, v) => [null, `${r.tdp ? r.tdp.spl : v} W`], // limites ASUS : écriture seule
   chargelimit: (r, v) => [r.verified ? r.chargeLimit === v : null, pct1(r.chargeLimit)],
-  hdr: (r, v) => [(r.hdr === 1) === !!v, r.hdr === 1 ? 'activé' : 'coupé'],
-  mute: (r, v) => [r.muted === !!v, r.muted ? 'son coupé' : 'son rétabli'],
+  hdr: (r, v) => [(r.hdr === 1) === !!v, r.hdr === 1 ? t('activé') : t('coupé')],
+  mute: (r, v) => [r.muted === !!v, r.muted ? t('son coupé') : t('son rétabli')],
   volume: (r, v) => [Math.abs(r.volume - v) <= 1, pct1(r.volume)],
   brightness: (r, v) => [r.verified === false ? null : Math.abs(r.brightness - v) <= 1, pct1(r.brightness)],
-  radio: (r, v) => [r.on === !!v, r.on ? 'activé' : 'désactivé'],
+  radio: (r, v) => [r.on === !!v, r.on ? t('activé') : t('désactivé')],
 };
 const tileKey = (cmd, extra) => (cmd === 'radio' ? 'radio:' + extra.kind : cmd === 'chargelimit' ? 'charge' : cmd);
 
@@ -136,12 +137,12 @@ async function send(cmd, value, extra = {}) {
 }
 // Fabricant de la carte : nom et libellés de ses fonctions (l'hôte choisit l'outil, voir lib/gpuctl.js)
 const GFX = {
-  amd: { name: 'AMD', antilag: 'Anti-Lag', ris: ['Netteté (RIS)', 'Radeon Image Sharpening'] },
-  nvidia: { name: 'NVIDIA', antilag: 'Faible latence' },
-  intel: { name: 'Intel', antilag: 'Faible latence', ris: ['Netteté', 'Filtre de netteté'] },
+  amd: { name: 'AMD', antilag: t('Anti-Lag'), ris: [t('Netteté (RIS)'), t('Radeon Image Sharpening')] },
+  nvidia: { name: 'NVIDIA', antilag: t('Faible latence') },
+  intel: { name: t('Intel'), antilag: t('Faible latence'), ris: [t('Netteté'), t('Filtre de netteté')] },
 };
 const gfxInfo = () => GFX[gfx && gfx.vendor] || GFX.amd;
-const VSYNC = [[0, 'Choix du jeu'], [1, 'Forcée'], [2, 'Coupée']];
+const VSYNC = [[0, t('Choix du jeu')], [1, t('Forcée')], [2, t('Coupée')]];
 
 /** Réglage du pilote : l'hôte renvoie l'état complet relu dans le pilote (une fonction peut en couper une autre). */
 async function sendGfx(feature, value) {
@@ -151,11 +152,11 @@ async function sendGfx(feature, value) {
     const x = gfx[key] || {};
     let ok, read;
     // Limite des jeux : gardée par KaneMode, appliquée au pilote hors de KaneMode seulement
-    if (feature === 'fps') { ok = gfx.fpsLimit === value && (gfx.kanemodeFront || (value > 0 ? x.on && x.value === value : !x.on)); read = gfx.fpsLimit ? `${gfx.fpsLimit} i/s en jeu` : 'aucune limite'; }
-    else if (feature.endsWith('sharp')) { ok = x.sharpness === value; read = `netteté ${x.sharpness} %`; }
-    else if (feature === 'vsync') { ok = x.value === value; read = (VSYNC.find(o => o[0] === x.value) || [0, 'autre réglage'])[1].toLowerCase(); }
-    else { ok = !!x.on === !!value; read = x.on ? 'activé' : 'désactivé'; }
-    prove(key, ok, (ok ? '' : 'relu ') + read + ` · pilote ${gfxInfo().name}`);
+    if (feature === 'fps') { ok = gfx.fpsLimit === value && (gfx.kanemodeFront || (value > 0 ? x.on && x.value === value : !x.on)); read = gfx.fpsLimit ? t('{fpsLimit} i/s en jeu', { fpsLimit: gfx.fpsLimit }) : t('aucune limite'); }
+    else if (feature.endsWith('sharp')) { ok = x.sharpness === value; read = t('netteté {sharpness} %', { sharpness: x.sharpness }); }
+    else if (feature === 'vsync') { ok = x.value === value; read = (VSYNC.find(o => o[0] === x.value) || [0, t('autre réglage')])[1].toLowerCase(); }
+    else { ok = !!x.on === !!value; read = x.on ? t('activé') : t('désactivé'); }
+    prove(key, ok, (ok ? '' : 'relu ') + read + t(' · pilote {name}', { name: gfxInfo().name }));
   } catch (e) { toast(e.message, { error: true }); prove(key, false, e.message); loadGfx(true); }
   render();
 }
@@ -171,29 +172,29 @@ function soon(key, fn) {
 // slider { min, max, step, pad, get, fmt, set, onOff? } ; choice { options: [[valeur, libellé, note]], get, set }.
 function tiles() {
   const out = [];
-  const t = o => out.push(o);
+  const add = o => out.push(o);
   if (!sys) return out;
   const pct = v => `${v} %`;
 
   // Écran
   if (sys.refresh && sys.refresh.available.length > 1) {
     const rates = [...new Set(sys.refresh.available.filter(hz => hz >= 30))].sort((a, b) => b - a);
-    t({ key: 'refresh', cat: 'display', icon: 'refresh', title: 'Fréquence', value: `${sys.refresh.current} Hz`,
-      choice: { options: rates.map(hz => [hz, `${hz} Hz`]), get: () => sys.refresh.current, set: hz => send('refresh', hz) } });
+    add({ key: 'refresh', cat: 'display', icon: 'refresh', title: t('Fréquence'), value: t('{current} Hz', { current: sys.refresh.current }),
+      choice: { options: rates.map(hz => [hz, t('{hz} Hz', { hz })]), get: () => sys.refresh.current, set: hz => send('refresh', hz) } });
   }
   if (sys.resolution && sys.resolution.available.length > 1) {
     const area = s => s.split('x').reduce((a, b) => a * b, 1);
     const sizes = [...new Set(sys.resolution.available)].sort((a, b) => area(b) - area(a)).slice(0, 8);
     if (!sizes.includes(sys.resolution.current)) sizes.unshift(sys.resolution.current);
-    t({ key: 'resolution', cat: 'display', icon: 'resolution', title: 'Résolution', value: sys.resolution.current.replace('x', ' × '),
+    add({ key: 'resolution', cat: 'display', icon: 'resolution', title: t('Résolution'), value: sys.resolution.current.replace('x', ' × '),
       choice: { options: sizes.map(s => [s, s.replace('x', ' × ')]), get: () => sys.resolution.current, set: s => send('resolution', s) } });
   }
   if (sys.brightness != null) {
-    t({ key: 'brightness', cat: 'display', icon: 'brightness', title: 'Luminosité', value: pct(sys.brightness), bar: sys.brightness,
+    add({ key: 'brightness', cat: 'display', icon: 'brightness', title: t('Luminosité'), value: pct(sys.brightness), bar: sys.brightness,
       slider: { min: 0, max: 100, step: 1, pad: 5, fmt: pct, get: () => sys.brightness,
         set: v => { sys.brightness = v; soon('brightness', () => send('brightness', v)); } } });
   }
-  if (sys.hdr >= 0) t({ key: 'hdr', cat: 'display', icon: 'hdr', title: 'HDR', on: sys.hdr === 1, act: () => send('hdr', sys.hdr !== 1) });
+  if (sys.hdr >= 0) add({ key: 'hdr', cat: 'display', icon: 'hdr', title: 'HDR', on: sys.hdr === 1, act: () => send('hdr', sys.hdr !== 1) });
 
   // Graphismes : pilote de la carte (AMD, NVIDIA ou Intel), puis Lossless Scaling
   if (gfx && gfx.available) {
@@ -206,25 +207,25 @@ function tiles() {
       if (limit && !presets.includes(limit)) presets.push(limit);
       presets.sort((a, b) => a - b);
       // Pour les jeux seulement : KaneMode lui-même garde toute sa fluidité (120 Hz sur la ROG Ally)
-      t({ key: 'fps', cat: 'graphics', icon: 'fps', title: 'Limite d’images', value: limit ? `${limit} i/s` : 'Aucune', lit: !!limit, sub: limit ? 'Jeux seulement' : '',
-        choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`, 'jeux seulement'])], get: () => gfx.fpsLimit || 0, set: v => sendGfx('fps', v) } });
+      add({ key: 'fps', cat: 'graphics', icon: 'fps', title: t('Limite d’images'), value: limit ? `${limit} i/s` : t('Aucune'), lit: !!limit, sub: limit ? t('Jeux seulement') : '',
+        choice: { options: [[0, t('Aucune')], ...presets.map(v => [v, `${v} i/s`, t('jeux seulement')])], get: () => gfx.fpsLimit || 0, set: v => sendGfx('fps', v) } });
     }
     // Les images générées par AFMF ne passent pas par le jeu : le pilote ne les compte pas dans les
     // images par seconde qu'il donne (ADLX)
-    if (gfx.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: gfx.afmf.on, sub: gfx.afmf.on ? 'Images ajoutées non comptées' : '', act: () => sendGfx('afmf', !gfx.afmf.on) });
-    if (gfx.antilag) t({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: V.antilag, on: gfx.antilag.on, sub: gfx.antilag.boost ? 'Avec Boost' : '', act: () => sendGfx('antilag', !gfx.antilag.on) });
+    if (gfx.afmf) add({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: gfx.afmf.on, sub: gfx.afmf.on ? t('Images ajoutées non comptées') : '', act: () => sendGfx('afmf', !gfx.afmf.on) });
+    if (gfx.antilag) add({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: V.antilag, on: gfx.antilag.on, sub: gfx.antilag.boost ? t('Avec Boost') : '', act: () => sendGfx('antilag', !gfx.antilag.on) });
     // Synchronisation verticale (NVIDIA) : au choix du jeu, forcée ou coupée pour tous les jeux
     if (gfx.vsync) {
       const cur = gfx.vsync.value;
-      t({ key: 'vsync', cat: 'graphics', icon: 'vsync', title: 'Synchro verticale', value: (VSYNC.find(o => o[0] === cur) || [0, 'Autre'])[1], lit: cur === 1 || cur === 2,
+      add({ key: 'vsync', cat: 'graphics', icon: 'vsync', title: t('Synchro verticale'), value: (VSYNC.find(o => o[0] === cur) || [0, t('Autre')])[1], lit: cur === 1 || cur === 2,
         choice: { options: VSYNC, get: () => gfx.vsync.value, set: v => sendGfx('vsync', v) } });
     }
-    for (const [key, name, full] of [['rsr', 'Super Resolution', 'Radeon Super Resolution'], ['ris', ...(V.ris || ['Netteté', 'Netteté'])]]) {
+    for (const [key, name, full] of [['rsr', t('Super Resolution'), t('Radeon Super Resolution')], ['ris', ...(V.ris || [t('Netteté'), t('Netteté')])]]) {
       const x = gfx[key];
       if (!x) continue;
       // Netteté sans niveau réglable (certains pilotes Intel) : simple interrupteur
-      if (x.sharpness == null) { t({ key, cat: 'graphics', icon: key, title: name, on: x.on, act: () => sendGfx(key, !x.on) }); continue; }
-      t({ key, cat: 'graphics', icon: key, title: name, value: x.on ? pct(x.sharpness) : 'Désactivé', lit: x.on,
+      if (x.sharpness == null) { add({ key, cat: 'graphics', icon: key, title: name, on: x.on, act: () => sendGfx(key, !x.on) }); continue; }
+      add({ key, cat: 'graphics', icon: key, title: name, value: x.on ? pct(x.sharpness) : t('Désactivé'), lit: x.on,
         slider: { min: x.min || 0, max: x.max || 100, step: 1, pad: 5, fmt: pct, get: () => gfx[key].sharpness,
           set: v => { gfx[key].sharpness = v; soon(key, () => sendGfx(key + 'sharp', v)); },
           onOff: { label: full, get: () => gfx[key].on, set: on => sendGfx(key, on) } } });
@@ -232,11 +233,11 @@ function tiles() {
   }
   if (info && info.lossless) {
     const ls = info.lossless;
-    t({ key: 'lossless', cat: 'graphics', icon: 'lossless', title: 'Lossless Scaling', wide: true,
-      value: ls.running ? 'Mettre à l’échelle' : 'Lancer', sub: ls.running ? 'Ctrl + Alt + S sur le jeu en cours' : 'Lossless Scaling n’est pas ouvert',
+    add({ key: 'lossless', cat: 'graphics', icon: 'lossless', title: t('Lossless Scaling'), wide: true,
+      value: ls.running ? t('Mettre à l’échelle') : t('Lancer'), sub: ls.running ? t('Ctrl + Alt + S sur le jeu en cours') : t('Lossless Scaling n’est pas ouvert'),
       act: async () => {
-        if (ls.running) { await toApp('lossless').catch(() => {}); toast('Mise à l’échelle : Lossless Scaling'); }
-        else if (ls.id) { try { await api.post('/api/launch', { id: ls.id }); toast('Ouverture de Lossless Scaling…'); } catch (e) { toast(e.message, { error: true }); } }
+        if (ls.running) { await toApp('lossless').catch(() => {}); toast(t('Mise à l’échelle : Lossless Scaling')); }
+        else if (ls.id) { try { await api.post('/api/launch', { id: ls.id }); toast(t('Ouverture de Lossless Scaling…')); } catch (e) { toast(e.message, { error: true }); } }
       } });
   }
 
@@ -244,62 +245,62 @@ function tiles() {
   const v = sys.vendor;
   if (tdpLimits()) {
     const lim = tdpLimits();
-    t({ key: 'tdp', cat: 'perf', icon: 'tdp', title: 'Puissance (TDP)', value: `${tdpValue()} W`, bar: (100 * (tdpValue() - lim.min)) / (lim.max - lim.min),
+    add({ key: 'tdp', cat: 'perf', icon: 'tdp', title: 'Puissance (TDP)', value: `${tdpValue()} W`, bar: (100 * (tdpValue() - lim.min)) / (lim.max - lim.min),
       slider: { min: lim.min, max: lim.max, step: 1, pad: 1, fmt: w => `${w} W`, get: tdpValue,
         set: w => { sys.customTdp = w; sys.mode = 'custom'; soon('tdp', () => send('tdp', w)); } } });
   }
   if (v && v.modes) {
     const modes = v.modes.filter(m => m !== 'custom');
-    t({ key: 'vendor', cat: 'perf', icon: 'vendor', title: 'Profil console', value: VENDOR_LABELS[v.mode] || v.mode || 'Personnalisé',
+    add({ key: 'vendor', cat: 'perf', icon: 'vendor', title: t('Profil console'), value: VENDOR_LABELS[v.mode] || v.mode || t('Personnalisé'),
       choice: { options: modes.map(m => { const w = watts(m); return [m, VENDOR_LABELS[m] || m, w ? `${w} W` : '']; }), get: () => sys.vendor.mode, set: m => send('vendor', m) } });
   }
   if (sys.cpu) {
-    t({ key: 'boost', cat: 'perf', icon: 'boost', title: 'Turbo CPU', on: sys.cpu.boostAc !== 0, act: () => send('boost', sys.cpu.boostAc === 0) });
-    t({ key: 'cpumax', cat: 'perf', icon: 'cpumax', title: 'Limite CPU', value: pct(sys.cpu.maxAc), bar: sys.cpu.maxAc,
+    add({ key: 'boost', cat: 'perf', icon: 'boost', title: t('Turbo CPU'), on: sys.cpu.boostAc !== 0, act: () => send('boost', sys.cpu.boostAc === 0) });
+    add({ key: 'cpumax', cat: 'perf', icon: 'cpumax', title: t('Limite CPU'), value: pct(sys.cpu.maxAc), bar: sys.cpu.maxAc,
       slider: { min: 30, max: 100, step: 5, pad: 5, fmt: pct, get: () => sys.cpu.maxAc,
         set: x => { sys.cpu.maxAc = x; sys.mode = 'custom'; soon('cpumax', () => send('cpumax', x)); } } });
   }
   if (v && v.chargeLimit != null) {
-    t({ key: 'charge', cat: 'perf', icon: 'charge', title: 'Limite de charge', value: pct(v.chargeLimit),
-      choice: { options: [60, 70, 80, 90, 100].map(p => [p, pct(p), p === 100 ? 'Pleine charge' : p === 80 ? 'Conseillé sur secteur' : '']), get: () => sys.vendor.chargeLimit, set: p => send('chargelimit', p) } });
+    add({ key: 'charge', cat: 'perf', icon: 'charge', title: t('Limite de charge'), value: pct(v.chargeLimit),
+      choice: { options: [60, 70, 80, 90, 100].map(p => [p, pct(p), p === 100 ? t('Pleine charge') : p === 80 ? t('Conseillé sur secteur') : '']), get: () => sys.vendor.chargeLimit, set: p => send('chargelimit', p) } });
   }
 
   // Son
   if (sys.volume != null) {
-    t({ key: 'volume', cat: 'sound', icon: 'volume', title: 'Volume', value: pct(sys.volume), bar: sys.muted ? 0 : sys.volume,
+    add({ key: 'volume', cat: 'sound', icon: 'volume', title: t('Volume'), value: pct(sys.volume), bar: sys.muted ? 0 : sys.volume,
       slider: { min: 0, max: 100, step: 1, pad: 5, fmt: pct, get: () => sys.volume,
         set: x => { sys.volume = x; soon('volume', () => send('volume', x)); } } });
-    t({ key: 'mute', cat: 'sound', icon: 'mute', title: 'Sourdine', on: !!sys.muted, act: () => send('mute', !sys.muted) });
+    add({ key: 'mute', cat: 'sound', icon: 'mute', title: t('Sourdine'), on: !!sys.muted, act: () => send('mute', !sys.muted) });
   }
 
   // Réseau
   for (const r of sys.radios || []) {
     const wifi = r.kind === 'WiFi';
-    t({ key: 'radio:' + r.kind, cat: 'network', icon: wifi ? 'wifi' : 'bluetooth', title: wifi ? 'Wi-Fi' : 'Bluetooth', on: r.on, act: () => send('radio', !r.on, { kind: r.kind }) });
+    add({ key: 'radio:' + r.kind, cat: 'network', icon: wifi ? 'wifi' : 'bluetooth', title: wifi ? t('Wi-Fi') : t('Bluetooth'), on: r.on, act: () => send('radio', !r.on, { kind: r.kind }) });
   }
 
   // Manette : mode souris (comme Start maintenu 1 s), pour cliquer dans un lanceur ou une fenêtre ;
   // le jeu au premier plan reçoit toujours la manette
   if (mouse !== null) {
-    t({ key: 'mouse', cat: 'pad', icon: 'mouse', title: 'Mode souris', on: mouse, sub: mouse ? 'Stick : curseur · A : clic' : 'Ou Start maintenu 1 s',
+    add({ key: 'mouse', cat: 'pad', icon: 'mouse', title: t('Mode souris'), on: mouse, sub: mouse ? t('Stick : curseur · A : clic') : t('Ou Start maintenu 1 s'),
       act: async () => {
         try {
           mouse = !!(await toApp('mouse-mode', { on: !mouse })).on;
-          toast(mouse ? 'Mode souris : stick = curseur, A = clic, B = clic droit' : 'Mode souris désactivé');
+          toast(mouse ? 'Mode souris : stick = curseur, A = clic, B = clic droit' : t('Mode souris désactivé'));
         } catch (e) { toast(e.message, { error: true }); }
         render();
       } });
   }
 
   // Moniteur en direct : autre widget, à épingler sur le jeu ; ses mesures se choisissent ici
-  t({ key: 'monitor-open', cat: 'monitor', icon: 'monitor', title: 'Moniteur en direct', wide: true, value: 'Ouvrir',
-    sub: 'Puis épinglez-le (punaise) pour le garder sur le jeu', act: openMonitor });
+  add({ key: 'monitor-open', cat: 'monitor', icon: 'monitor', title: t('Moniteur en direct'), wide: true, value: t('Ouvrir'),
+    sub: t('Puis épinglez-le (punaise) pour le garder sur le jeu'), act: openMonitor });
   const prefs = monitorPrefs();
   // Graphique des 60 dernières secondes dans ce widget : léger, mais inutile de le dessiner en jeu
   // si on ne le regarde pas (désactivé par défaut)
-  t({ key: 'mon:chart', cat: 'monitor', icon: 'fps', title: 'Graphique (60 s)', on: !!prefs.chart, act: () => { setMonitorPref('chart', !prefs.chart); render(); } });
+  add({ key: 'mon:chart', cat: 'monitor', icon: 'fps', title: 'Graphique (60 s)', on: !!prefs.chart, act: () => { setMonitorPref('chart', !prefs.chart); render(); } });
   for (const [k, label] of MONITOR_ITEMS) {
-    t({ key: 'mon:' + k, cat: 'monitor', icon: 'monitor', title: label, on: !!prefs[k], act: () => { setMonitorPref(k, !prefs[k]); render(); } });
+    add({ key: 'mon:' + k, cat: 'monitor', icon: 'monitor', title: label, on: !!prefs[k], act: () => { setMonitorPref(k, !prefs[k]); render(); } });
   }
   return out;
 }
@@ -309,7 +310,7 @@ function tileEl(o) {
   const lit = toggle ? o.on : !!o.lit;
   const d = el('div', `hud-tile${lit ? ' on' : ''}${o.wide ? ' wide' : ''}`,
     `<div class="hud-tile-top">${svg(o.icon)}<span>${esc(o.title)}</span>${toggle ? '<i class="hud-switch"></i>' : ''}</div>` +
-    `<b class="hud-value">${esc(toggle ? (o.on ? 'Activé' : 'Désactivé') : o.value)}</b>` +
+    `<b class="hud-value">${esc(toggle ? (o.on ? t('Activé') : t('Désactivé')) : o.value)}</b>` +
     proofLine(o) +
     (o.bar != null ? `<i class="hud-bar"><i style="width:${clamp(o.bar, 0, 100)}%"></i></i>` : ''));
   nav(d, () => (o.slider || o.choice ? openSheet(o) : o.act()), 'tile:' + o.key);
@@ -321,15 +322,15 @@ function proofLine(o) {
   const p = proofs[o.key];
   if (p && Date.now() - p.t < 8000) {
     const cls = p.ok === null ? 'sent' : p.ok ? 'ok' : 'ko';
-    return `<small class="hud-proof ${cls}">${p.ok === null ? '↗ Envoyé' : p.ok ? '✓ Vérifié' : '✕'} · ${esc(p.text)}</small>`;
+    return `<small class="hud-proof ${cls}">${p.ok === null ? t('↗ Envoyé') : p.ok ? t('✓ Vérifié') : '✕'} · ${esc(p.text)}</small>`;
   }
   return o.sub ? `<small>${esc(o.sub)}</small>` : '';
 }
 
 function openMonitor() {
-  if (!WIDGET) return toast('Dans la Game Bar seulement');
+  if (!WIDGET) return toast(t('Dans la Game Bar seulement'));
   window.chrome.webview.postMessage({ type: 'open-monitor' });
-  toast('Moniteur ouvert : épinglez-le pour le garder sur le jeu');
+  toast(t('Moniteur ouvert : épinglez-le pour le garder sur le jeu'));
 }
 
 // ---------------------------------------------------------------- panneau d'un réglage
@@ -372,7 +373,7 @@ function openSheet(o) {
     }
     panel.append(list);
   }
-  panel.append(nav(el('div', 'hud-sheet-done', 'Terminé'), () => closeLayer(sheet), 'sheet-done'));
+  panel.append(nav(el('div', 'hud-sheet-done', t('Terminé')), () => closeLayer(sheet), 'sheet-done'));
   // Appui hors du panneau : fermé
   root.addEventListener('click', e => { if (e.target === root && sheet) closeLayer(sheet); });
   document.body.append(root);
@@ -441,17 +442,17 @@ function render() {
   // Jeu en cours
   const card = el('div', 'hud-card hud-game');
   card.innerHTML = `<div class="hud-game-icon">${svg('game')}</div>` + (game
-    ? `<div class="hud-game-text"><small class="now-playing">En cours</small><b>${esc(game.name || 'Jeu')}</b></div>`
-    : '<div class="hud-game-text"><span>Aucun jeu lancé depuis KaneMode</span></div>');
+    ? t('<div class="hud-game-text"><small class="now-playing">En cours</small><b>{a}</b></div>', { a: esc(game.name || t("Jeu")) })
+    : t('<div class="hud-game-text"><span>Aucun jeu lancé depuis KaneMode</span></div>'));
   if (game) card.append(stopButton());
   parts.push(card);
 
   // Profils d'énergie
   if (sys) {
-    parts.push(el('h3', 'hud-h', 'Profil d’énergie'));
-    if (sys.modeConflict) parts.push(el('div', 'hud-note', 'Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.'));
+    parts.push(el('h3', 'hud-h', t('Profil d’énergie')));
+    if (sys.modeConflict) parts.push(el('div', 'hud-note', t('Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.')));
     const row = el('div', 'hud-profiles');
-    for (const [mode, label] of [...PERF_MODES, ['custom', 'Personnalisé']]) {
+    for (const [mode, label] of [...PERF_MODES, ['custom', t('Personnalisé')]]) {
       const w = mode === 'custom' ? (tdpLimits() && sys.mode === 'custom' ? tdpValue() : null) : watts(vendorFor(mode, sys));
       const p = el('div', 'hud-profile' + (sys.mode === mode ? ' active' : ''), `${svg(mode)}<b>${esc(label)}</b><small>${w ? w + ' W' : '&nbsp;'}</small>`);
       nav(p, () => pickMode(mode), 'mode:' + mode);
@@ -475,16 +476,16 @@ function render() {
   const list = all.filter(o => (filter() === 'all' ? o.cat !== 'monitor' : o.cat === filter()));
   const grid = el('div', 'hud-grid');
   list.forEach(o => grid.append(tileEl(o)));
-  parts.push(list.length ? grid : el('div', 'hud-empty', sys ? 'Rien à régler dans cette catégorie sur ce PC.' : 'Lecture des réglages…'));
+  parts.push(list.length ? grid : el('div', 'hud-empty', sys ? t('Rien à régler dans cette catégorie sur ce PC.') : t('Lecture des réglages…')));
 
   // Raccourcis vers KaneMode
   parts.push(el('h3', 'hud-h', 'KaneMode'));
   const sc = el('div', 'hud-shortcuts');
   for (const [icon, label, act, key] of [
-    ['home', 'Ouvrir', () => toApp('show'), 'sc-open'],
-    ['library', 'Bibliothèque', () => toApp('show', { page: 'library' }), 'sc-library'],
-    ['settings', 'Paramètres', () => toApp('show', { page: 'settings' }), 'sc-settings'],
-    ['sleep', 'Veille', () => toApp('power', { action: 'sleep' }), 'sc-sleep'],
+    ['home', t('Ouvrir'), () => toApp('show'), 'sc-open'],
+    ['library', t('Bibliothèque'), () => toApp('show', { page: 'library' }), 'sc-library'],
+    ['settings', t('Paramètres'), () => toApp('show', { page: 'settings' }), 'sc-settings'],
+    ['sleep', t('Veille'), () => toApp('power', { action: 'sleep' }), 'sc-sleep'],
   ]) sc.append(nav(el('div', 'hud-short', `${svg(icon)}<span>${esc(label)}</span>`), () => act().catch(e => toast(e.message, { error: true })), key));
   parts.push(sc);
 
@@ -505,9 +506,9 @@ function liveStrip() {
   const cells = [];
   if (gpu && gpu.fps != null) cells.push([String(gpu.fps), 'images/s']);
   if (gpu && gpu.gpuUsage != null) cells.push([`${gpu.gpuUsage} %`, gpu.gpuTemp != null ? `GPU · ${gpu.gpuTemp} °C` : 'GPU']);
-  if (live && live.mhz) cells.push([(live.mhz / 1000).toFixed(1).replace('.', ',') + ' GHz', live.load != null ? `CPU · ${live.load} %` : 'CPU']);
-  if (live && onBattery() && live.watts != null) cells.push([fmtW(live.watts), 'Batterie']);
-  else if (gpu && gpu.gpuPower != null) cells.push([fmtW(gpu.gpuPower), 'Puissance GPU']);
+  if (live && live.mhz) cells.push([(live.mhz / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' GHz', live.load != null ? `CPU · ${live.load} %` : 'CPU']);
+  if (live && onBattery() && live.watts != null) cells.push([fmtW(live.watts), t('Batterie')]);
+  else if (gpu && gpu.gpuPower != null) cells.push([fmtW(gpu.gpuPower), t('Puissance GPU')]);
   if (!liveEl) { liveEl = el('div', 'hud-live'); liveEl.id = 'hud-live'; }
   const html = cells.map(([v, l]) => `<div><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
   if (liveEl._html !== html) { liveEl._html = html; liveEl.innerHTML = html; }
@@ -543,7 +544,7 @@ function historyBox() {
   histEl.hidden = !monitorPrefs().chart || hist.length < 2 || (!hasFps && !hasW);
   if (histEl.hidden) return histEl;
   const wLabel = live && onBattery() ? 'Batterie (W)' : 'GPU (W)';
-  const legend = (hasFps ? '<span><i style="background:#7cf29a"></i>Images/s</span>' : '') +
+  const legend = (hasFps ? t('<span><i style="background:#7cf29a"></i>Images/s</span>') : '') +
     (hasW ? `<span><i style="background:#ffb35c"></i>${wLabel}</span>` : '') + '<span>60 s</span>';
   if (histLegend.innerHTML !== legend) histLegend.innerHTML = legend;
   requestAnimationFrame(() => drawHistory(histCanvas));
@@ -555,7 +556,7 @@ function drawHistory(c) {
   c.width = W * dpr; c.height = H * dpr;
   const g = c.getContext('2d');
   g.scale(dpr, dpr);
-  const now = Date.now(), x = t => W - ((now - t) / HISTORY_MS) * W;
+  const now = Date.now(), x = at => W - ((now - at) / HISTORY_MS) * W;
   const line = (key, color) => {
     const pts = hist.filter(p => p[key] != null);
     if (pts.length < 2) return;
@@ -600,10 +601,10 @@ async function pickMode(mode) {
     const unread = v.readable === false;
     const read = unread ? a.vendor : v.mode;
     const ok = !(r.errors && r.errors.length) && (!a.vendor || read === a.vendor);
-    const text = `Mode ${name}${a.vendor ? ` · profil ${VENDOR_LABELS[read] || read || '?'}${unread ? ' (envoyé)' : ''}` : ''}${w ? ` · ${w} W` : ''}`;
+    const text = t('Mode {name}{a}{b}', { name, a: a.vendor ? ` · profil ${VENDOR_LABELS[read] || read || '?'}${unread ? t(" (envoyé)") : ''}` : '', b: w ? ` · ${w} W` : '' });
     marks.push({ t: Date.now(), label: name });
     noteChange(text, ok);
-    if (!ok) toast(`${text} : ${(r.errors && r.errors[0]) || 'profil relu différent'}`, { error: true });
+    if (!ok) toast(`${text} : ${(r.errors && r.errors[0]) || t('profil relu différent')}`, { error: true });
     else toast(`✓ ${text}`);
   } catch (e) { toast(e.message, { error: true }); }
   render();
@@ -614,13 +615,13 @@ let stopArmed = 0, stopAsked = 0;
 function stopButton() {
   const forcing = stopAsked && Date.now() - stopAsked > 8000;
   const armed = stopArmed && Date.now() - stopArmed < 4000;
-  const b = el('div', 'hud-stop' + (armed || forcing ? ' danger' : ''), `${svg('power')}<span>${forcing ? 'Forcer' : armed ? 'Confirmer' : 'Arrêter'}</span>`);
+  const b = el('div', 'hud-stop' + (armed || forcing ? ' danger' : ''), `${svg('power')}<span>${forcing ? t('Forcer') : armed ? t('Confirmer') : t('Arrêter')}</span>`);
   return nav(b, async () => {
     if (!forcing && !armed) { stopArmed = Date.now(); render(); setTimeout(render, 4100); return; }
     stopArmed = 0;
     try {
       await toApp('game-stop', { id: game.id, dir: game.dir, force: !!forcing });
-      toast(forcing ? 'Fermeture forcée' : `Fermeture de ${game.name || 'jeu'}…`);
+      toast(forcing ? t('Fermeture forcée') : t('Fermeture de {a}…', { a: game.name || t("jeu") }));
       if (!forcing) { stopAsked = Date.now(); setTimeout(render, 8100); }
     } catch (e) { toast(e.message, { error: true }); }
     render();
@@ -633,7 +634,7 @@ function paintHead() {
   const w = sys && sys.mode === 'custom' && tdpLimits() ? tdpValue()
     : sys && sys.vendor ? watts(sys.vendor.mode) : null;
   pill.hidden = w == null;
-  if (w != null) { pill.textContent = fmtW(w); pill.title = 'Puissance du profil'; }
+  if (w != null) { pill.textContent = fmtW(w); pill.title = t('Puissance du profil'); }
 }
 function status(text) {
   const s = $('#hud-status');
@@ -647,7 +648,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 async function loadSys() {
   let next = sys;
   try { next = await api.get('/api/sys'); status(''); }
-  catch (e) { status(WIDGET ? 'KaneMode n’est pas ouvert : ouvrez-le pour régler le système.' : e.message); }
+  catch (e) { status(WIDGET ? t('KaneMode n’est pas ouvert : ouvrez-le pour régler le système.') : e.message); }
   if (!same(next, sys)) { const first = !sys; sys = next; render(); saveSnapshot(); if (first) focusStart(); }
 }
 async function loadGfx(force) {
@@ -682,6 +683,10 @@ async function loadInfo() {
   try { next = await api.get('/api/widget'); } catch { next = null; }
   // Même couleur d'accent que KaneMode (pour ce widget seulement, sans la renvoyer)
   if (next && next.accent && next.accent !== settings.accent) { settings.accent = next.accent; applyTheme(); }
+  // Langue de KaneMode (Paramètres → Apparence) : gardée pour le prochain affichage, appliquée tout de suite
+  if (next && next.lang && next.lang !== lang) {
+    try { localStorage.setItem('km.lang', next.lang); location.reload(); return; } catch { /* stockage indisponible */ }
+  }
   if (!same(next, info)) { info = next; render(); if (info) saveSnapshot(); }
 }
 
@@ -729,7 +734,7 @@ document.addEventListener('visibilitychange', () => (document.hidden ? stop() : 
 
 // B ou rond (Échap au clavier), sans panneau ouvert : la Game Bar se ferme et le jeu reprend
 hooks.back = () => {
-  if (!WIDGET) return toast('Ferme la Game Bar (dans la Game Bar seulement)');
+  if (!WIDGET) return toast(t('Ferme la Game Bar (dans la Game Bar seulement)'));
   toApp('gamebar-close').catch(() => {});
 };
 

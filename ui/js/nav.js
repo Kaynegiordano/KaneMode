@@ -1,5 +1,6 @@
 // Moteur de navigation : pages, couches (menus, dialogues), focus spatial et entrées
 // manette / clavier / souris.
+import { t } from './i18n.js';
 import { $, $$, sfx, reduceMotion, settings, native } from './core.js';
 
 export const DIRS = ['up', 'down', 'left', 'right'];
@@ -341,7 +342,7 @@ export function press(k) {
 const G = {
   xbox: { a: 'a|A', b: 'b|B', x: 'x|X', y: 'y|Y', lb: '|LB', rb: '|RB', lt: '|LT', rt: '|RT', left: '|◀', right: '|▶' },
   ps: { a: 'ps-a|✕', b: 'ps-b|○', x: 'ps-x|□', y: 'ps-y|△', lb: '|L1', rb: '|R1', lt: '|L2', rt: '|R2', left: '|◀', right: '|▶' },
-  kbd: { a: 'key|Entrée', b: 'key|Échap', x: 'key|X', y: 'key|Y', lb: 'key|Pg↑', rb: 'key|Pg↓', lt: 'key|Début', rt: 'key|Fin', menu: 'key|M', view: 'key|Q', left: 'key|←', right: 'key|→' },
+  kbd: { a: 'key|' + t('Entrée'), b: 'key|' + t('Échap'), x: 'key|X', y: 'key|Y', lb: 'key|Pg↑', rb: 'key|Pg↓', lt: 'key|' + t('Début'), rt: 'key|' + t('Fin'), menu: 'key|M', view: 'key|Q', left: 'key|←', right: 'key|→' },
 };
 export function glyph(k) {
   const style = settings.padGlyphs === 'auto' ? state.padStyle : settings.padGlyphs;
@@ -359,8 +360,8 @@ export function renderHints() {
     const keys = Array.isArray(k) ? k : [k];
     return `<span class="hint" data-hint="${keys[0]}">${keys.map(glyph).join('')}<span>${label}</span></span>`;
   };
-  const right = (L && L.hints ? L.hints() : P && P.hints ? P.hints(P.params) : [['a', 'Sélectionner'], ['b', 'Retour']]);
-  const left = L && L.noGlobal ? [] : [['menu', 'Menu'], ['view', '<span class="label-long">Accès rapide</span>']];
+  const right = (L && L.hints ? L.hints() : P && P.hints ? P.hints(P.params) : [['a', t('Sélectionner')], ['b', t('Retour')]]);
+  const left = L && L.noGlobal ? [] : [['menu', t('Menu')], ['view', t('<span class="label-long">Accès rapide</span>')]];
   $('#hints').innerHTML = `<span class="left">${left.map(x => h(...x)).join('')}</span>${right.map(x => h(...x)).join('')}`;
   $$('.shoulder[data-glyph]').forEach(s => { s.innerHTML = glyph(s.dataset.glyph); });
 }
@@ -447,7 +448,7 @@ function logSource(p) {
   const src = p.native ? 'XInput (app)' : 'WebView2 : ' + p.id;
   if (logged.has(src)) return;
   logged.add(src);
-  native.send('log', { text: `Manette : premier appui reçu par ${src}` });
+  native.send('log', { text: t('Manette : premier appui reçu par {src}', { src }) });
 }
 
 // État de chaque bouton, par manette (une manette fantôme au bouton bloqué ne gêne pas les autres)
