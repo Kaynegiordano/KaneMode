@@ -3,7 +3,8 @@
 // fois par jour par l'hôte (notification dans l'interface) ou à la demande (Paramètres).
 // - NVIDIA : API publique de son sélecteur de pilotes (carte retrouvée par son nom exact).
 // - AMD : pas d'API ; la page officielle des pilotes donne le lien de l'installateur, qui porte la
-//   version d'Adrenalin et sa date. Comparée à RadeonSoftwareVersion (device.ps1).
+//   version d'Adrenalin et sa date. Comparée à RadeonSoftwareVersion (device.ps1). Le lien direct
+//   n'est pas ouvert : sans venir de amd.com, AMD le renvoie vers une page d'aide (2.6.1).
 // - Intel : pas d'API ; la page officielle des pilotes Arc donne la version dans ses métadonnées.
 // Une page qui change de forme donne « à vérifier sur le site », jamais une fausse information.
 'use strict';
@@ -77,7 +78,7 @@ async function amd(g) {
   if (!m) return { installed, status: 'unknown', page: PAGES.amd };
   return {
     installed, latest: m[1], date: `20${m[2].slice(0, 2)}-${m[2].slice(2, 4)}-${m[2].slice(4, 6)}`,
-    title: 'AMD Software: Adrenalin Edition', url: m[0], page: PAGES.amd,
+    title: 'AMD Software: Adrenalin Edition', url: PAGES.amd, page: PAGES.amd,
     status: status(m[1], installed),
   };
 }

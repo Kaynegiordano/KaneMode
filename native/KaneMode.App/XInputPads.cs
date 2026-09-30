@@ -34,7 +34,7 @@ public sealed class XInputPads : IDisposable
         Orphan,
         /// <summary>Une autre fenêtre (jeu, Game Bar, vue des tâches…).</summary>
         Other,
-        /// <summary>KaneMode en arrière-plan derrière une fenêtre ordinaire (bureau, lanceur) : seul Start maintenu compte.</summary>
+        /// <summary>KaneMode en arrière-plan devant le bureau Windows (bureau, Explorateur) : seul Start maintenu compte.</summary>
         Desktop,
     }
 

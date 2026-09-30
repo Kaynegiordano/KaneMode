@@ -287,9 +287,14 @@ public partial class MainWindow : Window
             IntPtr top = Native.VisibleWindows().FirstOrDefault(Native.IsAppWindow);
             if (top == me) return Native.IsAppWindow(f) ? XInputPads.Focus.Orphan : XInputPads.Focus.Other;
         }
-        // KaneMode en arrière-plan (bureau Windows, lanceur, navigateur devant) : Start maintenu y active
-        // le mode souris. Jamais par-dessus une fenêtre qui couvre l'écran (jeu, Game Bar, vue des tâches).
-        return Native.IsOrphanForeground(f) || !Native.CoversMonitor(f) ? XInputPads.Focus.Desktop : XInputPads.Focus.Hidden;
+        // KaneMode en arrière-plan devant le bureau Windows (bureau, barre des tâches, Explorateur) : Start
+        // maintenu y active le mode souris. Pas ailleurs (2.6.1) : un jeu en fenêtre lancé hors de
+        // KaneMode passait en mode souris quand on maintenait Start pour son menu pause.
+        return Native.IsOrphanForeground(f) || IsShell(f) ? XInputPads.Focus.Desktop : XInputPads.Focus.Hidden;
+    }
+
+    private static bool IsShell(IntPtr f) =>
+        f != IntPtr.Zero && string.Equals(Native.ProcessName(Native.WindowProcessId(f)), "explorer", StringComparison.OrdinalIgnoreCase);
     }
 
     private DateTime _reclaimedAt;
