@@ -505,6 +505,17 @@ function Run($c) {
             return @{ hdr = [KaneMode.Hdr]::State() }
         }
         'net' { return Get-Net }
+        # Lancement d'un jeu : programmes ouverts et jeu Steam en cours, lus ici (quelques millisecondes)
+        # au lieu de lancer tasklist.exe et reg.exe à chaque fois (plusieurs centaines de ms sur l'Ally)
+        'procs' {
+            $names = @($c.value | Where-Object { "$_" -match '^[\w .-]{1,64}$' })
+            return @{ running = @($names | Where-Object { Get-Process -Name $_ -ErrorAction SilentlyContinue }) }
+        }
+        'steamapp' {
+            $v = 0
+            try { $v = [int](Get-ItemProperty 'HKCU:\Software\Valve\Steam' -Name RunningAppID -ErrorAction Stop).RunningAppID } catch { }
+            return @{ app = $v }
+        }
         'radio' {
             $radio = Get-Radios | Where-Object { "$($_.Kind)" -eq $c.kind } | Select-Object -First 1
             if (-not $radio) { throw "$($c.kind) introuvable" }

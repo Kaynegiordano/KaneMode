@@ -1,5 +1,5 @@
 // Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
-import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native } from './core.js';
+import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native, store } from './core.js';
 import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input, setNativePads } from './nav.js';
 import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
@@ -281,6 +281,24 @@ async function checkUpdate() {
     }
   } catch { /* hors ligne */ }
 }
+// ---------- Pilotes disponibles ----------
+// L'hôte vérifie une fois par jour la carte graphique (NVIDIA, AMD, Intel) et, sur console ASUS, le
+// BIOS et les pilotes du constructeur : chaque nouvelle version est signalée une fois
+async function checkDrivers() {
+  try {
+    const r = await api.get('/api/drivers/summary');
+    const seen = new Set(store.get('driverNotified', []));
+    const fresh = (r.items || []).filter(i => !seen.has(i.key));
+    if (!fresh.length) return;
+    fresh.forEach(i => seen.add(i.key));
+    store.set('driverNotified', [...seen].slice(-50));
+    toast(fresh.length === 1 ? `Nouveau pilote : ${fresh[0].title} · Paramètres → Appareil et pilotes`
+      : `${fresh.length} nouveaux pilotes disponibles · Paramètres → Appareil et pilotes`, { notify: true });
+  } catch { /* hôte injoignable */ }
+}
+setTimeout(checkDrivers, 90e3); // l'hôte vérifie une minute après le démarrage
+setInterval(checkDrivers, 3 * 3600e3);
+
 actions['update-open'] = () => {
   actions['overlay-leave']();
   closeLayer();
@@ -315,6 +333,6 @@ actions['update-open'] = () => {
     if (settings.uiScale === 100) settings.uiScale = 125;
     settings.lowFx = true; // plus fluide et plus économe sur une console portable
     saveSettings();
-    toast(`${hh.name} détectée · interface adaptée (Paramètres → Console portable)`, { notify: true });
+    toast(`${hh.name} détectée · interface adaptée (Paramètres → Appareil et pilotes)`, { notify: true });
   }).catch(() => {});
 })();

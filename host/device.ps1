@@ -14,12 +14,20 @@ $screens = @(Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorBasicDispl
 })
 $internal = @(Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorConnectionParams | Where-Object { $_.VideoOutputTechnology -in 0x80000000, 11, 6 }).Count -gt 0
 
+# Version d'AMD Software : Adrenalin (ex. 26.8.1), notée par le pilote dans sa clé de la classe « Affichage »
+$display = 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}'
+$radeon = @{}
+Get-ChildItem $display -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -match '^\d{4}$' } | ForEach-Object {
+    $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+    if ($p -and $p.RadeonSoftwareVersion -and $p.DriverDesc) { $radeon["$($p.DriverDesc)"] = "$($p.RadeonSoftwareVersion)" }
+}
 $gpus = @(Get-CimInstance Win32_VideoController | ForEach-Object {
     $ven = if ($_.PNPDeviceID -match 'VEN_([0-9A-F]{4})') { $Matches[1] } else { '' }
     [pscustomobject]@{
         name = $_.Name; driver = $_.DriverVersion
         date = if ($_.DriverDate) { $_.DriverDate.ToString('yyyy-MM-dd') } else { $null }
         vendor = $ven; width = $_.CurrentHorizontalResolution; height = $_.CurrentVerticalResolution; hz = $_.CurrentRefreshRate
+        adrenalin = $radeon["$($_.Name)"]
     }
 })
 

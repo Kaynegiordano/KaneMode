@@ -18,6 +18,7 @@ const syscontrol = require('./lib/syscontrol');
 const oem = require('./lib/oem');
 const amd = require('./lib/amd');
 const dealsLib = require('./lib/deals');
+const gpuLib = require('./lib/gpudrivers');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -449,6 +450,38 @@ const powerProfiles = () => {
 const driverJobs = device.drivers(DATA);
 // Mises à jour officielles du constructeur de la console (BIOS, pilotes du modèle)
 const oemUpdates = oem.tracker(DATA);
+// Pilotes graphiques des fabricants (NVIDIA, AMD, Intel), voir lib/gpudrivers.js
+const gpuDrivers = gpuLib.tracker(DATA);
+/**
+ * Pilotes disponibles pour cette machine, à signaler (notification dans l'interface) : carte
+ * graphique (sauf puce AMD d'une console portable, dont le constructeur fournit le pilote), BIOS et
+ * pilotes du constructeur de la console.
+ */
+function driverNews() {
+  const items = [];
+  const g = gpuDrivers.status().last;
+  for (const x of (g && g.gpus) || []) {
+    if (x.status === 'new' && !x.preferOem) items.push({ key: `gpu:${x.name}:${x.latest}`, title: `${x.title || 'Pilote ' + x.maker} ${x.latest}`, detail: `${x.name} · installé : ${x.installed || '?'}` });
+  }
+  const o = oemUpdates.status().last;
+  for (const c of (o && o.ok && o.channels) || []) {
+    if (c.status === 'new') items.push({ key: `oem:${c.id}:${c.latest}`, title: `${c.title} ${c.latest}`, detail: `installé : ${c.installed || '?'}` });
+    for (const i of c.items || []) if (i.status === 'new') items.push({ key: `oem:${i.title}:${i.version}`, title: `${i.title} ${i.version}`, detail: `installé : ${i.installed || '?'}` });
+  }
+  return { checked: g ? g.checked : null, items };
+}
+/** Vérification des pilotes au plus une fois par jour, jamais avec un jeu devant. */
+async function checkDriversDaily() {
+  if (!fpsScope.front) return;
+  const last = gpuDrivers.status().last;
+  if (last && Date.now() - Date.parse(last.checked) < 20 * 3600e3) return;
+  const dev = await device.info().catch(() => null);
+  if (!dev || !dev.ok) return;
+  await gpuDrivers.check(dev).catch(() => null);
+  if (oemUpdates.supported(dev.handheld)) await oemUpdates.check(dev).catch(() => null);
+  const n = driverNews().items.length;
+  console.log(`Pilotes vérifiés : ${n ? `${n} mise${n > 1 ? 's' : ''} à jour disponible${n > 1 ? 's' : ''}` : 'rien de nouveau'}`);
+}
 
 // ---------------------------------------------------------------- streaming (moteur KanePlay)
 // Copie embarquée dans l'app native (dossier kaneplay\ à côté de app\, voir native\build.ps1)
@@ -581,8 +614,10 @@ function addMinutes(id, minutes) {
   version++;
 }
 
-// Jeu Steam en cours (0 si aucun) : Steam le note dans le registre de l'utilisateur
-function steamRunningApp() {
+// Jeu Steam en cours (0 si aucun) : Steam le note dans le registre de l'utilisateur. Lu par le service
+// syscontrol déjà ouvert (quelques ms) ; reg.exe en secours (plusieurs centaines de ms sur l'Ally)
+async function steamRunningApp() {
+  try { return (await sysctl.call('steamapp')).app || 0; } catch { /* service indisponible */ }
   return new Promise(resolve => {
     execFile('reg.exe', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'RunningAppID'], { windowsHide: true, timeout: 3000 }, (err, out) => {
       const m = !err && /RunningAppID\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(out);
@@ -590,36 +625,78 @@ function steamRunningApp() {
     });
   });
 }
+/** Programme ouvert ? (nom sans « .exe ») Par syscontrol, tasklist en secours. */
+async function processOpen(name) {
+  try { return (await sysctl.call('procs', { value: [name] })).running.length > 0; } catch { /* service indisponible */ }
+  return new Promise(resolve => execFile('tasklist.exe', ['/FI', `IMAGENAME eq ${name}.exe`, '/NH'], { windowsHide: true, timeout: 4000 },
+    (err, out) => resolve(!err && out.toLowerCase().includes(name.toLowerCase() + '.exe'))));
+}
 // steam.exe, à côté du dossier userdata trouvé par l'analyse
 function steamClient() {
   const ud = str(readJson(FILES.library, {}).steamUserdata);
   const exe = ud ? path.join(path.dirname(ud), 'steam.exe') : null;
   return exe && isFile(exe) ? exe : null;
 }
-const steamOpen = () => new Promise(resolve => {
-  execFile('tasklist.exe', ['/FI', 'IMAGENAME eq steam.exe', '/NH'], { windowsHide: true, timeout: 4000 }, (err, out) => resolve(!err && /steam\.exe/i.test(out)));
-});
-/**
- * Démarre Steam avec -silent (dans la zone de notification, sans fenêtre) s'il n'est pas ouvert,
- * puis attend qu'il tourne : le lien du jeu part ensuite vers lui. On passe par un raccourci ouvert
- * par l'Explorateur, comme pour les liens : lancé directement par l'hôte, Steam ferait partie du
- * paquet de KaneMode (et serait fermé à chaque mise à jour).
- */
-async function startSteamSilently() {
-  const exe = steamClient();
-  if (!exe || await steamOpen()) return;
-  const lnk = path.join(DATA, `steam-silent-${crypto.createHash('md5').update(exe.toLowerCase()).digest('hex').slice(0, 8)}.lnk`);
-  if (!isFile(lnk)) {
-    const q = s => `'${s.replace(/'/g, "''")}'`;
-    await new Promise(resolve => execFile('powershell.exe', ['-NoProfile', '-Command',
-      `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(lnk)}); $s.TargetPath = ${q(exe)}; $s.Arguments = '-silent'; $s.WorkingDirectory = ${q(path.dirname(exe))}; $s.Save()`],
-    { windowsHide: true, timeout: 15000 }, () => resolve()));
-    if (!isFile(lnk)) { console.error('Raccourci Steam -silent impossible à créer'); return; }
+// Lanceur d'Epic Games, à son emplacement habituel
+function epicClient() {
+  for (const base of [process.env['ProgramFiles(x86)'], process.env.ProgramFiles].filter(Boolean)) {
+    for (const arch of ['Win64', 'Win32']) {
+      const exe = path.join(base, 'Epic Games', 'Launcher', 'Portal', 'Binaries', arch, 'EpicGamesLauncher.exe');
+      if (isFile(exe)) return exe;
+    }
   }
-  console.log('Steam fermé : démarrage sans sa fenêtre');
+  return null;
+}
+// Boutiques démarrées sans leur fenêtre (zone de notification) : avant un jeu, ou dès le démarrage de
+// KaneMode pour que le premier jeu parte tout de suite (Paramètres → Bibliothèque)
+const STORE_BG = {
+  steam: { name: 'Steam', proc: 'steam', exe: steamClient, args: '-silent' },
+  epic: { name: 'Epic Games', proc: 'EpicGamesLauncher', exe: epicClient, args: '-silent' },
+};
+/**
+ * Démarre une boutique sans sa fenêtre si elle n'est pas ouverte. `wait` : attend qu'elle tourne (le
+ * lien du jeu part ensuite vers elle). On passe par un raccourci ouvert par l'Explorateur, comme pour
+ * les liens : lancée directement par l'hôte, la boutique ferait partie du paquet de KaneMode (et
+ * serait fermée à chaque mise à jour).
+ */
+async function startStoreSilently(id, { wait = true } = {}) {
+  const s = STORE_BG[id];
+  const exe = s && s.exe();
+  if (!exe || await processOpen(s.proc)) return false;
+  const lnk = path.join(DATA, `${id}-silent-${crypto.createHash('md5').update(exe.toLowerCase()).digest('hex').slice(0, 8)}.lnk`);
+  if (!isFile(lnk)) {
+    const q = v => `'${v.replace(/'/g, "''")}'`;
+    await new Promise(resolve => execFile('powershell.exe', ['-NoProfile', '-Command',
+      `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(lnk)}); $s.TargetPath = ${q(exe)}; $s.Arguments = ${q(s.args)}; $s.WorkingDirectory = ${q(path.dirname(exe))}; $s.Save()`],
+    { windowsHide: true, timeout: 15000 }, () => resolve()));
+    if (!isFile(lnk)) { console.error(`Raccourci ${s.name} sans fenêtre impossible à créer`); return false; }
+  }
+  console.log(`${s.name} fermé : démarrage sans sa fenêtre${wait ? '' : ' (prêt pour le premier jeu)'}`);
   spawn('explorer.exe', [lnk], { detached: true, stdio: 'ignore' }).unref();
-  for (let i = 0; i < 20 && !await steamOpen(); i++) await new Promise(r => setTimeout(r, 250));
-  await new Promise(r => setTimeout(r, 1500)); // le temps qu'il prenne la main sur les liens steam://
+  if (!wait) return true;
+  for (let i = 0; i < 20 && !await processOpen(s.proc); i++) await new Promise(r => setTimeout(r, 250));
+  await new Promise(r => setTimeout(r, 1500)); // le temps qu'elle prenne la main sur ses liens
+  return true;
+}
+const startSteamSilently = () => startStoreSilently('steam');
+
+/**
+ * Boutiques gardées prêtes : réglage de l'utilisateur, sinon celles dont au moins un jeu est installé
+ * (Steam et Epic ; les jeux GOG, Ubisoft… se lancent sans leur boutique ou la démarrent eux-mêmes).
+ */
+function storesReady() {
+  const pref = config().storesReady || {};
+  const games = readJson(FILES.library, { games: [] }).games || [];
+  const out = {};
+  for (const id of Object.keys(STORE_BG)) {
+    out[id] = typeof pref[id] === 'boolean' ? pref[id] : games.some(g => g.source === id && g.installed !== false && g.type !== 'app');
+  }
+  return out;
+}
+async function warmStores() {
+  if (!fpsScope.front) return; // un jeu est devant : pas maintenant
+  const want = storesReady();
+  for (const id of Object.keys(want)) if (want[id]) await startStoreSilently(id, { wait: false }).catch(() => false);
 }
 // Dernier lancement de chaque entrée : un second appui (ou un événement en double) ne relance pas le jeu
 const recentLaunch = new Map();
@@ -784,6 +861,9 @@ const routes = {
       sgdb: { configured: true, key: !!c.sgdbKey, hint: c.sgdbKey ? '…' + c.sgdbKey.slice(-4) : null, auto: c.sgdbAuto, preferSteam: c.sgdbPreferSteam, style: c.sgdbStyle },
       romRoots: c.romRoots, emulatorPaths: c.emulatorPaths, emulatorPrefs: c.emulatorPrefs,
       bootVideo: c.bootVideo ? path.basename(c.bootVideo) : null, bootSound: c.bootSound ? c.bootSoundName || path.basename(c.bootSound) : null, bootSoundAt: c.bootSoundAt || 0,
+      // Boutiques prêtes en arrière-plan (valeur effective, et si elle vient d'un choix de l'utilisateur)
+      storesReady: storesReady(), storesReadyChosen: c.storesReady || {},
+      storesAvailable: Object.fromEntries(Object.entries(STORE_BG).map(([id, s]) => [id, !!s.exe()])),
     });
   },
   'POST /api/config': async (req, res) => {
@@ -823,6 +903,14 @@ const routes = {
       for (const [k, v] of Object.entries(b.emulatorPaths)) { if (str(v) && isFile(v)) c.emulatorPaths[k] = v; else delete c.emulatorPaths[k]; }
     }
     if (b.emulatorPrefs && typeof b.emulatorPrefs === 'object') Object.assign(c.emulatorPrefs, b.emulatorPrefs);
+    // Boutiques prêtes en arrière-plan : { steam: true|false }, activée tout de suite si elle ne tourne pas
+    if (b.storesReady && typeof b.storesReady === 'object') {
+      c.storesReady = { ...(c.storesReady || {}) };
+      for (const [id, on] of Object.entries(b.storesReady)) if (STORE_BG[id] && typeof on === 'boolean') {
+        c.storesReady[id] = on;
+        if (on) setTimeout(() => startStoreSilently(id, { wait: false }).catch(() => {}), 0);
+      }
+    }
     writeJson(FILES.config, c);
     if (b.romRoots || b.emulatorPaths || b.emulatorPrefs) scanEmulation();
     version++;
@@ -1109,10 +1197,18 @@ const routes = {
     const b = await readBody(req);
     const target = String(b.target || '');
     // Uniquement les logiciels détectés et les pages officielles connues
-    if (!(await device.allowedTargets(b.simulate)).has(target) && !oemUpdates.allowed(target)) return json(res, 400, { error: 'Cible non autorisée' });
+    if (!(await device.allowedTargets(b.simulate)).has(target) && !oemUpdates.allowed(target) && !gpuDrivers.allowed(target)) return json(res, 400, { error: 'Cible non autorisée' });
     json(res, 200, await run({ kind: 'uri', target }));
   },
   'GET /api/drivers': (req, res) => json(res, 200, driverJobs.status()),
+  // Pilotes graphiques des fabricants, et résumé des pilotes disponibles (notifications)
+  'GET /api/gpu-drivers': (req, res) => json(res, 200, gpuDrivers.status()),
+  'POST /api/gpu-drivers/check': async (req, res) => {
+    const dev = await device.info().catch(() => null);
+    if (!dev || !dev.ok) return json(res, 500, { error: 'Impossible de décrire cet appareil' });
+    json(res, 200, await gpuDrivers.check(dev));
+  },
+  'GET /api/drivers/summary': (req, res) => json(res, 200, driverNews()),
   'GET /api/oem': async (req, res, q) => {
     const d = await device.info({ simulate: q.get('simulate') || '' });
     json(res, 200, { supported: !!d.ok && oemUpdates.supported(d.handheld), maker: d.handheld ? d.handheld.maker : null, ...oemUpdates.status() });
@@ -1479,6 +1575,13 @@ if (!isFile(FILES.library)) {
 setInterval(() => { if (fpsScope.front) rescanLibrary('vérification périodique'); }, 30 * 60e3);
 refreshKanePlay();
 setInterval(() => { if (fpsScope.front) refreshKanePlay(); }, 5 * 60e3);
+// Steam (et Epic) prêts en arrière-plan : le premier jeu démarre sans attendre que la boutique s'ouvre.
+// Un peu après le démarrage, pour ne pas ralentir l'ouverture de KaneMode.
+// Seulement dans l'app (pas en développement dans un navigateur)
+if (process.env.KANEMODE_NATIVE === '1') setTimeout(() => warmStores().catch(() => {}), 12000);
+// Pilotes (carte graphique, constructeur de la console) : une fois par jour, une minute après le démarrage
+setTimeout(() => checkDriversDaily().catch(() => {}), 60e3);
+setInterval(() => checkDriversDaily().catch(() => {}), 3 * 3600e3);
 // Bons plans : préparés peu après le démarrage, puis relus au-delà de 4 h (jamais avec un jeu devant)
 setTimeout(() => { if (fpsScope.front) deals.get(); }, 15000);
 setInterval(() => { if (fpsScope.front) deals.get(); }, 3600e3);

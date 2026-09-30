@@ -205,20 +205,40 @@ public static class Native
         finally { CloseHandle(h); }
     }
 
+    [DllImport("psapi.dll", SetLastError = true)]
+    private static extern bool EnumProcesses([Out] uint[] ids, int size, out int needed);
+
+    // Chemin de l'exécutable de chaque processus, lu une seule fois : le suivi d'un jeu passait en revue
+    // tous les processus deux fois par demi-seconde en les ouvrant tous (du processeur pris au jeu)
+    private static readonly Dictionary<uint, string?> PathCache = new();
+    private static readonly object PathLock = new();
+    private static uint[] _pids = new uint[1024];
+
     /// <summary>Processus dont l'exécutable est dans ce dossier (ou un sous-dossier). `dir` finit par « \ ».</summary>
     public static List<uint> ProcessesIn(string dir)
     {
         var list = new List<uint>();
         uint self = (uint)Environment.ProcessId;
-        foreach (var p in Process.GetProcesses())
+        lock (PathLock)
         {
-            using (p)
+            int needed;
+            while (true)
             {
-                uint pid = (uint)p.Id;
+                if (!EnumProcesses(_pids, _pids.Length * 4, out needed)) return list;
+                if (needed < _pids.Length * 4) break;
+                _pids = new uint[_pids.Length * 2]; // tableau trop petit : on recommence plus grand
+            }
+            var alive = new HashSet<uint>();
+            for (int i = 0; i < needed / 4; i++)
+            {
+                uint pid = _pids[i];
                 if (pid == self || pid <= 4) continue;
-                string? path = ProcessPath(pid);
+                alive.Add(pid);
+                if (!PathCache.TryGetValue(pid, out string? path)) PathCache[pid] = path = ProcessPath(pid);
                 if (path != null && path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)) list.Add(pid);
             }
+            // Processus terminés oubliés : leur numéro peut resservir à un autre programme
+            foreach (uint dead in PathCache.Keys.Where(k => !alive.Contains(k)).ToList()) PathCache.Remove(dead);
         }
         return list;
     }

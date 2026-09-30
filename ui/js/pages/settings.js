@@ -15,7 +15,7 @@ const SECTIONS = [
   ['library', 'i-library', 'Bibliothèque'], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', 'Émulation'], ['stream', 'i-gamepad', 'KanePlay'],
   ['look', 'i-palette', 'Apparence'], ['boot', 'i-media', 'Démarrage'], ['pad', 'i-gamepad', 'Manette'],
   ['qam', 'i-grid', 'Accès rapide'], ['access', 'i-info', 'Accessibilité'], ['power', 'i-moon', 'Veille'], ['energy', 'i-power', 'Énergie'],
-  ['device', 'i-battery', 'Console portable'],
+  ['device', 'i-battery', 'Appareil et pilotes'],
   ['storage', 'i-drive', 'Stockage'], ['xbox', 'i-desktop', 'Mode Xbox'], ['system', 'i-cpu', 'Système'],
 ];
 // Réglage demandé par une autre page → catégorie à afficher
@@ -234,6 +234,61 @@ async function driversBlock(s) {
   await draw();
 }
 
+// ---------- Pilotes graphiques des fabricants (NVIDIA, AMD, Intel)
+// Chaque carte : pilote installé, dernier publié par son fabricant, téléchargement officiel. Vérifié
+// par l'hôte une fois par jour (notification au démarrage), ou ici à la demande.
+const GPU_STATUS = { new: '<span class="dot-ko"></span>', ok: '<span class="dot-ok"></span>', unknown: '' };
+async function gpuBlock(s, d, hh) {
+  h2(s, 'i-download2', 'Pilotes graphiques');
+  const box = el('div');
+  s.append(box);
+  let drawn = false;
+  const draw = async focus => {
+    const st = await api.get('/api/gpu-drivers').catch(() => null);
+    if (!st || (drawn && !box.isConnected)) return;
+    drawn = true;
+    const snap = snapshot(box);
+    box.replaceChildren();
+    const last = st.last;
+    const byName = new Map(((last && last.gpus) || []).map(g => [g.name, g]));
+    const news = [...byName.values()].filter(g => g.status === 'new' && !g.preferOem).length;
+    actionRow(box, 'i-search', 'Vérifier les pilotes graphiques',
+      st.checking ? 'Vérification sur les sites des fabricants…'
+        : !last ? 'NVIDIA, AMD et Intel · vérifié chaque jour automatiquement'
+          : `${news ? `${news} nouveau${news > 1 ? 'x' : ''} pilote${news > 1 ? 's' : ''}` : 'Pilotes à jour'} · vérifié le ${day(last.checked)}`,
+      async () => {
+        busy('Vérification des pilotes graphiques…');
+        try { await api.post('/api/gpu-drivers/check'); } catch (e) { toast(e.message, { error: true }); }
+        busy(null);
+        draw('gpu-check');
+      }, 'gpu-check');
+    for (const g of d.gpus) {
+      const r = byName.get(g.name);
+      const installed = r && r.installed ? r.installed : g.driver || '?';
+      const when = g.date ? ` du ${new Date(g.date).toLocaleDateString('fr-FR')}` : '';
+      if (!r) { infoRow(box, esc(g.name), `Pilote ${esc(g.driver || '?')}${when}`); continue; }
+      const published = r.latest ? `publié : ${esc(r.latest)}${r.date ? ` du ${day(r.date)}` : r.dateText ? ` du ${esc(r.dateText)}` : ''}${r.size ? ` · ${esc(r.size)}` : ''}` : r.error ? 'site du fabricant injoignable' : 'dernière version à vérifier sur le site';
+      const desc = `Installé : ${esc(installed)}${when} · ${published}`;
+      const title = `${GPU_STATUS[r.status] || ''}${esc(g.name)}${r.status === 'new' ? ` · ${esc(r.title || 'nouveau pilote')} ${esc(r.latest)}` : r.status === 'ok' ? ' · à jour' : ''}`;
+      if (r.status === 'new' && r.url && !r.preferOem) {
+        actionRow(box, 'i-download2', title, `${desc} · télécharger sur le site officiel de ${esc(r.maker)}`, () => openDevice(r.url), 'gpu:' + g.name);
+      } else if (g.tool && g.tool.app) {
+        actionRow(box, 'i-open', title, `${desc} · ouvrir ${esc(g.tool.name)}`, () => openDevice(g.tool.app.target), 'gpu:' + g.name);
+      } else if (r.page) {
+        actionRow(box, 'i-globe', title, `${desc} · page officielle de ${esc(r.maker)}`, () => openDevice(r.page), 'gpu:' + g.name);
+      } else infoRow(box, title, desc);
+    }
+    if (hh && d.gpus.some(g => g.vendor === '1002')) box.append(el('div', 'notice', `Sur une ${esc(hh.name)}, préférez les pilotes graphiques proposés par ${esc(hh.maker)} (${hh.maker === 'ASUS' ? 'Mises à jour officielles ASUS, plus haut' : esc(hh.tool ? hh.tool.name : 'site officiel')}) : ils sont réglés pour la console (consommation, écran, boutons). La version générique d’AMD est indiquée sans notification.`));
+    restore(box, snap, focus);
+    // Jamais vérifié, ou il y a plus d'un jour : vérification tout de suite
+    if (!st.checking && (!last || Date.now() - Date.parse(last.checked) > 24 * 3600e3) && !box.dataset.auto) {
+      box.dataset.auto = '1';
+      api.post('/api/gpu-drivers/check').catch(() => {}).then(() => draw());
+    }
+  };
+  await draw();
+}
+
 // ---------- Mises à jour officielles du constructeur (BIOS et pilotes du modèle de console)
 const OEM_STATUS = { new: '<span class="dot-ko"></span>', ok: '<span class="dot-ok"></span>', unknown: '' };
 async function oemBlock(s, hh) {
@@ -327,6 +382,21 @@ const BUILDERS = {
       desc: 'Ajoute des jeux fictifs de toutes les boutiques et des ROMs pour voir une grosse bibliothèque. Marqués « DÉMO », ils ne se lancent pas.',
       onToggle: async v => { settings.demo = v; saveSettings(); await lib.load(); toast(v ? 'Démo activée' : 'Démo désactivée'); },
     }));
+    // Boutiques démarrées sans leur fenêtre peu après KaneMode : le premier jeu part tout de suite
+    const cfg = await api.get('/api/config').catch(() => null);
+    if (cfg && cfg.storesReady) {
+      h2(s, 'i-play', 'Lancement des jeux');
+      s.append(el('div', 'notice', 'Une boutique fermée met du temps à s’ouvrir avant le jeu. Gardée prête en arrière-plan (sans fenêtre, dans la zone de notification), le jeu démarre tout de suite. Par défaut : les boutiques dont vous avez des jeux installés.'));
+      for (const [id, name] of [['steam', 'Steam'], ['epic', 'Epic Games']]) {
+        if (!cfg.storesAvailable || !cfg.storesAvailable[id]) continue;
+        s.append(switchRow({
+          title: `${name} prêt en arrière-plan`, key: 'ready:' + id, on: !!cfg.storesReady[id],
+          desc: `Démarré sans fenêtre peu après KaneMode${cfg.storesReadyChosen[id] === undefined ? ' · réglé automatiquement' : ''}`,
+          onToggle: v => api.post('/api/config', { storesReady: { [id]: v } }).then(() => toast(v ? `${name} sera prêt pour vos jeux` : `${name} ne sera plus démarré à l’avance`)).catch(e => toast(e.message, { error: true })),
+        }));
+      }
+    }
+
     h2(s, 'i-store', 'Boutiques et lanceurs');
     const counts = {};
     lib.games.forEach(g => { counts[g.source] = (counts[g.source] || 0) + 1; });
@@ -490,7 +560,7 @@ const BUILDERS = {
       }, 'pw-apply-' + src);
     }
     if (hh && !vendor) {
-      s.append(el('div', 'notice', `Sur ${esc(hh.name)}, les profils de puissance du constructeur se règlent dans ${esc(hh.tool ? hh.tool.name : 'son logiciel')} (Paramètres → Console portable) : KaneMode règle ici le mode d’alimentation de Windows, la fréquence et la luminosité.`));
+      s.append(el('div', 'notice', `Sur ${esc(hh.name)}, les profils de puissance du constructeur se règlent dans ${esc(hh.tool ? hh.tool.name : 'son logiciel')} (Paramètres → Appareil et pilotes) : KaneMode règle ici le mode d’alimentation de Windows, la fréquence et la luminosité.`));
     } else if (vendor) {
       s.append(el('div', 'notice', `Profils ${esc(hh ? hh.maker : '')} : les mêmes que dans ${esc(hh && hh.tool ? hh.tool.name : 'le logiciel du constructeur')}. La puissance en watts est expérimentale : restez dans les valeurs proposées.`));
     }
@@ -585,7 +655,7 @@ const BUILDERS = {
   },
 
   async device(s) {
-    h2(s, 'i-battery', 'Console portable');
+    h2(s, 'i-battery', 'Cet appareil');
     // Description en cache (immédiate) ; l'analyse complète (WMI, plusieurs secondes sur une
     // console) est relancée en arrière-plan pour la prochaine visite
     const d = await device();
@@ -613,16 +683,8 @@ const BUILDERS = {
       if (hh.maker === 'ASUS') oemBlock(s, hh); // se remplit tout seul, sans retenir l'affichage
     }
 
-    h2(s, 'i-download2', 'Pilotes');
-    for (const g of d.gpus) {
-      const old = g.ageDays != null && g.ageDays > 180;
-      const age = g.ageDays == null ? '' : g.ageDays < 45 ? ' · récent' : ` · il y a ${g.ageDays < 365 ? Math.round(g.ageDays / 30) + ' mois' : Math.floor(g.ageDays / 365) + ' an' + (g.ageDays >= 730 ? 's' : '')}`;
-      const desc = `Pilote ${esc(g.driver || '?')}${g.date ? ` du ${new Date(g.date).toLocaleDateString('fr-FR')}` : ''}${age}${old ? ' · une mise à jour est probablement disponible' : ''}`;
-      if (g.tool && g.tool.app) actionRow(s, 'i-open', `${esc(g.name)} · ouvrir ${esc(g.tool.name)}`, desc, () => openDevice(g.tool.app.target), 'gpu:' + g.name);
-      else if (g.page) actionRow(s, 'i-globe', `${esc(g.name)} · pilotes ${esc(g.maker)}`, desc + ' · ouvre la page officielle', () => openDevice(g.page), 'gpu:' + g.name);
-      else infoRow(s, esc(g.name), desc);
-    }
-    if (hh && d.gpus.some(g => g.vendor === '1002')) s.append(el('div', 'notice', `Sur une ${esc(hh.name)}, préférez les pilotes graphiques proposés par ${esc(hh.maker)} (${hh.maker === 'ASUS' ? 'Mises à jour officielles ASUS, plus haut' : esc(hh.tool ? hh.tool.name : 'site officiel')}) : ils sont réglés pour la console (consommation, écran, boutons).`));
+    gpuBlock(s, d, hh); // se remplit tout seul, sans retenir l'affichage
+    h2(s, 'i-download2', 'Autres pilotes (Windows Update)');
     driversBlock(s);
   },
 

@@ -122,6 +122,9 @@ public partial class MainWindow
     private void GameTick(GameState s)
     {
         double elapsed = (DateTime.UtcNow - s.Started).TotalSeconds;
+        // Jeu lancé depuis plus de 90 s : vérifié chaque seconde (le retour sur KaneMode à sa fermeture
+        // reste rapide), moins de travail pris au jeu pendant toute la partie
+        if (s.Seen && elapsed > 90 && _gameTimer != null && _gameTimer.Interval < TimeSpan.FromSeconds(1)) _gameTimer.Interval = TimeSpan.FromSeconds(1);
         bool running = IsRunning(s);
         LogForeground(s);
 
