@@ -49,16 +49,7 @@ public sealed class Installer
     public static string WindowsVersion =>
         $"{Registry.GetValue(CvKey, "DisplayVersion", "")} (build {Registry.GetValue(CvKey, "CurrentBuild", "?")}.{Registry.GetValue(CvKey, "UBR", 0)})";
 
-    /// <summary>Version affichée : numérotation « K » depuis K0.0.1 (3.0.1 en interne, voir native/release.ps1).</summary>
-    public static string Version
-    {
-        get
-        {
-            var v = Assembly.GetExecutingAssembly().GetName().Version;
-            if (v == null) return "?";
-            return v.Major >= 3 ? $"K{v.Major - 3}.{v.Minor}.{v.Build}" : v.ToString(3);
-        }
-    }
+    public static string Version => Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "?";
 
     // ---------------------------------------------------------------- étapes
     public void EnableDevMode()

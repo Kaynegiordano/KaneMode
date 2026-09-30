@@ -29,11 +29,12 @@ function findExe(bundled, dev) {
 // Langue de KaneMode → traduction du moteur (fichiers qml_<langue> de KanePlay)
 const ENGINE_LANG = { fr: 'fr', en: 'en', es: 'es', de: 'de', it: 'it', pt: 'pt_BR', ja: 'ja', zh: 'zh_CN' };
 
-/** Environnement du mode intégré : icône, identité, couleur d'accent et langue de KaneMode, commande à exécuter. */
-function env(command, { icon, accent, lang } = {}) {
+/** Environnement du mode intégré : icône, identité, couleur d'accent, coins et langue de KaneMode, commande à exécuter. */
+function env(command, { icon, accent, corners, lang } = {}) {
   const e = { KANEPLAY_EMBEDDED: '1', KANEMODE_COMMAND: command };
   if (icon && isFile(icon)) e.KANEMODE_ICON = icon;
   if (/^#[0-9a-f]{6}$/i.test(accent || '')) e.KANEMODE_ACCENT = accent;
+  if (['square', 'soft', 'round'].includes(corners)) e.KANEMODE_CORNERS = corners;
   if (ENGINE_LANG[lang]) e.KANEMODE_LANG = ENGINE_LANG[lang];
   if (process.env.KANEMODE_AUMID) e.KANEMODE_AUMID = process.env.KANEMODE_AUMID;
   return e;

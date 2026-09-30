@@ -277,6 +277,7 @@ async function options(g) {
     buttons: [
       { label: favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), value: 'fav', icon: 'i-star' },
       { label: t('Collections…'), value: 'collections', icon: 'i-collection' },
+      ...(!g.demo && g.type === 'game' ? [{ label: t('Mode de performance du jeu…'), value: 'mode', icon: 'i-cpu' }] : []),
       ...(!g.demo ? [{ label: t('Visuels (SteamGridDB, image perso)…'), value: 'art', icon: 'i-image' }] : []),
       ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
       { label: g.type === 'app' ? t('Classer comme jeu') : t('Classer comme application'), value: 'type', icon: 'i-sort' },
@@ -287,6 +288,7 @@ async function options(g) {
   });
   if (choice === 'fav') toggleFav(g);
   if (choice === 'collections') collectionsDialog(g);
+  if (choice === 'mode') gameModeDialog(g);
   if (choice === 'art') go('artpicker', { id: g.id });
   if (choice === 'uninstall' && (await confirmDialog(t('Désinstaller {name} ?', { name: g.name }), t('Steam va s’ouvrir pour confirmer la désinstallation.'), t('Continuer'), true))) {
     openThing(g, 'uninstall', t('Ouverture de Steam…'));
@@ -299,6 +301,28 @@ async function options(g) {
   }
   if (choice === 'edit') go('details', { editId: g.id, nonce: Math.random() });
   if (choice === 'delete') deleteCustom(g);
+}
+
+// Mode de performance propre à un jeu : l'hôte l'applique à chaque lancement (il reste ensuite le mode en cours)
+async function gameModeDialog(g) {
+  const modes = await api.get('/api/game-mode').catch(() => ({}));
+  const cur = modes[g.id] || null;
+  const mark = v => (v === cur ? ' ✓' : '');
+  const choice = await dialog({
+    title: t('Mode de performance du jeu'),
+    text: t('Appliqué automatiquement à chaque lancement de {name}.', { name: esc(g.name) }),
+    buttons: [
+      { label: t('Aucun (mode en cours)') + mark(null), value: 'none' },
+      ...[['eco', t('Économie')], ['balanced', t('Équilibré')], ['performance', t('Performance')]].map(([v, l]) => ({ label: l + mark(v), value: v })),
+      { label: t('Fermer'), value: null },
+    ],
+  });
+  if (!choice) return;
+  const mode = choice === 'none' ? null : choice;
+  try {
+    await api.post('/api/game-mode', { id: g.id, mode });
+    toast(mode ? t('Mode appliqué au lancement de {name}', { name: g.name }) : t('{name} garde le mode en cours', { name: g.name }));
+  } catch (e) { toast(e.message, { error: true }); }
 }
 
 export async function deleteCustom(g) {

@@ -1,7 +1,7 @@
 // Paramètres, organisés comme SteamOS : catégories à gauche, réglages à droite.
 import { t, tn, tx, locale, LANGS, lang } from '../i18n.js';
 import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy, fmt, native, mergeOrder } from '../core.js';
-import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints } from '../nav.js';
+import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints, refresh } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog, dialog } from '../widgets.js';
 import { pickFile } from './add.js';
 import { exitToDesktop, openGame, openStreaming } from './game.js';
@@ -10,6 +10,14 @@ import { sleepNow } from '../power.js';
 import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
 import { HOME_ROWS } from './home.js';
 
+// Thèmes prêts : plusieurs réglages d'Apparence d'un coup (chacun reste modifiable ensuite)
+const THEMES = [
+  ['classic', t('Classique'), { accent: '#1a9fff', background: 'art', corners: 'soft', cardSize: 'm', solidPanels: false, font: 'segoe' }],
+  ['neon', t('Néon'), { accent: '#ff4d8d', background: 'gradient', corners: 'round', cardSize: 'm', solidPanels: false, font: 'segoe' }],
+  ['minimal', t('Minimal'), { accent: '#e6e9ee', background: 'dark', corners: 'square', cardSize: 's', solidPanels: true, font: 'system' }],
+  ['retro', t('Rétro'), { accent: '#ff8a3d', background: 'dark', corners: 'square', cardSize: 'l', solidPanels: true, font: 'segoe' }],
+  ['nature', t('Nature'), { accent: '#3fca5a', background: 'art', corners: 'round', cardSize: 'm', solidPanels: false, font: 'segoe' }],
+];
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
 const SECTIONS = [
@@ -486,6 +494,18 @@ const BUILDERS = {
       saveSettings();
       location.reload();
     }, 'lang');
+    const theme = THEMES.find(([, , v]) => Object.entries(v).every(([k, x]) => settings[k] === x));
+    actionRow(s, 'i-palette', `${t('Thème')} · ${esc(theme ? theme[1] : t('Personnalisé'))}`, esc(t('Couleur, fond, coins, jaquettes et police en un choix')), async () => {
+      const v = await dialog({
+        title: t('Thème'),
+        buttons: [...THEMES.map(([value, label]) => ({ label, value, primary: theme && theme[0] === value })), { label: t('Fermer'), value: null }],
+      });
+      const th = THEMES.find(([id]) => id === v);
+      if (!th) return;
+      Object.assign(settings, th[2]);
+      saveSettings();
+      refresh();
+    }, 'theme');
     const sw = infoRow(s, t('Couleur d’accent'), t('Boutons, curseurs et reflets · repris par le streaming local'));
     const swatches = el('div', 'swatches');
     for (const c of ACCENTS) {
@@ -513,7 +533,7 @@ const BUILDERS = {
     toggle(s, 'batteryPct', t('Pourcentage de batterie'), t('À côté de l’icône, sur les consoles et PC portables'));
 
     h2(s, 'i-home', t('Accueil'));
-    s.append(el('div', 'notice', t('Les <b>jeux récents</b> (et le streaming local) restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.')));
+    s.append(el('div', 'notice', t('Les <b>jeux récents</b> restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.')));
     orderList(s, HOME_ROWS, 'homeRows', 'homeHidden', 'home');
     toggle(s, 'sounds', t('Sons de l’interface'), t('Petits sons de navigation et de validation'));
     toggle(s, 'notifications', t('Notifications'), t('Nouveaux jeux détectés, ajouts…'));

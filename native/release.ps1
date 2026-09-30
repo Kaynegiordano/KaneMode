@@ -25,14 +25,7 @@ $root = Split-Path -Parent $native
 $out = Join-Path $native 'out'
 $payload = Join-Path $out 'payload'
 $rel = Join-Path $out 'release'
-# Numérotation « K » (depuis K0.0.1) : Kx.y.z affiché, (3+x).y.z en interne (paquet MSIX, tags GitHub
-# lus par les versions installées, qui ne comprennent que les chiffres). K0.0.1 = 3.0.1.
-function Get-NumericVersion([string]$v) {
-    if ($v -match '^K(\d+)\.(\d+)\.(\d+)$') { return "$(3 + [int]$Matches[1]).$($Matches[2]).$($Matches[3])" }
-    return $v
-}
-$display = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()   # K0.0.1 : nom de la version
-$version = Get-NumericVersion $display                              # 3.0.1 : paquet, installateur, tag
+$version = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
 $tag = "v$version"
 function Step($t) { Write-Host "`n== $t" -ForegroundColor Cyan }
 
@@ -40,7 +33,7 @@ Remove-Item $payload, $rel -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $payload, $rel | Out-Null
 
 # ---------------------------------------------------------------- 1. Paquet MSIX signé (runtime .NET inclus)
-Step "Paquet KaneMode $display ($version)"
+Step "Paquet KaneMode $version"
 & (Join-Path $native 'build.ps1') -Pack -SelfContained -Release
 if (-not $?) { throw 'Échec du paquet' }
 $msix = Join-Path $out "KaneMode_$($version).0_x64.msix"
@@ -66,7 +59,7 @@ dotnet publish (Join-Path $native 'KaneMode.Setup\KaneMode.Setup.csproj') -c Rel
     -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     "-p:Version=$version" "-p:PayloadDir=$payload" -o $setupOut --nologo -v quiet
 if ($LASTEXITCODE -ne 0) { throw 'Échec de la compilation de l''installateur' }
-Copy-Item (Join-Path $setupOut 'KaneMode-Setup.exe') (Join-Path $rel "KaneMode-Setup-$display.exe")
+Copy-Item (Join-Path $setupOut 'KaneMode-Setup.exe') (Join-Path $rel "KaneMode-Setup-$version.exe")
 Copy-Item $msix $rel
 Copy-Item (Join-Path $out 'KaneMode.cer') $rel
 
@@ -84,13 +77,13 @@ if ($Publish) {
     if (-not $Notes) {
         $Notes = Join-Path $out 'notes.md'
         Set-Content $Notes -Encoding UTF8 -Value @"
-Installez **KaneMode-Setup-$display.exe** (droits administrateur demandés une fois).
+Installez **KaneMode-Setup-$version.exe** (droits administrateur demandés une fois).
 
 Les versions déjà installées se mettent à jour depuis KaneMode : Paramètres → Système → Mises à jour.
 "@
     }
     $files = Get-ChildItem $rel -File | ForEach-Object FullName
-    $ghArgs = @('release', 'create', $tag) + $files + @('--repo', 'Kaynegiordano/KaneMode', '--target', 'main', '--title', "KaneMode $display", '--notes-file', $Notes)
+    $ghArgs = @('release', 'create', $tag) + $files + @('--repo', 'Kaynegiordano/KaneMode', '--target', 'main', '--title', "KaneMode $version", '--notes-file', $Notes)
     if ($Beta) { $ghArgs += '--prerelease' }
     # gh peut manquer au PATH d'une session : on le cherche aussi à son emplacement d'installation
     $gh = (Get-Command gh -ErrorAction SilentlyContinue).Source

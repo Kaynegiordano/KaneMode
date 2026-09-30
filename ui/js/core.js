@@ -69,12 +69,13 @@ export const favs = new Set(store.get('favs', []));
 
 export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); }
 
-// KanePlay reprend la couleur d'accent de KaneMode : l'hôte la lui transmet au lancement
+// Le streaming local reprend la couleur d'accent et les coins de KaneMode : l'hôte les lui transmet au lancement
 let sentAccent = null;
 function syncAccent() {
-  if (WIDGET || settings.accent === sentAccent) return; // le widget reprend la couleur de KaneMode, il ne l'impose pas
-  sentAccent = settings.accent;
-  api.post('/api/config', { accent: settings.accent }).catch(() => { sentAccent = null; });
+  const look = JSON.stringify([settings.accent, settings.corners]);
+  if (WIDGET || look === sentAccent) return; // le widget reprend la couleur de KaneMode, il ne l'impose pas
+  sentAccent = look;
+  api.post('/api/config', { accent: settings.accent, corners: settings.corners }).catch(() => { sentAccent = null; });
 }
 setTimeout(syncAccent, 0);
 // Langue en cours : l'hôte la transmet aux widgets Game Bar et au moteur de streaming

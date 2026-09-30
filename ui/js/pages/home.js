@@ -68,12 +68,8 @@ definePage('home', {
     const root = this.el;
     root.innerHTML = '';
     const vis = lib.visible();
-    const kaneplay = vis.find(g => g.source === 'kaneplay');
-    let games = vis.filter(g => g.type === 'game' && g.installed && g.source !== 'rom' && g.source !== 'kaneplay');
-    // KanePlay (le streaming) a toujours sa place parmi les récents, à son rang de dernière utilisation
-    if (kaneplay) games.push(kaneplay);
-    games.sort(byRecent);
-    if (kaneplay && games.indexOf(kaneplay) >= 12) games = [...games.slice(0, 11).filter(g => g !== kaneplay), kaneplay];
+    // Le streaming local n'est plus un « jeu » : il s'ouvre depuis le menu (et Paramètres → Streaming)
+    const games = vis.filter(g => g.type === 'game' && g.installed && g.source !== 'rom' && g.source !== 'kaneplay').sort(byRecent);
 
     // En-tête : titre + bouton bien visible pour revenir au bureau Windows
     const top = el('div', 'home-top');

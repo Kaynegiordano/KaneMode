@@ -214,9 +214,10 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - **Cache de compilation de Node** : `NODE_COMPILE_CACHE` = `%LOCALAPPDATA%\KaneMode\cache\node` (Node 22+), le code de l'hôte n'est plus recompilé à chaque démarrage.
 - **Relance de l'hôte** (`HostProcess.Crashed`, `OnHostCrashed`) : si Node s'arrête tout seul, il est relancé (nouveau port), le widget suit (`WidgetBridge.Start`) et l'interface est rechargée sans logo (`resume=1`). Plus de 3 plantages en 5 minutes : écran d'erreur (Entrée pour réessayer ; les services manettes/boutons ne sont démarrés qu'une fois, `_servicesStarted`). Testé en tuant Node : relance en moins d'une seconde ; les enfants de l'ancien hôte (PowerShell `syscontrol`, `kanemode-amd`) s'arrêtent d'eux-mêmes (fin de leur entrée standard).
 
-## Numérotation « K » (depuis K0.0.1)
+## Numérotation
 
-- Le fichier `VERSION` contient **Kx.y.z** (choix de l'utilisateur : pas de « 3.0.0 »). En interne, tout ce qui doit être numérique utilise **(3+x).y.z** : paquet MSIX et assembly (`native/build.ps1`, `Get-NumericVersion`), installateur, **tag GitHub `v3.0.1`** (`native/release.ps1`) ; ainsi les versions 2.x déjà installées, qui comparent les tags en chiffres, voient la mise à jour. Titre de la release, nom de l'installateur, interface : **K0.0.1** (`host/lib/update.js` : `numeric()` / `display()` ; `KaneMode.Setup/Installer.cs`). K0.0.2 = 3.0.2, K0.1.0 = 3.1.0, K1.0.0 = 4.0.0.
+- Versions classiques **x.y.z** dans `VERSION` (paquet MSIX x.y.z.0, tag GitHub `vx.y.z`). La numérotation « K » n'a servi qu'à **K0.0.1** (= 3.0.1, tag `v3.0.1`) ; elle est abandonnée depuis la 3.0.2 (choix de l'utilisateur).
+- **Langues : ne pas modifier les traductions sans demande de l'utilisateur.** Les nouveaux textes restent en français (repli de `t()`).
 
 ## Langues (K0.0.1)
 
@@ -224,7 +225,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
 - Langues : fr, en, es, de, it, pt (Brésil), ja, zh (simplifié). Dictionnaires `ui/i18n/<langue>.json` (texte français → traduction). Choix : Paramètres → Apparence → Langue (`settings.lang`, sinon langue de Windows, sinon anglais) ; l'interface se recharge.
 - `node tools/i18n.js` relève tous les textes (`tools/i18n-keys.json`) et dit ce qui manque par langue et les traductions dont les `{…}` diffèrent ; `node tools/i18n.js missing de` liste les textes à traduire. **Tout nouveau texte affiché passe par `t()`** et doit être traduit dans les 7 langues avant une version.
 - La langue est transmise à l'hôte (`POST /api/config {lang}`, `config.lang`) : widgets Game Bar (autre stockage, `GET /api/widget` renvoie `lang`, la page se recharge), moteur de streaming (`KANEMODE_LANG` → fichiers `qml_<langue>` du moteur, voir `host/lib/kaneplay.js`), données des boutiques (Steam `l=`, Epic/GOG `locale=`, prix toujours pour la France ; métadonnées Steam relues si leur `lang` diffère). Genres Steam comparés par identifiant, jamais par nom.
-- **Streaming local** (nom visible de KanePlay dans KaneMode) : l'entrée `kaneplay` garde son identifiant ; nom traduit et jaquette dessinée par `ui/js/streamcover.js` (SVG, couleur d'accent → violet du logo, titre dans la langue ; une jaquette choisie par l'utilisateur, `?v=`, reste prioritaire). Fenêtre du moteur intégré : **« KaneMode · Streaming »** (repérée par ce titre dans `MainWindow.xaml.cs` et `game.js`). Dans le moteur, `appName` vaut « KaneMode » en mode intégré (phrases « ce réseau bloque %1 »), l'en-tête dit « Streaming local » ; À propos garde KanePlay et Moonlight (crédits GPL).
+- **Streaming local** (nom visible de KanePlay dans KaneMode) : depuis la 3.0.2, il n'est plus une entrée de la bibliothèque ni des jeux récents ; il s'ouvre par le menu et Paramètres → Streaming (`openStreaming`). Anciennement : entrée `kaneplay`, jaquette dessinée par `ui/js/streamcover.js` (SVG, couleur d'accent → violet du logo, titre dans la langue ; une jaquette choisie par l'utilisateur, `?v=`, reste prioritaire). Fenêtre du moteur intégré : **« KaneMode · Streaming »** (repérée par ce titre dans `MainWindow.xaml.cs` et `game.js`). Dans le moteur, `appName` vaut « KaneMode » en mode intégré (phrases « ce réseau bloque %1 »), l'en-tête dit « Streaming local » ; À propos garde KanePlay et Moonlight (crédits GPL).
 - Traductions du moteur : `engine/KanePlay/app/languages/qml_*.ts` (fr, de, es, it, pt_BR, ja, zh_CN complets), mis à jour par `lupdate -recursive -extensions qml,cpp,h -locations none -no-obsolete gui backend cli settings streaming main.cpp -ts …`, compilés par `lrelease` (les `.qm` sont dans le dépôt du moteur).
 
 ## Travailler sur le projet
@@ -268,7 +269,8 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - courbe de ventilateur ; netteté et « Ultra » faible latence NVIDIA (réglages non documentés) ;
   - superposition transparente par-dessus les jeux.
 - Historique récent :
-  - K0.0.1 : interface en 8 langues (widgets Game Bar et streaming local compris), « KanePlay » devient « Streaming local » avec une jaquette aux couleurs de KaneMode ;
+  - 3.0.2 : streaming local retiré des jeux récents (menu seulement) et habillé comme KaneMode (logo K, surfaces et vert « Jouer », surbrillance blanche à la manette, coins de KaneMode via `KANEMODE_CORNERS`) ; thèmes prêts (Paramètres → Apparence → Thème) ; mode de performance par jeu (menu « … » du jeu, `config.gameModes`, appliqué au lancement) ;
+  - K0.0.1 (3.0.1) : interface en 8 langues (widgets Game Bar et streaming local compris), « KanePlay » devient « Streaming local » avec une jaquette aux couleurs de KaneMode ;
   - 1.0.1 : navigation, Select/Start, modes de performance ;
   - 1.0.2 : son synthétisé, mesures en direct, KanePlay se ferme ;
   - 1.1.0 : premier widget Game Bar ;

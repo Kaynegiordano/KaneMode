@@ -13,23 +13,9 @@ const REPO = 'Kaynegiordano/KaneMode';
 const PAGE = `https://github.com/${REPO}/releases`;
 const HEADERS = { 'User-Agent': 'KaneMode', Accept: 'application/vnd.github+json' };
 
-// Numérotation « K » (depuis K0.0.1) : Kx.y.z affiché, (3+x).y.z en interne (paquet, tags GitHub, que les
-// versions déjà installées comparent en chiffres). K0.0.1 = 3.0.1 ; les versions 2.x restent telles quelles.
-/** « K0.0.1 » ou « vK0.0.1 » → « 3.0.1 » ; une version en chiffres ne change pas. */
-function numeric(v) {
-  const m = /^v?K(\d+)\.(\d+)\.(\d+)/i.exec(String(v || '').trim());
-  return m ? `${3 + +m[1]}.${m[2]}.${m[3]}` : String(v || '').trim().replace(/^v/, '');
-}
-/** « 3.0.1 » → « K0.0.1 » (à partir de 3.0.0) ; 2.x et les versions déjà en K ne changent pas. */
-function display(v) {
-  const n = numeric(v);
-  const m = /^(\d+)\.(\d+)\.(\d+)(.*)$/.exec(n);
-  return m && +m[1] >= 3 ? `K${+m[1] - 3}.${m[2]}.${m[3]}${m[4]}` : n;
-}
-
 /** « v0.5.0-beta.2 » → [0, 5, 0, 2] ; une version finale passe devant ses bêtas. */
 function parse(v) {
-  const m = numeric(v).match(/^v?(\d+)\.(\d+)\.(\d+)(?:[-.]?(?:beta|b|rc)\.?(\d+))?/i);
+  const m = String(v || '').trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:[-.]?(?:beta|b|rc)\.?(\d+))?/i);
   if (!m) return null;
   return [+m[1], +m[2], +m[3], m[4] != null ? +m[4] : Infinity];
 }
@@ -40,10 +26,9 @@ function newer(a, b) {
   return false;
 }
 
-/** Version installée, telle qu'affichée (K0.0.1) ; les comparaisons passent par numeric(). */
 function current(root) {
-  if (process.env.KANEMODE_VERSION) return display(process.env.KANEMODE_VERSION);
-  try { return display(fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim()); } catch { return '0.0.0'; }
+  if (process.env.KANEMODE_VERSION) return process.env.KANEMODE_VERSION;
+  try { return fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim(); } catch { return '0.0.0'; }
 }
 
 async function releases() {
@@ -69,7 +54,7 @@ async function check(root, channel = 'stable') {
     current: cur, channel, checked: new Date().toISOString(), page: PAGE,
     available: !!(top && pkg && newer(top.tag_name, cur)),
     latest: top ? {
-      version: display(top.tag_name), name: top.name || top.tag_name, notes: (top.body || '').slice(0, 4000),
+      version: top.tag_name.replace(/^v/, ''), name: top.name || top.tag_name, notes: (top.body || '').slice(0, 4000),
       date: top.published_at, prerelease: !!top.prerelease, url: top.html_url,
       msix: pkg ? { name: pkg.name, url: pkg.browser_download_url, size: pkg.size } : null,
       sums: (asset(top, /^SHA256SUMS(\.txt)?$/i) || {}).browser_download_url || null,
@@ -140,4 +125,4 @@ function apply(file, hostDir) {
   });
 }
 
-module.exports = { check, current, job, apply, newer, numeric, display, PAGE, REPO };
+module.exports = { check, current, job, apply, newer, PAGE, REPO };

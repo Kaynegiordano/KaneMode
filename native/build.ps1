@@ -36,14 +36,8 @@ $layout = Join-Path $out $(if ($Release) { 'layout-release' } else { 'layout' })
 
 function Step($t) { Write-Host "== $t" -ForegroundColor Cyan }
 
-# Numérotation « K » (depuis K0.0.1) : Kx.y.z affiché, (3+x).y.z en interne (paquet MSIX, tags GitHub
-# lus par les versions installées, qui ne comprennent que les chiffres). K0.0.1 = 3.0.1.
-function Get-NumericVersion([string]$v) {
-    if ($v -match '^K(\d+)\.(\d+)\.(\d+)$') { return "$(3 + [int]$Matches[1]).$($Matches[2]).$($Matches[3])" }
-    return $v
-}
-# Version unique du projet : fichier VERSION (Kx.y.z, ou x.y.z) ; le paquet MSIX veut des chiffres x.y.z.0
-$semver = Get-NumericVersion (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
+# Version unique du projet : fichier VERSION (x.y.z) ; le paquet MSIX veut x.y.z.0
+$semver = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
 if (-not $Version) { $Version = "$semver.0" }
 
 if ($Unregister) {

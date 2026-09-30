@@ -250,7 +250,7 @@ function buildEntries(withDemo) {
   const roms = (readJson(FILES.roms, {}) || {}).roms || [];
   return {
     generated: lib.generated, steamUserdata: ud, pending,
-    games: [...games, ...(ud ? steam.shortcuts(ud) : []), ...custom, ...roms, ...kp.entries, ...(withDemo ? DEMO : [])],
+    games: [...games, ...(ud ? steam.shortcuts(ud) : []), ...custom, ...roms, ...(withDemo ? DEMO : [])],
     launchers: lib.launchers || [],
   };
 }
@@ -501,6 +501,8 @@ const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup',
 // Jaquette : dessinée par l'interface (ui/js/streamcover.js), aux couleurs et dans la langue de KaneMode
 const KANEPLAY_COVER = null;
 const kp = { exe: null, entries: [], hosts: [] };
+// Apparence de KaneMode reprise par l'écran de streaming : icône, couleur d'accent, coins, langue
+const engineLook = () => ({ icon: KANEMODE_ICON, accent: config().accent, corners: config().corners, lang: config().lang });
 // Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt', 'ja', 'zh'];
 let kpLast = 0;
@@ -509,7 +511,7 @@ async function refreshKanePlay() {
   try {
     const exe = await kaneplay.findExe(KANEPLAY_BUNDLED, KANEPLAY_DEV);
     const hosts = exe ? await kaneplay.hosts() : [];
-    const one = kaneplay.entry(exe, KANEPLAY_COVER, { icon: KANEMODE_ICON, accent: config().accent, lang: config().lang });
+    const one = kaneplay.entry(exe, KANEPLAY_COVER, engineLook());
     const entries = one ? [one] : [];
     const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
     const changed = sig(exe, hosts, entries) !== sig(kp.exe, kp.hosts, kp.entries);
@@ -907,6 +909,7 @@ const routes = {
     if ('sgdbAuto' in b) c.sgdbAuto = !!b.sgdbAuto;
     // Couleur d'accent de l'interface, reprise par KanePlay
     if ('accent' in b && /^#[0-9a-f]{6}$/i.test(String(b.accent))) { c.accent = b.accent; setTimeout(refreshKanePlay, 0); }
+    if (['square', 'soft', 'round'].includes(b.corners)) c.corners = b.corners;
     // Langue de l'interface : reprise par les widgets Game Bar et le moteur de streaming
     if ('lang' in b && LANGS.includes(b.lang)) { c.lang = b.lang; setTimeout(refreshKanePlay, 0); }
     if ('sgdbPreferSteam' in b) c.sgdbPreferSteam = !!b.sgdbPreferSteam;
@@ -1121,6 +1124,16 @@ const routes = {
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
     const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
+    // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
+    const gm = (config().gameModes || {})[id];
+    if (r.ok && !b.dry && PERF_MODES.includes(gm) && config().perfMode !== gm) {
+      try {
+        keeperQuiet();
+        const res2 = await sysctl.apply(await expandProfile({ mode: gm }));
+        if (!res2.errors.length || res2.done.length) { setPerfMode(gm); console.log(`Mode ${gm} appliqué pour ${e.name}`); }
+        keeperQuiet();
+      } catch (err) { console.error('Mode du jeu :', err.message); }
+    }
     // Armoury Crate SE applique ses profils par jeu au lancement : le mode choisi est remis ensuite
     if (r.ok && !b.dry) for (const t of [8000, 25000]) setTimeout(() => keepPerf('jeu lancé'), t);
     json(res, 200, r);
@@ -1323,6 +1336,19 @@ const routes = {
       json(res, 200, r);
     } catch (e) { json(res, 400, { error: e.message }); }
   },
+  // Mode de performance d'un jeu, appliqué à son lancement (mode null : pas de mode propre)
+  'POST /api/game-mode': async (req, res) => {
+    const b = await readBody(req);
+    if (typeof b.id !== 'string' || !b.id) return json(res, 400, { error: 'Jeu inconnu' });
+    if (b.mode != null && !PERF_MODES.includes(b.mode)) return json(res, 400, { error: 'Mode inconnu' });
+    const c = config();
+    const m = { ...(c.gameModes || {}) };
+    if (b.mode == null) delete m[b.id]; else m[b.id] = b.mode;
+    c.gameModes = m;
+    writeJson(FILES.config, c);
+    json(res, 200, { id: b.id, mode: b.mode ?? null });
+  },
+  'GET /api/game-mode': (req, res) => json(res, 200, config().gameModes || {}),
   // Mode de performance (Économie, Équilibré, Performance) : tout est appliqué d'un coup
   'POST /api/power/mode': async (req, res) => {
     const b = await readBody(req);
@@ -1421,7 +1447,7 @@ const routes = {
   // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
   'POST /api/stream/open': async (req, res) => {
     if (!kp.exe) return json(res, 404, { error: 'Moteur de streaming absent' });
-    const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', { icon: KANEMODE_ICON, accent: config().accent, lang: config().lang }) });
+    const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', engineLook()) });
     if (r.ok) recordPlay('kaneplay');
     json(res, 200, r);
   },
