@@ -1,6 +1,6 @@
 // Widget Game Bar de KaneMode (widget.html) : un HUD par-dessus les jeux, façon Winhanced. Mesures en
 // direct (images par seconde, GPU, processeur, puissance), profils d'énergie, tuiles de réglages par
-// catégorie (écran, graphismes AMD, performance, son, réseau, moniteur), jeu en cours et raccourcis
+// catégorie (écran, graphismes du pilote AMD / NVIDIA / Intel, performance, son, réseau, moniteur), jeu en cours et raccourcis
 // vers KaneMode. Toucher une tuile l'inverse (interrupteur) ou ouvre un panneau avec un curseur ou une
 // liste de choix. Chaque réglage est relu après écriture et la tuile dit s'il est vérifié ; un
 // graphique des 60 dernières secondes marque chaque réglage, pour en voir l'effet. La page tourne
@@ -44,12 +44,13 @@ const PATHS = {
   sleep: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
   check: 'M5 12l5 5 9-10',
   monitor: 'M3 5h18v11H3zM8 20h8M12 16v4M6 12l3-3 3 2 5-5',
+  vsync: 'M3 5h18v14H3zM3 10h18M3 14h18',
   mouse: 'M12 3a6 6 0 0 0-6 6v6a6 6 0 0 0 12 0V9a6 6 0 0 0-6-6zM12 3v7M6 10h12',
 };
 const svg = id => `<svg class="hud-i" viewBox="0 0 24 24"><path d="${PATHS[id]}"/></svg>`;
 
 // ---------------------------------------------------------------- état
-let sys = null, live = null, info = null, game = null, amd = null, gpu = null, mouse = null;
+let sys = null, live = null, info = null, game = null, gfx = null, gpu = null, mouse = null;
 
 // Derniers réglages connus, gardés d'une ouverture à l'autre : le widget s'affiche tout de suite avec
 // eux, puis se met à jour dès que KaneMode répond. Avant, il restait sur « Lecture des réglages… »
@@ -58,13 +59,13 @@ const SNAPSHOT_MAX_AGE = 24 * 3600e3;
 function restoreSnapshot() {
   const s = store.get('hudSnapshot', null);
   if (!s || Date.now() - s.t > SNAPSHOT_MAX_AGE) return false;
-  ({ sys = null, amd = null, info = null } = s);
+  ({ sys = null, gfx = null, info = null } = s);
   return !!sys;
 }
 let snapTimer = 0;
 function saveSnapshot() {
   clearTimeout(snapTimer);
-  snapTimer = setTimeout(() => store.set('hudSnapshot', { t: Date.now(), sys, amd, info }), 500);
+  snapTimer = setTimeout(() => store.set('hudSnapshot', { t: Date.now(), sys, gfx, info }), 500);
 }
 const CATS = [['all', 'Tout'], ['display', 'Écran'], ['graphics', 'Graphismes'], ['perf', 'Performance'], ['sound', 'Son'], ['network', 'Réseau'], ['pad', 'Manette'], ['monitor', 'Moniteur']];
 const filter = () => (CATS.some(c => c[0] === settings.hudFilter) ? settings.hudFilter : 'all');
@@ -133,19 +134,29 @@ async function send(cmd, value, extra = {}) {
   } catch (e) { toast(e.message, { error: true }); prove(tileKey(cmd, extra), false, e.message); loadSys(); }
   render();
 }
-/** Réglage AMD : l'hôte renvoie l'état complet relu dans le pilote (une fonction peut en couper une autre). */
-async function sendAmd(feature, value) {
+// Fabricant de la carte : nom et libellés de ses fonctions (l'hôte choisit l'outil, voir lib/gpuctl.js)
+const GFX = {
+  amd: { name: 'AMD', antilag: 'Anti-Lag', ris: ['Netteté (RIS)', 'Radeon Image Sharpening'] },
+  nvidia: { name: 'NVIDIA', antilag: 'Faible latence' },
+  intel: { name: 'Intel', antilag: 'Faible latence', ris: ['Netteté', 'Filtre de netteté'] },
+};
+const gfxInfo = () => GFX[gfx && gfx.vendor] || GFX.amd;
+const VSYNC = [[0, 'Choix du jeu'], [1, 'Forcée'], [2, 'Coupée']];
+
+/** Réglage du pilote : l'hôte renvoie l'état complet relu dans le pilote (une fonction peut en couper une autre). */
+async function sendGfx(feature, value) {
   const key = feature.replace(/sharp$/, '');
   try {
-    amd = await api.post('/api/amd', { feature, value });
-    const x = amd[key] || {};
+    gfx = await api.post('/api/graphics', { feature, value });
+    const x = gfx[key] || {};
     let ok, read;
     // Limite des jeux : gardée par KaneMode, appliquée au pilote hors de KaneMode seulement
-    if (feature === 'fps') { ok = amd.fpsLimit === value && (amd.kanemodeFront || (value > 0 ? x.on && x.value === value : !x.on)); read = amd.fpsLimit ? `${amd.fpsLimit} i/s en jeu` : 'aucune limite'; }
+    if (feature === 'fps') { ok = gfx.fpsLimit === value && (gfx.kanemodeFront || (value > 0 ? x.on && x.value === value : !x.on)); read = gfx.fpsLimit ? `${gfx.fpsLimit} i/s en jeu` : 'aucune limite'; }
     else if (feature.endsWith('sharp')) { ok = x.sharpness === value; read = `netteté ${x.sharpness} %`; }
+    else if (feature === 'vsync') { ok = x.value === value; read = (VSYNC.find(o => o[0] === x.value) || [0, 'autre réglage'])[1].toLowerCase(); }
     else { ok = !!x.on === !!value; read = x.on ? 'activé' : 'désactivé'; }
-    prove(key, ok, (ok ? '' : 'relu ') + read + ' · pilote AMD');
-  } catch (e) { toast(e.message, { error: true }); prove(key, false, e.message); loadAmd(true); }
+    prove(key, ok, (ok ? '' : 'relu ') + read + ` · pilote ${gfxInfo().name}`);
+  } catch (e) { toast(e.message, { error: true }); prove(key, false, e.message); loadGfx(true); }
   render();
 }
 /** Curseurs : la valeur part 150 ms après le dernier mouvement. */
@@ -184,30 +195,39 @@ function tiles() {
   }
   if (sys.hdr >= 0) t({ key: 'hdr', cat: 'display', icon: 'hdr', title: 'HDR', on: sys.hdr === 1, act: () => send('hdr', sys.hdr !== 1) });
 
-  // Graphismes : pilote AMD, puis Lossless Scaling
-  if (amd && amd.available) {
-    if (amd.fps) {
-      const f = amd.fps;
+  // Graphismes : pilote de la carte (AMD, NVIDIA ou Intel), puis Lossless Scaling
+  if (gfx && gfx.available) {
+    const V = gfxInfo();
+    if (gfx.fps) {
+      const f = gfx.fps;
       const top = Math.max(60, (sys.refresh && sys.refresh.current) || 60);
-      const limit = amd.fpsLimit || 0;
+      const limit = gfx.fpsLimit || 0;
       const presets = [30, 40, 45, 60, 72, 90, 120, 144, 165].filter(v => v <= top && v >= (f.min || 0) && (!f.max || v <= f.max));
       if (limit && !presets.includes(limit)) presets.push(limit);
       presets.sort((a, b) => a - b);
       // Pour les jeux seulement : KaneMode lui-même garde toute sa fluidité (120 Hz sur la ROG Ally)
       t({ key: 'fps', cat: 'graphics', icon: 'fps', title: 'Limite d’images', value: limit ? `${limit} i/s` : 'Aucune', lit: !!limit, sub: limit ? 'Jeux seulement' : '',
-        choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`, 'jeux seulement'])], get: () => amd.fpsLimit || 0, set: v => sendAmd('fps', v) } });
+        choice: { options: [[0, 'Aucune'], ...presets.map(v => [v, `${v} i/s`, 'jeux seulement'])], get: () => gfx.fpsLimit || 0, set: v => sendGfx('fps', v) } });
     }
     // Les images générées par AFMF ne passent pas par le jeu : le pilote ne les compte pas dans les
     // images par seconde qu'il donne (ADLX)
-    if (amd.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: amd.afmf.on, sub: amd.afmf.on ? 'Images ajoutées non comptées' : '', act: () => sendAmd('afmf', !amd.afmf.on) });
-    if (amd.antilag) t({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: 'Anti-Lag', on: amd.antilag.on, act: () => sendAmd('antilag', !amd.antilag.on) });
-    for (const [key, name, full] of [['rsr', 'Super Resolution', 'Radeon Super Resolution'], ['ris', 'Netteté (RIS)', 'Radeon Image Sharpening']]) {
-      const x = amd[key];
+    if (gfx.afmf) t({ key: 'afmf', cat: 'graphics', icon: 'afmf', title: 'AFMF', on: gfx.afmf.on, sub: gfx.afmf.on ? 'Images ajoutées non comptées' : '', act: () => sendGfx('afmf', !gfx.afmf.on) });
+    if (gfx.antilag) t({ key: 'antilag', cat: 'graphics', icon: 'antilag', title: V.antilag, on: gfx.antilag.on, sub: gfx.antilag.boost ? 'Avec Boost' : '', act: () => sendGfx('antilag', !gfx.antilag.on) });
+    // Synchronisation verticale (NVIDIA) : au choix du jeu, forcée ou coupée pour tous les jeux
+    if (gfx.vsync) {
+      const cur = gfx.vsync.value;
+      t({ key: 'vsync', cat: 'graphics', icon: 'vsync', title: 'Synchro verticale', value: (VSYNC.find(o => o[0] === cur) || [0, 'Autre'])[1], lit: cur === 1 || cur === 2,
+        choice: { options: VSYNC, get: () => gfx.vsync.value, set: v => sendGfx('vsync', v) } });
+    }
+    for (const [key, name, full] of [['rsr', 'Super Resolution', 'Radeon Super Resolution'], ['ris', ...(V.ris || ['Netteté', 'Netteté'])]]) {
+      const x = gfx[key];
       if (!x) continue;
+      // Netteté sans niveau réglable (certains pilotes Intel) : simple interrupteur
+      if (x.sharpness == null) { t({ key, cat: 'graphics', icon: key, title: name, on: x.on, act: () => sendGfx(key, !x.on) }); continue; }
       t({ key, cat: 'graphics', icon: key, title: name, value: x.on ? pct(x.sharpness) : 'Désactivé', lit: x.on,
-        slider: { min: x.min || 0, max: x.max || 100, step: 1, pad: 5, fmt: pct, get: () => amd[key].sharpness,
-          set: v => { amd[key].sharpness = v; soon(key, () => sendAmd(key + 'sharp', v)); },
-          onOff: { label: full, get: () => amd[key].on, set: on => sendAmd(key, on) } } });
+        slider: { min: x.min || 0, max: x.max || 100, step: 1, pad: 5, fmt: pct, get: () => gfx[key].sharpness,
+          set: v => { gfx[key].sharpness = v; soon(key, () => sendGfx(key + 'sharp', v)); },
+          onOff: { label: full, get: () => gfx[key].on, set: on => sendGfx(key, on) } } });
     }
   }
   if (info && info.lossless) {
@@ -477,7 +497,7 @@ function render() {
   if (chip) chips.scrollLeft = Math.max(0, Math.min(chips.scrollLeft, chip.offsetLeft - 8), chip.offsetLeft + chip.offsetWidth - chips.clientWidth + 8);
 }
 
-// Bandeau des mesures : images par seconde et GPU (pilote AMD), processeur, batterie. Le bandeau et
+// Bandeau des mesures : images par seconde (AMD) et GPU, processeur, batterie. Le bandeau et
 // le graphique sont créés une fois et mis à jour sur place (par-dessus un jeu, reconstruire la page
 // chaque seconde coûtait cher sur la ROG Ally).
 let liveEl = null;
@@ -630,10 +650,10 @@ async function loadSys() {
   catch (e) { status(WIDGET ? 'KaneMode n’est pas ouvert : ouvrez-le pour régler le système.' : e.message); }
   if (!same(next, sys)) { const first = !sys; sys = next; render(); saveSnapshot(); if (first) focusStart(); }
 }
-async function loadAmd(force) {
+async function loadGfx(force) {
   let next = null;
-  try { next = await api.get('/api/amd' + (force ? '?refresh=1' : '')); } catch { next = amd; } // injoignable : on garde ce qu'on a
-  if (!same(next, amd)) { amd = next; render(); saveSnapshot(); }
+  try { next = await api.get('/api/graphics' + (force ? '?refresh=1' : '')); } catch { next = gfx; } // injoignable : on garde ce qu'on a
+  if (!same(next, gfx)) { gfx = next; render(); saveSnapshot(); }
 }
 async function loadLive() {
   // Processeur, batterie et GPU en une requête (l'hôte la partage avec le moniteur)
@@ -697,11 +717,11 @@ hooks.button = k => {
 let timers = [];
 function start() {
   stop();
-  loadSys(); loadAmd().then(loadLive); loadGame(); loadInfo();
+  loadSys(); loadGfx().then(loadLive); loadGame(); loadInfo();
   // Réglages relus seulement quand aucun panneau n'est ouvert (l'utilisateur règle)
   const idle = fn => () => { if (!sheet) fn(); };
   timers = [setInterval(loadLive, 2000), setInterval(loadGame, 5000), setInterval(idle(loadSys), 15000),
-    setInterval(idle(() => loadAmd()), 20000), setInterval(idle(loadInfo), 60000)];
+    setInterval(idle(() => loadGfx()), 20000), setInterval(idle(loadInfo), 60000)];
 }
 function stop() { timers.forEach(clearInterval); timers = []; }
 // Game Bar fermée : plus de mesures ni de requêtes

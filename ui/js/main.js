@@ -21,11 +21,11 @@ applyTheme();
 // l'interface recalculée et page redessinée pour la nouvelle taille d'écran
 // Manettes XInput lues par l'app native (voir setNativePads)
 native.on(m => { if (m.type === 'xpad') setNativePads(m.pads); });
-// Limite d'images du pilote AMD : jeux seulement, levée tant que KaneMode est au premier plan
+// Limite d'images du pilote (AMD, NVIDIA, Intel) : jeux seulement, levée tant que KaneMode est au premier plan
 native.on(m => {
-  if (m.type === 'resume' || m.type === 'background') api.post('/api/amd/front', { front: m.type === 'resume' }).catch(() => {});
+  if (m.type === 'resume' || m.type === 'background') api.post('/api/graphics/front', { front: m.type === 'resume' }).catch(() => {});
 });
-if (native.available) api.post('/api/amd/front', { front: true }).catch(() => {});
+if (native.available) api.post('/api/graphics/front', { front: true }).catch(() => {});
 let resizeTimer = 0;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);

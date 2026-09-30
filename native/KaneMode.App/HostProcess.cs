@@ -100,8 +100,30 @@ public sealed class HostProcess : IDisposable
     public void Dispose()
     {
         _disposed = true;
+        Leave();
         try { if (_process is { HasExited: false }) _process.Kill(); }
         catch (InvalidOperationException) { /* déjà arrêté */ }
         _process?.Dispose();
+    }
+
+    /// <summary>
+    /// Avant l'arrêt : la limite d'images des jeux est remise dans le pilote graphique (elle est levée
+    /// tant que KaneMode est au premier plan). Sans cela, fermer KaneMode depuis son interface laissait
+    /// les jeux sans limite jusqu'au lancement suivant.
+    /// </summary>
+    private void Leave()
+    {
+        if (_process is not { HasExited: false } || Port == 0) return;
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromMilliseconds(1500) };
+            using var req = new HttpRequestMessage(HttpMethod.Post, Url + "/api/graphics/front")
+            {
+                Content = new StringContent("{\"front\":false}", System.Text.Encoding.UTF8, "application/json"),
+            };
+            req.Headers.Add("X-KaneMode", "1");
+            using var res = http.Send(req);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException) { /* hôte déjà arrêté */ }
     }
 }

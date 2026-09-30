@@ -74,12 +74,18 @@ $node = (Get-Command node -ErrorAction SilentlyContinue).Source
 if (-not $node) { throw 'Node.js introuvable : winget install OpenJS.NodeJS.LTS' }
 New-Item -ItemType Directory -Force (Join-Path $layout 'node') | Out-Null
 Copy-Item $node (Join-Path $layout 'node\node.exe')
-# Réglages graphiques AMD (limite d'images par seconde, RSR, AFMF…) : outil C++ sur ADLX, lancé par
-# l'hôte (host\lib\amd.js) depuis app\tools
+# Réglages graphiques du pilote (limite d'images par seconde, faible latence…) : un outil C++ par
+# fabricant, lancé par l'hôte (host\lib\gpuctl.js) depuis app\tools
 Step 'Réglages AMD (native\KaneMode.Amd)'
 & (Join-Path $native 'KaneMode.Amd\build-amd.ps1')
 New-Item -ItemType Directory -Force (Join-Path $app 'tools') | Out-Null
 Copy-Item (Join-Path $native 'KaneMode.Amd\obj\amd\kanemode-amd.exe') (Join-Path $app 'tools')
+Step 'Réglages NVIDIA et Intel (native\KaneMode.Gpu)'
+& (Join-Path $native 'KaneMode.Gpu\build-gpu.ps1')
+# Avec la licence de la bibliothèque d'Intel, à redistribuer avec l'outil
+foreach ($f in 'kanemode-nvidia.exe', 'kanemode-intel.exe', 'intel-igcl-license.txt') {
+    Copy-Item (Join-Path $native "KaneMode.Gpu\obj\gpu\$f") (Join-Path $app 'tools')
+}
 # Moteur de streaming (KanePlay), invisible : KaneMode affiche lui-même les PC, l'appairage et les jeux
 if (-not $NoKanePlay) {
     $engineOut = Join-Path $root 'engine\out'

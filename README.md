@@ -88,9 +88,12 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **Boutons de la ROG Ally** (Command Center, Armoury Crate, appui long) lus directement par KaneMode, même en jeu, sans Armoury Crate : Game Bar, accès rapide ou menu par-dessus le jeu, retour à KaneMode, vue des tâches, capture ; l'invite « installer Armoury Crate SE » est refermée. Réglages : **Paramètres → Console portable**.
 - **Mises à jour officielles du constructeur** : sur les consoles ASUS, BIOS et pilotes publiés pour le modèle exact (API du site d'assistance ROG), comparés aux versions installées, avec le lien de téléchargement officiel.
 - **Modes de performance** Économie / Équilibré / Performance : chacun règle d'un coup le mode d'alimentation de Windows, la limite et le turbo du processeur et le profil du constructeur (ROG Ally, Legion Go) ; sur ROG Ally, la puissance du mode est aussi imposée (Ally X : 13, 17, 25 W, 30 W sur secteur). Le mode choisi est **tenu** : si Armoury Crate SE (profils par jeu), le chargeur ou la veille le changent, KaneMode le rétablit. L'accès rapide affiche en direct la consommation sur batterie, la fréquence réelle du processeur et la limite de puissance.
-- **Widget Game Bar** (Windows + G, ou le bouton Armoury Crate) : HUD par-dessus les jeux. Images par seconde et GPU en direct (graphique des 60 dernières secondes en option), profils d'énergie, réglages en tuiles (écran, graphismes AMD, performance, son, réseau) : un appui inverse un interrupteur ou ouvre un curseur ou une liste de choix. Chaque réglage est relu après écriture et marqué « Vérifié ».
+- **Widget Game Bar** (Windows + G, ou le bouton Armoury Crate) : HUD par-dessus les jeux. Images par seconde et GPU en direct (graphique des 60 dernières secondes en option), profils d'énergie, réglages en tuiles (écran, graphismes AMD / NVIDIA / Intel, performance, son, réseau) : un appui inverse un interrupteur ou ouvre un curseur ou une liste de choix. Chaque réglage est relu après écriture et marqué « Vérifié ».
 - **Moniteur en direct** : second widget Game Bar, compact, à épingler sur le jeu (images par seconde, GPU, processeur, consommation, puissance du mode, réglages actifs).
-- **Graphismes AMD** (Radeon, par ADLX, la bibliothèque du pilote) : limite d'images par seconde pour les jeux seulement (Radeon Chill, levée quand KaneMode est devant), Radeon Super Resolution, AMD Fluid Motion Frames, Radeon Anti-Lag, Radeon Image Sharpening.
+- **Graphismes du pilote**, par la bibliothèque officielle de chaque fabricant. Partout : limite d'images par seconde pour les jeux seulement (levée quand KaneMode est devant, remise à sa fermeture) et mode faible latence.
+  - **AMD** (Radeon, ADLX) : Radeon Chill, Radeon Super Resolution, AMD Fluid Motion Frames, Radeon Anti-Lag, Radeon Image Sharpening ; images par seconde du jeu en direct.
+  - **NVIDIA** (GeForce, NVAPI et NVML) : limite « Max Frame Rate », mode faible latence, synchronisation verticale ; charge, température et puissance du GPU.
+  - **Intel** (Arc, Iris Xe, Intel Graphics Control Library) : limite d'images, mode faible latence, filtre de netteté ; charge, température et puissance du GPU.
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
 - **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, bureau Windows.
@@ -136,5 +139,11 @@ KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il 
 - [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
 - [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming (sous-module `engine/KanePlay`) ;
 - Node.js (licence MIT), embarqué dans le paquet.
+
+Bibliothèques des fabricants de cartes graphiques, téléchargées à la compilation (pas dans ce dépôt) et compilées dans de petits outils séparés (`app\tools`) :
+
+- [ADLX](https://github.com/GPUOpen-LibrariesAndSDKs/ADLX) d'AMD (licence d'AMD) ;
+- [NVAPI](https://github.com/NVIDIA/nvapi) de NVIDIA (licence MIT) ;
+- [Intel Graphics Control Library](https://github.com/intel/drivers.gpu.control-library) d'Intel (licence d'Intel, reproduite dans `app\tools\intel-igcl-license.txt`).
 
 Visuels : [SteamGridDB](https://www.steamgriddb.com) et la boutique Steam.

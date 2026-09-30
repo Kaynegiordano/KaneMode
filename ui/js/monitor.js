@@ -1,11 +1,11 @@
 // Moniteur en direct de KaneMode (monitor.html), widget Game Bar à épingler sur le jeu : images par
-// seconde et GPU (pilote AMD), processeur, consommation, puissance du mode, réglages actifs, et un
+// seconde (AMD) et GPU (pilote AMD, NVIDIA ou Intel), processeur, consommation, puissance du mode, réglages actifs, et un
 // rappel de chaque réglage fait dans le widget KaneMode avec sa vérification.
 import { $, api, esc, applyTheme, WIDGET } from './core.js';
 import { PERF_MODES, PROFILE_WATTS } from './qam.js';
 import { monitorPrefs, lastChange } from './hud.js';
 
-let live = null, gpu = null, sys = null, amd = null;
+let live = null, gpu = null, sys = null, gfx = null;
 const fmtW = w => String(Math.round(w * 10) / 10).replace('.', ',') + ' W';
 const onBattery = () => live && live.discharging === true;
 
@@ -21,8 +21,9 @@ const modeName = () => (sys && sys.mode === 'custom' ? 'Personnalisé' : ((PERF_
 function paint() {
   const p = monitorPrefs();
   const cells = [];
-  const afmf = amd && amd.afmf && amd.afmf.on;
-  if (p.fps && amd && amd.available) cells.push(['fps', gpu && gpu.fps != null ? String(gpu.fps) : '—', afmf ? 'i/s rendues' : 'i/s']);
+  const afmf = gfx && gfx.afmf && gfx.afmf.on;
+  // Images par seconde : seul le pilote AMD les donne (ADLX), pas NVIDIA ni Intel
+  if (p.fps && gfx && gfx.available && gfx.vendor === 'amd') cells.push(['fps', gpu && gpu.fps != null ? String(gpu.fps) : '—', afmf ? 'i/s rendues' : 'i/s']);
   if (p.gpu && gpu && gpu.gpuUsage != null) cells.push(['gpu', `${gpu.gpuUsage} %`, gpu.gpuTemp != null ? `GPU ${gpu.gpuTemp} °C` : 'GPU']);
   if (p.cpu && live && live.mhz) cells.push(['cpu', (live.mhz / 1000).toFixed(1).replace('.', ',') + ' GHz', live.load != null ? `CPU ${live.load} %` : 'CPU']);
   if (p.power) {
@@ -33,14 +34,15 @@ function paint() {
   $('#mon-cells').innerHTML = cells.map(([k, v, l]) => `<div class="mon-cell ${k}"><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('')
     || '<div class="mon-cell"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>';
 
-  // Réglages actifs : ce que le pilote AMD applique en ce moment
+  // Réglages actifs : ce que le pilote applique en ce moment
   const badges = [];
-  if (p.badges && amd && amd.available) {
-    if (amd.fpsLimit) badges.push(`≤ ${amd.fpsLimit} i/s`);
+  if (p.badges && gfx && gfx.available) {
+    if (gfx.fpsLimit) badges.push(`≤ ${gfx.fpsLimit} i/s`);
     if (afmf) badges.push('AFMF');
-    if (amd.rsr && amd.rsr.on) badges.push('RSR');
-    if (amd.antilag && amd.antilag.on) badges.push('Anti-Lag');
-    if (amd.ris && amd.ris.on) badges.push('Netteté');
+    if (gfx.rsr && gfx.rsr.on) badges.push('RSR');
+    if (gfx.antilag && gfx.antilag.on) badges.push(gfx.vendor === 'amd' ? 'Anti-Lag' : 'Faible latence');
+    if (gfx.vsync && gfx.vsync.value === 1) badges.push('V-Sync');
+    if (gfx.ris && gfx.ris.on) badges.push('Netteté');
   }
   const b = $('#mon-badges');
   b.hidden = !badges.length;
@@ -80,7 +82,7 @@ async function loadLive() {
   paint();
 }
 async function loadState() {
-  [sys, amd] = await Promise.all([api.get('/api/sys').catch(() => sys), api.get('/api/amd').catch(() => amd)]);
+  [sys, gfx] = await Promise.all([api.get('/api/sys').catch(() => sys), api.get('/api/graphics').catch(() => gfx)]);
   paint();
 }
 
