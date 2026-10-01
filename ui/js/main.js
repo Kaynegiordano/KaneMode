@@ -124,7 +124,7 @@ actions.system = async elm => {
 };
 
 // Retour sur KaneMode (fin d'un jeu, alt-tab) : la bibliothèque se met à jour (temps de jeu, installations…).
-// L'hôte refait aussi l'analyse des boutiques (au plus une fois par minute) : la liste suit d'elle-même.
+  // L'hôte refait aussi l'analyse des boutiques après le retour : la liste suit d'elle-même.
 native.on(m => {
   if (m.type !== 'resume' || document.hidden) return;
   lib.load({ background: true }).catch(() => {});

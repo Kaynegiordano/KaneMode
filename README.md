@@ -97,6 +97,8 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
 - **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, quitter KaneMode et revenir au bureau Windows.
+- **Verrouillage automatique** : protection activée par défaut pendant KaneMode, le streaming et les jeux suivis, désactivable dans Paramètres → Veille. Le verrouillage manuel, le bouton d’alimentation et la veille volontaire restent disponibles ; aucun réglage permanent de Windows n’est modifié.
+- **Boutiques détectées après installation** : Epic reconnu en Win32/Win64 et dans les chemins personnalisés, jeux locaux ajoutés sans redémarrage. Les achats Epic non installés ne sont pas importés depuis le compte.
 - **Langues** : français et anglais uniquement, dans l'interface, les widgets Game Bar et le streaming local (Paramètres → Apparence → Langue ; par défaut, la langue de Windows si elle est proposée, sinon l’anglais). Les anciens choix de langue sont remplacés automatiquement.
 - **Personnalisation** : accent (repris par le streaming local), fond, taille de l'interface et des jaquettes, coins, police, panneaux opaques, horloge, ordre des rangées de l'accueil.
 - **Ajouts perso** : applis installées (Win32 + Microsoft Store), fichiers, liens web.

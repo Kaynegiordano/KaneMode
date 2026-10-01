@@ -682,6 +682,7 @@ const BUILDERS = {
 
   async power(s) {
     h2(s, 'i-moon', t('Veille'));
+    toggle(s, 'preventIdleLock', t('Empêcher le verrouillage automatique de Windows'), t('Pendant KaneMode, le streaming et les jeux suivis · la veille choisie et le verrouillage manuel restent disponibles'));
     actionRow(s, 'i-moon', t('Mettre en veille maintenant'), native.available ? t('L’écran s’éteint en fondu ; au réveil, KaneMode revient là où vous étiez') : t('Simulée dans le navigateur : n’importe quel bouton réveille'), () => sleepNow(), 'sleep-now');
     const mins = (list, key, never = t('Jamais')) => segmented(list.map(v => ({ value: v, label: v ? `${v} min` : never })), settings[key], v => { settings[key] = +v; saveSettings(); }, key);
     infoRow(s, t('Atténuer l’écran après'), t('Sans activité dans KaneMode · le moindre bouton le rallume'), mins([0, 1, 2, 5, 10], 'dimAfter'));

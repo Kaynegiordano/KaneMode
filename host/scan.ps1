@@ -5,6 +5,7 @@ param([string]$DataDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'data'))
 
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'icon.ps1')
+. (Join-Path $PSScriptRoot 'epic.ps1')
 $iconDir = Join-Path $DataDir 'icons'
 New-Item -ItemType Directory -Force $DataDir | Out-Null
 
@@ -102,20 +103,7 @@ if ($steamPath) {
 
 # ------------------------------------------------------------------ Epic Games
 $epicManifests = Join-Path $env:ProgramData 'Epic\EpicGamesLauncher\Data\Manifests'
-Get-ChildItem $epicManifests -Filter *.item -ErrorAction SilentlyContinue | ForEach-Object {
-    try { $m = Get-Content $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return }
-    if ($m.bIsIncompleteInstall -or -not $m.InstallLocation) { return }
-    $cats = @($m.AppCategories)
-    if ($cats -contains 'plugins' -or $cats -contains 'engines' -or $cats -contains 'digitalextras') { return }
-    $exe = if ($m.LaunchExecutable) { Join-Path $m.InstallLocation $m.LaunchExecutable } else { $null }
-    Add-Game @{
-        id = "epic:$($m.AppName)"; source = 'epic'; name = $m.DisplayName
-        type = $(if ($cats -contains 'games' -or -not $cats) { 'game' } else { 'app' })
-        sizeOnDisk = [long]$m.InstallSize; installDir = $m.InstallLocation
-        launch = @{ kind = 'uri'; target = "com.epicgames.launcher://apps/$($m.CatalogNamespace)%3A$($m.CatalogItemId)%3A$($m.AppName)?action=launch&silent=true" }
-        art = @{ icon = Export-Icon $exe $iconDir }
-    }
-}
+Get-EpicGames $epicManifests { param($exe) Export-Icon $exe $iconDir } | ForEach-Object { Add-Game $_ }
 
 # ------------------------------------------------------------------ GOG
 Get-ChildItem 'HKLM:\SOFTWARE\WOW6432Node\GOG.com\Games' -ErrorAction SilentlyContinue | ForEach-Object {
@@ -209,11 +197,17 @@ function First-File([string[]]$candidates) { foreach ($c in $candidates) { if (T
 function Join-Loc($u, $rel) { if ($u -and $u.Location) { Join-Path $u.Location $rel } }
 
 $pf86 = ${env:ProgramFiles(x86)}; $pf = $env:ProgramFiles; $local = $env:LOCALAPPDATA
+$epicRegistered = foreach ($key in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',
+                                  'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',
+                                  'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',
+                                  'Registry::HKEY_CLASSES_ROOT\com.epicgames.launcher\shell\open\command') {
+    (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).'(default)'
+}
 $defs = @(
     @{ id = 'steam';     name = 'Steam';           sub = 'Big Picture';        uri = 'steam://open/bigpicture'
        exe = $(if ($steamPath) { Join-Path $steamPath 'steam.exe' }) },
     @{ id = 'epic';      name = 'Epic Games';      sub = 'Epic Games Store';   uri = 'com.epicgames.launcher://store'
-       exe = First-File @((Join-Loc (Find-Uninstall '^Epic Games Launcher$') 'Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe'), "$pf86\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe") },
+       exe = First-File @(Get-EpicLauncherCandidates $uninstall @($pf86, $pf) @($epicRegistered)) },
     @{ id = 'gog';       name = 'GOG GALAXY';      sub = 'GOG.com'
        exe = First-File @((Join-Loc (Find-Uninstall '^GOG GALAXY') 'GalaxyClient.exe'), "$pf86\GOG Galaxy\GalaxyClient.exe") },
     @{ id = 'ubisoft';   name = 'Ubisoft Connect'; sub = 'Ubisoft'
@@ -238,7 +232,7 @@ $defs = @(
 $launchers = foreach ($d in $defs) {
     $installed = Test-File $d.exe
     [pscustomobject]@{
-        id = $d.id; name = $d.name; sub = $d.sub; installed = $installed
+        id = $d.id; name = $d.name; sub = $d.sub; installed = $installed; exe = $d.exe
         launch = $(if ($d.uri -and $installed) { @{ kind = 'uri'; target = $d.uri } }
                    elseif ($installed) { @{ kind = 'exe'; target = $d.exe } })
         art = @{ icon = $(if ($installed) { Export-Icon $d.exe $iconDir }) }

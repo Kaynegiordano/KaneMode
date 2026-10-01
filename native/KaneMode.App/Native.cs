@@ -410,6 +410,57 @@ public static class Native
     }
 
     // ---------- Alimentation ----------
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint SetThreadExecutionState(uint flags);
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LASTINPUTINFO { public uint Size; public uint Time; }
+    [DllImport("user32.dll")]
+    private static extern bool GetLastInputInfo(ref LASTINPUTINFO info);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr OpenInputDesktop(uint flags, bool inherit, uint access);
+    [DllImport("user32.dll")]
+    private static extern bool CloseDesktop(IntPtr desktop);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool GetUserObjectInformation(IntPtr obj, int index, System.Text.StringBuilder value, uint size, out uint needed);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr RegisterPowerSettingNotification(IntPtr recipient, ref Guid setting, uint flags);
+    [DllImport("user32.dll")]
+    internal static extern bool UnregisterPowerSettingNotification(IntPtr handle);
+    internal static readonly Guid ConsoleDisplayState = new("6FE69556-704A-47A0-8F24-C28D936FDA47");
+    internal static IntPtr WatchDisplayPower(IntPtr hwnd)
+    {
+        Guid setting = ConsoleDisplayState;
+        return RegisterPowerSettingNotification(hwnd, ref setting, 0 /* DEVICE_NOTIFY_WINDOW_HANDLE */);
+    }
+    internal static int? DisplayPowerState(IntPtr data)
+    {
+        if (data == IntPtr.Zero || Marshal.PtrToStructure<Guid>(data) != ConsoleDisplayState || Marshal.ReadInt32(data, 16) != 4) return null;
+        return Marshal.ReadInt32(data, 20);
+    }
+
+    internal static bool KeepAwake(bool active) => SetThreadExecutionState(0x80000000u | (active ? 3u : 0u)) != 0;
+    internal static uint IdleMilliseconds()
+    {
+        var info = new LASTINPUTINFO { Size = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
+        return GetLastInputInfo(ref info) ? unchecked((uint)Environment.TickCount - info.Time) : 0;
+    }
+    internal static bool InteractiveDesktop()
+    {
+        IntPtr desktop = OpenInputDesktop(0, false, 0x0001 /* DESKTOP_READOBJECTS */);
+        if (desktop == IntPtr.Zero) return false;
+        try
+        {
+            var name = new System.Text.StringBuilder(256);
+            return GetUserObjectInformation(desktop, 2 /* UOI_NAME */, name, 512, out _) && name.ToString().Equals("Default", StringComparison.OrdinalIgnoreCase);
+        }
+        finally { CloseDesktop(desktop); }
+    }
+    internal static bool ResetIdle()
+    {
+        var input = new INPUT { Type = 0, Mouse = new MOUSEINPUT { Flags = MOUSE_MOVE } };
+        return SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>()) == 1;
+    }
+
     [DllImport("powrprof.dll", SetLastError = true)]
     private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
     [DllImport("powrprof.dll")]

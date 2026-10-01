@@ -20,6 +20,7 @@ const gpuctl = require('./lib/gpuctl');
 const dealsLib = require('./lib/deals');
 const gpuLib = require('./lib/gpudrivers');
 const dolbyLib = require('./lib/dolby');
+const { createPathWatch } = require('./lib/pathwatch');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -681,6 +682,8 @@ function steamClient() {
 }
 // Lanceur d'Epic Games, à son emplacement habituel
 function epicClient() {
+  const detected = readJson(FILES.library, {}).launchers?.find(l => l.id === 'epic')?.exe;
+  if (typeof detected === 'string' && path.basename(detected).toLowerCase() === 'epicgameslauncher.exe' && isFile(detected)) return detected;
   for (const base of [process.env['ProgramFiles(x86)'], process.env.ProgramFiles].filter(Boolean)) {
     for (const arch of ['Win64', 'Win32']) {
       const exe = path.join(base, 'Epic Games', 'Launcher', 'Portal', 'Binaries', arch, 'EpicGamesLauncher.exe');
@@ -1200,7 +1203,8 @@ const routes = {
   },
   // Retour sur KaneMode (après un jeu, Steam, le bureau) : nouvelle analyse, au plus une par minute
   'POST /api/library/refresh': (req, res) => {
-    if (Date.now() - libLast > 60e3) rescanSoon('retour sur KaneMode', 500);
+    // Même un retour très rapide après installation doit entraîner une analyse, éventuellement différée.
+    rescanSoon('retour sur KaneMode', Math.max(500, 10000 - (Date.now() - libLast)));
     // PC de streaming appairés (retour de KanePlay) : relus ici plutôt que chaque minute
     if (Date.now() - kpLast > 30e3) refreshKanePlay();
     json(res, 200, { ok: true });
@@ -1583,7 +1587,7 @@ const updateState = { last: null };
 // ---------------------------------------------------------------- bibliothèque à jour toute seule
 // Un jeu installé, désinstallé ou ajouté apparaît sans passer par Paramètres : les dossiers des
 // boutiques (Steam, Epic, Xbox, raccourcis non-Steam) sont surveillés, et l'analyse complète
-// (registre : GOG, Ubisoft, EA…) est refaite au démarrage, au retour d'un jeu et toutes les 10 minutes.
+// (registre : GOG, Ubisoft, EA…) est refaite au démarrage, au retour et au plus toutes les 2 minutes.
 const libSig = () => {
   const l = readJson(FILES.library, {});
   return JSON.stringify([(l.games || []).map(g => [g.id, g.installDir, g.sizeOnDisk]), (l.launchers || []).map(x => [x.id, x.installed])]);
@@ -1609,6 +1613,7 @@ function rescanSoon(reason, delay = 3000) {
 }
 
 const watches = new Map();
+let epicWatch = null;
 function watchDir(dir, onChange) {
   const key = dir.toLowerCase();
   if (watches.has(key) || !fs.existsSync(dir)) return;
@@ -1640,6 +1645,7 @@ function watchStores() {
       try { for (const f of fs.readdirSync(dir)) if (/^appmanifest_\d+\.acf$/i.test(f)) acfState.set(path.join(dir, f).toLowerCase(), acfInstalled(path.join(dir, f))); }
       catch { continue; }
       watchDir(dir, f => {
+        if (/^libraryfolders\.vdf$/i.test(f)) { rescanSoon('nouvelle bibliothèque Steam'); return; }
         if (!/^appmanifest_\d+\.acf$/i.test(f)) return;
         const file = path.join(dir, f), key = file.toLowerCase();
         const now = isFile(file) && acfInstalled(file);
@@ -1652,7 +1658,8 @@ function watchStores() {
     try { for (const u of fs.readdirSync(ud)) watchDir(path.join(ud, u, 'config'), f => { if (/^shortcuts\.vdf$/i.test(f)) version++; }); }
     catch { /* pas de compte Steam */ }
   }
-  watchDir(path.join(process.env.ProgramData || 'C:\\ProgramData', 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests'), f => { if (/\.item$/i.test(f)) rescanSoon('Epic'); });
+  if (!epicWatch) epicWatch = createPathWatch(path.join(process.env.ProgramData || 'C:\\ProgramData', 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests'), () => rescanSoon('Epic'));
+  else epicWatch.refresh();
   for (const d of 'CDEFGHIJKLMNOPQRSTUVWXYZ') watchDir(`${d}:\\XboxGames`, () => rescanSoon('Xbox', 8000));
 }
 
@@ -1665,9 +1672,12 @@ if (!isFile(FILES.library)) {
   setTimeout(() => rescanLibrary('démarrage'), 8000); // jeux installés pendant que KaneMode était fermé
 }
 // Filet de sécurité (la surveillance des dossiers et le retour sur KaneMode suffisent d'habitude) :
-// toutes les 30 min, et jamais pendant qu'un jeu est devant (l'analyse lance PowerShell, ~1 s de
+// toutes les 2 min, et jamais pendant qu'un jeu est devant (l'analyse lance PowerShell, ~1 s de
 // processeur qui pouvait faire saccader le jeu sur une console portable)
-setInterval(() => { if (fpsScope.front) rescanLibrary('vérification périodique'); }, 30 * 60e3);
+setInterval(() => {
+  epicWatch?.refresh();
+  if (fpsScope.front && Date.now() - libLast >= 2 * 60e3) rescanLibrary('nouvelles boutiques et installations');
+}, 30000);
 refreshKanePlay();
 setInterval(() => { if (fpsScope.front) refreshKanePlay(); }, 5 * 60e3);
 // Steam (et Epic) prêts en arrière-plan : le premier jeu démarre sans attendre que la boutique s'ouvre.

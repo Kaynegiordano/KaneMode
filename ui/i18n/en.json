@@ -1216,5 +1216,7 @@
  "Tout désélectionner": "Deselect all",
  "Tout sélectionner": "Select all",
  "Boost bref (pics)": "Brief boost (peaks)",
- "Puissance (TDP)": "Power (TDP)"
+ "Puissance (TDP)": "Power (TDP)",
+ "Empêcher le verrouillage automatique de Windows": "Prevent Windows from locking automatically",
+ "Pendant KaneMode, le streaming et les jeux suivis · la veille choisie et le verrouillage manuel restent disponibles": "While using KaneMode, streaming and tracked games · intentional sleep and manual locking remain available"
 }

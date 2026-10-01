@@ -4,6 +4,17 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.6.0 : verrouillage automatique et détection Epic
+
+- Protection activée par défaut, désactivable dans Paramètres → Veille (`preventIdleLock`). `IdleProtection.cs` conserve l’écran et le système actifs uniquement au premier plan de KaneMode, KanePlay ou d’une fenêtre du jeu suivi. Réinitialisation Windows après 15 s par mouvement nul, sans touche ni clic ; les mouvements nuls ne réinitialisent pas l’inactivité propre à KaneMode.
+- Aucune préférence ni stratégie Windows modifiée. Libération au passage en arrière-plan, au verrouillage manuel, avant une veille demandée et à la fermeture. Notifications d’écran éteint / rallumé pour respecter le bouton d’alimentation et la veille moderne. Les stratégies imposées et les entrées refusées par Windows ne peuvent pas être garanties ; refus notés sans répétition dans le journal.
+- Epic : scan Win32 et Win64, Program Files et Program Files (x86), chemin de désinstallation, App Paths et commande du protocole. Fonctions vérifiables dans `host/epic.ps1`, chemin détecté réutilisé par le préchauffage.
+- `host/lib/pathwatch.js` suit le parent existant quand le dossier des manifestes Epic n’existe pas encore, puis descend au fil de l’installation. Nouvelle analyse au retour même rapide, contrôle des nouvelles boutiques toutes les 2 min au premier plan, sans scan périodique pendant un jeu. Nouvelles bibliothèques Steam surveillées aussi.
+- Les jeux Epic locaux viennent des manifestes d’installation ; cette version ne connecte pas un compte Epic pour importer les achats non installés.
+- Vérifier les 24 tests Node (`tools/verify-store-discovery.js` ajouté à la commande de la 3.5.0), `dotnet run --project tools/idle-protection-tests/IdleProtectionTests.csproj`, puis `tools/verify-interface.cjs` (96 mises en page, arrivée d’Epic et protection désactivable). Tests avec API simulées, aucun verrouillage ni mise en veille du PC de développement.
+- VERSION : 3.6.0 ; notes dans `docs/releases/3.6.0.md`.
+- Appels Windows réels validés hors du bac à sable : demande d’éveil acceptée puis libérée, compteur d’inactivité réinitialisé de 582672 à 47 ms par un mouvement nul, position du curseur conservée et notifications écran décodées. Dans le bac à sable, SendInput est refusé ; cela ne décrit pas les permissions de l’application installée.
+
 ## Version 3.5.0 : finition de l’interface et deux langues
 
 - Demande : harmoniser l’interface ; ne garder que Français et Anglais, widget et streaming compris. Les notes de la 3.3.0 ci-dessous décrivent la version déjà publiée.

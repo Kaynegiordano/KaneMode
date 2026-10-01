@@ -1475,6 +1475,9 @@
  "Elles sont envoyées à la corbeille de Windows : vous pourrez les récupérer de là.": [
   "ui/js/pages/media.js"
  ],
+ "Empêcher le verrouillage automatique de Windows": [
+  "ui/js/pages/settings.js"
+ ],
  "Emplacement": [
   "ui/js/pages/add.js"
  ],
@@ -2681,6 +2684,9 @@
   "ui/js/pages/settings.js"
  ],
  "PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils": [
+  "ui/js/pages/settings.js"
+ ],
+ "Pendant KaneMode, le streaming et les jeux suivis · la veille choisie et le verrouillage manuel restent disponibles": [
   "ui/js/pages/settings.js"
  ],
  "Pensez à sauvegarder vos parties en cours.": [

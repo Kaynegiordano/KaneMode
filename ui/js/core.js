@@ -54,7 +54,7 @@ export const settings = Object.assign({
   dealsSteam: true, dealsEpic: true, dealsGog: true, dealsOther: true,
   dealsFree: true, dealsPromo: true, dealsNew: true, dealsSoon: true, dealsAuto: true,
   homePins: [], homeResume: true, homeDensity: 'comfortable', soundTheme: 'round', soundVolume: 100, soundMoves: true,
-  motionStyle: 'normal', displayMode: 'manual', displayBindings: {}, displayProfiles: {}, immersive: false, immersiveDelay: 6,
+  motionStyle: 'normal', displayMode: 'manual', displayBindings: {}, displayProfiles: {}, immersive: false, immersiveDelay: 6, preventIdleLock: true,
 }, store.get('settings', {}));
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {
@@ -80,7 +80,11 @@ export function setAppearance(key, value) {
   } else settings[key] = value;
   saveSettings();
 }
-export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); syncSounds(); emit('settings'); }
+export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); syncSounds(); syncIdleProtection(); emit('settings'); }
+function syncIdleProtection() {
+  if (!WIDGET) native.send('idle-protection', { enabled: !!settings.preventIdleLock });
+}
+setTimeout(syncIdleProtection, 0);
 let sentSounds = null;
 function syncSounds() {
   if (WIDGET) return;

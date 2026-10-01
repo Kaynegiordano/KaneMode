@@ -87,7 +87,12 @@ const padsDown = () => pads().some(p => p.buttons.some(b => b.pressed) || p.axes
 
 // ---------------------------------------------------------------- inactivité
 const mark = () => { lastInput = Date.now(); if (document.body.classList.contains('dimmed')) undim(); };
-['keydown', 'pointermove', 'pointerdown', 'wheel'].forEach(t => addEventListener(t, mark, { capture: true, passive: true }));
+['keydown', 'pointerdown', 'wheel'].forEach(t => addEventListener(t, mark, { capture: true, passive: true }));
+addEventListener('pointermove', e => {
+  // La protection Windows peut envoyer un mouvement nul : il ne compte pas comme une activité.
+  if (e.pointerType === 'mouse' && !e.movementX && !e.movementY) return;
+  mark();
+}, { capture: true, passive: true });
 addEventListener('focus', mark);
 document.addEventListener('visibilitychange', mark);
 

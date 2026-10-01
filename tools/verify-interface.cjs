@@ -6,6 +6,7 @@ const root=path.resolve(__dirname,'..'), dir=process.env.KANEMODE_UI_OUTPUT;
 let dolbyState={available:true,installed:false,appVersion:null,license:null,controllable:true,devices:[{id:'headset',name:'Casque de test',default:true,supported:['off','headphones','sonic'],selected:'off',active:'off'},{id:'tv',name:'TV de test',default:false,supported:['off','homeTheater'],selected:'off',active:'off'}]};
 let dolbyRefuse=false;const dolbyActions=[];
 let artRequests=0; const apiCalls=[]; let artStyle='';
+let launchers=[], libraryVersion=1;
 const games=Array.from({length:803},(_,i)=>({id:'fixture:'+i,source:'steam',name:['Horizon — Les terres oubliées','Forza Horizon 5','Sea of Stars','Ori and the Will of the Wisps','Expédition 33','Hades II','Jusant','No Man’s Sky'][i%8]+(i<8?'':' '+i),installed:true,type:'game',lastPlayed:803-i,playtime:0,art:{portrait:'/art/'+i+'/portrait?r=1',hero:'/art/'+i+'/hero?r=1'},meta:{genres:['Action']}}));
 const latest={version:'3.2.0',notes:'Version de test',msix:{size:117845231}};
 const server=http.createServer(async(req,res)=>{
@@ -15,7 +16,7 @@ const server=http.createServer(async(req,res)=>{
     if(p==='/api/dolby' && req.method==='GET') return json(dolbyState);
     if(p==='/api/dolby' && req.method==='POST') {let data='';for await(const chunk of req)data+=chunk;const body=JSON.parse(data);if(dolbyRefuse){res.statusCode=400;return json({error:'Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.'});}const d=dolbyState.devices.find(d=>d.id===body.device);d.selected=d.active=body.mode;return json({...dolbyState,verified:true});}
     if(p==='/api/dolby/open'){let data='';for await(const chunk of req)data+=chunk;dolbyActions.push(JSON.parse(data));return json({ok:true});}
-    if(p==='/api/library') return json({games,launchers:[],collections:[{id:'c1',name:'Coop canapé',ids:['fixture:1','fixture:2']}],version:1,stream:{engine:true,hosts:[]}});
+    if(p==='/api/library') return json({games,launchers,collections:[{id:'c1',name:'Coop canapé',ids:['fixture:1','fixture:2']}],version:libraryVersion,stream:{engine:true,hosts:[]}});
     if(p==='/api/system') return json({cpuName:'Processeur simulé',cores:8,cpu:10,memUsed:4e9,memTotal:16e9,os:'Windows test',node:'22',uptime:100,dataDir:'Données simulées'});
     if(p==='/api/update') return json({current:'3.1.0',packaged:true,auto:false,last:{available:true,latest,checked:new Date().toISOString()},job:{phase:'idle'}});
     if(p==='/api/config') { if(req.method==='POST') { let data=''; for await (const chunk of req) data+=chunk; const body=JSON.parse(data||'{}'); if('sgdbStyle' in body) artStyle=body.sgdbStyle; } return json({sgdb:{configured:true,auto:true,preferSteam:true,style:artStyle},emulators:[],romRoots:[]}); }
@@ -26,7 +27,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(p==='/api/media') return json([]);
     if(p==='/api/emulation') return json({romRoots:[],emulators:[],systems:[]});
-    if(p==='/api/status') return json({version:1,entries:803});
+    if(p==='/api/status') return json({version:libraryVersion,entries:games.length});
     if(p==='/api/deals') return json({items:[]});
     if(p==='/api/sys') return json({available:true,volume:45,muted:false,brightness:70,radios:[]});
     if(p==='/api/net') return json({type:'ethernet',online:true});
@@ -58,7 +59,8 @@ const server=http.createServer(async(req,res)=>{
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
     localStorage.setItem('km.settings',JSON.stringify({lang:'fr',bootMode:'none',splash:false,sounds:false,homePins:[{type:'game',id:'fixture:2'},{type:'collection',id:'c1'}]}));
-    window.chrome.webview={postMessage(){},addEventListener(){}};
+    window.testNativeMessages=[];
+    window.chrome.webview={postMessage(message){window.testNativeMessages.push(message);},addEventListener(){}};
   });
   const check=(label)=>console.log('PASS '+label);
   const settled=()=>page.waitForTimeout(300);
@@ -143,11 +145,35 @@ const server=http.createServer(async(req,res)=>{
     await page.evaluate(()=>navigation.press('rb'));await settled();
     assert.equal(await page.evaluate(()=>navigation.page('library').tab),'src:steam');
     check('Bibliothèque : 36 collections sur une ligne, onglet actif visible et RB fonctionnel');
+    launchers=[{id:'epic',name:'Epic Games',installed:true}];
+    games.push({...games[0],id:'epic:fixture',source:'epic',name:'Jeu Epic ajouté après le démarrage'});libraryVersion++;
+    await page.evaluate(async()=>{await core.lib.load({background:true});navigation.go('library',{tab:'all'});});await settled();
+    assert.equal(await page.locator('[data-key="epic:fixture"]').count(),1);
+    await page.evaluate(()=>navigation.go('library',{tab:'src:epic'}));await settled();
+    assert.equal(await page.locator('#page-library .card').count(),1);
+    assert.equal(await page.evaluate(()=>core.lib.launchers.find(l=>l.id==='epic')?.installed),true);
+    check('Nouvelle boutique Epic et jeu installé : visibles dans Tout et dans la catégorie Epic sans redémarrage');
+    games.pop();launchers=[];libraryVersion++;
+    await page.evaluate(async()=>{await core.lib.load();});
+    await settingsSection('power');
+    assert.equal(await page.locator('[data-key="preventIdleLock"]').getAttribute('aria-checked'),'true');
+    await page.evaluate(()=>{navigation.setFocus(document.querySelector('[data-key="preventIdleLock"]'));navigation.press('a');});
+    assert.equal(await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='idle-protection').at(-1).enabled),false);
+    await page.evaluate(()=>navigation.press('a'));
+    assert.equal(await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='idle-protection').at(-1).enabled),true);
+    await page.evaluate(()=>{core.settings.dimAfter=1;core.settings.sleepAfterAC=0;core.settings.sleepAfterBattery=0;core.saveSettings();window.realNow=Date.now;Date.now=()=>realNow()+65000;});
+    await page.waitForSelector('body.dimmed');
+    await page.evaluate(()=>dispatchEvent(new PointerEvent('pointermove',{pointerType:'mouse',movementX:0,movementY:0})));
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('dimmed')),true);
+    await page.evaluate(()=>dispatchEvent(new PointerEvent('pointermove',{pointerType:'mouse',movementX:1,movementY:0})));
+    assert.equal(await page.evaluate(()=>document.body.classList.contains('dimmed')),false);
+    await page.evaluate(()=>{Date.now=realNow;core.settings.dimAfter=5;core.saveSettings();});
+    check('Protection Windows : activée par défaut, désactivable, sans annuler l’inactivité propre à KaneMode');
     let layouts=0;
     for(const [width,height,scale] of [[1280,720,100],[1280,720,125],[1280,720,150],[1920,1080,100],[1920,1080,150],[960,540,100],[960,540,150],[800,600,125]]){
       await page.setViewportSize({width,height});
       await page.evaluate(scale=>{core.settings.uiScale=scale;core.saveSettings();},scale);
-      for(const section of ['personal','look','dolby']){
+      for(const section of ['personal','look','dolby','power']){
         await settingsSection(section);await fit(width+'×'+height+' '+scale+' % '+section);
         await page.evaluate(()=>navigation.page('settings').enter(navigation.page('settings').section));await settled();
         await visibleFocus(width+' '+scale+' '+section);
@@ -166,6 +192,7 @@ const server=http.createServer(async(req,res)=>{
       await page.evaluate(async()=>{window.navigation=await import('./js/nav.js');window.core=await import('./js/core.js');window.widgets=await import('./js/widgets.js');});
       await settingsSection('personal');await fit('Traduction '+lang);
       await settingsSection('look');await fit('Traduction '+lang+' apparence');
+      await settingsSection('power');await fit('Traduction '+lang+' veille');
     }
     check('Français et anglais : choix des réglages sans débordement');
     await page.evaluate(()=>{core.settings.lang='fr';core.settings.uiScale=100;core.settings.lowFx=true;core.settings.reduceMotion=true;core.saveSettings();navigation.go('home');});await settled();

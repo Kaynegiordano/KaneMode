@@ -30,6 +30,24 @@ public partial class MainWindow : Window
     private bool _ready;
     private string _displayId = "";
     private bool _failed;
+    private readonly IdleProtection _idleProtection = new();
+    private readonly System.Windows.Threading.DispatcherTimer _idleTimer = new() { Interval = TimeSpan.FromSeconds(5) };
+    private bool _preventIdleLock = true, _idleSuspended, _sessionLocked;
+    private IntPtr _displayPowerNotification;
+
+    private void UpdateIdleProtection()
+    {
+        IntPtr front = Native.GetForegroundWindow();
+        bool owned = front != IntPtr.Zero && (front == _hwnd || Native.WindowProcessId(front) == (uint)Environment.ProcessId
+            || Native.WindowTitle(front) == KanePlayTitle || (_game != null && (_game.Window == front || _game.Pushed.Contains(front))));
+        _idleProtection.Update(_preventIdleLock && _ready && !_closing && !_idleSuspended && !_sessionLocked && owned);
+    }
+
+    private void OnSessionSwitch(object? sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason != SessionSwitchReason.SessionLock && e.Reason != SessionSwitchReason.SessionUnlock) return;
+        Dispatcher.BeginInvoke(() => { _sessionLocked = e.Reason == SessionSwitchReason.SessionLock; UpdateIdleProtection(); });
+    }
 
     private static readonly string[] Args = Environment.GetCommandLineArgs();
 
@@ -49,7 +67,7 @@ public partial class MainWindow : Window
         BeginStart();
         Loaded += async (_, _) => await StartAsync();
         _host.Crashed += code => Dispatcher.BeginInvoke(() => OnHostCrashed(code));
-        SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); };
+        SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); _displayPowerNotification = Native.WatchDisplayPower(_hwnd); };
         // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
         _pads = new XInputPads(PadFocus);
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
@@ -63,18 +81,21 @@ public partial class MainWindow : Window
         Activated += (_, _) => OnActivated();
         // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte, et
         // WebView2 rend de la mémoire s'il y reste (voir LightenInBackground)
-        Deactivated += (_, _) => { if (!_ready) return; Post(new { type = "background" }); _lighten.Stop(); _lighten.Start(); };
+        Deactivated += (_, _) => { UpdateIdleProtection(); if (!_ready) return; Post(new { type = "background" }); _lighten.Stop(); _lighten.Start(); };
         _lighten.Tick += (_, _) => { _lighten.Stop(); SetMemoryLow(true); };
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès). Plus aucun
         // message ne lui est envoyé ensuite (Deactivated arrivait après et levait ObjectDisposedException).
-        Closing += (_, _) => { _closing = true; _lighten.Stop(); try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
-        Closed += (_, _) => { SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _host.Dispose(); };
+        Closing += (_, _) => { _closing = true; _idleTimer.Stop(); _idleProtection.Dispose(); if (_displayPowerNotification != IntPtr.Zero) { Native.UnregisterPowerSettingNotification(_displayPowerNotification); _displayPowerNotification = IntPtr.Zero; } _lighten.Stop(); try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
+        Closed += (_, _) => { SystemEvents.SessionSwitch -= OnSessionSwitch; SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
         WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));
         // Veille et réveil du système, quelle qu'en soit la cause (menu, bouton d'alimentation, capot…)
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
+        SystemEvents.SessionSwitch += OnSessionSwitch;
+        _idleTimer.Tick += (_, _) => UpdateIdleProtection();
+        _idleTimer.Start();
         // Résolution ou mise à l'échelle changée (widget Game Bar, Paramètres de Windows)
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         LocationChanged += (_, _) => PostDisplayIdentity();
@@ -335,6 +356,16 @@ public partial class MainWindow : Window
     /// </summary>
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // Extinction volontaire de l’écran / veille moderne : aucune impulsion ne doit le rallumer.
+        if (msg == 0x0218 /* WM_POWERBROADCAST */ && wParam == (IntPtr)0x8013 /* PBT_POWERSETTINGCHANGE */)
+        {
+            int? display = Native.DisplayPowerState(lParam);
+            if (display is 0 or 1)
+            {
+                _idleSuspended = display == 0;
+                UpdateIdleProtection();
+            }
+        }
         if (msg != Native.WM_COPYDATA || lParam == IntPtr.Zero) return IntPtr.Zero;
         var data = System.Runtime.InteropServices.Marshal.PtrToStructure<Native.CopyData>(lParam);
         if (data.Kind != (IntPtr)0x4B4D || data.Data == IntPtr.Zero) return IntPtr.Zero;
@@ -576,7 +607,11 @@ public partial class MainWindow : Window
         Log.Write(e.Mode == PowerModes.Suspend ? "Mise en veille du système" : "Réveil du système");
         if (e.Mode == PowerModes.Resume) _buttons.Reopen();
         // L'événement arrive sur un autre fil : on repasse sur celui de la fenêtre.
-        Dispatcher.BeginInvoke(() => Post(new { type = e.Mode == PowerModes.Suspend ? "suspend" : "wake" }));
+        Dispatcher.BeginInvoke(() => {
+            _idleSuspended = e.Mode == PowerModes.Suspend;
+            UpdateIdleProtection();
+            Post(new { type = e.Mode == PowerModes.Suspend ? "suspend" : "wake" });
+        });
     }
 
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
@@ -628,6 +663,7 @@ public partial class MainWindow : Window
                     break;
                 case "power":
                     string action = root.TryGetProperty("action", out var a) ? a.GetString() ?? "" : "";
+                    if (action is "sleep" or "shutdown" or "restart") { _idleSuspended = true; _idleProtection.Dispose(); }
                     if (action == "desktop") ExitToDesktop();
                     else if (!Native.Power(action, new WindowInteropHelper(this).Handle)) Log.Write($"Action inconnue : {action}");
                     break;
@@ -659,6 +695,10 @@ public partial class MainWindow : Window
                     break;
                 case "game-stop":
                     StopGame(Text(root, "id") ?? "", Text(root, "dir"), Flag(root, "force"));
+                    break;
+                case "idle-protection":
+                    _preventIdleLock = Flag(root, "enabled");
+                    UpdateIdleProtection();
                     break;
                 case "buttons":
                     // Actions des boutons de la console, envoyées par l'interface au démarrage et à chaque changement
