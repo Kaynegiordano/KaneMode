@@ -999,3 +999,44 @@ body.lowfx .game-bar { background: rgba(10, 13, 18, 0.92); }
 .card { contain: layout style; }
 .src-badge { backdrop-filter: none; }
 body.lowfx .gen::before { filter: none; opacity: .18; }
+
+/* Personnalisation : ambiances, accueil, profils d'écran et indications au repos. */
+.ambience-preview { position: relative; min-height: 160px; overflow: hidden; border-radius: 14px; background: #0b0e13; display: flex; align-items: center; gap: 24px; padding: 24px; }
+.ambience-orb { position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 30%, color-mix(in srgb, var(--preview-accent) 34%, transparent), transparent 70%); }
+.ambience-preview[data-background="dark"] .ambience-orb { opacity: .2; }
+.ambience-cover { position: relative; width: 76px; height: 110px; flex: none; border-radius: var(--radius); background: var(--preview-accent); color: #10141b; display: grid; place-items: center; }
+.ambience-cover svg { width: 40px; height: 40px; fill: currentColor; }
+.ambience-caption { position: relative; display: grid; gap: 10px; }
+.ambience-caption b { font-size: 28px; }
+.ambience-caption small { color: var(--muted); }
+.ambience-choices { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.ambience-choices .focused { background: var(--focus); color: #111; }
+.pin-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.collection-pin { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; padding: 22px; text-align: center; background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 20%, #111), #18202d); }
+.collection-pin svg { width: 64px; height: 64px; fill: var(--accent); }
+.collection-pin b { max-width: 100%; overflow-wrap: anywhere; }
+.collection-pin small { color: var(--muted); }
+.resume-tile { height: clamp(170px, calc(27 * var(--vh)), 300px); margin: 12px var(--gutter) 30px; display: block; }
+.resume-art { position: absolute; inset: 0; background: center 35% / cover; opacity: .55; }
+.resume-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #0b0e13, transparent 90%); }
+.resume-copy { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 22px 30px; gap: 12px; }
+.resume-copy h1 { margin: 0; font-size: clamp(24px, 2.4vw, 40px); max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resume-copy small { color: var(--muted); }
+.resume-copy b { display: inline-flex; align-items: center; gap: 8px; background: #3fca5a; color: #0b1611; padding: 9px 18px; border-radius: var(--radius); }
+.resume-copy svg { width: 18px; height: 18px; fill: currentColor; }
+.home-empty-library { margin: 30px var(--gutter); }
+body[data-home-density="compact"] #page-home .row { gap: 12px; padding-top: 10px; padding-bottom: 14px; }
+body[data-home-density="compact"] #page-home .row-title { margin-top: 16px; margin-bottom: 8px; }
+body[data-home-density="spacious"] #page-home .row { gap: 26px; padding-top: 20px; padding-bottom: 30px; }
+body[data-home-density="spacious"] #page-home .row-title { margin-top: 38px; margin-bottom: 20px; }
+body[data-motion-style="calm"] .focused.card { transform: scale(1.025); }
+body[data-motion-style="calm"] .focused.card::before { animation: none; background: none; }
+body[data-motion-style="calm"] .page { transform: none; transition-duration: 160ms; }
+body[data-motion-style="snappy"] .page, body[data-motion-style="snappy"] .card { transition-duration: 100ms; }
+body[data-motion-style="snappy"] .focused.card::before { animation-duration: 450ms; }
+body.reduce-motion[data-motion-style] *, body.reduce-motion[data-motion-style] *::before { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { body[data-motion-style] *, body[data-motion-style] *::before { animation: none !important; transition: none !important; } }
+#topbar, #hints { transition: opacity 180ms ease; }
+body.immersive-idle #topbar, body.immersive-idle #hints { opacity: 0; pointer-events: none; }
+body.immersive-idle #page-home, body.immersive-idle #page-library, body.immersive-idle #page-game { padding-bottom: 24px; }
+.dolby-device { border: 1px solid var(--line); border-radius: var(--radius); margin: 14px 0; padding: 8px; }

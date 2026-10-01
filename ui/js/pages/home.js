@@ -1,15 +1,19 @@
 // Accueil : jeux récents (et KanePlay), émulation, applications, boutiques.
 import { t, tn } from '../i18n.js';
-import { el, esc, icon, lib, fmt, sourceOf, settings, mergeOrder } from '../core.js';
+import { el, esc, icon, lib, fmt, sourceOf, settings, mergeOrder, favs } from '../core.js';
 import { definePage, nav, go, hooks } from '../nav.js';
 import { gameCard } from '../cards.js';
-import { openGame, openLauncher, setBackground, heroUrl } from './game.js';
+import { openGame, openLauncher, setBackground, heroUrl, running, resumeGame, launch, queryGame } from './game.js';
+import { normalizePins, resumeEntry } from '../personalization.js';
 import { dealsRow, findDeal, dealLine } from '../deals.js';
 
 const byRecent = (a, b) => b.lastPlayed - a.lastPlayed || a.name.localeCompare(b.name, 'fr');
 
 /** Rangées de l'accueil après les jeux récents : ordre et affichage personnalisables. */
 export const HOME_ROWS = [
+  { id: 'pins', label: t('Épinglés'), desc: t('Vos jeux et collections préférés') },
+  { id: 'recent', label: t('Jeux récents'), desc: t('Vos dernières parties') },
+  { id: 'favorites', label: t('Favoris'), desc: t('Tous vos jeux marqués d’une étoile') },
   { id: 'emulation', label: t('Émulation'), desc: t('Vos ROMs, par dernière partie') },
   { id: 'apps', label: t('Applications'), desc: t('Applis et raccourcis ajoutés') },
   { id: 'deals', label: t('Bons plans et nouveautés'), desc: t('Promos, nouveautés et jeux gratuits de Steam, Epic, GOG…') },
@@ -25,6 +29,34 @@ export function homeRows() {
 }
 
 const ROWS = {
+  recent(root, vis) {
+    const games = vis.filter(g => g.type === 'game' && g.installed && g.source !== 'rom' && g.source !== 'kaneplay').sort(byRecent);
+    root.append(el('h2', 'row-title', t('Jeux récents')));
+    const row = el('div', 'row'); games.slice(0, 12).forEach(g => row.append(gameCard(g, 'capsule', openGame)));
+    row.append(nav(el('div', 'card capsule more-card', t('{a}<div>Toute la bibliothèque</div><small>{length} éléments</small>', { a: icon('i-grid'), length: vis.length })), () => go('library'), 'more'));
+    root.append(row);
+  },
+  favorites(root, vis) {
+    const games = vis.filter(g => favs.has(g.id)); if (!games.length) return;
+    root.append(el('h2', 'row-title', t('Favoris')));
+    const row = el('div', 'row'); games.slice(0, 14).forEach(g => row.append(gameCard(g, 'capsule', openGame)));
+    root.append(row);
+  },
+  pins(root, vis) {
+    const pins = normalizePins(settings.homePins, vis, lib.collections); if (!pins.length) return;
+    root.append(el('h2', 'row-title', t('Épinglés')));
+    const row = el('div', 'row');
+    for (const pin of pins) {
+      if (pin.type === 'game') {
+        const card = gameCard(lib.byId(pin.id), 'capsule', openGame); card.dataset.key = 'pin-game:' + pin.id; row.append(card);
+      } else {
+        const collection = lib.collections.find(c => c.id === pin.id);
+        const count = vis.filter(g => collection.ids.includes(g.id)).length;
+        row.append(nav(el('div', 'card capsule collection-pin', icon('i-collection') + '<b>' + esc(collection.name) + '</b><small>' + tn(count, '{n} jeu', '{n} jeux') + '</small>'), () => go('library', { tab: 'col:' + collection.id }), 'pin-collection:' + pin.id));
+      }
+    }
+    root.append(row);
+  },
   emulation(root, vis) {
     const roms = vis.filter(g => g.source === 'rom').sort(byRecent);
     if (!roms.length) return;
@@ -65,31 +97,24 @@ definePage('home', {
     const root = this.el;
     root.innerHTML = '';
     const vis = lib.visible();
-    // Le streaming local n'est plus un « jeu » : il s'ouvre depuis le menu (et Paramètres → Streaming)
-    const games = vis.filter(g => g.type === 'game' && g.installed && g.source !== 'rom' && g.source !== 'kaneplay').sort(byRecent);
-
-    // En-tête des jeux récents
-    const top = el('div', 'home-top');
-    top.append(el('h2', 'row-title', t('Jeux récents')));
-    root.append(top);
-
-    const row = el('div', 'row');
-    games.slice(0, 12).forEach(g => row.append(gameCard(g, 'capsule', openGame)));
-    const more = el('div', 'card capsule more-card', t('{a}<div>Toute la bibliothèque</div><small>{length} éléments</small>', { a: icon('i-grid'), length: vis.length }));
-    more.dataset.autofocus = '';
-    if (games.length) delete more.dataset.autofocus;
-    row.append(nav(more, () => go('library'), 'more'));
-    root.append(row);
-    // Le premier jeu récent reçoit le focus au démarrage, pas le bouton du haut.
-    const first = row.querySelector('.card');
-    if (first) first.dataset.autofocus = '';
-
+    const game = settings.homeResume && resumeEntry(vis, running);
+    if (game) {
+      queryGame(game);
+      const inProgress = running.has(game.id);
+      const tile = el('div', 'card resume-tile', '<span class="resume-art"></span><span class="resume-copy"><small>' + esc(inProgress ? t('Partie en cours') : t('Dernière partie')) + '</small><h1>' + esc(game.name) + '</h1><b>' + icon('i-play') + esc(inProgress ? t('Reprendre') : t('Jouer')) + '</b></span>');
+      tile.dataset.id = game.id;
+      const image = heroUrl(game); if (image) tile.querySelector('.resume-art').style.backgroundImage = 'url(' + JSON.stringify(image) + ')';
+      nav(tile, () => inProgress ? resumeGame(game) : launch(game), 'home-resume');
+      root.append(tile);
+    }
     this.info = el('div', 'home-info');
     if (!vis.length) this.info.innerHTML = t('<h1>Bibliothèque vide</h1><p>Aucun jeu détecté. Ajoutez-en un, ou activez la bibliothèque de démonstration dans les Paramètres.</p>');
     root.append(this.info);
 
     // Rangées suivantes, dans l'ordre et avec l'affichage choisis (Paramètres → Apparence)
     for (const id of homeRows()) ROWS[id](root, vis);
+    if (!root.querySelector('[data-nav]')) root.append(nav(el('div', 'chip-btn home-empty-library', t('Toute la bibliothèque')), () => go('library'), 'more'));
+    const first = root.querySelector('[data-nav]'); if (first) first.dataset.autofocus = '';
   },
   onFocus(target) {
     // Offre d'une boutique (rangée des bons plans) : son visuel et ses informations

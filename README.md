@@ -102,6 +102,18 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **Ajouts perso** : applis installées (Win32 + Microsoft Store), fichiers, liens web.
 - **Style SteamOS** : logo animé qui apparaît pile sur l'éclat du son de démarrage (son synthétisé façon console de salon, aucun fichier ; un son perso est analysé et synchronisé de même ; vidéo et son perso possibles, l'ancienne vidéo est dans `extras\`), menu principal, accès rapide (CPU/RAM en direct), recherche au clavier virtuel, médias (captures Steam / Game Bar), collections, paramètres par catégories (stockage, accessibilité, taille de l'interface, testeur de manette, état du mode Xbox…).
 
+## Personnalisation (3.3.0)
+
+Dans **Paramètres → Personnalisation** : aperçus des ambiances Sobre, Console rétro et Nuit ; jeux et collections épinglés, tuile de reprise et densité de l’accueil ; styles SteamGridDB prioritaires ; profils Console portable et TV associés à chaque écran ; timbre, volume des sons d’interface et sons de déplacement ; indications qui s’effacent au repos et réapparaissent à chaque action. Les profils personnels et le son de démarrage sont conservés.
+
+## Dolby Atmos (3.3.0)
+
+**Paramètres → Dolby Atmos**, l’accès rapide et la catégorie Son du widget Game Bar donnent accès à l’intégration Dolby. KaneMode détecte Dolby Access, ouvre son installation officielle et propose l’achat ou l’activation de la licence dans Dolby Access. Une licence existante reste validée par Dolby/Microsoft ; KaneMode ne déduit pas sa possession de l’installation de l’application.
+
+Le format spatial de chaque sortie audio peut être changé directement dans KaneMode : désactivé, Dolby Atmos pour casque, cinéma ou haut-parleurs, et Windows Sonic, selon les formats annoncés par Windows. Les identifiants de formats et l’état viennent de l’API WinRT officielle ; chaque changement est relu et un refus restaure le format précédent. Le format sélectionné et le format actif sont affichés séparément. L’égaliseur et les profils propriétaires s’ouvrent dans Dolby Access.
+
+Les commandes utilisent **SoundVolumeView 2.53 x64**, outil autonome de NirSoft embarqué avec tous les fichiers inchangés de sa distribution. L’archive et l’exécutable sont vérifiés par SHA-256 lors de la construction (`native/KaneMode.Audio/fetch-tool.ps1`). Cet outil est freeware avec ses propres conditions, reproduites dans son `readme.txt` ; il ne relève pas de la licence GPL du code KaneMode. Dolby Access et sa licence ne sont pas embarqués. [Documentation et conditions NirSoft](https://www.nirsoft.net/utils/sound_volume_view.html).
+
 ## Structure
 
 | Dossier | Rôle |

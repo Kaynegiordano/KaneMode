@@ -40,6 +40,7 @@ definePage('artpicker', {
     if (this.forId !== id) { this.forId = id; this.game = undefined; this.items = {}; this.kind = 'portrait'; this.mode = 'overview'; }
     if (kind) { this.kind = kind; this.mode = 'browse'; }
     this.g = lib.byId(id);
+    api.get('/api/config').then(cfg => { const style = cfg.sgdb.style || ''; if (this.forId !== id || style === this.style) return; this.style = style; this.items = {}; if (this.mode === 'browse') this.draw(); }).catch(() => {});
     this.draw();
   },
   leave() { thumbs.disconnect(); },
@@ -105,10 +106,10 @@ definePage('artpicker', {
   },
   /** Liste des visuels d'un type (une seule requête par type, partagée). */
   list(kind, first = false) {
-    const key = kind + (first ? ':first' : '');
+    const key = kind + ':' + (this.style || '') + (first ? ':first' : '');
     if (!this.items[key]) {
       const items = this.items;
-      items[key] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}${first ? '&first=1' : ''}`);
+      items[key] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}${first ? '&first=1' : ''}${kind === 'portrait' && this.style ? '&style=' + encodeURIComponent(this.style) : ''}`);
       items[key].catch(() => { delete items[key]; });
     }
     return this.items[key];

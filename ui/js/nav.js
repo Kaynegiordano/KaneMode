@@ -1,7 +1,7 @@
 // Moteur de navigation : pages, couches (menus, dialogues), focus spatial et entrées
 // manette / clavier / souris.
 import { t } from './i18n.js';
-import { $, $$, sfx, reduceMotion, settings, native } from './core.js';
+import { $, $$, sfx, reduceMotion, settings, native, emit } from './core.js';
 import { prioritizeArt } from './cards.js';
 
 export const DIRS = ['up', 'down', 'left', 'right'];
@@ -21,6 +21,7 @@ export const page = id => pages[id];
 export const currentPage = () => pages[state.page];
 
 export function go(id, params = {}, { push = true, scroll = null } = {}) {
+  emit('activity');
   const from = pages[state.page], to = pages[id];
   if (!to) return;
   if (from) {
@@ -81,6 +82,7 @@ export const topLayer = () => state.layers[state.layers.length - 1];
 export function openLayer(layer) {
   layer.returnFocus = focused;
   state.layers.push(layer);
+  emit('activity');
   layer.el.classList.add('open');
   if (layer.scrim && $('#scrim')) $('#scrim').classList.add('show');
   layer.onOpen && layer.onOpen();
@@ -97,6 +99,7 @@ export function closeLayer(layer = topLayer(), result) {
   if (layer.returnFocus && layer.returnFocus.isConnected) setFocus(layer.returnFocus, { scroll: false, sound: false });
   else focusIn(scope());
   layer.onClose && layer.onClose(result);
+  emit('activity');
   renderHints();
 }
 
@@ -334,6 +337,7 @@ export const inputLock = { on: false }; // vrai pendant la vidéo de démarrage
 export const input = { last: 0 };
 export function press(k) {
   input.last = Date.now();
+  emit('activity');
   if (inputLock.on) return;
   const L = topLayer(), P = currentPage();
   const owner = L || P;

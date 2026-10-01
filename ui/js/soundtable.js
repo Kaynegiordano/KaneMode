@@ -17,3 +17,14 @@ export const SOUNDS = {
 };
 // Aucune percussion bruitée ; une octave supérieure presque inaudible apporte un peu de matière.
 export const SOFT = { attack: 0.01, glide: 0, partials: [[1, 1, 1], [2, 0.012, 0.6]], lowpass: 900, echoDelay: 0.035, echoFeedback: 0.1, echoLowpass: 650, echoWet: 0.1 };
+
+// Toutes les variantes restent graves ; le démarrage est défini séparément dans boot.js.
+export function getSoundPalette(profile = 'round') {
+  const pitch = profile === 'retro' ? 0.85 : profile === 'soft' ? 0.72 : 1;
+  const shape = profile === 'retro' ? { attack: 0.006, lowpass: 800, echoWet: 0.04 }
+    : profile === 'soft' ? { attack: 0.016, lowpass: 650, echoWet: 0.08 } : {};
+  return {
+    SOUNDS: Object.fromEntries(Object.entries(SOUNDS).map(([id, sound]) => [id, { ...sound, notes: sound.notes.map(([f, ...rest]) => [f * pitch, ...rest]) }])),
+    SOFT: { ...SOFT, ...shape },
+  };
+}

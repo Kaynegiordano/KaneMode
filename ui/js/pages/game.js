@@ -1,6 +1,7 @@
 // Fiche d'un jeu + actions partagées : lancement, favoris, fond d'écran, lanceurs.
+import { pinItem } from '../personalization-settings.js';
 import { t } from '../i18n.js';
-import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native } from '../core.js';
+import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native, settings } from '../core.js';
 import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh } from '../nav.js';
 import { art, badges } from '../cards.js';
 import { dialog, confirmDialog, openKeyboard } from '../widgets.js';
@@ -62,7 +63,7 @@ function setRunning(id, on) {
   if (running.has(id) === !!on) return;
   on ? running.add(id) : running.delete(id);
   const p = currentPage();
-  if (p && p.id === 'game' && p.params.id === id) refresh();
+  if (p && ((p.id === 'game' && p.params.id === id) || p.id === 'home')) refresh();
 }
 /** Demande à l'app native si le jeu tourne (fiche ouverte, retour sur KaneMode). */
 export function queryGame(g) { if (tracked(g)) native.send('game-query', gameRef(g)); }
@@ -276,6 +277,7 @@ async function options(g) {
     buttons: [
       { label: favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), value: 'fav', icon: 'i-star' },
       { label: t('Collections…'), value: 'collections', icon: 'i-collection' },
+      { label: (settings.homePins || []).some(p => p.type === 'game' && p.id === g.id) ? t('Retirer de l’accueil') : t('Épingler sur l’accueil'), value: 'pin', icon: 'i-home' },
       ...(!g.demo && g.type === 'game' ? [{ label: t('Mode de performance du jeu…'), value: 'mode', icon: 'i-cpu' }] : []),
       ...(!g.demo ? [{ label: t('Visuels (SteamGridDB, image perso)…'), value: 'art', icon: 'i-image' }] : []),
       ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
@@ -287,6 +289,7 @@ async function options(g) {
   });
   if (choice === 'fav') toggleFav(g);
   if (choice === 'collections') collectionsDialog(g);
+  if (choice === 'pin') pinItem('game', g.id);
   if (choice === 'mode') gameModeDialog(g);
   if (choice === 'art') go('artpicker', { id: g.id });
   if (choice === 'uninstall' && (await confirmDialog(t('Désinstaller {name} ?', { name: g.name }), t('Steam va s’ouvrir pour confirmer la désinstallation.'), t('Continuer'), true))) {

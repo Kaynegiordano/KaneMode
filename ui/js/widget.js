@@ -274,6 +274,10 @@ function tiles() {
   }
 
   // Réseau
+  add({ key: 'dolby', cat: 'sound', icon: 'volume', title: 'Dolby Atmos', value: t('Configurer'),
+    sub: t('Son spatial, licence et réglages Dolby'), act: () => toApp('show', { page: 'dolby' }).catch(error => toast(error.message, { error: true })) });
+
+  // Réseau
   for (const r of sys.radios || []) {
     const wifi = r.kind === 'WiFi';
     add({ key: 'radio:' + r.kind, cat: 'network', icon: wifi ? 'wifi' : 'bluetooth', title: wifi ? t('Wi-Fi') : t('Bluetooth'), on: r.on, act: () => send('radio', !r.on, { kind: r.kind }) });

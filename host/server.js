@@ -19,6 +19,7 @@ const oem = require('./lib/oem');
 const gpuctl = require('./lib/gpuctl');
 const dealsLib = require('./lib/deals');
 const gpuLib = require('./lib/gpudrivers');
+const dolbyLib = require('./lib/dolby');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -287,7 +288,7 @@ function publicEntry(g, st, cfg) {
   for (const k of ART_KINDS) {
     const local = str(artOv[k]) || str(g.art && g.art[k]);
     if (local || (steamId && k !== 'icon') || (sgdbOn && !g.demo && !noSgdb(g))) {
-      art[k] = `/art/${encodeURIComponent(g.id)}/${k}` + (artOv[k] ? `?v=${artOv._v || 1}` : local ? `?local=${fileRevision(local)}` : '?r=' + ((st.artRev || {})[g.id] || 1));
+      art[k] = `/art/${encodeURIComponent(g.id)}/${k}` + (artOv[k] ? `?v=${artOv._v || 1}` : local ? `?local=${fileRevision(local)}` : '?r=' + ((st.artRev || {})[g.id] || 1) + (k === 'portrait' && cfg.sgdbStyle ? '&style=' + encodeURIComponent(cfg.sgdbStyle) : ''));
     }
   }
   return {
@@ -312,6 +313,7 @@ function publicEntry(g, st, cfg) {
 // ---------------------------------------------------------------- réglages système, profils d'énergie
 device.setCacheFile(path.join(DATA, 'device.json'));
 const sysctl = syscontrol.create(async () => syscontrol.vendorOf((await device.info()).handheld));
+const dolby = dolbyLib.create({ launch: target => run(target) });
 const PERF_MODES = ['eco', 'balanced', 'performance'];
 // Puissance des profils ASUS en watts, [sur batterie, sur secteur] (valeurs d'Armoury Crate SE). Elle
 // est imposée avec le profil (les trois limites SPL, sPPT et fPPT égales) : sans cela, une puissance
@@ -506,7 +508,11 @@ const KANEMODE_ICON = [path.join(ROOT, 'kanemode.ico'), path.join(ROOT, 'setup',
 const KANEPLAY_COVER = null;
 const kp = { exe: null, entries: [], hosts: [] };
 // Apparence de KaneMode reprise par l'écran de streaming : icône, couleur d'accent, coins, langue
-const engineLook = () => ({ icon: KANEMODE_ICON, accent: config().accent, corners: config().corners, lang: config().lang });
+const engineLook = () => {
+  const cfg = config();
+  return { icon: KANEMODE_ICON, accent: cfg.accent, corners: cfg.corners, lang: cfg.lang,
+    sounds: cfg.sounds, soundTheme: cfg.soundTheme, soundVolume: cfg.soundVolume, soundMoves: cfg.soundMoves };
+};
 // Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
 const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt', 'ja', 'zh'];
 let kpLast = 0;
@@ -552,7 +558,7 @@ async function sgdbSlot(fn) {
 }
 
 async function sgdbAuto(e, kind, cfg) {
-  const base = path.join(ARTCACHE, `sgdb_${safeId(e.id)}_${kind}`);
+  const base = path.join(ARTCACHE, `sgdb_${safeId(e.id)}_${kind}${kind === 'portrait' && cfg.sgdbStyle ? '_' + cfg.sgdbStyle : ''}`);
   const hit = cached(base);
   if (hit) return hit;
   if (recentMiss(base)) return null;
@@ -614,6 +620,7 @@ async function resolveArt(e, kind) {
   const cfg = config();
   const steamId = e.steamAppId || (meta[e.id] || {}).steamId;
   const sgdbOn = cfg.sgdbAuto;
+  if (sgdbOn && kind === 'portrait' && cfg.sgdbStyle) { const f = await sgdbAuto(e, kind, cfg); if (f) return f; }
   if (sgdbOn && (!steamId || !cfg.sgdbPreferSteam)) { const f = await sgdbAuto(e, kind, cfg); if (f) return f; }
   if (steamId && kind !== 'icon') { const f = await steamCdn(steamId, kind); if (f) return f; }
   if (sgdbOn && steamId && cfg.sgdbPreferSteam) return sgdbAuto(e, kind, cfg);
@@ -858,6 +865,17 @@ const localHost = req => /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.ho
 const trusted = req => localHost(req) && req.headers['x-kanemode'] === '1';
 
 const routes = {
+  'GET /api/dolby': async (req, res, q) => json(res, 200, await dolby.state(q.get('refresh') === '1')),
+  'POST /api/dolby': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await dolby.set(b.device, b.mode)); }
+    catch (error) { json(res, 400, { error: error.message }); }
+  },
+  'POST /api/dolby/open': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await dolby.open(b.action)); }
+    catch (error) { json(res, 400, { error: error.message }); }
+  },
   'GET /api/library': (req, res, q) => {
     const st = state(), cfg = config();
     const all = allEntries(q.get('demo') === '1');
@@ -932,8 +950,12 @@ const routes = {
     if (['square', 'soft', 'round'].includes(b.corners)) c.corners = b.corners;
     // Langue de l'interface : reprise par les widgets Game Bar et le moteur de streaming
     if ('lang' in b && LANGS.includes(b.lang)) { c.lang = b.lang; setTimeout(refreshKanePlay, 0); }
+    if (typeof b.sounds === 'boolean') c.sounds = b.sounds;
+    if (typeof b.soundMoves === 'boolean') c.soundMoves = b.soundMoves;
+    if (['round', 'retro', 'soft'].includes(b.soundTheme)) c.soundTheme = b.soundTheme;
+    if (Number.isFinite(b.soundVolume)) c.soundVolume = Math.max(0, Math.min(100, b.soundVolume));
     if ('sgdbPreferSteam' in b) c.sgdbPreferSteam = !!b.sgdbPreferSteam;
-    if ('sgdbStyle' in b) c.sgdbStyle = ['', 'alternate', 'blurred', 'white_logo', 'material', 'no_logo'].includes(b.sgdbStyle) ? b.sgdbStyle : '';
+    if ('sgdbStyle' in b) { c.sgdbStyle = ['', 'alternate', 'blurred', 'white_logo', 'material', 'no_logo'].includes(b.sgdbStyle) ? b.sgdbStyle : ''; version++; }
     if (Array.isArray(b.romRoots)) c.romRoots = [...new Set(b.romRoots.filter(r => str(r) && fs.existsSync(r)))];
     if (b.emulatorPaths && typeof b.emulatorPaths === 'object') {
       for (const [k, v] of Object.entries(b.emulatorPaths)) { if (str(v) && isFile(v)) c.emulatorPaths[k] = v; else delete c.emulatorPaths[k]; }
@@ -986,7 +1008,7 @@ const routes = {
     catch (err) { json(res, 502, { error: err.message }); }
   },
   'GET /api/sgdb/assets': async (req, res, q) => {
-    try { json(res, 200, await sgdb.assets(config().sgdbKey, +q.get('game'), q.get('kind'), { style: q.get('style') || '', firstPage: q.get('first') === '1' })); }
+    try { json(res, 200, await sgdb.assets(config().sgdbKey, +q.get('game'), q.get('kind'), { style: q.get('style') || (q.get('kind') === 'portrait' ? config().sgdbStyle : ''), firstPage: q.get('first') === '1' })); }
     catch (err) { json(res, 502, { error: err.message }); }
   },
   'POST /api/sgdb/match': async (req, res) => {

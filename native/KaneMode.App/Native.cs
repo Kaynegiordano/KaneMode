@@ -145,6 +145,38 @@ public static class Native
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MONITORINFOEX
+    {
+        public int Size; public RECT Monitor, Work; public uint Flags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Device;
+    }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct DISPLAY_DEVICE
+    {
+        public int Size;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceString;
+        public uint StateFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceID;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceKey;
+    }
+    [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW", CharSet = CharSet.Unicode)]
+    private static extern bool GetMonitorInfoEx(IntPtr monitor, ref MONITORINFOEX info);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool EnumDisplayDevices(string device, uint index, ref DISPLAY_DEVICE display, uint flags);
+
+    /// <summary>Identité de l'écran de la fenêtre : stable lors d'un changement de résolution.</summary>
+    public static (string Id, string Name) DisplayIdentity(IntPtr hwnd)
+    {
+        var info = new MONITORINFOEX { Size = Marshal.SizeOf<MONITORINFOEX>() };
+        if (!GetMonitorInfoEx(MonitorFromWindow(hwnd, 2), ref info)) return ("", "");
+        var device = new DISPLAY_DEVICE { Size = Marshal.SizeOf<DISPLAY_DEVICE>() };
+        if (EnumDisplayDevices(info.Device, 0, ref device, 1 /* EDD_GET_DEVICE_INTERFACE_NAME */))
+            return (string.IsNullOrEmpty(device.DeviceID) ? info.Device : device.DeviceID, device.DeviceString);
+        return (info.Device, info.Device);
+    }
+
     /// <summary>
     /// Étend la fenêtre à tout son écran, à sa taille actuelle, sans l'activer ni changer son rang :
     /// après un changement de résolution, une fenêtre sans bordure agrandie garde sinon l'ancienne taille.

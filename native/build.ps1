@@ -88,6 +88,11 @@ Step 'Réglages NVIDIA et Intel (native\KaneMode.Gpu)'
 foreach ($f in 'kanemode-nvidia.exe', 'kanemode-intel.exe', 'intel-igcl-license.txt') {
     Copy-Item (Join-Path $native "KaneMode.Gpu\obj\gpu\$f") (Join-Path $app 'tools')
 }
+# Son spatial : outil autonome avec toutes les notices et l'aide de sa distribution officielle.
+Step 'Commandes audio spatiales'
+& (Join-Path $native 'KaneMode.Audio\fetch-tool.ps1')
+if (-not $?) { throw 'Échec de la préparation des commandes audio' }
+Copy-Item (Join-Path $native 'KaneMode.Audio\obj\soundvolumeview') (Join-Path $app 'tools\soundvolumeview') -Recurse
 # Moteur de streaming (KanePlay), invisible : KaneMode affiche lui-même les PC, l'appairage et les jeux
 if (-not $NoKanePlay) {
     $engineOut = Join-Path $root 'engine\out'

@@ -8,6 +8,7 @@ import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
 import { renderQam, prefetchQam, startLive, stopLive, qamShortcuts } from './qam.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
+import './personalization-runtime.js';
 import './pages/home.js';
 import './pages/library.js';
 import './pages/search.js';
@@ -65,6 +66,11 @@ native.on(m => {
     overlay.active = false;
     while (topLayer()) closeLayer();
     const target = m.page || 'home';
+    if (target === 'dolby') {
+      resetHistory(); state.history.push({ id: 'home', params: {} });
+      go('settings', { section: 'dolby' }, { push: false });
+      return;
+    }
     if (currentPage() && currentPage().id !== target) {
       resetHistory();
       if (target !== 'home') state.history.push({ id: 'home', params: {} });
@@ -145,6 +151,7 @@ Object.assign(qamShortcuts, {
     ['i-moon', t('Veille'), () => sleepNow(), 'sc-sleep'],
     ['i-power', t('Alimentation'), () => actions['power-open'](), 'sc-power'],
     ['i-gamepad', t('Streaming local'), () => openStreaming(), 'sc-kaneplay'],
+    ['i-volume', 'Dolby Atmos', () => go('settings', { section: 'dolby' }), 'sc-dolby'],
     // Manette qui ne répond plus (retour d'une autre application) : déconnexion puis reconnexion
     ['i-refresh', t('Reconnecter les manettes'), () => { native.send('pads-reconnect'); toast(t('Manettes reconnectées')); }, 'sc-pads'],
   ],

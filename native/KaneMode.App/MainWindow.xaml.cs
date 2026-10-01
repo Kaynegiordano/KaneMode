@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
     private bool _ready;
+    private string _displayId = "";
     private bool _failed;
 
     private static readonly string[] Args = Environment.GetCommandLineArgs();
@@ -76,6 +77,7 @@ public partial class MainWindow : Window
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         // Résolution ou mise à l'échelle changée (widget Game Bar, Paramètres de Windows)
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        LocationChanged += (_, _) => PostDisplayIdentity();
         PreviewKeyDown += OnKeyDown;
     }
 
@@ -546,7 +548,6 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDisplayChanged(object? sender, EventArgs e)
     {
-        if (Args.Contains("--windowed")) return;
         Dispatcher.BeginInvoke(async () =>
         {
             foreach (int delay in new[] { 200, 1200, 3000 })
@@ -554,9 +555,19 @@ public partial class MainWindow : Window
                 await Task.Delay(delay);
                 if (WindowState == WindowState.Minimized) continue;
                 var hwnd = new WindowInteropHelper(this).Handle;
-                if (Native.FillMonitor(hwnd)) Log.Write("Affichage modifié : fenêtre remise à la taille de l'écran");
+                if (!Args.Contains("--windowed") && Native.FillMonitor(hwnd)) Log.Write("Affichage modifié : fenêtre remise à la taille de l'écran");
+                PostDisplayIdentity();
             }
         });
+    }
+
+    private void PostDisplayIdentity(bool force = false)
+    {
+        if (!_ready) return;
+        var display = Native.DisplayIdentity(new WindowInteropHelper(this).Handle);
+        if (string.IsNullOrEmpty(display.Id) || (!force && display.Id == _displayId)) return;
+        _displayId = display.Id;
+        Post(new { type = "display", id = display.Id, name = display.Name });
     }
 
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
@@ -664,6 +675,7 @@ public partial class MainWindow : Window
                     if (line.Length > 0) Log.Write("[interface] " + (line.Length > 300 ? line[..300] : line));
                     break;
                 case "hello":
+                    PostDisplayIdentity(force: true);
                     Post(new { type = "native", version = typeof(App).Assembly.GetName().Version?.ToString(3), data = Paths.Data });
                     if (_pads.MouseMode) Post(new { type = "mouse-mode", on = true });
                     break;

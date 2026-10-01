@@ -1,6 +1,6 @@
 // Paramètres, organisés comme SteamOS : catégories à gauche, réglages à droite.
 import { t, tn, tx, locale, LANGS, lang } from '../i18n.js';
-import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy, fmt, native, mergeOrder } from '../core.js';
+import { el, esc, icon, api, lib, settings, saveSettings, effectiveSettings, setAppearance, sourceOf, toast, busy, fmt, native, mergeOrder } from '../core.js';
 import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints, refresh } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog, dialog } from '../widgets.js';
 import { pickFile } from './add.js';
@@ -9,6 +9,8 @@ import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
 import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
 import { HOME_ROWS } from './home.js';
+import { renderPersonalization } from '../personalization-settings.js';
+import { renderDolby } from '../dolby-settings.js';
 
 // Thèmes prêts : plusieurs réglages d'Apparence d'un coup (chacun reste modifiable ensuite)
 const THEMES = [
@@ -22,7 +24,7 @@ const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
 const SECTIONS = [
   ['library', 'i-library', t('Bibliothèque')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming local')],
-  ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
+  ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
   ['qam', 'i-grid', t('Accès rapide')], ['access', 'i-info', t('Accessibilité')], ['power', 'i-moon', t('Veille')], ['energy', 'i-power', t('Énergie')],
   ['device', 'i-battery', t('Appareil et pilotes')],
   ['storage', 'i-drive', t('Stockage')], ['xbox', 'i-desktop', t('Mode Xbox')], ['system', 'i-cpu', t('Système')],
@@ -54,7 +56,7 @@ function infoRow(s, title, desc, control) {
   s.append(r);
   return r;
 }
-const toggle = (s, key, title, desc) => s.append(switchRow({ title, desc, on: settings[key], key, onToggle: v => { settings[key] = v; saveSettings(); } }));
+const toggle = (s, key, title, desc) => s.append(switchRow({ title, desc, on: effectiveSettings()[key], key, onToggle: v => setAppearance(key, v) }));
 
 /**
  * Liste ordonnable (sections de l'accès rapide, rangées de l'accueil) : ▲ ▼ pour déplacer,
@@ -102,7 +104,7 @@ function orderList(s, items, orderKey, hiddenKey, prefix) {
   };
   draw();
 }
-const scaleSeg = key => segmented([90, 100, 110, 125].map(v => ({ value: v, label: v + ' %' })), settings.uiScale, v => { settings.uiScale = +v; saveSettings(); }, key);
+const scaleSeg = key => segmented([90, 100, 110, 125, 150].map(v => ({ value: v, label: v + ' %' })), effectiveSettings().uiScale, v => setAppearance('uiScale', +v), key);
 
 let page;
 const rerender = focus => page.show(page.section, focus);
@@ -383,6 +385,8 @@ function buttonsBlock(s) {
 }
 
 const BUILDERS = {
+  dolby(s) { return renderDolby(s, { h2, infoRow, actionRow, rerender }); },
+  personal(s) { return renderPersonalization(s, { h2, infoRow, actionRow, rerender, orderList, homeRows: HOME_ROWS }); },
   async library(s) {
     h2(s, 'i-library', t('Bibliothèque'));
     actionRow(s, 'i-refresh', t('Actualiser la bibliothèque'), t('Détecte les jeux de toutes les boutiques et les ROMs{a}', { a: lib.generated ? t(
@@ -514,7 +518,7 @@ const BUILDERS = {
       swatches.append(nav(d, () => { settings.accent = c; saveSettings(); swatches.querySelectorAll('.swatch').forEach(x => x.classList.toggle('active', x === d)); }, 'accent:' + c));
     }
     sw.append(swatches);
-    const pick = (title, desc, key, options) => infoRow(s, title, desc, segmented(options.map(([value, label]) => ({ value, label })), settings[key], v => { settings[key] = typeof settings[key] === 'boolean' ? v === 'true' : v; saveSettings(); }, key));
+    const pick = (title, desc, key, options) => infoRow(s, title, desc, segmented(options.map(([value, label]) => ({ value, label })), effectiveSettings()[key], v => setAppearance(key, typeof settings[key] === 'boolean' ? v === 'true' : v), key));
     pick(t('Fond d’écran'), t('Derrière les menus'), 'background', [['art', t('Jaquette floue')], ['gradient', t('Dégradé animé')], ['dark', t('Uni')]]);
     infoRow(s, t('Taille de l’interface'), t('Pour un grand écran vu de loin, ou l’écran d’une console portable'), scaleSeg('scale'));
     pick(t('Taille des jaquettes'), t('Rangées de l’accueil et de l’émulation'), 'cardSize', [['s', t('Petite')], ['m', t('Moyenne')], ['l', t('Grande')]]);
@@ -533,7 +537,7 @@ const BUILDERS = {
     toggle(s, 'batteryPct', t('Pourcentage de batterie'), t('À côté de l’icône, sur les consoles et PC portables'));
 
     h2(s, 'i-home', t('Accueil'));
-    s.append(el('div', 'notice', t('Les <b>jeux récents</b> restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.')));
+    s.append(el('div', 'notice', t('Choisissez l’ordre et l’affichage des rangées de votre accueil.')));
     orderList(s, HOME_ROWS, 'homeRows', 'homeHidden', 'home');
     toggle(s, 'sounds', t('Sons de l’interface'), t('Petits sons de navigation et de validation'));
     toggle(s, 'notifications', t('Notifications'), t('Nouveaux jeux détectés, ajouts…'));

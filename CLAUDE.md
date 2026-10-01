@@ -4,6 +4,19 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.3.0 : personnalisation et Dolby
+
+- Six options dans Paramètres → Personnalisation : packs d’ambiance avec aperçu réversible, jeux/collections épinglés et reprise sur l’accueil, styles de jaquettes SteamGridDB, profils par écran, timbres et volume d’interface, mode immersif au repos.
+- Profils : réglages personnels préservés ; l’identifiant du moniteur Windows permet d’associer Console portable ou TV et de retrouver le profil à chaque écran. Aucun classement automatique d’un écran uniquement d’après sa résolution.
+- Sons : trois banques partagées avec le streaming, réglages transmis à une instance déjà ouverte ; volume indépendant de Windows/du flux du jeu. Son de démarrage conservé.
+- Nouveaux textes traduits dans les sept langues de l’interface ; les traductions manquantes de versions antérieures ne sont pas modifiées.
+- Vérifier : node --test tools/verify-optimizations.js tools/verify-personalization.js ; compiler l’app native et le moteur.
+- Dolby : `host/dolby.ps1` lit les sorties, formats disponibles, format sélectionné et format actif via WinRT officiel ; l’état de licence reste inconnu et l’achat/restauration passe par Dolby Access. `host/lib/dolby.js` sérialise les changements, valide les sorties et formats, relit puis restaure le précédent en cas de refus. API `/api/dolby` et `/api/dolby/open`, protégées comme les autres routes.
+- Paramètres → Dolby Atmos, raccourci de l’accès rapide et tuile Son du widget Game Bar. Profils et égaliseur restent dans Dolby Access ; aucun moteur ni fichier de licence Dolby embarqué.
+- `native/KaneMode.Audio/fetch-tool.ps1` prépare SoundVolumeView 2.53 x64, archive et exécutable fixés par SHA-256. Distribution complète et inchangée embarquée dans `app/tools/soundvolumeview`, avec sa licence freeware propre (KaneMode gratuit).
+- Test réel : Windows Sonic puis Dolby Atmos sélectionnés et relus sur une sortie virtuelle inutilisée, toutes les sorties restaurées. Ne pas modifier la sortie principale pour les tests. Les achats et profils Dolby Access ne sont pas testés ici (application absente).
+- Vérifier aussi `node --test tools/verify-dolby.js`. VERSION : 3.3.0 ; notes dans `docs/releases/3.3.0.md`.
+
 ## Version 3.2.0
 
 - Demande actuelle : sons d'interface graves et feutrés (147–440 Hz, aigus filtrés à 900 Hz, aucun clic bruité ; démarrage intact), taille réelle des mises à jour, retrait des accès Bureau Windows, fermeture complète depuis Alimentation, fluidité et chargements plus rapides.

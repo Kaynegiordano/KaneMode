@@ -220,14 +220,16 @@
  ],
  "{n} jeu": [
   "ui/js/i18n.js",
-  "ui/js/pages/emulation.js"
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/home.js"
  ],
  "{n} jeu trouvé": [
   "ui/js/pages/emulation.js"
  ],
  "{n} jeux": [
   "ui/js/i18n.js",
-  "ui/js/pages/emulation.js"
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/home.js"
  ],
  "{n} jeux trouvés": [
   "ui/js/pages/emulation.js"
@@ -505,8 +507,17 @@
  "✓ Vérifié": [
   "ui/js/widget.js"
  ],
+ "10 secondes": [
+  "ui/js/personalization-settings.js"
+ ],
+ "3 secondes": [
+  "ui/js/personalization-settings.js"
+ ],
  "32 caractères": [
   "ui/js/pages/settings.js"
+ ],
+ "6 secondes": [
+  "ui/js/personalization-settings.js"
  ],
  "À côté de l’icône, sur les consoles et PC portables": [
   "ui/js/pages/settings.js"
@@ -528,12 +539,27 @@
   "ui/index.html",
   "ui/js/pages/settings.js"
  ],
+ "Accueil personnel": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Achat et licence existante vérifiés dans Dolby Access avec votre compte Microsoft": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Acheter ou activer Atmos": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Action Dolby inconnue": [
+  "host/lib/dolby.js"
+ ],
  "activé": [
   "ui/js/widget.js"
  ],
  "Activé": [
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
+ ],
+ "Actualiser": [
+  "ui/js/dolby-settings.js"
  ],
  "Actualiser la bibliothèque": [
   "ui/js/pages/settings.js"
@@ -559,6 +585,9 @@
  "àé": [
   "ui/js/widgets.js"
  ],
+ "Aérée": [
+  "ui/js/personalization-settings.js"
+ ],
  "Affichée": [
   "ui/js/pages/settings.js"
  ],
@@ -567,6 +596,9 @@
  ],
  "Afficher les secondes": [
   "ui/js/pages/settings.js"
+ ],
+ "Affiches alternatives": [
+  "ui/js/personalization-settings.js"
  ],
  "Ajout {a}/{length}…": [
   "ui/js/pages/add.js"
@@ -598,6 +630,9 @@
  "Ajouter un jeu ou une appli": [
   "ui/index.html"
  ],
+ "Ajouter une épingle": [
+  "ui/js/personalization-settings.js"
+ ],
  "Ajouts perso": [
   "ui/js/core.js",
   "ui/js/pages/settings.js"
@@ -616,6 +651,9 @@
  "Amazon": [
   "ui/js/core.js"
  ],
+ "Ambiance sonore": [
+  "ui/js/personalization-settings.js"
+ ],
  "AMD Fluid Motion Frames non pris en charge": [
   "native/KaneMode.Amd/Amd.cpp"
  ],
@@ -628,11 +666,16 @@
  "Animation de réveil": [
   "ui/js/pages/settings.js"
  ],
+ "Animations": [
+  "ui/js/personalization-settings.js"
+ ],
  "Annuler": [
   "ui/index.html",
+  "ui/js/dolby-settings.js",
   "ui/js/main.js",
   "ui/js/pages/add.js",
   "ui/js/pages/artpicker.js",
+  "ui/js/personalization-settings.js",
   "ui/js/widgets.js"
  ],
  "Annuler les modifications": [
@@ -647,6 +690,9 @@
  ],
  "Aperçu": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Aperçu des ambiances": [
+  "ui/js/personalization-settings.js"
  ],
  "App installée": [
   "ui/js/pages/settings.js"
@@ -680,7 +726,8 @@
   "ui/js/pages/game.js"
  ],
  "Appliquer": [
-  "ui/js/pages/artpicker.js"
+  "ui/js/pages/artpicker.js",
+  "ui/js/personalization-settings.js"
  ],
  "Appliquer maintenant": [
   "ui/js/pages/settings.js"
@@ -725,6 +772,9 @@
  "Associé à « {name} »": [
   "ui/js/pages/artpicker.js"
  ],
+ "Associer cet écran": [
+  "ui/js/personalization-settings.js"
+ ],
  "ASUS : HTTP {a}": [
   "host/lib/oem.js"
  ],
@@ -740,6 +790,9 @@
  ],
  "Aucun (mode en cours)": [
   "ui/js/pages/game.js"
+ ],
+ "Aucun élément à épingler": [
+  "ui/js/personalization-settings.js"
  ],
  "Aucun émulateur trouvé pour {a}": [
   "host/server.js"
@@ -834,8 +887,14 @@
  "Automatique (langue de Windows)": [
   "ui/js/pages/settings.js"
  ],
+ "Automatique par écran": [
+  "ui/js/personalization-settings.js"
+ ],
  "Autre": [
   "ui/js/widget.js"
+ ],
+ "Autre format spatial": [
+  "ui/js/dolby-settings.js"
  ],
  "autre réglage": [
   "ui/js/widget.js"
@@ -971,6 +1030,9 @@
  "Carte introuvable dans le sélecteur de NVIDIA": [
   "host/lib/gpudrivers.js"
  ],
+ "Ce format spatial est indisponible sur cette sortie": [
+  "host/lib/dolby.js"
+ ],
  "Ce PC ne propose pas de veille (voir les options d’alimentation).": [
   "ui/js/pages/settings.js"
  ],
@@ -979,6 +1041,15 @@
  ],
  "Cet appareil": [
   "ui/js/pages/settings.js"
+ ],
+ "Changer le format spatial": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Chaque changement est vérifié dans Windows. Le format sélectionné et le format actif peuvent différer selon la sortie et sa configuration.": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Chaque écran associé retrouve son profil automatiquement": [
+  "ui/js/personalization-settings.js"
  ],
  "Charge du processeur": [
   "ui/js/qam.js"
@@ -996,6 +1067,9 @@
  ],
  "Choisir ce dossier": [
   "ui/js/pages/add.js"
+ ],
+ "Choisir la sortie audio et vérifier sa configuration": [
+  "ui/js/dolby-settings.js"
  ],
  "Choisir la vidéo de démarrage": [
   "ui/js/pages/settings.js"
@@ -1015,6 +1089,12 @@
  "Choisir une image sur le disque…": [
   "ui/js/pages/add.js"
  ],
+ "Choisir une jaquette": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Choisissez l’ordre et l’affichage des rangées de votre accueil.": [
+  "ui/js/pages/settings.js"
+ ],
  "Choisissez la vidéo plus bas (« Vidéo perso… »)": [
   "ui/js/pages/settings.js"
  ],
@@ -1032,6 +1112,9 @@
  ],
  "Choix du jeu": [
   "ui/js/widget.js"
+ ],
+ "Choix du profil": [
+  "ui/js/personalization-settings.js"
  ],
  "Cible : {a} {b}": [
   "ui/js/pages/game.js"
@@ -1051,6 +1134,9 @@
  "Classique": [
   "ui/js/pages/settings.js"
  ],
+ "Classiques": [
+  "ui/js/personalization-settings.js"
+ ],
  "Clé API personnelle (facultative)": [
   "ui/js/pages/settings.js"
  ],
@@ -1065,6 +1151,9 @@
  ],
  "Coins": [
   "ui/js/pages/settings.js"
+ ],
+ "Collection": [
+  "ui/js/personalization-settings.js"
  ],
  "Collection « {trim} » créée": [
   "ui/js/pages/game.js"
@@ -1083,6 +1172,9 @@
  ],
  "Collections…": [
   "ui/js/pages/game.js"
+ ],
+ "Commande de son spatial indisponible": [
+  "host/lib/dolby.js"
  ],
  "Commande incomplète": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -1104,7 +1196,11 @@
   "ui/js/pages/settings.js"
  ],
  "Compacte": [
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/personalization-settings.js"
+ ],
+ "Comparez les couleurs, fonds, sons et animations avant d’appliquer": [
+  "ui/js/personalization-settings.js"
  ],
  "Compatibilité partielle": [
   "ui/js/pages/game.js"
@@ -1124,9 +1220,15 @@
  "Complète automatiquement les jaquettes, fonds et logos manquants": [
   "ui/js/pages/settings.js"
  ],
+ "Configurer": [
+  "ui/js/widget.js"
+ ],
  "Confirmer": [
   "ui/js/widget.js",
   "ui/js/widgets.js"
+ ],
+ "Confortable": [
+  "ui/js/personalization-settings.js"
  ],
  "Connecté par câble": [
   "ui/js/main.js"
@@ -1139,6 +1241,12 @@
  ],
  "Console": [
   "ui/js/pages/game.js"
+ ],
+ "Console portable": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Console rétro": [
+  "ui/js/personalization-settings.js"
  ],
  "Consoles portables et PC portables · jamais pendant un jeu": [
   "ui/js/pages/settings.js"
@@ -1189,8 +1297,14 @@
  "Défilement automatique": [
   "ui/js/pages/settings.js"
  ],
+ "Dégradé ambré, coins carrés, sons graves et animations rapides": [
+  "ui/js/personalization-settings.js"
+ ],
  "Dégradé animé": [
   "ui/js/pages/settings.js"
+ ],
+ "Délai avant masquage": [
+  "ui/js/personalization-settings.js"
  ],
  "Démarrage": [
   "ui/js/pages/settings.js"
@@ -1217,6 +1331,12 @@
  "Démo désactivée": [
   "ui/js/pages/settings.js"
  ],
+ "Densité de l’accueil": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Déplacement, validation, retour et notification au volume choisi": [
+  "ui/js/personalization-settings.js"
+ ],
  "Dernier scan : {toLocaleString}": [
   "ui/js/pages/emulation.js"
  ],
@@ -1225,6 +1345,9 @@
  ],
  "Dernière installation réussie": [
   "ui/js/pages/settings.js"
+ ],
+ "Dernière partie": [
+  "ui/js/pages/home.js"
  ],
  "Dernière session": [
   "ui/js/pages/game.js",
@@ -1243,6 +1366,7 @@
   "ui/js/widget.js"
  ],
  "Désactivé": [
+  "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
@@ -1264,8 +1388,14 @@
  "Développeur": [
   "ui/js/pages/game.js"
  ],
+ "Discrètes": [
+  "ui/js/personalization-settings.js"
+ ],
  "Disney+": [
   "ui/js/pages/add.js"
+ ],
+ "Dolby nécessite une licence valide et une sortie compatible": [
+  "ui/js/dolby-settings.js"
  ],
  "Données": [
   "ui/js/pages/settings.js"
@@ -1305,8 +1435,20 @@
   "ui/js/pages/game.js",
   "ui/js/qam.js"
  ],
+ "Écouter": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Écouter / appliquer": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Écouter les sons": [
+  "ui/js/personalization-settings.js"
+ ],
  "Écran": [
   "ui/js/widget.js"
+ ],
+ "Écran actuel": [
+  "ui/js/personalization-settings.js"
  ],
  "Éditeur": [
   "ui/js/pages/game.js"
@@ -1405,6 +1547,19 @@
   "ui/js/core.js",
   "ui/js/pages/settings.js"
  ],
+ "Épingle retirée de l’accueil": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Épinglé sur l’accueil": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Épingler sur l’accueil": [
+  "ui/js/pages/game.js",
+  "ui/js/personalization-settings.js"
+ ],
+ "Épinglés": [
+  "ui/js/pages/home.js"
+ ],
  "Équilibré": [
   "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
@@ -1416,6 +1571,12 @@
  "Espace": [
   "ui/js/pages/search.js",
   "ui/js/widgets.js"
+ ],
+ "Espacement entre les rangées et les jaquettes": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Essai, achat ou récupération de votre licence dans l’application officielle": [
+  "ui/js/dolby-settings.js"
  ],
  "État": [
   "ui/js/pages/game.js"
@@ -1438,6 +1599,7 @@
   "ui/js/pages/game.js"
  ],
  "Favoris": [
+  "ui/js/pages/home.js",
   "ui/js/pages/library.js"
  ],
  "Ferme la Game Bar (dans la Game Bar seulement)": [
@@ -1458,6 +1620,9 @@
  ],
  "Fermeture forcée": [
   "ui/js/widget.js"
+ ],
+ "Feutré": [
+  "ui/js/personalization-settings.js"
  ],
  "Fichiers locaux": [
   "ui/js/pages/game.js"
@@ -1492,6 +1657,12 @@
  "Fond d’écran": [
   "ui/js/pages/settings.js"
  ],
+ "Fond illustré, violet doux, sons feutrés et animations discrètes": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Fond uni, tons clairs, sons ronds et animations discrètes": [
+  "ui/js/personalization-settings.js"
+ ],
  "Forcée": [
   "ui/js/widget.js"
  ],
@@ -1503,6 +1674,12 @@
  ],
  "Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.": [
   "ui/js/pages/game.js"
+ ],
+ "Format spatial inconnu": [
+  "host/lib/dolby.js"
+ ],
+ "Format spatial vérifié dans Windows": [
+  "ui/js/dolby-settings.js"
  ],
  "Fréquence": [
   "ui/js/widget.js"
@@ -1540,6 +1717,9 @@
  ],
  "Grande": [
   "ui/js/pages/settings.js"
+ ],
+ "Grande tuile de reprise": [
+  "ui/js/personalization-settings.js"
  ],
  "Graphismes": [
   "ui/js/widget.js"
@@ -1587,6 +1767,9 @@
  "Il y a {diff} jours": [
   "ui/js/core.js"
  ],
+ "Illustrations seules": [
+  "ui/js/personalization-settings.js"
+ ],
  "Image de fond": [
   "ui/js/pages/add.js"
  ],
@@ -1626,6 +1809,9 @@
  "Inchangé": [
   "ui/js/pages/settings.js"
  ],
+ "Indépendants du son de démarrage": [
+  "ui/js/personalization-settings.js"
+ ],
  "Indications des boutons · compacte : plus de place pour l’interface": [
   "ui/js/pages/settings.js"
  ],
@@ -1654,6 +1840,9 @@
  "Installation lancée · acceptez la demande de Windows": [
   "ui/js/pages/settings.js"
  ],
+ "Installation officielle depuis le Microsoft Store": [
+  "ui/js/dolby-settings.js"
+ ],
  "Installé": [
   "ui/js/pages/settings.js"
  ],
@@ -1672,6 +1861,9 @@
  "installé : {installed}": [
   "ui/js/pages/settings.js"
  ],
+ "Installé · version {a}": [
+  "ui/js/dolby-settings.js"
+ ],
  "Installer": [
   "ui/js/pages/settings.js"
  ],
@@ -1680,6 +1872,9 @@
  ],
  "Installer {a}": [
   "ui/js/pages/settings.js"
+ ],
+ "Installer Dolby Access": [
+  "ui/js/dolby-settings.js"
  ],
  "Installer la mise à jour": [
   "ui/js/pages/settings.js"
@@ -1733,6 +1928,9 @@
  "Jaquette floue": [
   "ui/js/pages/settings.js"
  ],
+ "Jaquettes harmonisées": [
+  "ui/js/personalization-settings.js"
+ ],
  "Jaquettes, boutons et panneaux": [
   "ui/js/pages/settings.js"
  ],
@@ -1745,16 +1943,23 @@
  ],
  "Jeu": [
   "ui/js/pages/add.js",
+  "ui/js/personalization-settings.js",
   "ui/js/widget.js"
  ],
  "Jeu inconnu": [
   "host/server.js"
+ ],
+ "Jeu, musique, cinéma et profils personnalisés dans Dolby Access": [
+  "ui/js/dolby-settings.js"
  ],
  "Jeux": [
   "ui/js/pages/library.js"
  ],
  "Jeux de vos PC": [
   "ui/js/streamcover.js"
+ ],
+ "Jeux et collections affichés dans l’ordre de votre choix": [
+  "ui/js/personalization-settings.js"
  ],
  "Jeux gratuits": [
   "ui/js/pages/settings.js"
@@ -1776,6 +1981,9 @@
  ],
  "Joué avec le logo, qui apparaît pile sur son éclat, façon console de salon": [
   "ui/js/pages/settings.js"
+ ],
+ "Jouer": [
+  "ui/js/pages/home.js"
  ],
  "Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran": [
   "ui/js/pages/settings.js"
@@ -1801,6 +2009,9 @@
  ],
  "KaneMode va se fermer pendant l’installation, puis se relancer. Les jeux en cours ne sont pas fermés.": [
   "ui/js/pages/settings.js"
+ ],
+ "L’accueil peut contenir 32 épingles au maximum": [
+  "ui/js/personalization-settings.js"
  ],
  "L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1": [
   "ui/js/pages/settings.js"
@@ -1901,10 +2112,10 @@
  "Lecture des réglages…": [
   "ui/js/widget.js"
  ],
- "Legion Go": [
-  "ui/js/pages/settings.js"
+ "Lecture des sorties audio trop longue": [
+  "host/dolby.ps1"
  ],
- "Les <b>jeux récents</b> restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.": [
+ "Legion Go": [
   "ui/js/pages/settings.js"
  ],
  "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
@@ -1913,11 +2124,20 @@
  "Les jeux de vos PC se choisissent dans le streaming local, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming local, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
+ "Les menus, dialogues et réglages restent visibles": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Les réglages d’accessibilité restent prioritaires": [
+  "ui/js/personalization-settings.js"
+ ],
  "Les visuels déjà choisis sont conservés.": [
   "ui/js/pages/settings.js"
  ],
  "Les visuels posés dans Steam par SGDBoop ou Steam ROM Manager (dossier <code>grid</code>) sont repris automatiquement.": [
   "ui/js/pages/settings.js"
+ ],
+ "Licence Dolby": [
+  "ui/js/dolby-settings.js"
  ],
  "Lien": [
   "ui/js/pages/add.js"
@@ -2025,6 +2245,9 @@
  "Masquer de la bibliothèque": [
   "ui/js/pages/game.js"
  ],
+ "Masquer les indications au repos": [
+  "ui/js/personalization-settings.js"
+ ],
  "Masqués": [
   "ui/js/pages/library.js"
  ],
@@ -2037,6 +2260,9 @@
  ],
  "Mémoire": [
   "ui/js/pages/settings.js"
+ ],
+ "Mémoriser Console portable ou TV pour cet écran": [
+  "ui/js/personalization-settings.js"
  ],
  "Menu": [
   "ui/js/nav.js",
@@ -2128,6 +2354,9 @@
  "Mode faible latence non pris en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
  ],
+ "Mode immersif": [
+  "ui/js/personalization-settings.js"
+ ],
  "Mode inconnu": [
   "host/server.js",
   "host/syscontrol.ps1"
@@ -2192,6 +2421,9 @@
  "Nature": [
   "ui/js/pages/settings.js"
  ],
+ "Ne modifie pas le volume de Windows ni celui des jeux": [
+  "ui/js/personalization-settings.js"
+ ],
  "Néon": [
   "ui/js/pages/settings.js"
  ],
@@ -2227,6 +2459,9 @@
  "Nom de la nouvelle collection": [
   "ui/js/pages/game.js"
  ],
+ "Nom du jeu · vide pour les favoris et jeux récents": [
+  "ui/js/personalization-settings.js"
+ ],
  "Nom et cible requis": [
   "host/server.js"
  ],
@@ -2243,6 +2478,7 @@
   "ui/js/pages/settings.js"
  ],
  "Non installé": [
+  "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js"
  ],
  "Non installés": [
@@ -2275,6 +2511,9 @@
  ],
  "Nouvelle collection…": [
   "ui/js/pages/game.js"
+ ],
+ "Nuit": [
+  "ui/js/personalization-settings.js"
  ],
  "NVIDIA, AMD et Intel · vérifié chaque jour automatiquement": [
   "ui/js/pages/settings.js"
@@ -2327,7 +2566,14 @@
  "Ouverture du dossier…": [
   "ui/js/pages/game.js"
  ],
+ "Ouverture impossible": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Ouverture indisponible": [
+  "host/lib/dolby.js"
+ ],
  "Ouverture…": [
+  "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js"
  ],
  "Ouvrir": [
@@ -2342,6 +2588,9 @@
  "Ouvrir {name}": [
   "ui/js/pages/game.js"
  ],
+ "Ouvrir la bibliothèque, puis Visuels sur la fiche du jeu": [
+  "ui/js/personalization-settings.js"
+ ],
  "Ouvrir la page de téléchargement": [
   "ui/js/pages/settings.js"
  ],
@@ -2353,6 +2602,9 @@
  ],
  "Ouvrir Windows Update": [
   "ui/js/pages/settings.js"
+ ],
+ "Packs d’ambiance": [
+  "ui/js/personalization-settings.js"
  ],
  "Page du magasin": [
   "ui/js/pages/game.js"
@@ -2380,6 +2632,9 @@
  ],
  "Parcourir les fichiers": [
   "ui/js/pages/add.js"
+ ],
+ "Partie en cours": [
+  "ui/js/pages/home.js"
  ],
  "Pas d'écran HDR": [
   "host/syscontrol.ps1"
@@ -2435,6 +2690,9 @@
  "Perso": [
   "ui/js/core.js"
  ],
+ "Personnalisation": [
+  "ui/js/pages/settings.js"
+ ],
  "Personnalisé": [
   "ui/js/monitor.js",
   "ui/js/pages/settings.js",
@@ -2451,6 +2709,9 @@
  ],
  "Personnalisés · SteamGridDB ou image perso": [
   "ui/js/pages/game.js"
+ ],
+ "Personnel": [
+  "ui/js/personalization-settings.js"
  ],
  "Petite": [
   "ui/js/pages/settings.js"
@@ -2491,6 +2752,9 @@
  "Précédente / suivante": [
   "ui/js/pages/media.js"
  ],
+ "Préférence de jaquettes enregistrée": [
+  "ui/js/personalization-settings.js"
+ ],
  "Préférer les visuels officiels Steam": [
   "ui/js/pages/settings.js"
  ],
@@ -2526,6 +2790,9 @@
  "Profil {a}{b}": [
   "ui/js/qam.js"
  ],
+ "Profil actif": [
+  "ui/js/personalization-settings.js"
+ ],
  "Profil console": [
   "ui/js/widget.js"
  ],
@@ -2549,6 +2816,12 @@
  ],
  "Profils automatiques": [
   "ui/js/pages/settings.js"
+ ],
+ "Profils d’interface": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Profils et égaliseur Dolby": [
+  "ui/js/dolby-settings.js"
  ],
  "Programme": [
   "ui/js/pages/add.js"
@@ -2642,6 +2915,9 @@
  "Rangez vos jeux dans un sous-dossier par console, comme dans EmulationStation-DE ou RetroBat : <code>D:\\ROMs\\snes</code>, <code>D:\\ROMs\\psx</code>, <code>D:\\ROMs\\gc</code>… Vous pouvez aussi choisir directement un dossier de console.": [
   "ui/js/pages/emulation.js"
  ],
+ "Rapides": [
+  "ui/js/personalization-settings.js"
+ ],
  "Réaffiché": [
   "ui/js/pages/game.js"
  ],
@@ -2683,6 +2959,9 @@
  ],
  "Rechercher des mises à jour de pilotes": [
   "ui/js/pages/settings.js"
+ ],
+ "Rechercher un jeu à épingler": [
+  "ui/js/personalization-settings.js"
  ],
  "Rechercher un jeu, une appli, un genre, une boutique…": [
   "ui/js/pages/search.js"
@@ -2730,6 +3009,9 @@
  "Réglages actifs": [
   "ui/js/hud.js"
  ],
+ "Réglages audio Windows": [
+  "ui/js/dolby-settings.js"
+ ],
  "Réglages détaillés": [
   "ui/js/qam.js"
  ],
@@ -2748,8 +3030,20 @@
  "Régler": [
   "ui/js/main.js"
  ],
+ "Réinitialiser le profil {name}": [
+  "ui/js/personalization-settings.js"
+ ],
  "Rejoue l’animation et le son choisis": [
   "ui/js/pages/settings.js"
+ ],
+ "Relire les sorties audio et l’installation de Dolby Access": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Reprendre": [
+  "ui/js/pages/home.js"
+ ],
+ "Reprendre le jeu en cours ou retrouver votre dernière partie": [
+  "ui/js/personalization-settings.js"
  ],
  "Reprise instantanée": [
   "ui/index.html"
@@ -2779,10 +3073,14 @@
   "ui/js/pages/game.js"
  ],
  "Retirer": [
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/personalization-settings.js"
  ],
  "Retirer ce dossier": [
   "ui/js/pages/emulation.js"
+ ],
+ "Retirer de l’accueil": [
+  "ui/js/pages/game.js"
  ],
  "Retirer de la bibliothèque": [
   "ui/js/pages/game.js"
@@ -2819,6 +3117,9 @@
  "Rétro": [
   "ui/js/pages/settings.js"
  ],
+ "Rétro grave": [
+  "ui/js/personalization-settings.js"
+ ],
  "Revient à l’accès public, sans clé": [
   "ui/js/pages/settings.js"
  ],
@@ -2845,6 +3146,9 @@
  ],
  "Rockstar": [
   "ui/js/core.js"
+ ],
+ "Rond": [
+  "ui/js/personalization-settings.js"
  ],
  "Route inconnue": [
   "host/server.js"
@@ -2885,6 +3189,9 @@
  "Select : menu · Start : accès rapide": [
   "ui/js/pages/settings.js"
  ],
+ "Sélectionné : {a} · actif : {b}": [
+  "ui/js/dolby-settings.js"
+ ],
  "Sélectionner": [
   "ui/js/main.js",
   "ui/js/nav.js",
@@ -2912,6 +3219,9 @@
  "site du fabricant injoignable": [
   "ui/js/pages/settings.js"
  ],
+ "Sobre": [
+  "ui/js/personalization-settings.js"
+ ],
  "Son": [
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
@@ -2937,12 +3247,35 @@
  "son rétabli": [
   "ui/js/widget.js"
  ],
+ "Son spatial": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Son spatial par sortie audio": [
+  "ui/js/dolby-settings.js"
+ ],
+ "Son spatial Windows indisponible": [
+  "host/lib/dolby.js",
+  "ui/js/dolby-settings.js"
+ ],
+ "Son spatial, licence et réglages Dolby": [
+  "ui/js/widget.js"
+ ],
+ "Sons de déplacement": [
+  "ui/js/personalization-settings.js"
+ ],
  "Sons de l’interface": [
   "ui/js/pages/settings.js",
+  "ui/js/personalization-settings.js",
   "ui/js/qam.js"
  ],
  "Sortie": [
   "ui/js/pages/game.js"
+ ],
+ "Sortie audio indisponible": [
+  "host/lib/dolby.js"
+ ],
+ "Sortie Windows par défaut": [
+  "ui/js/dolby-settings.js"
  ],
  "Sorties à venir": [
   "ui/js/pages/settings.js"
@@ -3006,11 +3339,17 @@
  "Streaming local · {host}": [
   "ui/js/pages/game.js"
  ],
+ "Style de jaquettes": [
+  "ui/js/personalization-settings.js"
+ ],
  "Style enregistré": [
   "ui/js/pages/settings.js"
  ],
  "Style préféré des jaquettes": [
   "ui/js/pages/settings.js"
+ ],
+ "Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées": [
+  "ui/js/personalization-settings.js"
  ],
  "Suivez l’installation dans Steam": [
   "ui/js/pages/game.js"
@@ -3044,6 +3383,9 @@
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
  ],
+ "Sur l’accueil, la bibliothèque et les fiches de jeu · chaque action les fait réapparaître": [
+  "ui/js/personalization-settings.js"
+ ],
  "Sur secteur": [
   "ui/js/pages/settings.js"
  ],
@@ -3064,7 +3406,8 @@
   "ui/js/pages/library.js"
  ],
  "Taille de l’interface": [
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/personalization-settings.js"
  ],
  "Taille des jaquettes": [
   "ui/js/pages/settings.js"
@@ -3106,14 +3449,24 @@
  "Thème": [
   "ui/js/pages/settings.js"
  ],
+ "Timbre": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Titres intégrés": [
+  "ui/js/personalization-settings.js"
+ ],
  "Toujours afficher la boutique": [
   "ui/js/pages/settings.js"
  ],
  "Tous": [
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/personalization-settings.js"
  ],
  "Tous les visuels choisis pour ce jeu reviennent aux visuels automatiques.": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Tous vos jeux marqués d’une étoile": [
+  "ui/js/pages/home.js"
  ],
  "Tout": [
   "ui/js/pages/library.js",
@@ -3126,6 +3479,9 @@
  "Tout sélectionner": [
   "ui/js/pages/media.js"
  ],
+ "Toute la bibliothèque": [
+  "ui/js/pages/home.js"
+ ],
  "Toutes": [
   "ui/js/pages/add.js"
  ],
@@ -3134,6 +3490,9 @@
  ],
  "Toutes les versions, notes de version et manuels": [
   "ui/js/pages/settings.js"
+ ],
+ "Trois ambiances graves, sans clic aigu": [
+  "ui/js/personalization-settings.js"
  ],
  "Turbo": [
   "ui/js/pages/settings.js",
@@ -3158,6 +3517,9 @@
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
  ],
+ "TV": [
+  "ui/js/personalization-settings.js"
+ ],
  "Twitch": [
   "ui/js/pages/add.js"
  ],
@@ -3180,6 +3542,9 @@
  "Un fichier .mp4 ou .webm sur vos disques (votre ancienne vidéo est dans extras\\ du dossier KaneMode)": [
   "ui/js/pages/settings.js"
  ],
+ "Un jeu": [
+  "ui/js/personalization-settings.js"
+ ],
  "Une adresse web ou un lien d’application (steam://, ms-settings:…) qui s’ouvre dans le navigateur ou l’appli associée.": [
   "ui/js/pages/add.js"
  ],
@@ -3188,6 +3553,9 @@
  ],
  "Une carte toutes les 5 secondes quand la rangée n’est pas parcourue (jamais en effets allégés)": [
   "ui/js/pages/settings.js"
+ ],
+ "Une collection": [
+  "ui/js/personalization-settings.js"
  ],
  "Une notification signale une nouvelle version": [
   "ui/js/pages/settings.js"
@@ -3310,14 +3678,29 @@
  "Volume": [
   "ui/js/widget.js"
  ],
+ "Volume de l’interface": [
+  "ui/js/personalization-settings.js"
+ ],
  "Volume du son": [
   "ui/js/pages/settings.js"
  ],
  "Volume, luminosité, Wi-Fi, Bluetooth, mode nuit": [
   "ui/js/qam.js"
  ],
+ "Vos dernières parties": [
+  "ui/js/pages/home.js"
+ ],
+ "Vos jeux et collections préférés": [
+  "ui/js/pages/home.js"
+ ],
  "Vos ROMs, par dernière partie": [
   "ui/js/pages/home.js"
+ ],
+ "Votre bibliothèque": [
+  "ui/js/personalization-settings.js"
+ ],
+ "Vous pouvez garder uniquement les validations et notifications": [
+  "ui/js/personalization-settings.js"
  ],
  "Vue des tâches": [
   "ui/js/pages/settings.js"
@@ -3368,6 +3751,9 @@
  ],
  "Windows équilibré": [
   "ui/js/qam.js"
+ ],
+ "Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.": [
+  "host/lib/dolby.js"
  ],
  "Windows va demander l’autorisation de l’administrateur. Pendant l’installation, l’écran peut clignoter ou s’éteindre un instant.": [
   "ui/js/pages/settings.js"

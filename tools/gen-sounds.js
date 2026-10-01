@@ -79,12 +79,16 @@ function wav(samples) {
 module.exports = { render, wav };
 
 if (require.main === module) (async () => {
-  const { SOUNDS, SOFT } = await import(pathToFileURL(path.join(__dirname, '..', 'ui', 'js', 'soundtable.js')).href);
-  // Les sons du moteur : move, select, back, tab, on, off, launch, connected, notify, error
-  for (const name of ['move', 'select', 'back', 'tab', 'on', 'off', 'launch', 'connected', 'notify', 'error']) {
-    const pcm = render(SOUNDS[name], SOFT);
-    let peak = 0; for (const v of pcm) peak = Math.max(peak, Math.abs(v));
-    fs.writeFileSync(path.join(OUT, name + '.wav'), wav(pcm));
-    console.log(name.padEnd(10), (pcm.length / SR).toFixed(2) + ' s', 'crête ' + peak.toFixed(3));
+  const { getSoundPalette } = await import(pathToFileURL(path.join(__dirname, '..', 'ui', 'js', 'soundtable.js')).href);
+  for (const profile of ['round', 'retro', 'soft']) {
+    const { SOUNDS, SOFT } = getSoundPalette(profile);
+    const folder = profile === 'round' ? OUT : path.join(OUT, profile);
+    fs.mkdirSync(folder, { recursive: true });
+    for (const name of ['move', 'select', 'back', 'tab', 'on', 'off', 'launch', 'connected', 'notify', 'error']) {
+      const pcm = render(SOUNDS[name], SOFT);
+      if (pcm.some(v => !Number.isFinite(v) || Math.abs(v) >= 1)) throw new Error('Son invalide : ' + profile + '/' + name);
+      fs.writeFileSync(path.join(folder, name + '.wav'), wav(pcm));
+    }
+    console.log('Sons du streaming : ' + profile);
   }
 })();

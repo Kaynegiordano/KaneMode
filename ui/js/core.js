@@ -1,7 +1,8 @@
 // Briques partagées : DOM, stockage, réglages, sons, toasts, API de l'hôte, bibliothèque.
 import { t, tx, locale, lang } from './i18n.js';
 import { streamingArt } from './streamcover.js';
-import { SOUNDS, SOFT } from './soundtable.js';
+import { getSoundPalette } from './soundtable.js';
+import { appearance, activeDisplayProfile, DISPLAY_FIELDS } from './personalization.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -52,6 +53,8 @@ export const settings = Object.assign({
   // Rangée « Bons plans et nouveautés » de l'accueil : sources, catégories, avance automatique
   dealsSteam: true, dealsEpic: true, dealsGog: true, dealsOther: true,
   dealsFree: true, dealsPromo: true, dealsNew: true, dealsSoon: true, dealsAuto: true,
+  homePins: [], homeResume: true, homeDensity: 'comfortable', soundTheme: 'round', soundVolume: 100, soundMoves: true,
+  motionStyle: 'normal', displayMode: 'manual', displayBindings: {}, displayProfiles: {}, immersive: false, immersiveDelay: 6,
 }, store.get('settings', {}));
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {
@@ -68,7 +71,26 @@ if (!settings.badgesOnDefault) {
 }
 export const favs = new Set(store.get('favs', []));
 
-export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); }
+export const displayState = { id: 'browser:' + screen.width + 'x' + screen.height, name: screen.width + ' × ' + screen.height };
+export const effectiveSettings = () => appearance(settings, displayState.id);
+export function setAppearance(key, value) {
+  const profile = activeDisplayProfile(settings, displayState.id);
+  if (profile !== 'manual' && DISPLAY_FIELDS.includes(key)) {
+    settings.displayProfiles = { ...settings.displayProfiles, [profile]: { ...settings.displayProfiles?.[profile], [key]: value } };
+  } else settings[key] = value;
+  saveSettings();
+}
+export function saveSettings() { store.set('settings', settings); applyTheme(); syncAccent(); syncButtons(); syncSounds(); emit('settings'); }
+let sentSounds = null;
+function syncSounds() {
+  if (WIDGET) return;
+  const values = { sounds: !!settings.sounds, soundTheme: settings.soundTheme, soundVolume: settings.soundVolume, soundMoves: !!settings.soundMoves };
+  const signature = JSON.stringify(values);
+  if (signature === sentSounds) return;
+  sentSounds = signature;
+  api.post('/api/config', values).catch(() => { sentSounds = null; });
+}
+setTimeout(syncSounds, 0);
 
 // Le streaming local reprend la couleur d'accent et les coins de KaneMode : l'hôte les lui transmet au lancement
 let sentAccent = null;
@@ -95,30 +117,33 @@ function syncButtons() {
 }
 setTimeout(syncButtons, 0);
 export function saveFavs() { store.set('favs', [...favs]); }
-export function applyTheme() {
-  document.documentElement.style.setProperty('--accent', settings.accent);
-  document.body.classList.toggle('night', !!settings.night);
-  document.body.classList.toggle('show-badges', !!settings.badges);
+export function applyTheme(preview = {}) {
+  const view = { ...effectiveSettings(), ...preview };
+  document.documentElement.style.setProperty('--accent', view.accent);
+  document.body.classList.toggle('night', !!view.night);
+  document.body.classList.toggle('show-badges', !!view.badges);
   document.body.classList.remove('bg-art', 'bg-gradient', 'bg-dark');
-  document.body.classList.add('bg-' + settings.background);
-  document.body.classList.toggle('reduce-motion', !!settings.reduceMotion);
-  document.body.classList.toggle('high-contrast', !!settings.highContrast);
+  document.body.classList.add('bg-' + view.background);
+  document.body.classList.toggle('reduce-motion', !!view.reduceMotion);
+  document.body.classList.toggle('high-contrast', !!view.highContrast);
   // Taille de l'interface : celle choisie (Accessibilité), réduite sur un écran plus petit que
   // 1280 × 720 points (résolution abaissée, forte mise à l'échelle de Windows) pour garder la même
   // mise en page ; le widget Game Bar a sa propre taille
   const fit = /\/(widget|monitor)\.html$/.test(location.pathname) ? 1 : Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
-  const zoom = Math.round(((settings.uiScale || 100) / 100) * (fit > 0 ? fit : 1) * 1000) / 1000;
+  const zoom = Math.round(((view.uiScale || 100) / 100) * (fit > 0 ? fit : 1) * 1000) / 1000;
   document.body.style.zoom = zoom !== 1 ? zoom : '';
   // Les hauteurs en vh ne doivent pas grandir avec le zoom de l'interface (voir --vh dans app.css)
   document.documentElement.style.setProperty('--zoom', String(zoom));
-  document.body.classList.toggle('hints-compact', settings.hintsBar === 'compact');
-  document.body.classList.toggle('lowfx', !!settings.lowFx);
+  document.body.classList.toggle('hints-compact', view.hintsBar === 'compact');
+  document.body.classList.toggle('lowfx', !!view.lowFx);
+  document.body.dataset.homeDensity = view.homeDensity;
+  document.body.dataset.motionStyle = view.motionStyle;
   // Personnalisation : taille des jaquettes, arrondis, transparence, police
-  const cap = { s: 'clamp(180px, calc(30 * var(--vh)), 340px)', m: '', l: 'clamp(250px, calc(44 * var(--vh)), 520px)' }[settings.cardSize] || '';
+  const cap = { s: 'clamp(180px, calc(30 * var(--vh)), 340px)', m: '', l: 'clamp(250px, calc(44 * var(--vh)), 520px)' }[view.cardSize] || '';
   document.documentElement.style.setProperty('--capsule-h', cap || 'clamp(210px, calc(36 * var(--vh)), 420px)');
-  document.documentElement.style.setProperty('--radius', { square: '2px', soft: '6px', round: '14px' }[settings.corners] || '6px');
-  document.body.classList.toggle('solid', !!settings.solidPanels);
-  document.body.classList.toggle('font-system', settings.font === 'system');
+  document.documentElement.style.setProperty('--radius', { square: '2px', soft: '6px', round: '14px' }[view.corners] || '6px');
+  document.body.classList.toggle('solid', !!view.solidPanels);
+  document.body.classList.toggle('font-system', view.font === 'system');
 }
 
 // ---------- Sons d'interface ----------
@@ -127,9 +152,11 @@ export function applyTheme() {
 // Les sons sont calculés une fois (OfflineAudioContext) puis rejoués : bien plus léger que
 // de créer des oscillateurs à chaque déplacement.
 const SR = 44100;
-let ac, sounds = null, rendering = null, lastMoveSound = 0;
+let ac, lastMoveSound = 0;
+const soundBanks = new Map(), rendering = new Map();
 
-function renderSounds() {
+function renderSounds(profile) {
+  const { SOUNDS, SOFT } = getSoundPalette(profile);
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   if (!OAC) return Promise.resolve({});
   return Promise.all(Object.entries(SOUNDS).map(async ([name, s]) => {
@@ -162,28 +189,40 @@ function renderSounds() {
     return [name, await o.startRendering()];
   })).then(Object.fromEntries);
 }
-function prepareSounds() {
-  if (!rendering) rendering = renderSounds().then(b => { sounds = b; }).catch(() => { sounds = {}; });
-  return rendering;
+function prepareSounds(profile = settings.soundTheme) {
+  profile = ['round', 'retro', 'soft'].includes(profile) ? profile : 'round';
+  if (!rendering.has(profile)) rendering.set(profile, renderSounds(profile).then(bank => { soundBanks.set(profile, bank); return bank; }).catch(() => ({})));
+  return rendering.get(profile);
 }
 setTimeout(prepareSounds, 0);
-
-export function sfx(type) {
-  if (!settings.sounds) return;
-  if (type === 'move') {
-    const now = performance.now();
-    if (now - lastMoveSound < 45) return;
-    lastMoveSound = now;
+export function sfx(type, { preview = false, profile = settings.soundTheme, volume = settings.soundVolume } = {}) {
+  if (!preview && (!settings.sounds || (type === 'move' && !settings.soundMoves))) return;
+  if (!['round', 'retro', 'soft'].includes(profile)) profile = 'round';
+  volume = Math.max(0, Math.min(100, Number(volume) || 0));
+  if (!volume) return;
+  if (type === 'move' && !preview) {
+    const now = performance.now(); if (now - lastMoveSound < 45) return; lastMoveSound = now;
   }
   try { ac = ac || new AudioContext({ latencyHint: 'interactive' }); if (ac.state === 'suspended') ac.resume(); } catch { return; }
-  if (!sounds) { prepareSounds(); return; }
-  const buf = sounds[type];
-  if (!buf) return;
-  const src = ac.createBufferSource();
-  src.buffer = buf;
-  src.connect(ac.destination);
-  src.start();
+  const bank = soundBanks.get(profile);
+  if (!bank) { prepareSounds(profile); return; }
+  const buffer = bank[type]; if (!buffer) return;
+  const source = ac.createBufferSource(), gain = ac.createGain();
+  source.buffer = buffer; gain.gain.value = volume / 100;
+  source.connect(gain).connect(ac.destination); source.start();
 }
+let previewSequence = 0;
+export async function previewSounds(profile = settings.soundTheme) {
+  const sequence = ++previewSequence, volume = settings.soundVolume;
+  try { ac = ac || new AudioContext({ latencyHint: 'interactive' }); await ac.resume(); } catch { return; }
+  await prepareSounds(profile);
+  for (const type of ['move', 'select', 'back', 'notify']) {
+    if (sequence !== previewSequence) return;
+    if (type !== 'move' || settings.soundMoves) sfx(type, { preview: true, profile, volume });
+    await new Promise(resolve => setTimeout(resolve, 420));
+  }
+}
+export function stopSoundPreview() { previewSequence++; }
 
 // ---------- Toasts & notifications ----------
 let toastTimer;
@@ -350,3 +389,11 @@ export const lib = {
   visible() { return this.games.filter(g => !g.hidden && !settings.hiddenSources.includes(g.source)); },
   launcher(id) { return this.launchers.find(l => l.id === id); },
 };
+
+// Windows fournit l'identifiant du moniteur ; aucune supposition fondée sur la résolution.
+native.on(message => {
+  if (message.type !== 'display' || !message.id) return;
+  const changed = displayState.id !== message.id;
+  Object.assign(displayState, { id: message.id, name: message.name || message.id });
+  if (changed) { applyTheme(); emit('display'); }
+});
