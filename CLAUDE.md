@@ -4,6 +4,16 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.8.0 : bibliothèques de comptes
+
+- Demande : importer tous les jeux possédés, non installés compris, avec installation/lancement depuis KaneMode et extension future aux boutiques. Passerelle optionnelle Playnite ; aucune promesse d’intégration native de toutes les boutiques. Instant Gaming : plateforme d’activation de la clé, pas d’historique d’achats importé.
+- `native/KaneMode.LibraryBridge` : plugin SDK 6.18.0, pipe Windows avec ACL utilisateur courant et jeton de session. `snapshot`, `ping`, `settings`, `install`, `start` ; aucune désinstallation. Connexions et mots de passe restent dans les connecteurs. `native/build.ps1` embarque seulement DLL et manifeste dans `app/tools/library-bridge`.
+- `host/lib/accounts.js` : import complet, cache persistant, fusion par identifiant ou dossier exact d’une même boutique, alias conservant les identifiants locaux après désinstallation. Sources de nouveaux connecteurs ajoutées dynamiquement. La détection locale prime sur un ancien cache. L’import ne déclenche pas la synchronisation distante des achats : Playnite doit d’abord actualiser ses comptes.
+- `Paramètres → Comptes et boutiques` : préparation de la passerelle, choix Playnite portable, téléchargement officiel proposé sans installation automatique, activation/désactivation, synchronisation et configuration des connecteurs. Boutons Installer/Jouer adaptés à la vraie boutique, état non installable explicite. Playnite ajouté aux processus de boutiques ignorés par GameWatch.
+- Synchronisation au retour, au scan manuel et toutes les 15 min au premier plan si Playnite répond déjà. Aucun démarrage périodique de Playnite ; ouverture sur action explicite ou installation/lancement d’un jeu importé.
+- Guide : `docs/library-accounts.md`. 39 tests Node (ajout `tools/verify-accounts.js` aux 33 de la 3.7.0), banc C# `tools/library-bridge-tests/LibraryBridgeTests.csproj` et 104 mises en page Chromium. Fiches/API des comptes simulées ; pas de connexion à un compte privé ni de téléchargement réel de jeu testé.
+- VERSION : 3.8.0 ; notes dans `docs/releases/3.8.0.md`.
+
 ## Version 3.7.0 : lancements, boutiques et jeux connus
 
 - `host/lib/launch.js` valide les fichiers et chemins, lance directement les exécutables et confie les URI, raccourcis et applis Store à `host/launch.ps1` (ShellExecute, requête JSON sur stdin). Aucun repli vers Explorer pour une cible absente. Le recours Windows pour une élévation conserve les arguments et remonte le refus.

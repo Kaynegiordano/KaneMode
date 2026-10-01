@@ -128,6 +128,7 @@ native.on(m => {
 
 export async function launch(g) {
   if (g.demo) return toast(t('Entrée de démonstration : il n’y a rien à lancer'), { error: true });
+  if (!g.installed && g.canInstall === false) return toast(t('Ce connecteur ne propose pas l’installation de ce jeu sur Windows'), { error: true });
   if (launching) return;
   if (running.has(g.id)) return resumeGame(g);
   // Jeu installé : l'écran de lancement cache Steam et reste là jusqu'à ce que le jeu s'affiche
@@ -151,7 +152,7 @@ export async function launch(g) {
   }
   const status = $('#launch-status');
   status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
-    : !g.installed ? t('Ouverture de Steam pour installer {name}…', { name: g.name })
+    : !g.installed ? t('Ouverture de {store} pour installer {name}…', { store: sourceOf(g.source).label, name: g.name })
     : g.emulator ? t('Lancement de {name} avec {emulator}…', { name: g.name, emulator: g.emulator }) : t('Lancement de {name}…', { name: g.name });
   const layer = openLayer({
     el: L, name: 'launch', noGlobal: true, hints: () => [['b', t('Fermer')]],
@@ -166,7 +167,9 @@ export async function launch(g) {
   try {
     native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
     const r = await api.post('/api/launch', { id: g.id });
-    if (r.already || r.running) {
+    if (r.ok && r.already && !g.installed) {
+      status.textContent = t('Suivez l’installation dans {store}', { store: sourceOf(g.source).label });
+    } else if (r.already || r.running) {
       status.textContent = t('{name} est déjà lancé', { name: g.name });
       if (cover) { queryGame(g); resumeGame(g); }
     } else if (r.ok && cover) {
@@ -174,7 +177,7 @@ export async function launch(g) {
       waitForGame = true;
     } else {
       if (!r.ok) native.send('external-cancel');
-      status.textContent = r.ok ? (g.installed ? t('Bon jeu !') : t('Suivez l’installation dans Steam')) : t('Impossible de lancer : {a}', { a: r.error || 'erreur inconnue' });
+      status.textContent = r.ok ? (g.installed ? t('Bon jeu !') : t('Suivez l’installation dans {store}', { store: sourceOf(g.source).label })) : t('Impossible de lancer : {a}', { a: r.error || 'erreur inconnue' });
     }
     if (r.ok) lib.load({ background: true });
   } catch (e) {
@@ -388,8 +391,8 @@ definePage('game', {
     const noEmu = g.source === 'rom' && !g.demo && !g.launch;
     queryGame(g);
     const isRunning = running.has(g.id);
-    const label = g.demo ? t('DÉMO') : noEmu ? t('ÉMULATEUR MANQUANT') : isRunning ? 'REPRENDRE' : !g.installed ? t('INSTALLER') : g.streamHost ? 'STREAMER' : g.type === 'app' ? t('LANCER') : 'JOUER';
-    const play = el('div', 'btn-play' + (g.demo || noEmu ? ' disabled' : isRunning ? ' running' : !g.installed ? ' install' : ''), `${icon(!g.installed && !noEmu ? 'i-download2' : 'i-play')}${label}`);
+    const label = g.demo ? t('DÉMO') : noEmu ? t('ÉMULATEUR MANQUANT') : isRunning ? 'REPRENDRE' : g.installing ? t('INSTALLATION EN COURS') : !g.installed ? g.canInstall === false ? t('INSTALLATION INDISPONIBLE') : t('INSTALLER') : g.streamHost ? 'STREAMER' : g.type === 'app' ? t('LANCER') : 'JOUER';
+    const play = el('div', 'btn-play' + (g.demo || noEmu || (!g.installed && g.canInstall === false) ? ' disabled' : isRunning ? ' running' : !g.installed ? ' install' : ''), `${icon(!g.installed && !noEmu ? 'i-download2' : 'i-play')}${label}`);
     nav(play, () => (noEmu ? go('emulation') : isRunning ? resumeGame(g) : launch(g)), 'play');
     play.dataset.autofocus = '';
     // Jeu en cours : l'arrêter (fermeture propre, puis forcée s'il ne répond pas)

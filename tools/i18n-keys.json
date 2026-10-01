@@ -219,17 +219,25 @@
   "ui/js/deals.js"
  ],
  "{n} jeu": [
+  "ui/js/accounts-settings.js",
   "ui/js/i18n.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
+ ],
+ "{n} jeu importé": [
+  "ui/js/accounts-settings.js"
  ],
  "{n} jeu trouvé": [
   "ui/js/pages/emulation.js"
  ],
  "{n} jeux": [
+  "ui/js/accounts-settings.js",
   "ui/js/i18n.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
+ ],
+ "{n} jeux importés": [
+  "ui/js/accounts-settings.js"
  ],
  "{n} jeux trouvés": [
   "ui/js/pages/emulation.js"
@@ -350,6 +358,9 @@
  ],
  "{status} · afficher dans la bibliothèque": [
   "ui/js/pages/settings.js"
+ ],
+ "{total} jeux · {ready} prêts à installer": [
+  "ui/js/accounts-settings.js"
  ],
  "{trim} ({cores} cœurs)": [
   "ui/js/pages/settings.js"
@@ -551,6 +562,9 @@
  "Acheter ou activer Atmos": [
   "ui/js/dolby-settings.js"
  ],
+ "Action de compte invalide": [
+  "host/lib/accounts.js"
+ ],
  "Action Dolby inconnue": [
   "host/lib/dolby.js"
  ],
@@ -750,6 +764,9 @@
  "Appuyez sur un bouton pour passer": [
   "ui/js/boot.js"
  ],
+ "Après l’activation de la passerelle, fermez puis rouvrez Playnite. Ajoutez les connecteurs souhaités dans ses extensions. Les connecteurs chargés apparaissent ici après la première synchronisation.": [
+  "ui/js/accounts-settings.js"
+ ],
  "Arguments": [
   "ui/js/pages/add.js"
  ],
@@ -946,8 +963,17 @@
  "Bibliothèque à jour, rien de nouveau": [
   "ui/js/pages/settings.js"
  ],
+ "Bibliothèque de comptes invalide": [
+  "host/lib/accounts.js"
+ ],
+ "Bibliothèque de comptes trop volumineuse": [
+  "host/lib/accounts.js"
+ ],
  "Bibliothèque de démonstration": [
   "ui/js/pages/settings.js"
+ ],
+ "Bibliothèque importée": [
+  "ui/js/accounts-settings.js"
  ],
  "Bientôt": [
   "ui/js/deals.js"
@@ -981,6 +1007,9 @@
  ],
  "Boutique": [
   "ui/js/pages/game.js"
+ ],
+ "Boutique du jeu inconnue": [
+  "host/lib/accounts.js"
  ],
  "Boutique Steam : actualités, DLC, avis": [
   "ui/js/pages/game.js"
@@ -1039,6 +1068,9 @@
  "Carte introuvable dans le sélecteur de NVIDIA": [
   "host/lib/gpudrivers.js"
  ],
+ "Ce connecteur ne propose pas l’installation de ce jeu sur Windows": [
+  "ui/js/pages/game.js"
+ ],
  "Ce format spatial est indisponible sur cette sortie": [
   "host/lib/dolby.js"
  ],
@@ -1089,6 +1121,9 @@
  "Choisir le son de démarrage": [
   "ui/js/pages/settings.js"
  ],
+ "Choisir Playnite portable": [
+  "ui/js/accounts-settings.js"
+ ],
  "Choisir un dossier avec la manette": [
   "ui/js/pages/emulation.js"
  ],
@@ -1116,11 +1151,17 @@
  "Choisissez parmi les programmes et les applis du Microsoft Store installés sur ce PC. Sélection multiple possible.": [
   "ui/js/pages/add.js"
  ],
+ "Choisissez Playnite.DesktopApp.exe": [
+  "host/lib/accounts.js"
+ ],
  "Choisissez un mode : il règle Windows, le processeur et le profil de la console": [
   "ui/js/qam.js"
  ],
  "Choisissez une collection pour y ajouter le jeu, ou l’en retirer.": [
   "ui/js/pages/game.js"
+ ],
+ "Choix de connexion invalide": [
+  "host/lib/accounts.js"
  ],
  "Choix de retrait invalide": [
   "host/lib/library-removal.js"
@@ -1239,8 +1280,15 @@
  "Complète automatiquement les jaquettes, fonds et logos manquants": [
   "ui/js/pages/settings.js"
  ],
+ "Comptes et boutiques": [
+  "ui/js/accounts-settings.js",
+  "ui/js/pages/settings.js"
+ ],
  "Configurer": [
   "ui/js/widget.js"
+ ],
+ "Configurer ce compte": [
+  "ui/js/accounts-settings.js"
  ],
  "Confirmer": [
   "ui/js/widget.js",
@@ -1252,8 +1300,29 @@
  "Connecté par câble": [
   "ui/js/main.js"
  ],
+ "Connectée": [
+  "ui/js/accounts-settings.js"
+ ],
+ "Connecter mes boutiques dans Playnite": [
+  "ui/js/accounts-settings.js"
+ ],
+ "Connecteur de compte invalide": [
+  "host/lib/accounts.js"
+ ],
+ "Connecteurs de boutiques": [
+  "ui/js/accounts-settings.js"
+ ],
+ "Connectez vos bibliothèques dans Paramètres → Comptes et boutiques": [
+  "host/lib/accounts.js"
+ ],
+ "Connectez vos comptes, activez l’import des jeux non installés et mettez à jour les bibliothèques (F5)": [
+  "ui/js/accounts-settings.js"
+ ],
  "Connexion à {streamHost}…": [
   "ui/js/pages/game.js"
+ ],
+ "Connexion aux bibliothèques…": [
+  "ui/js/accounts-settings.js"
  ],
  "Conseillé sur secteur": [
   "ui/js/widget.js"
@@ -1358,6 +1427,9 @@
  ],
  "Dernier scan : {toLocaleString}": [
   "ui/js/pages/emulation.js"
+ ],
+ "Dernière importation": [
+  "ui/js/accounts-settings.js"
  ],
  "Dernière installation échouée": [
   "ui/js/pages/settings.js"
@@ -1630,6 +1702,9 @@
  "Ferme la Game Bar (dans la Game Bar seulement)": [
   "ui/js/widget.js"
  ],
+ "Fermée · la bibliothèque enregistrée reste disponible": [
+  "ui/js/accounts-settings.js"
+ ],
  "Fermer": [
   "ui/js/main.js",
   "ui/js/pages/emulation.js",
@@ -1646,8 +1721,14 @@
  "Fermeture forcée": [
   "ui/js/widget.js"
  ],
+ "Fermez puis rouvrez Playnite pour charger la passerelle KaneMode": [
+  "host/lib/accounts.js"
+ ],
  "Feutré": [
   "ui/js/personalization-settings.js"
+ ],
+ "Fiche de compte invalide": [
+  "host/lib/accounts.js"
  ],
  "Fichier de lancement introuvable : ": [
   "host/lib/launch.js"
@@ -1730,6 +1811,9 @@
  ],
  "Gérer l’émulation": [
   "ui/js/pages/settings.js"
+ ],
+ "Gestionnaire gratuit et open source · site officiel": [
+  "ui/js/accounts-settings.js"
  ],
  "GitHub a répondu {a}": [
   "host/lib/update.js"
@@ -1822,11 +1906,20 @@
  "Images/s": [
   "ui/js/hud.js"
  ],
+ "Importe la bibliothèque actuelle de Playnite ; les nouveaux achats doivent d’abord être synchronisés par leurs connecteurs": [
+  "ui/js/accounts-settings.js"
+ ],
+ "Importer mes bibliothèques de comptes": [
+  "ui/js/accounts-settings.js"
+ ],
  "Importer une jaquette": [
   "ui/js/pages/artpicker.js"
  ],
  "Importer votre image <small>PNG, JPG ou WebP depuis le disque</small>": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Importez aussi les jeux possédés qui ne sont pas installés. La passerelle Playnite utilise les connecteurs de vos boutiques ; les comptes et mots de passe restent dans Playnite.": [
+  "ui/js/accounts-settings.js"
  ],
  "Impossible de charger cette section : {a}": [
   "ui/js/pages/settings.js"
@@ -1836,6 +1929,9 @@
  ],
  "Impossible de décrire cet appareil.": [
   "ui/js/pages/settings.js"
+ ],
+ "Impossible de détecter Playnite": [
+  "host/server.js"
  ],
  "Impossible de lancer : {a}": [
   "ui/js/pages/game.js"
@@ -1874,8 +1970,14 @@
   "host/server.js",
   "ui/js/pages/settings.js"
  ],
+ "INSTALLATION EN COURS": [
+  "ui/js/pages/game.js"
+ ],
  "Installation en cours…": [
   "ui/js/pages/settings.js"
+ ],
+ "INSTALLATION INDISPONIBLE": [
+  "ui/js/pages/game.js"
  ],
  "Installation lancée · acceptez la demande de Windows": [
   "ui/js/pages/settings.js"
@@ -1934,6 +2036,9 @@
  "Installés": [
   "ui/js/pages/library.js"
  ],
+ "Installez Playnite ou choisissez son exécutable portable": [
+  "host/lib/accounts.js"
+ ],
  "Intel": [
   "ui/js/widget.js"
  ],
@@ -1988,6 +2093,9 @@
  ],
  "Jeu inconnu": [
   "host/server.js"
+ ],
+ "Jeu ou compte inconnu": [
+  "host/lib/accounts.js"
  ],
  "Jeu, musique, cinéma et profils personnalisés dans Dolby Access": [
   "ui/js/dolby-settings.js"
@@ -2070,6 +2178,9 @@
  ],
  "La fenêtre du jeu est introuvable": [
   "ui/js/pages/game.js"
+ ],
+ "La passerelle de comptes ne répond pas": [
+  "host/lib/accounts.js"
  ],
  "Lancement de {name} avec {emulator}…": [
   "ui/js/pages/game.js"
@@ -2170,6 +2281,9 @@
  "Legion Go": [
   "ui/js/pages/settings.js"
  ],
+ "Les bibliothèques de comptes sont désactivées": [
+  "host/lib/accounts.js"
+ ],
  "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
   "ui/js/pages/settings.js"
  ],
@@ -2181,6 +2295,9 @@
  ],
  "Les réglages d’accessibilité restent prioritaires": [
   "ui/js/personalization-settings.js"
+ ],
+ "Les vendeurs de clés comme Instant Gaming ne sont pas des bibliothèques de jeux : après activation, leurs jeux sont importés depuis Steam, Epic, Ubisoft ou la boutique indiquée sur la clé.": [
+  "ui/js/accounts-settings.js"
  ],
  "Les visuels déjà choisis sont conservés.": [
   "ui/js/pages/settings.js"
@@ -2532,6 +2649,7 @@
   "ui/js/pages/settings.js"
  ],
  "Non installé": [
+  "ui/js/accounts-settings.js",
   "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js"
  ],
@@ -2599,6 +2717,9 @@
  "Ouverture de {name}…": [
   "ui/js/pages/game.js"
  ],
+ "Ouverture de {store} pour installer {name}…": [
+  "ui/js/pages/game.js"
+ ],
  "Ouverture de la boutique Steam…": [
   "ui/js/pages/game.js"
  ],
@@ -2607,9 +2728,6 @@
  ],
  "Ouverture de Lossless Scaling…": [
   "ui/js/widget.js"
- ],
- "Ouverture de Steam pour installer {name}…": [
-  "ui/js/pages/game.js"
  ],
  "Ouverture de Steam…": [
   "ui/js/pages/game.js"
@@ -2621,6 +2739,7 @@
   "ui/js/pages/game.js"
  ],
  "Ouverture impossible": [
+  "ui/js/accounts-settings.js",
   "ui/js/dolby-settings.js"
  ],
  "Ouverture indisponible": [
@@ -2723,6 +2842,15 @@
  "Pas encore compilée : setup\\build-xbox-enabler.ps1": [
   "ui/js/pages/settings.js"
  ],
+ "Passerelle de comptes": [
+  "ui/js/accounts-settings.js"
+ ],
+ "Passerelle de comptes absente de cette compilation": [
+  "host/lib/accounts.js"
+ ],
+ "Passerelle de comptes fermée. Ouvrez Playnite avec la passerelle KaneMode.": [
+  "host/lib/accounts.js"
+ ],
  "Pastille de la boutique sur chaque jaquette de la bibliothèque": [
   "ui/js/pages/settings.js"
  ],
@@ -2787,6 +2915,9 @@
  ],
  "Pilotes graphiques": [
   "ui/js/pages/settings.js"
+ ],
+ "Playnite est introuvable": [
+  "host/lib/accounts.js"
  ],
  "Pleine charge": [
   "ui/js/widget.js"
@@ -3102,6 +3233,9 @@
  "Relire les sorties audio et l’installation de Dolby Access": [
   "ui/js/dolby-settings.js"
  ],
+ "Réponse de la passerelle incomplète": [
+  "host/lib/accounts.js"
+ ],
  "Reprendre": [
   "ui/js/pages/home.js"
  ],
@@ -3273,6 +3407,9 @@
  "Sélectionnez au moins une application": [
   "ui/js/pages/add.js"
  ],
+ "Sélectionnez Playnite.DesktopApp.exe si sa version portable n’est pas détectée": [
+  "ui/js/accounts-settings.js"
+ ],
  "Seule l’app native peut devenir l’application d’accueil : native\\build.ps1 -Register": [
   "ui/js/pages/settings.js"
  ],
@@ -3421,7 +3558,7 @@
  "Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées": [
   "ui/js/personalization-settings.js"
  ],
- "Suivez l’installation dans Steam": [
+ "Suivez l’installation dans {store}": [
   "ui/js/pages/game.js"
  ],
  "Super Resolution": [
@@ -3468,6 +3605,9 @@
  "Synchro verticale": [
   "ui/js/widget.js"
  ],
+ "Synchroniser avec Playnite": [
+  "ui/js/accounts-settings.js"
+ ],
  "Système": [
   "ui/js/pages/settings.js"
  ],
@@ -3496,6 +3636,9 @@
  ],
  "Télécharger la version {a}": [
   "ui/js/pages/settings.js"
+ ],
+ "Télécharger Playnite": [
+  "ui/js/accounts-settings.js"
  ],
  "Temps de jeu": [
   "ui/js/pages/game.js",
@@ -3531,6 +3674,9 @@
  "Tous": [
   "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
+ ],
+ "Tous les jeux renvoyés par les connecteurs, installés ou non · aucune sélection limitée aux jeux déjà joués": [
+  "ui/js/accounts-settings.js"
  ],
  "Tous les visuels choisis pour ce jeu reviennent aux visuels automatiques.": [
   "ui/js/pages/artpicker.js"

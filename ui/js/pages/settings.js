@@ -11,6 +11,7 @@ import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
 import { HOME_ROWS } from './home.js';
 import { renderPersonalization } from '../personalization-settings.js';
 import { renderDolby } from '../dolby-settings.js';
+import { renderAccounts } from '../accounts-settings.js';
 
 // Thèmes prêts : plusieurs réglages d'Apparence d'un coup (chacun reste modifiable ensuite)
 const THEMES = [
@@ -23,7 +24,7 @@ const THEMES = [
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
 const SECTIONS = [
-  ['library', 'i-library', t('Bibliothèque')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming local')],
+  ['library', 'i-library', t('Bibliothèque')], ['accounts', 'i-store', t('Comptes et boutiques')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming local')],
   ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
   ['qam', 'i-grid', t('Accès rapide')], ['access', 'i-info', t('Accessibilité')], ['power', 'i-moon', t('Veille')], ['energy', 'i-power', t('Énergie')],
   ['device', 'i-battery', t('Appareil et pilotes')],
@@ -432,6 +433,7 @@ const BUILDERS = {
     rowFor('rom', t('Émulation'), null, null);
   },
 
+  accounts(s) { return renderAccounts(s, { h2, infoRow, actionRow, rerender }); },
   async sgdb(s) {
     h2(s, 'i-image', 'SteamGridDB');
     const cfg = await api.get('/api/config');

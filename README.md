@@ -19,7 +19,9 @@ Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). 
 
 KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (versions stables, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
 
-La [version 3.7.0](docs/releases/3.7.0.md) corrige les lancements qui ouvraient Documents et la reprise intempestive du premier plan lors de l’ouverture d’une boutique. Elle détecte aussi Roblox et Minecraft installés sur le PC. Depuis la fiche d’un jeu installé, **Supprimer de la bibliothèque** conserve les fichiers ; l’onglet **Retirés** permet de le restaurer, même après une actualisation.
+La [version 3.8.0](docs/releases/3.8.0.md) ajoute **Paramètres → Comptes et boutiques** : une passerelle optionnelle vers Playnite importe aussi les jeux possédés non installés et jamais joués, avec les boutons **Installer/Jouer** dans KaneMode. Playnite et ses connecteurs gèrent la connexion aux comptes et les boutiques gèrent les téléchargements. [Configuration et limites](docs/library-accounts.md).
+
+Les corrections de lancement de la 3.7.0, la détection de Roblox et Minecraft et le retrait réversible d’un jeu installé restent disponibles. **Supprimer de la bibliothèque** conserve les fichiers ; l’onglet **Retirés** permet de le restaurer.
 
 ### Publier une version (mainteneur)
 
@@ -81,6 +83,7 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 
 ## Fonctions
 
+- **Bibliothèques de comptes** : **Paramètres → Comptes et boutiques**, passerelle optionnelle vers les connecteurs Playnite. Import de tous les jeux présents dans sa bibliothèque, y compris les jeux non installés et jamais joués ; boutons Installer/Jouer depuis KaneMode. Playnite et les connecteurs de chaque boutique doivent être installés, connectés et configurés pour importer les jeux non installés. [Configuration et limites](docs/library-accounts.md).
 - **Bibliothèque multi-boutiques** : Steam (installés, **non installés** avec bouton Installer, raccourcis non-Steam, temps de jeu), Epic, GOG, Ubisoft, EA, Battle.net, Xbox / Game Pass, Amazon, Rockstar, Riot. Onglets : Installés, Tout, Favoris, Jeux, Applications, Non installés, Compatibles manette, Émulation, collections, par boutique.
 - **Émulation** : dossiers de ROMs rangés par console (convention EmulationStation-DE / RetroBat), 28 consoles, 23 émulateurs détectés automatiquement (ou choisis à la main), lancement direct, cœurs RetroArch choisis automatiquement.
 - **SteamGridDB, sans compte ni clé** : visuels automatiques pour tout ce qui n'en a pas ; fiche du jeu → **Visuels** : aperçu, Récupérer à nouveau, Annuler les modifications, Parcourir SteamGridDB, Importer votre image. Reprise des visuels posés dans Steam (dossier `grid`, SGDBoop, Steam ROM Manager). Une clé API perso reste possible (Paramètres → SteamGridDB → Avancé).

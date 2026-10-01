@@ -9,6 +9,8 @@ let artRequests=0; const apiCalls=[]; let artStyle='';
 let launchers=[], libraryVersion=1;
 let removalState={overrides:{}}, launchFailure=false;
 const launchRequests=[], removalRequests=[];
+let accountState={enabled:true,installed:true,prepared:true,online:true,exe:'D:\\Playnite\\Playnite.DesktopApp.exe',count:5000,uninstalled:4200,installable:4199,providers:[{id:'10000000-0000-0000-0000-000000000001',name:'Steam',count:3000,settings:true},{id:'10000000-0000-0000-0000-000000000002',name:'Une nouvelle boutique au nom long',count:2000,settings:true}]};
+const accountActions=[];
 const removal=require('./../host/lib/library-removal');
 const games=Array.from({length:803},(_,i)=>({id:'fixture:'+i,source:'steam',name:['Horizon — Les terres oubliées','Forza Horizon 5','Sea of Stars','Ori and the Will of the Wisps','Expédition 33','Hades II','Jusant','No Man’s Sky'][i%8]+(i<8?'':' '+i),installed:true,type:'game',lastPlayed:803-i,playtime:0,art:{portrait:'/art/'+i+'/portrait?r=1',hero:'/art/'+i+'/hero?r=1'},meta:{genres:['Action']}}));
 const latest={version:'3.2.0',notes:'Version de test',msix:{size:117845231}};
@@ -16,6 +18,10 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost'); const p=url.pathname;
   apiCalls.push({method:req.method,url:req.url}); const json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};
   if(p.startsWith('/api/')) {
+    if(p==='/api/accounts')return json(accountState);
+    if(p==='/api/accounts/config'){let data='';for await(const c of req)data+=c;accountActions.push(JSON.parse(data));accountState.enabled=JSON.parse(data).enabled;return json(accountState);}
+    if(p==='/api/accounts/sync'){accountActions.push({sync:true});return json(accountState);}
+    if(p==='/api/accounts/open'){let data='';for await(const c of req)data+=c;accountActions.push(JSON.parse(data));return json({ok:true});}
     if(p==='/api/dolby' && req.method==='GET') return json(dolbyState);
     if(p==='/api/dolby' && req.method==='POST') {let data='';for await(const chunk of req)data+=chunk;const body=JSON.parse(data);if(dolbyRefuse){res.statusCode=400;return json({error:'Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.'});}const d=dolbyState.devices.find(d=>d.id===body.device);d.selected=d.active=body.mode;return json({...dolbyState,verified:true});}
     if(p==='/api/dolby/open'){let data='';for await(const chunk of req)data+=chunk;dolbyActions.push(JSON.parse(data));return json({ok:true});}
@@ -169,6 +175,26 @@ const server=http.createServer(async(req,res)=>{
     assert.match(await page.locator('#launch-status').textContent(),/Impossible de lancer/);
     await page.evaluate(()=>navigation.closeLayer());launchFailure=false;
     check('Lancements : passage de la main à la boutique et navigation rendue après un refus');
+    games.push({...games[0],id:'epic:owned',source:'epic',installed:false,canInstall:true,name:'Jeu Epic possédé, jamais installé'});libraryVersion++;
+    await page.evaluate(async()=>{await core.lib.load();navigation.go('library',{tab:'uninstalled'});});await settled();
+    assert.equal(await page.locator('#page-library [data-key="epic:owned"]').count(),1);
+    await page.evaluate(()=>navigation.go('game',{id:'epic:owned'}));await settled();
+    assert.match(await page.locator('#page-game [data-key="play"]').textContent(),/INSTALLER/);
+    await page.locator('#page-game [data-key="play"]').click();await settled();
+    assert.match(await page.locator('#launch-status').textContent(),/Epic/,'Installation adressée à sa propre boutique');
+    await page.evaluate(()=>navigation.closeLayer());
+    games.at(-1).canInstall=false;libraryVersion++;
+    await page.evaluate(async()=>{await core.lib.load();navigation.go('game',{id:'epic:owned'});});await settled();
+    assert.match(await page.locator('#page-game [data-key="play"]').textContent(),/INDISPONIBLE/);
+    const launchCount=launchRequests.length;await page.locator('#page-game [data-key="play"]').click();await settled();assert.equal(launchRequests.length,launchCount);
+    games.at(-1).installed=true;libraryVersion++;
+    await page.evaluate(async()=>{await core.lib.load();navigation.go('game',{id:'epic:owned'});});await settled();
+    assert.match(await page.locator('#page-game [data-key="play"]').textContent(),/JOUER/);
+    games.pop();libraryVersion++;await page.evaluate(()=>core.lib.load());
+    await settingsSection('accounts');await page.locator('[data-key="accounts-sync"]').click();await settled();assert.equal(accountActions.at(-1).sync,true);
+    await page.locator('[data-key="account:10000000-0000-0000-0000-000000000002"]').click();await settled();assert.equal(accountActions.at(-1).provider,'10000000-0000-0000-0000-000000000002');
+    assert.equal(await page.evaluate(()=>testNativeMessages.at(-1).type),'foreground');
+    check('Comptes : import des non-installés, installation via sa boutique, refus explicite, passage à Jouer et connexion du bon compte');
     await page.evaluate(()=>navigation.go('game',{id:'epic:fixture'}));await settled();
     await page.locator('[data-key="remove-library"]').click();await page.locator('#dialog.open [data-key="b0"]').click();
     assert.equal(removalRequests.length,0,'Annuler ne retire rien');
@@ -206,7 +232,7 @@ const server=http.createServer(async(req,res)=>{
     for(const [width,height,scale] of [[1280,720,100],[1280,720,125],[1280,720,150],[1920,1080,100],[1920,1080,150],[960,540,100],[960,540,150],[800,600,125]]){
       await page.setViewportSize({width,height});
       await page.evaluate(scale=>{core.settings.uiScale=scale;core.saveSettings();},scale);
-      for(const section of ['personal','look','dolby','power']){
+      for(const section of ['personal','look','dolby','power','accounts']){
         await settingsSection(section);await fit(width+'×'+height+' '+scale+' % '+section);
         await page.evaluate(()=>navigation.page('settings').enter(navigation.page('settings').section));await settled();
         await visibleFocus(width+' '+scale+' '+section);
@@ -226,6 +252,7 @@ const server=http.createServer(async(req,res)=>{
       await settingsSection('personal');await fit('Traduction '+lang);
       await settingsSection('look');await fit('Traduction '+lang+' apparence');
       await settingsSection('power');await fit('Traduction '+lang+' veille');
+      await settingsSection('accounts');await fit('Traduction '+lang+' comptes');
       await page.evaluate(()=>navigation.go('game',{id:'fixture:0'}));await fit('Traduction '+lang+' fiche et retrait');
     }
     check('Français et anglais : choix des réglages sans débordement');
@@ -262,7 +289,7 @@ const server=http.createServer(async(req,res)=>{
       }
     }
     assert.deepEqual(errors,[],'Aucune exception JavaScript');
-    assert.deepEqual(launchRequests.map(r=>r.id),['launcher:epic','launcher:epic','fixture:0'],'Seuls les lancements prévus et simulés');
+    assert.deepEqual(launchRequests.map(r=>r.id),['launcher:epic','launcher:epic','fixture:0','epic:owned'],'Seuls les lancements prévus et simulés');
     const dangerous=apiCalls.filter(c=>c.method==='POST'&&/^\/api\/(power\/mode|sys(?:\/|$)|update\/apply)/.test(c.url));
     assert.deepEqual(dangerous,[],'Aucune action système pendant les essais');
     check('Aucune exception JavaScript ni action sur le système');

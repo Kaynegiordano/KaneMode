@@ -359,7 +359,7 @@ export const fmt = {
 // Ce qui change la mise en page (jeux ajoutés ou retirés, noms, rangées, onglets…) : le reste
 // (descriptions, temps de jeu, visuels) se met à jour sur place, sans redessiner la page.
 const layoutSig = d => JSON.stringify([
-  d.games.map(g => [g.id, g.name, g.type, g.hidden, g.removed, g.installed, g.source, g.lastPlayed, g.system]),
+  d.games.map(g => [g.id, g.name, g.type, g.hidden, g.removed, g.installed, g.installing, g.canInstall, g.source, g.lastPlayed, g.system]),
   d.launchers.map(l => [l.id, l.installed]), d.collections, d.stream,
 ]);
 
@@ -371,6 +371,7 @@ export const lib = {
    */
   async load({ background = false } = {}) {
     const d = await api.get('/api/library' + (settings.demo ? '?demo=1' : ''));
+    for (const [id, src] of Object.entries(d.sources || {})) if (!SOURCES[id]) SOURCES[id] = { label: src.label, color: '#7c9eff' };
     const old = new Map(this.games.map(g => [g.id, g]));
     const layout = layoutSig(d);
     const first = !this.games.length;

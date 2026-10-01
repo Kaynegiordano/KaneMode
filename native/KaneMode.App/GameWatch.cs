@@ -25,6 +25,7 @@ public partial class MainWindow
         "steam", "steamwebhelper", "steamservice", "steamerrorreporter", "gameoverlayui", "gameoverlayui64",
         "EpicGamesLauncher", "EpicWebHelper", "GalaxyClient", "GalaxyClient Helper", "upc", "UplayWebCore",
         "EADesktop", "EABackgroundService", "Battle.net", "Amazon Games UI", "XboxPcApp", "XboxPcAppFT",
+        "Playnite.DesktopApp", "Playnite.FullscreenApp", "Playnite.BrowserProcess",
     };
     // Windows, la Game Bar, ASUS et KaneMode lui-même
     private static readonly HashSet<string> Shell = new(StringComparer.OrdinalIgnoreCase)

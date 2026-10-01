@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework><UseWPF>true</UseWPF>
+    <AssemblyName>KaneMode.LibraryBridge</AssemblyName><LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup><PackageReference Include="PlayniteSDK" Version="6.18.0" /></ItemGroup>
+  <ItemGroup><Reference Include="System.Security" /></ItemGroup>
+</Project>

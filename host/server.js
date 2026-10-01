@@ -23,6 +23,7 @@ const dolbyLib = require('./lib/dolby');
 const { createPathWatch } = require('./lib/pathwatch');
 const launchLib = require('./lib/launch');
 const libraryRemoval = require('./lib/library-removal');
+const accountsLib = require('./lib/accounts');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -247,7 +248,7 @@ function buildEntries(withDemo) {
   const roms = (readJson(FILES.roms, {}) || {}).roms || [];
   return {
     generated: lib.generated, steamUserdata: ud, pending,
-    games: [...games, ...(ud ? steam.shortcuts(ud) : []), ...custom, ...roms, ...(withDemo ? DEMO : [])],
+    games: [...accounts.entries([...games, ...(ud ? steam.shortcuts(ud) : [])]), ...custom, ...roms, ...(withDemo ? DEMO : [])],
     launchers: lib.launchers || [],
   };
 }
@@ -290,7 +291,8 @@ function publicEntry(g, st, cfg) {
   return {
     id: g.id, source: g.source, name: g.name, demo: !!g.demo, shortcut: !!g.shortcut,
     type: ov.type || (g.source === 'custom' || g.source === 'rom' ? g.type : m.type || g.type || 'game'),
-    hidden: !!ov.hidden, removed: !!ov.removed, installed: g.installed !== false,
+    hidden: ov.hidden === undefined ? !!g.accountHidden : !!ov.hidden, removed: !!ov.removed, installed: g.installed !== false,
+    canInstall: g.canInstall, installing: !!g.installing, sourceLabel: g.sourceLabel || null,
     lastPlayed: Math.max(g.lastPlayed || 0, played.last || 0), playCount: played.count || 0,
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
@@ -739,6 +741,14 @@ const recentLaunch = new Map();
 const LAUNCH_GUARD = 30e3;
 
 const run = launchLib.create();
+const accounts = accountsLib.create(DATA, { run, root: ROOT,
+  discover: async exe => {
+    const result = await runPs('playnite.ps1', exe ? ['-Executable', exe] : []);
+    if (result.code !== 0) throw new Error('Impossible de détecter Playnite');
+    try { return JSON.parse(result.out.replace(/^\uFEFF/, '')); } catch { return {}; }
+  },
+  onChange: () => { version++; entriesCache.clear(); },
+});
 
 // ---------------------------------------------------------------- émulation
 function scanEmulation() {
@@ -840,6 +850,20 @@ const localHost = req => /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.ho
 const trusted = req => localHost(req) && req.headers['x-kanemode'] === '1';
 
 const routes = {
+  'GET /api/accounts': async (req, res) => json(res, 200, await accounts.status()),
+  'POST /api/accounts/config': async (req, res) => {
+    try { json(res, 200, await accounts.configure(await readBody(req))); }
+    catch (error) { json(res, 400, { error: error.message }); }
+  },
+  'POST /api/accounts/sync': async (req, res) => {
+    try { const b = await readBody(req); json(res, 200, await accounts.sync({ start: b.start === true })); }
+    catch (error) { json(res, 400, { error: error.message }); }
+  },
+  'POST /api/accounts/open': async (req, res) => {
+    try { const b = await readBody(req); json(res, 200, b.provider ? await accounts.action(b.provider, 'settings') : await accounts.open()); }
+    catch (error) { json(res, 400, { error: error.message }); }
+  },
+  'POST /api/accounts/download': async (req, res) => json(res, 200, await run({ kind: 'uri', target: 'https://playnite.link/' })),
   'GET /api/dolby': async (req, res, q) => json(res, 200, await dolby.state(q.get('refresh') === '1')),
   'POST /api/dolby': async (req, res) => {
     const b = await readBody(req);
@@ -856,7 +880,7 @@ const routes = {
     const all = allEntries(q.get('demo') === '1');
     enqueueMeta([...all.games, ...all.pending]);
     json(res, 200, {
-      generated: all.generated, version,
+      generated: all.generated, version, sources: accounts.sources(),
       stream: { engine: !!kp.exe, hosts: kp.hosts.map(h => ({ uuid: h.uuid, name: h.name, paired: h.paired })) },
       games: all.games.map(g => publicEntry(g, st, cfg)),
       collections: st.collections,
@@ -876,6 +900,7 @@ const routes = {
     watchStores();
     scanEmulation();
     await refreshKanePlay();
+    await accounts.sync().catch(() => {}); // uniquement si la passerelle est déjà ouverte
     const after = allEntries(false).games;
     json(res, 200, { ok: true, count: after.length, added: after.filter(g => !before.has(g.id) && g.installed).map(g => g.name) });
   },
@@ -1147,7 +1172,10 @@ const routes = {
     // Jeu Steam et Steam fermé : il démarre d'abord sans sa fenêtre (en mode Xbox, elle passait devant le jeu)
     if (!b.dry && /^steam:\/\/rungameid\//i.test(str(e.launch && e.launch.target))) await startSteamSilently();
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
-    const r = await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
+    const r = e.launch?.kind === 'account'
+      ? b.dry ? { ok: true, dry: true, mode: e.installed === false ? 'install' : 'start' }
+        : await accounts.action(e.bridge.id, e.installed === false ? 'install' : 'start')
+      : await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
     // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
     const gm = (config().gameModes || {})[id];
@@ -1181,6 +1209,8 @@ const routes = {
   'POST /api/library/refresh': (req, res) => {
     // Même un retour très rapide après installation doit entraîner une analyse, éventuellement différée.
     rescanSoon('retour sur KaneMode', Math.max(500, 10000 - (Date.now() - libLast)));
+    // Une installation par un connecteur doit passer à « Jouer » au retour, sans attendre 15 min.
+    accounts.sync().catch(() => {});
     // PC de streaming appairés (retour de KanePlay) : relus ici plutôt que chaque minute
     if (Date.now() - kpLast > 30e3) refreshKanePlay();
     json(res, 200, { ok: true });
@@ -1666,5 +1696,8 @@ setInterval(() => checkDriversDaily().catch(() => {}), 3 * 3600e3);
 // Bons plans : préparés peu après le démarrage, puis relus au-delà de 4 h (jamais avec un jeu devant)
 setTimeout(() => { if (fpsScope.front) deals.get(); }, 15000);
 setInterval(() => { if (fpsScope.front) deals.get(); }, 3600e3);
+// Bibliothèques de comptes : cache immédiat ; aucune ouverture de Playnite pendant un jeu.
+setTimeout(() => { if (fpsScope.front) accounts.sync().catch(() => {}); }, 20000);
+setInterval(() => { if (fpsScope.front) accounts.sync().catch(() => {}); }, 15 * 60e3);
 // Préchauffage : appareil et réglages système prêts avant que l'accès rapide ne les demande
 setTimeout(() => { device.info().then(() => sysctl.state()).catch(() => {}); }, 1500); // nouveaux PC appairés, nouvelles applis sur l'hôte

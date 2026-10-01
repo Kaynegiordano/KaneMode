@@ -1,0 +1,6 @@
+Id: KaneMode.LibraryBridge_32f12f91-43d3-4b3b-a51a-d94217fe9104
+Name: KaneMode Library Bridge
+Author: KaneMode
+Version: 1.0.0
+Module: KaneMode.LibraryBridge.dll
+Type: GenericPlugin

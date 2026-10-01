@@ -93,6 +93,10 @@ Step 'Commandes audio spatiales'
 & (Join-Path $native 'KaneMode.Audio\fetch-tool.ps1')
 if (-not $?) { throw 'Échec de la préparation des commandes audio' }
 Copy-Item (Join-Path $native 'KaneMode.Audio\obj\soundvolumeview') (Join-Path $app 'tools\soundvolumeview') -Recurse
+Step 'Passerelle des bibliotheques de comptes'
+& (Join-Path $native 'KaneMode.LibraryBridge\build-bridge.ps1')
+if (-not $?) { throw 'Echec de compilation de la passerelle de comptes' }
+Copy-Item (Join-Path $native 'KaneMode.LibraryBridge\obj\bridge') (Join-Path $app 'tools\library-bridge') -Recurse
 # Moteur de streaming (KanePlay), invisible : KaneMode affiche lui-même les PC, l'appairage et les jeux
 if (-not $NoKanePlay) {
     $engineOut = Join-Path $root 'engine\out'
