@@ -967,6 +967,9 @@
   "ui/js/pages/home.js",
   "ui/js/pages/settings.js"
  ],
+ "Boost bref (pics)": [
+  "ui/js/qam.js"
+ ],
  "Boost court (quelques secondes)": [
   "ui/js/qam.js"
  ],
@@ -2202,6 +2205,7 @@
  ],
  "Luminosité": [
   "ui/js/pages/settings.js",
+  "ui/js/qam.js",
   "ui/js/widget.js"
  ],
  "Maintenez Start 1 s, comme dans le streaming local : le stick déplace le curseur, A clique, B fait un clic droit, X un clic du milieu, la croix fait défiler, LB / RB reviennent en arrière ou avancent. Il marche aussi dans les autres fenêtres (lanceurs, connexion à un compte). Maintenez Start de nouveau pour revenir à la manette.": [
@@ -2265,6 +2269,7 @@
   "ui/js/personalization-settings.js"
  ],
  "Menu": [
+  "ui/index.html",
   "ui/js/nav.js",
   "ui/js/pages/home.js",
   "ui/js/pages/settings.js"
@@ -2855,6 +2860,9 @@
  ],
  "Puissance (TDP, expérimental)": [
   "ui/js/pages/settings.js",
+  "ui/js/qam.js"
+ ],
+ "Puissance (TDP)": [
   "ui/js/qam.js"
  ],
  "Puissance du profil": [
@@ -3676,6 +3684,7 @@
   "ui/js/pages/artpicker.js"
  ],
  "Volume": [
+  "ui/js/qam.js",
   "ui/js/widget.js"
  ],
  "Volume de l’interface": [

@@ -97,7 +97,7 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
 - **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, quitter KaneMode et revenir au bureau Windows.
-- **Langues** : français, anglais, espagnol, allemand, italien, portugais (Brésil), japonais et chinois simplifié, dans l'interface, les widgets Game Bar et le streaming local (Paramètres → Apparence → Langue ; par défaut, la langue de Windows).
+- **Langues** : français et anglais uniquement, dans l'interface, les widgets Game Bar et le streaming local (Paramètres → Apparence → Langue ; par défaut, la langue de Windows si elle est proposée, sinon l’anglais). Les anciens choix de langue sont remplacés automatiquement.
 - **Personnalisation** : accent (repris par le streaming local), fond, taille de l'interface et des jaquettes, coins, police, panneaux opaques, horloge, ordre des rangées de l'accueil.
 - **Ajouts perso** : applis installées (Win32 + Microsoft Store), fichiers, liens web.
 - **Style SteamOS** : logo animé qui apparaît pile sur l'éclat du son de démarrage (son synthétisé façon console de salon, aucun fichier ; un son perso est analysé et synchronisé de même ; vidéo et son perso possibles, l'ancienne vidéo est dans `extras\`), menu principal, accès rapide (CPU/RAM en direct), recherche au clavier virtuel, médias (captures Steam / Game Bar), collections, paramètres par catégories (stockage, accessibilité, taille de l'interface, testeur de manette, état du mode Xbox…).
@@ -115,6 +115,8 @@ Le format spatial de chaque sortie audio peut être changé directement dans Kan
 Les commandes utilisent **SoundVolumeView 2.53 x64**, outil autonome de NirSoft embarqué avec tous les fichiers inchangés de sa distribution. L’archive et l’exécutable sont vérifiés par SHA-256 lors de la construction (`native/KaneMode.Audio/fetch-tool.ps1`). Cet outil est freeware avec ses propres conditions, reproduites dans son `readme.txt` ; il ne relève pas de la licence GPL du code KaneMode. Dolby Access et sa licence ne sont pas embarqués. [Documentation et conditions NirSoft](https://www.nirsoft.net/utils/sound_volume_view.html).
 
 ## Structure
+
+La finition de l’interface peut être vérifiée sans agir sur Windows : `node --test tools/verify-languages.js tools/verify-optimizations.js tools/verify-personalization.js tools/verify-dolby.js`, puis `node tools/verify-interface.cjs` avec Playwright disponible. `KANEMODE_PLAYWRIGHT` et `KANEMODE_BROWSER` peuvent préciser ses chemins ; `KANEMODE_UI_OUTPUT` permet de conserver des captures. Les essais Chromium simulent les API et une bibliothèque de 803 jeux, vérifient les petits écrans, le zoom jusqu’à 150 %, les deux langues, les dialogues et le widget.
 
 | Dossier | Rôle |
 |---|---|

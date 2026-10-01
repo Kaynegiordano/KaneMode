@@ -4,6 +4,16 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.5.0 : finition de l’interface et deux langues
+
+- Demande : harmoniser l’interface ; ne garder que Français et Anglais, widget et streaming compris. Les notes de la 3.3.0 ci-dessous décrivent la version déjà publiée.
+- Accueil : reprise sans grand titre répété, informations des collections épinglées actualisées. Bibliothèque : onglets défilants sur une ligne, onglet demandé visible même avec beaucoup de collections.
+- Paramètres : titre de catégorie, repère persistant, surfaces sombres au focus, contrôles adaptés à la largeur disponible. Une catégorie demandée directement ne doit pas être remplacée par celle de l’ancien focus.
+- Navigation : focus DOM aligné sur la sélection ; Tab/Maj+Tab restent dans la couche courante ; pages inactives et contenu derrière les dialogues inertes ; rôles et états accessibles des cartes, interrupteurs et sélecteurs.
+- Langues : un seul dictionnaire `ui/i18n/en.json`, anciennes préférences migrées vers une langue proposée. Streaming : source anglaise et seul catalogue français ; valeurs historiques LANG_AUTO=0, LANG_EN=1, LANG_FR=2 conservées, langues retirées remplacées par Automatique.
+- Vérifier : `node --test tools/verify-languages.js tools/verify-optimizations.js tools/verify-personalization.js tools/verify-dolby.js`. Essais Chromium `tools/verify-interface.cjs` (Playwright, variables optionnelles KANEMODE_PLAYWRIGHT, KANEMODE_BROWSER et KANEMODE_UI_OUTPUT) : API simulées, 803 jeux, zoom 100–150 %, portable/TV, clavier et dialogues. Recompiler le moteur après la suppression de ses catalogues.
+- VERSION : 3.5.0 ; notes dans `docs/releases/3.5.0.md`. Les six options de personnalisation, l’accès Dolby et le son de démarrage sont conservés.
+
 ## Version 3.3.0 : personnalisation et Dolby
 
 - Six options dans Paramètres → Personnalisation : packs d’ambiance avec aperçu réversible, jeux/collections épinglés et reprise sur l’accueil, styles de jaquettes SteamGridDB, profils par écran, timbres et volume d’interface, mode immersif au repos.

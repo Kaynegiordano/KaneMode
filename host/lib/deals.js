@@ -20,8 +20,8 @@ const key = s => clean(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f
 
 // ---------------------------------------------------------------- sources
 // Langue des titres et descriptions de chaque boutique (prix et région : France)
-const STEAM_LANG = { fr: 'french', en: 'english', es: 'spanish', de: 'german', it: 'italian', pt: 'brazilian', ja: 'japanese', zh: 'schinese' };
-const WEB_LANG = { fr: 'fr', en: 'en-US', es: 'es-ES', de: 'de', it: 'it', pt: 'pt-BR', ja: 'ja', zh: 'zh-CN' };
+const STEAM_LANG = { fr: 'french', en: 'english' };
+const WEB_LANG = { fr: 'fr', en: 'en-US' };
 let lang = 'fr';
 
 async function steam() {

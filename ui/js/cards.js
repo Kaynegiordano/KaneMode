@@ -131,6 +131,7 @@ export function badges(card, g) {
 export function gameCard(g, kind, onOpen) {
   const c = el('div', `card ${kind}`);
   nav(c, () => onOpen(g), g.id);
+  c.setAttribute('aria-label', g.name);
   c.dataset.id = g.id;
   c.append(art(g, cardUrls(g, c)));
   badges(c, g);

@@ -87,7 +87,7 @@
       <span id="mouse-pill" hidden><svg><use href="#i-mouse"/></svg><span>Souris</span></span>
       <span id="busy" hidden><i class="spinner"></i><span></span></span>
       <svg class="update-dot" id="update-dot" hidden><use href="#i-download2"/></svg>
-      <svg class="clickable" data-hint="y"><use href="#i-search"/></svg>
+      <button class="clickable" data-hint="y" aria-label="Rechercher" title="Rechercher" tabindex="-1"><svg><use href="#i-search"/></svg></button>
       <svg><use href="#i-bell"/></svg>
       <svg id="net-icon"><use href="#i-wifi"/></svg>
       <span id="battery" hidden><svg><use href="#i-battery"/></svg> <span></span></span>
@@ -112,7 +112,7 @@
 
   <div id="scrim"></div>
 
-  <aside class="layer panel" id="menu">
+  <aside class="layer panel" id="menu" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true" inert>
     <div class="panel-head"><svg class="brand-mark"><use href="#i-brand"/></svg> KaneMode</div>
     <div class="menu-item update-item" id="menu-update" data-nav data-key="update" data-action="update-open" hidden><svg><use href="#i-download2"/></svg><span>Mise à jour disponible</span></div>
     <div class="menu-item" data-nav data-key="home" data-action="menu-go" data-page="home"><svg><use href="#i-home"/></svg>Accueil</div>
@@ -128,14 +128,14 @@
     <div class="menu-foot" id="menu-foot"></div>
   </aside>
 
-  <aside class="layer panel" id="qam">
+  <aside class="layer panel" id="qam" role="dialog" aria-modal="true" aria-label="Accès rapide" aria-hidden="true" inert>
     <div class="panel-head">Accès rapide</div>
     <div id="qam-body"></div>
   </aside>
 
   <div class="layer" id="viewer"><div class="viewer-stage"></div><div class="viewer-caption"></div></div>
   <!-- Menu d'alimentation : au centre de l'écran, grandes tuiles (lisible sur une console portable) -->
-  <div class="layer" id="power">
+  <div class="layer" id="power" role="dialog" aria-modal="true" aria-label="Alimentation" aria-hidden="true" inert>
     <div class="power-box">
       <h2><svg><use href="#i-power"/></svg>Alimentation</h2>
       <div class="power-grid">
@@ -147,8 +147,8 @@
       <div class="power-cancel" data-nav data-key="cancel" data-action="power-close">Annuler</div>
     </div>
   </div>
-  <div class="layer" id="dialog"><div class="dialog-box"></div></div>
-  <div class="layer" id="osk"></div>
+  <div class="layer" id="dialog" role="dialog" aria-modal="true" aria-hidden="true"><div class="dialog-box"></div></div>
+  <div class="layer" id="osk" role="dialog" aria-modal="true" aria-hidden="true"></div>
 
   <div class="layer" id="launch">
     <div class="launch-bg"></div>
@@ -159,7 +159,7 @@
     </div>
   </div>
 
-  <div id="toast"></div>
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
   <footer id="hints"></footer>
 
   <script type="module" src="js/main.js"></script>

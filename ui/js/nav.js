@@ -34,6 +34,10 @@ export function go(id, params = {}, { push = true, scroll = null } = {}) {
   to.params = params;
   state.page = id;
   to.el.classList.add('active');
+  for (const p of Object.values(pages)) {
+    p.el.inert = p !== to;
+    p.el.setAttribute('aria-hidden', String(p !== to));
+  }
   const keep = from === to ? to.el.scrollTop : 0;
   anims.delete(to.el);
   to.render(params);
@@ -42,7 +46,7 @@ export function go(id, params = {}, { push = true, scroll = null } = {}) {
   to.el.scrollTop = scroll != null ? scroll : keep;
   $('#page-title').textContent = to.title ? to.title(params) : '';
   $$('#menu [data-page]').forEach(m => m.classList.toggle('current', m.dataset.page === id));
-  focusIn(to.el, params.focus || (from === to ? keyOf(focused) : null), { scroll: 'instant' });
+  focusIn(to.el, params.focus || (to.initialFocus && to.initialFocus(params)) || (from === to ? keyOf(focused) : null), { scroll: 'instant' });
   renderHints();
 }
 
@@ -79,11 +83,25 @@ export function resetHistory() { state.history = []; }
 // ---------- Couches ----------
 export const topLayer = () => state.layers[state.layers.length - 1];
 
+// Une couche modale garde le clavier et le lecteur d'écran dans ses propres contrôles.
+function syncLayers() {
+  const top = topLayer();
+  const background = $('#pages') || $('#hud');
+  if (background) background.inert = !!top;
+  for (const layer of state.layers) layer.el.inert = layer !== top;
+}
+
 export function openLayer(layer) {
   layer.returnFocus = focused;
   state.layers.push(layer);
   emit('activity');
   layer.el.classList.add('open');
+  layer.el.setAttribute('aria-hidden', 'false');
+  if (layer.el.getAttribute('role') === 'dialog') {
+    const title = layer.el.querySelector('h2, .osk-title');
+    if (title) layer.el.setAttribute('aria-label', title.textContent);
+  }
+  syncLayers();
   if (layer.scrim && $('#scrim')) $('#scrim').classList.add('show');
   layer.onOpen && layer.onOpen();
   sfx('open');
@@ -95,6 +113,9 @@ export function closeLayer(layer = topLayer(), result) {
   if (!layer) return;
   state.layers = state.layers.filter(l => l !== layer);
   layer.el.classList.remove('open');
+  layer.el.inert = true;
+  layer.el.setAttribute('aria-hidden', 'true');
+  syncLayers();
   if (!state.layers.some(l => l.scrim) && $('#scrim')) $('#scrim').classList.remove('show'); // pas de voile dans le widget Game Bar
   if (layer.returnFocus && layer.returnFocus.isConnected) setFocus(layer.returnFocus, { scroll: false, sound: false });
   else focusIn(scope());
@@ -109,7 +130,7 @@ export const scope = () => (topLayer() ? topLayer().el : currentPage() ? current
 export let focused = null;
 const keyOf = e => (e && e.dataset ? e.dataset.key || null : null);
 
-export const navItems = (root = scope()) => $$('[data-nav]', root).filter(e => e.offsetParent !== null || e.getClientRects().length);
+export const navItems = (root = scope()) => $$('[data-nav]', root).filter(e => !e.disabled && e.getAttribute('aria-disabled') !== 'true' && !e.closest('[inert]') && (e.offsetParent !== null || e.getClientRects().length));
 
 export function focusIn(root, key, opts) {
   const items = navItems(root);
@@ -126,9 +147,13 @@ export function setFocus(target, { scroll = true, sound = true } = {}) {
     if (focused) focused.classList.remove('focused');
     focused = target;
     target.classList.add('focused');
+    // Le focus réel suit aussi la sélection : clavier et lecteurs d'écran retrouvent le même contrôle.
+    target.tabIndex = -1;
+    if (!target.hasAttribute('role') && !target.matches('button, input, select, textarea, a[href]')) target.setAttribute('role', 'button');
     if (target.classList.contains('card')) prioritizeArt(target);
     if (sound) sfx('move');
   }
+  if (document.activeElement !== target && target.isConnected && !target.closest('[inert]')) target.focus({ preventScroll: true });
   // Mémoire de position : chaque rangée et chaque zone retient son dernier élément
   const row = target.closest('.row'), zone = target.closest('[data-zone]');
   if (row) row._navLast = target;
@@ -318,13 +343,15 @@ function nudgeScroll(from, dir) {
 /** Rend un élément navigable ; `act` est appelé à la validation. */
 export function nav(elm, act, key) {
   elm.dataset.nav = '';
+  elm.tabIndex = -1;
+  if (!elm.hasAttribute('role') && !elm.matches('button, input, select, textarea, a[href]')) elm.setAttribute('role', 'button');
   if (key != null) elm.dataset.key = key;
   if (act) elm._act = act;
   return elm;
 }
 
 export function activate(t) {
-  if (!t || !scope().contains(t)) return;
+  if (!t || !scope().contains(t) || t.disabled || t.getAttribute('aria-disabled') === 'true' || t.closest('[inert]')) return;
   const sound = t.dataset.sfx || 'select';
   if (t._act) { sfx(sound); return t._act(t); }
   const a = t.dataset.action && actions[t.dataset.action];
@@ -408,6 +435,16 @@ const KEYS = {
 };
 addEventListener('keydown', e => {
   if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (inputLock.on) return;
+    setInput('kbd');
+    input.last = Date.now();
+    emit('activity');
+    const items = navItems(), index = items.indexOf(focused);
+    if (items.length) setFocus(items[index < 0 ? (e.shiftKey ? items.length - 1 : 0) : (index + (e.shiftKey ? -1 : 1) + items.length) % items.length]);
+    return;
+  }
   // Saisie de texte (clavier virtuel ou recherche) : les caractères vont au champ.
   const typing = (topLayer() && topLayer().typing) || (!topLayer() && currentPage() && currentPage().typing);
   if (typing && typing(e) === true) { e.preventDefault(); setInput('kbd'); return; }

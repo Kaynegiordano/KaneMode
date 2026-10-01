@@ -487,11 +487,11 @@ const BUILDERS = {
   async look(s) {
     h2(s, 'i-palette', t('Apparence'));
     // Langue : l'interface se recharge pour l'appliquer partout (menus, widgets, streaming)
-    const langName = LANGS.find(([id]) => id === lang)[1];
+    const langName = t(LANGS.find(([id]) => id === lang)[1]);
     actionRow(s, 'i-globe', `${t('Langue')} · ${esc(langName)}`, esc(settings.lang ? t('Langue de l’interface, des widgets Game Bar et du streaming local') : t('Automatique : langue de Windows')), async () => {
       const v = await dialog({
         title: t('Langue'),
-        buttons: [{ label: t('Automatique (langue de Windows)'), value: 'auto', primary: !settings.lang }, ...LANGS.map(([value, label]) => ({ label, value, primary: settings.lang === value }))],
+        buttons: [{ label: t('Automatique (langue de Windows)'), value: 'auto', primary: !settings.lang }, ...LANGS.map(([value, label]) => ({ label: t(label), value, primary: settings.lang === value }))],
       });
       if (!v || v === (settings.lang || 'auto')) return;
       settings.lang = v === 'auto' ? undefined : v;
@@ -781,11 +781,12 @@ const BUILDERS = {
 page = definePage('settings', {
   libBound: true,
   title: () => t('Paramètres'),
+  initialFocus: p => p.section ? 'sec:' + p.section : null,
   render(p = {}, { refresh = false } = {}) {
     // Rafraîchissement : on garde l'élément sélectionné ; nouvelle visite : celui demandé
     const keep = refresh && focused && this.el.contains(focused) ? focused.dataset.key : null;
     const section = p.section || SECTION_OF[p.focus] || this.section || 'library';
-    this.show(keep ? this.section || section : section, keep || p.focus);
+    this.show(keep ? this.section || section : section, keep || p.focus || this.initialFocus(p));
   },
   /** Affiche une catégorie. Sans `focus`, le focus ne bouge pas (survol de la barre latérale). */
   async show(section, focus) {
@@ -794,6 +795,7 @@ page = definePage('settings', {
     if (!this.wrap || !root.contains(this.wrap)) {
       this.wrap = el('div', 'settings-wrap');
       this.side = el('div', 'settings-nav');
+      this.side.setAttribute('aria-label', t('Paramètres'));
       this.side.dataset.zone = 'side';
       for (const [id, iconId, label] of SECTIONS) {
         const it = el('div', 'menu-item', `${icon(iconId)}${label}`);
@@ -809,16 +811,23 @@ page = definePage('settings', {
     for (const m of this.side.children) {
       const cur = m.dataset.key === 'sec:' + section;
       m.classList.toggle('current', cur);
+      if (cur) m.setAttribute('aria-current', 'true'); else m.removeAttribute('aria-current');
       if (cur) m.dataset.autofocus = ''; else delete m.dataset.autofocus;
     }
     if (focus && focus.startsWith('sec:')) focusIn(root, focus, { scroll: false });
     // Construit hors de l'écran puis remplace d'un coup : pas de page vide ni de saut
     const s = el('div', 'settings');
     s.dataset.zone = 'content';
+    const entry = SECTIONS.find(([id]) => id === section);
+    if (entry) s.append(el('div', 'settings-section-title', `${icon(entry[1])}<h2>${esc(entry[2])}</h2>`));
     const token = (this.token = {});
+    this.wrap.lastElementChild.setAttribute('aria-busy', 'true');
+    this.wrap.lastElementChild.inert = changed;
     try { await BUILDERS[section](s); }
     catch (e) { s.append(el('div', 'notice', t('Impossible de charger cette section : {a}', { a: esc(e.message) }))); }
     if (token !== this.token) return; // une autre catégorie a été demandée entre-temps
+    const firstGroup = s.querySelector(':scope > h2');
+    if (entry && firstGroup && firstGroup.textContent.trim() === entry[2]) firstGroup.remove();
     const old = this.wrap.lastElementChild;
     const hadFocus = focused && old.contains(focused);
     const top = old.scrollTop;

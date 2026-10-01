@@ -79,6 +79,7 @@ export function openKeyboard({ title, value = '', placeholder = '', submitLabel 
     const sheet = el('div', 'osk-sheet');
     sheet.append(el('div', 'osk-title', esc(title)), field, kb);
     host.replaceChildren(sheet);
+    host.setAttribute('aria-label', title);
     set(v);
     layer = openLayer({
       el: host, name: 'osk', noGlobal: true, focusKey: 'k1-0',
@@ -101,6 +102,7 @@ export function openKeyboard({ title, value = '', placeholder = '', submitLabel 
 export function dialog({ title, text = '', buttons, inline = false }) {
   return new Promise(resolve => {
     const box = $('#dialog .dialog-box');
+    $('#dialog').setAttribute('aria-label', title);
     box.innerHTML = `<h2>${esc(title)}</h2>${text ? `<p>${text}</p>` : ''}`;
     const actions = el('div', 'dialog-actions' + (inline ? ' inline' : ''));
     let layer;
@@ -129,10 +131,12 @@ export async function confirmDialog(title, text, okLabel = t('Confirmer'), dange
 // ---------- Sélecteur segmenté ----------
 export function segmented(options, current, onChange, keyPrefix) {
   const s = el('div', 'segmented');
+  s.setAttribute('role', 'group');
   for (const o of options) {
     const b = el('button', String(o.value) === String(current) ? 'active' : '', esc(o.label));
+    b.setAttribute('aria-pressed', String(String(o.value) === String(current)));
     nav(b, () => {
-      s.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      s.querySelectorAll('button').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', String(x === b)); });
       onChange(o.value);
     }, `${keyPrefix}-${o.value}`);
     s.append(b);
@@ -144,9 +148,13 @@ export function segmented(options, current, onChange, keyPrefix) {
 export function switchRow({ lead = '', title, desc = '', on, onToggle, key }) {
   const r = el('div', 'set-row nav', `${lead}<div class="txt"><b>${esc(title)}</b>${desc ? `<small>${desc}</small>` : ''}</div><div class="switch${on ? ' on' : ''}"></div>`);
   if (!lead) r.style.gridTemplateColumns = '1fr auto';
+  r.setAttribute('role', 'switch');
+  r.setAttribute('aria-label', title);
+  r.setAttribute('aria-checked', String(!!on));
   nav(r, () => {
     const sw = r.querySelector('.switch');
     sw.classList.toggle('on');
+    r.setAttribute('aria-checked', String(sw.classList.contains('on')));
     onToggle(sw.classList.contains('on'));
   }, key);
   return r;

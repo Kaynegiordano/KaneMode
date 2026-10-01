@@ -155,12 +155,19 @@ function segment(options, current, onPick, key) {
 /** Curseur : flèches gauche/droite (manette) ou clic. onChange est appelé au plus toutes les 120 ms. */
 function slider(iconId, value, { min = 0, max = 100, step = 5, unit = '', onChange, key }) {
   const s = el('div', 'slider', `${icon(iconId)}<div class="track"><div class="fill"></div><div class="knob"></div></div><output></output>`);
+  const names = { volume: t('Volume'), brightness: t('Luminosité'), tdp: t('Puissance (TDP)'), 'tdp-spl': t('Soutenue'), 'tdp-sppt': t('Boost court (quelques secondes)'), 'tdp-fppt': t('Boost bref (pics)'), cpumax: t('Limite du processeur') };
+  s.setAttribute('role', 'slider');
+  s.setAttribute('aria-label', names[key] || key);
+  s.setAttribute('aria-valuemin', String(min));
+  s.setAttribute('aria-valuemax', String(max));
   let v = value, timer = 0, sent = value;
   const paint = () => {
     const pct = (100 * (v - min)) / (max - min);
     $('.fill', s).style.width = pct + '%';
     $('.knob', s).style.left = pct + '%';
     $('output', s).textContent = v + unit;
+    s.setAttribute('aria-valuenow', String(v));
+    s.setAttribute('aria-valuetext', v + unit);
   };
   const set = nv => {
     nv = Math.max(min, Math.min(max, Math.round(nv / step) * step));
@@ -186,10 +193,15 @@ function slider(iconId, value, { min = 0, max = 100, step = 5, unit = '', onChan
 
 function toggle(iconId, label, on, onToggle, key) {
   const tile = el('div', 'toggle' + (on ? ' on' : ''), `${icon(iconId)}<span>${esc(label)}</span>`);
+  tile.setAttribute('role', 'switch');
+  tile.setAttribute('aria-label', label);
+  tile.setAttribute('aria-checked', String(!!on));
   return nav(tile, async () => {
     const next = !tile.classList.contains('on');
     tile.classList.toggle('on', next);
+    tile.setAttribute('aria-checked', String(next));
     try { await onToggle(next); } catch { tile.classList.toggle('on', !next); }
+    tile.setAttribute('aria-checked', String(tile.classList.contains('on')));
   }, key);
 }
 
@@ -347,4 +359,3 @@ export async function renderQam(focusKey, reload = true) {
     draw(keep);
   } catch { /* hôte injoignable : réglages de l'interface seulement */ }
 }
-

@@ -9,12 +9,11 @@
 // La langue est choisie dans Paramètres → Apparence (settings.lang), sinon celle de Windows.
 
 export const LANGS = [
-  ['fr', 'Français'], ['en', 'English'], ['es', 'Español'], ['de', 'Deutsch'], ['it', 'Italiano'],
-  ['pt', 'Português (Brasil)'], ['ja', '日本語'], ['zh', '简体中文'],
+  ['fr', 'Français'], ['en', 'Anglais'],
 ];
 const SUPPORTED = LANGS.map(l => l[0]);
 // Formats des dates, heures et nombres de chaque langue
-const LOCALES = { fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', ja: 'ja-JP', zh: 'zh-CN' };
+const LOCALES = { fr: 'fr-FR', en: 'en-US' };
 
 /** Langue de Windows si elle est proposée, sinon l'anglais. */
 export function systemLang() {
@@ -27,8 +26,16 @@ export function systemLang() {
 function chosen() {
   // Interface de KaneMode : son réglage ; widgets Game Bar (autre stockage) : la langue que KaneMode
   // leur a transmise (km.lang, voir widget.js)
-  try { const s = JSON.parse(localStorage.getItem('km.settings') || '{}'); if (SUPPORTED.includes(s.lang)) return s.lang; } catch { /* stockage indisponible */ }
-  try { const w = localStorage.getItem('km.lang'); if (SUPPORTED.includes(w)) return w; } catch { /* idem */ }
+  try {
+    const s = JSON.parse(localStorage.getItem('km.settings') || '{}');
+    if (SUPPORTED.includes(s.lang)) return s.lang;
+    if (s.lang) { s.lang = systemLang(); localStorage.setItem('km.settings', JSON.stringify(s)); return s.lang; }
+  } catch { /* stockage indisponible */ }
+  try {
+    const w = localStorage.getItem('km.lang');
+    if (SUPPORTED.includes(w)) return w;
+    if (w) localStorage.setItem('km.lang', systemLang());
+  } catch { /* idem */ }
   return systemLang();
 }
 

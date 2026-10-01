@@ -58,6 +58,7 @@ function tabs() {
 definePage('library', {
   libBound: true,
   title: () => t('Bibliothèque'),
+  initialFocus() { return 'tab:' + this.tab; },
   render(params = {}) {
     if (params.tab) { this.tab = params.tab; params.tab = null; }
     this.tab = this.tab || store.get('libtab', 'installed');
@@ -68,26 +69,36 @@ definePage('library', {
     const root = this.el;
     root.innerHTML = '';
 
-    const bar = el('div', 'toolbar');
+    const bar = el('div', 'toolbar library-toolbar');
     bar.append(shoulder('lb'));
+    const strip = el('div', 'row library-tabs');
+    strip.setAttribute('role', 'tablist');
+    strip.setAttribute('aria-label', t('Bibliothèque'));
     for (const entry of list) {
       const pool = entry.all ? lib.games : visible;
       const b = el('div', 'tab' + (entry.id === cur.id ? ' active' : ''),
         `${entry.color ? `<span class="dot" style="--src:${entry.color}"></span>` : ''}${entry.collection ? icon('i-collection') : ''}${esc(entry.label)}<span class="count">${pool.filter(entry.filter).length}</span>`);
-      bar.append(nav(b, () => this.setTab(entry.id, true), 'tab:' + entry.id));
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(entry.id === cur.id));
+      strip.append(nav(b, () => this.setTab(entry.id, true), 'tab:' + entry.id));
     }
-    bar.append(shoulder('rb'), el('span', 'spacer'));
+    bar.append(strip, shoulder('rb'));
+    const controls = el('div', 'library-actions');
     const sort = SORTS.find(s => s.id === settings.sort) || SORTS[0];
     const sb = el('div', 'chip-btn', t('{a}Tri : {label}', { a: icon('i-sort'), label: sort.label }));
-    bar.append(nav(sb, () => {
+    controls.append(nav(sb, () => {
       settings.sort = SORTS[(SORTS.indexOf(sort) + 1) % SORTS.length].id;
       saveSettings();
       this.render();
       focusIn(this.el, 'sort');
     }, 'sort'));
     const add = el('div', 'chip-btn primary', t('{a}Ajouter', { a: icon('i-plus') }));
-    bar.append(nav(add, () => go('add'), 'add'));
+    controls.append(nav(add, () => go('add'), 'add'));
+    bar.append(controls);
     root.append(bar);
+    // Même avec beaucoup de collections, les catégories restent sur une ligne et l'onglet actif est visible.
+    const active = strip.querySelector('.active');
+    if (active) strip.scrollLeft = Math.max(0, active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2);
 
     let items = (cur.all ? lib.games : visible).filter(cur.filter);
     // Émulation : filtre secondaire par console
@@ -105,7 +116,11 @@ definePage('library', {
     }
     items.sort(sort.fn);
     const grid = el('div', 'grid');
-    items.forEach(g => grid.append(gameCard(g, 'capsule', openGame)));
+    items.forEach(g => {
+      const card = gameCard(g, 'capsule', openGame);
+      card.append(el('span', 'card-caption', '<b>' + esc(g.name) + '</b>'));
+      grid.append(card);
+    });
     root.append(grid);
     if (!items.length) {
       root.append(el('div', 'empty',

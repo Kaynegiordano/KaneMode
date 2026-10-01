@@ -344,6 +344,9 @@ let sheet = null;
 function openSheet(o) {
   if (sheet) closeLayer(sheet);
   const root = el('div', 'hud-sheet');
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-label', o.title);
   const panel = el('div', 'hud-sheet-panel');
   root.append(panel);
   panel.append(el('div', 'hud-sheet-head', `${svg(o.icon)}<b>${esc(o.title)}</b>`));
@@ -360,7 +363,7 @@ function openSheet(o) {
       nav(sw, async () => { await s.onOff.set(!s.onOff.get()); paintSw(); }, 'sheet-switch');
       panel.append(sw);
     }
-    panel.append(big, slider(s, paintBig), el('div', 'hud-sheet-scale', `<span>${esc(s.fmt(s.min))}</span><span>${esc(s.fmt(s.max))}</span>`));
+    panel.append(big, slider(s, paintBig, o.title), el('div', 'hud-sheet-scale', `<span>${esc(s.fmt(s.min))}</span><span>${esc(s.fmt(s.max))}</span>`));
     paintBig();
   } else {
     const c = o.choice;
@@ -398,14 +401,20 @@ function openSheet(o) {
 }
 
 /** Curseur du panneau : glissé au doigt ou à la souris, gauche / droite à la manette. */
-function slider(s, onPaint) {
+function slider(s, onPaint, title) {
   const d = el('div', 'hud-slider', '<div class="hs-track"><div class="hs-fill"></div><div class="hs-knob"></div></div>');
+  d.setAttribute('role', 'slider');
+  d.setAttribute('aria-label', title);
+  d.setAttribute('aria-valuemin', String(s.min));
+  d.setAttribute('aria-valuemax', String(s.max));
   const track = d.firstChild;
   let v = s.get();
   const paint = () => {
     const p = (100 * (v - s.min)) / (s.max - s.min || 1);
     d.querySelector('.hs-fill').style.width = p + '%';
     d.querySelector('.hs-knob').style.left = p + '%';
+    d.setAttribute('aria-valuenow', String(v));
+    d.setAttribute('aria-valuetext', s.fmt(v));
     onPaint();
   };
   const set = (nv, sound) => {

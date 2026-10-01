@@ -3,7 +3,7 @@
 // chaque langue a son dictionnaire ui/i18n/<langue>.json (texte français → traduction).
 //
 //   node tools/i18n.js           liste les textes (tools/i18n-keys.json) et ce qui manque par langue
-//   node tools/i18n.js missing de   textes encore sans traduction allemande (JSON, pour les traduire)
+//   node tools/i18n.js missing en   textes encore sans traduction anglaise (JSON, pour les traduire)
 //
 // Textes relevés :
 //   - interface : t('…'), tn(n, '…', '…') dans ui/js, et les textes écrits dans ui/*.html ;
@@ -16,7 +16,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'ui', 'i18n');
-const LANGS = ['en', 'es', 'de', 'it', 'pt', 'ja', 'zh'];
+const LANGS = ['en'];
 const walk = (dir, re) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => {
   const p = path.join(dir, d.name);
   return d.isDirectory() ? (['obj', 'bin', 'node_modules'].includes(d.name) ? [] : walk(p, re)) : re.test(d.name) ? [p] : [];

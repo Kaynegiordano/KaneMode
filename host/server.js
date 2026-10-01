@@ -57,7 +57,11 @@ const isImage = p => !!str(p) && IMAGE_EXT.includes(path.extname(p).toLowerCase(
 
 const VIDEO_EXT = ['.mp4', '.webm'];
 const AUDIO_EXT = ['.mp3', '.wav', '.ogg', '.m4a', '.opus', '.flac'];
-const config = () => Object.assign({ updateChannel: 'stable', updateAuto: true, bootVideo: null, bootSound: null, sgdbKey: null, sgdbAuto: true, sgdbPreferSteam: true, sgdbStyle: '', romRoots: [], emulatorPaths: {}, emulatorPrefs: {} }, readJson(FILES.config, {}));
+const config = () => {
+  const cfg = Object.assign({ updateChannel: 'stable', updateAuto: true, bootVideo: null, bootSound: null, sgdbKey: null, sgdbAuto: true, sgdbPreferSteam: true, sgdbStyle: '', romRoots: [], emulatorPaths: {}, emulatorPrefs: {} }, readJson(FILES.config, {}));
+  if (cfg.lang && !['fr', 'en'].includes(cfg.lang)) delete cfg.lang;
+  return cfg;
+};
 const state = () => Object.assign({ played: {}, overrides: {}, artOverrides: {}, collections: [] }, readJson(FILES.state, {}));
 
 function runPs(script, args = []) {
@@ -114,7 +118,7 @@ const queue = [];
 let busy = false;
 
 // Langue des données de Steam (genres, descriptions) : celle de l'interface ; prix toujours pour la France
-const STEAM_LANG = { fr: 'french', en: 'english', es: 'spanish', de: 'german', it: 'italian', pt: 'brazilian', ja: 'japanese', zh: 'schinese' };
+const STEAM_LANG = { fr: 'french', en: 'english' };
 const steamLang = () => STEAM_LANG[config().lang] || 'french';
 async function steamJson(url) {
   const r = await fetch(url, { headers: { 'Accept-Language': (config().lang || 'fr') + ',en;q=0.5' }, signal: AbortSignal.timeout(8000) });
@@ -514,7 +518,7 @@ const engineLook = () => {
     sounds: cfg.sounds, soundTheme: cfg.soundTheme, soundVolume: cfg.soundVolume, soundMoves: cfg.soundMoves };
 };
 // Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
-const LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt', 'ja', 'zh'];
+const LANGS = ['fr', 'en'];
 let kpLast = 0;
 async function refreshKanePlay() {
   kpLast = Date.now();

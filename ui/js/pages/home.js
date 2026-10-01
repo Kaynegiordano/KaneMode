@@ -93,16 +93,19 @@ const ROWS = {
 };
 definePage('home', {
   libBound: true,
+  title: () => 'KaneMode',
   render() {
     const root = this.el;
     root.innerHTML = '';
     const vis = lib.visible();
     const game = settings.homeResume && resumeEntry(vis, running);
+    root.classList.toggle('has-resume', !!game);
     if (game) {
       queryGame(game);
       const inProgress = running.has(game.id);
       const tile = el('div', 'card resume-tile', '<span class="resume-art"></span><span class="resume-copy"><small>' + esc(inProgress ? t('Partie en cours') : t('Dernière partie')) + '</small><h1>' + esc(game.name) + '</h1><b>' + icon('i-play') + esc(inProgress ? t('Reprendre') : t('Jouer')) + '</b></span>');
       tile.dataset.id = game.id;
+      tile.setAttribute('aria-label', (inProgress ? t('Reprendre') : t('Jouer')) + ' · ' + game.name);
       const image = heroUrl(game); if (image) tile.querySelector('.resume-art').style.backgroundImage = 'url(' + JSON.stringify(image) + ')';
       nav(tile, () => inProgress ? resumeGame(game) : launch(game), 'home-resume');
       root.append(tile);
@@ -125,11 +128,20 @@ definePage('home', {
       return;
     }
     const g = target.dataset.id && lib.byId(target.dataset.id);
-    if (!g) return;
+    if (!g) {
+      const collection = target.dataset.key?.startsWith('pin-collection:') && lib.collections.find(c => c.id === target.dataset.key.slice(15));
+      const label = target.classList.contains('more-card') ? target.querySelector('div')?.textContent : target.querySelector(':scope > span')?.firstChild?.textContent;
+      const detail = target.querySelector('small')?.textContent;
+      this.info.innerHTML = collection
+        ? '<h1>' + esc(collection.name) + '</h1><p>' + tn(lib.visible().filter(g => collection.ids.includes(g.id)).length, '{n} jeu', '{n} jeux') + '</p>'
+        : '<h1>' + esc(label || target.textContent.trim()) + '</h1>' + (detail ? '<p>' + esc(detail) + '</p>' : '');
+      return;
+    }
     setBackground(heroUrl(g));
     const s = sourceOf(g.source);
     const m = g.meta || {};
     this.info.innerHTML = t('<h1>{a}</h1>\n      <p><span class="pill src" style="--src:{color}">{b}</span>\n      {c}\n      <span>Dernière session : <b>{played}</b></span>\n      {d}\n      {e}\n      {f}</p>', { a: esc(g.name), color: s.color, b: esc(g.systemName || (g.source === 'kaneplay' ? t("Streaming depuis vos PC") : s.label)), c: g.demo ? t("<span class=\"pill demo\">Démo</span>") : '', played: fmt.played(g.lastPlayed), d: g.playtime ? `<span>${icon('i-clock').replace('<svg', '<svg width="14" height="14" style="fill:currentColor;vertical-align:-2px;margin-right:4px"')}${fmt.playtime(g.playtime)}</span>` : '', e: g.sizeOnDisk ? `<span>${fmt.size(g.sizeOnDisk)}</span>` : '', f: m.genres && m.genres.length ? `<span>${esc(m.genres.slice(0, 3).join(' · '))}</span>` : '' });
+    if (target.dataset.key === 'home-resume') this.info.querySelector('h1').hidden = true;
   },
   // B sur l'accueil (rien derrière) : le menu principal, comme Select
   back() { if (hooks.menu) { hooks.menu(); return true; } return false; },

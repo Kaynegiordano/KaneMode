@@ -27,7 +27,7 @@ function findExe(bundled, dev) {
 }
 
 // Langue de KaneMode → traduction du moteur (fichiers qml_<langue> de KanePlay)
-const ENGINE_LANG = { fr: 'fr', en: 'en', es: 'es', de: 'de', it: 'it', pt: 'pt_BR', ja: 'ja', zh: 'zh_CN' };
+const ENGINE_LANG = { fr: 'fr', en: 'en' };
 
 /** Environnement du mode intégré : icône, identité, couleur d'accent, coins et langue de KaneMode, commande à exécuter. */
 function env(command, { icon, accent, corners, lang, sounds, soundTheme, soundVolume, soundMoves } = {}) {
