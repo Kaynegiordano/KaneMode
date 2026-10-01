@@ -1,9 +1,9 @@
-// Accueil : jeux récents (et KanePlay), émulation, applications, boutiques, sortie vers le bureau.
+// Accueil : jeux récents (et KanePlay), émulation, applications, boutiques.
 import { t, tn } from '../i18n.js';
 import { el, esc, icon, lib, fmt, sourceOf, settings, mergeOrder } from '../core.js';
 import { definePage, nav, go, hooks } from '../nav.js';
 import { gameCard } from '../cards.js';
-import { openGame, openLauncher, setBackground, heroUrl, exitToDesktop } from './game.js';
+import { openGame, openLauncher, setBackground, heroUrl } from './game.js';
 import { dealsRow, findDeal, dealLine } from '../deals.js';
 
 const byRecent = (a, b) => b.lastPlayed - a.lastPlayed || a.name.localeCompare(b.name, 'fr');
@@ -13,7 +13,7 @@ export const HOME_ROWS = [
   { id: 'emulation', label: t('Émulation'), desc: t('Vos ROMs, par dernière partie') },
   { id: 'apps', label: t('Applications'), desc: t('Applis et raccourcis ajoutés') },
   { id: 'deals', label: t('Bons plans et nouveautés'), desc: t('Promos, nouveautés et jeux gratuits de Steam, Epic, GOG…') },
-  { id: 'stores', label: t('Boutiques et plateformes'), desc: t('Lanceurs détectés et tuile Bureau') },
+  { id: 'stores', label: t('Boutiques et plateformes'), desc: t('Lanceurs détectés') },
 ];
 export function homeRows() {
   // Une rangée nouvelle (ex. bons plans) prend sa place par défaut, pas la dernière
@@ -56,9 +56,6 @@ const ROWS = {
       tile.style.setProperty('--src', sourceOf(l.id).color);
       lrow.append(nav(tile, () => openLauncher(l), 'launcher:' + l.id));
     }
-    const deskTile = el('div', 'card tile launcher-tile', t('{a}<span>Bureau Windows<small>KaneMode reste ouvert</small></span>', { a: icon('i-desktop') }));
-    deskTile.style.setProperty('--src', '#2a7fe0');
-    lrow.append(nav(deskTile, exitToDesktop, 'desktop-tile'));
     root.append(lrow);
   },
 };
@@ -71,11 +68,9 @@ definePage('home', {
     // Le streaming local n'est plus un « jeu » : il s'ouvre depuis le menu (et Paramètres → Streaming)
     const games = vis.filter(g => g.type === 'game' && g.installed && g.source !== 'rom' && g.source !== 'kaneplay').sort(byRecent);
 
-    // En-tête : titre + bouton bien visible pour revenir au bureau Windows
+    // En-tête des jeux récents
     const top = el('div', 'home-top');
     top.append(el('h2', 'row-title', t('Jeux récents')));
-    const desk = el('div', 'btn-desktop', t('{a}Bureau Windows', { a: icon('i-desktop') }));
-    top.append(nav(desk, exitToDesktop, 'desktop'));
     root.append(top);
 
     const row = el('div', 'row');

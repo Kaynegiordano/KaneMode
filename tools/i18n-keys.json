@@ -51,11 +51,16 @@
   "ui/js/qam.js"
  ],
  " Ko": [
+  "ui/js/core.js",
   "ui/js/pages/add.js"
  ],
  " Mo": [
+  "ui/js/core.js",
   "ui/js/pages/add.js",
   "ui/js/pages/settings.js"
+ ],
+ " octets": [
+  "ui/js/core.js"
  ],
  "{a} · installé : {b}": [
   "host/server.js"
@@ -75,9 +80,6 @@
  "{a}<div>Toute la bibliothèque</div><small>{length} éléments</small>": [
   "ui/js/pages/home.js"
  ],
- "{a}<span>Bureau Windows<small>KaneMode reste ouvert</small></span>": [
-  "ui/js/pages/home.js"
- ],
  "{a}Actualiser": [
   "ui/js/pages/add.js",
   "ui/js/pages/media.js"
@@ -94,9 +96,6 @@
  "{a}Automatique": [
   "ui/js/pages/artpicker.js"
  ],
- "{a}Bureau Windows": [
-  "ui/js/pages/home.js"
- ],
  "{a}Changer de jeu…": [
   "ui/js/pages/artpicker.js"
  ],
@@ -109,8 +108,14 @@
  "{a}Récupérer à nouveau": [
   "ui/js/pages/artpicker.js"
  ],
+ "{a}Sélectionner": [
+  "ui/js/pages/media.js"
+ ],
  "{a}Supprimer": [
   "ui/js/pages/add.js"
+ ],
+ "{a}Supprimer ({n})": [
+  "ui/js/pages/media.js"
  ],
  "{a}Tri : {label}": [
   "ui/js/pages/library.js"
@@ -156,6 +161,12 @@
  ],
  "{n} autres pilotes publiés": [
   "ui/js/pages/settings.js"
+ ],
+ "{n} capture(s) n’ont pas pu être supprimées": [
+  "ui/js/pages/media.js"
+ ],
+ "{n} captures supprimées": [
+  "ui/js/pages/media.js"
  ],
  "{n} console": [
   "ui/js/pages/settings.js"
@@ -288,6 +299,9 @@
   "ui/js/main.js"
  ],
  "{name} est déjà lancé": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} garde le mode en cours": [
   "ui/js/pages/game.js"
  ],
  "{name} mis à jour": [
@@ -593,12 +607,6 @@
   "ui/js/main.js",
   "ui/js/qam.js"
  ],
- "Aller au bureau": [
-  "ui/js/main.js"
- ],
- "Aller au bureau Windows ?": [
-  "ui/js/main.js"
- ],
  "Allumé depuis": [
   "ui/js/pages/settings.js"
  ],
@@ -668,6 +676,9 @@
  "Applications installées": [
   "ui/js/pages/add.js"
  ],
+ "Appliqué automatiquement à chaque lancement de {name}.": [
+  "ui/js/pages/game.js"
+ ],
  "Appliquer": [
   "ui/js/pages/artpicker.js"
  ],
@@ -726,6 +737,9 @@
  "Aucun": [
   "ui/js/pages/add.js",
   "ui/js/pages/settings.js"
+ ],
+ "Aucun (mode en cours)": [
+  "ui/js/pages/game.js"
  ],
  "Aucun émulateur trouvé pour {a}": [
   "host/server.js"
@@ -939,19 +953,14 @@
  "Bureau": [
   "ui/js/pages/add.js"
  ],
- "Bureau Windows": [
-  "ui/index.html",
-  "ui/js/main.js",
-  "ui/js/pages/settings.js"
- ],
- "Bureau Windows · KaneMode reste ouvert": [
-  "ui/js/pages/game.js"
- ],
  "c’est déjà fait": [
   "ui/js/pages/settings.js"
  ],
  "Capture": [
   "ui/js/pages/settings.js"
+ ],
+ "Capture supprimée": [
+  "ui/js/pages/media.js"
  ],
  "Captures": [
   "ui/js/pages/media.js"
@@ -1038,6 +1047,9 @@
  ],
  "Classer comme jeu": [
   "ui/js/pages/game.js"
+ ],
+ "Classique": [
+  "ui/js/pages/settings.js"
  ],
  "Clé API personnelle (facultative)": [
   "ui/js/pages/settings.js"
@@ -1148,6 +1160,9 @@
   "ui/js/pages/game.js"
  ],
  "Couleur d’accent": [
+  "ui/js/pages/settings.js"
+ ],
+ "Couleur, fond, coins, jaquettes et police en un choix": [
   "ui/js/pages/settings.js"
  ],
  "coupé": [
@@ -1287,6 +1302,7 @@
   "ui/js/pages/settings.js"
  ],
  "Économie": [
+  "ui/js/pages/game.js",
   "ui/js/qam.js"
  ],
  "Écran": [
@@ -1307,6 +1323,12 @@
  ],
  "Effets allégés": [
   "ui/js/pages/settings.js"
+ ],
+ "Elle est envoyée à la corbeille de Windows : vous pourrez la récupérer de là.": [
+  "ui/js/pages/media.js"
+ ],
+ "Elles sont envoyées à la corbeille de Windows : vous pourrez les récupérer de là.": [
+  "ui/js/pages/media.js"
  ],
  "Emplacement": [
   "ui/js/pages/add.js"
@@ -1384,6 +1406,7 @@
   "ui/js/pages/settings.js"
  ],
  "Équilibré": [
+  "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
  ],
@@ -1424,7 +1447,8 @@
   "ui/js/main.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
-  "ui/js/pages/media.js"
+  "ui/js/pages/media.js",
+  "ui/js/pages/settings.js"
  ],
  "Fermeture de {a}…": [
   "ui/js/widget.js"
@@ -1723,6 +1747,9 @@
   "ui/js/pages/add.js",
   "ui/js/widget.js"
  ],
+ "Jeu inconnu": [
+  "host/server.js"
+ ],
  "Jeux": [
   "ui/js/pages/library.js"
  ],
@@ -1769,14 +1796,8 @@
  "KaneMode ne répond pas": [
   "ui/js/core.js"
  ],
- "KaneMode reste ouvert": [
-  "ui/index.html"
- ],
  "KaneMode se ferme, s’installe et se relance tout seul (environ 30 secondes)": [
   "ui/js/pages/settings.js"
- ],
- "KaneMode sort du mode Xbox et reste ouvert.": [
-  "ui/js/main.js"
  ],
  "KaneMode va se fermer pendant l’installation, puis se relancer. Les jeux en cours ne sont pas fermés.": [
   "ui/js/pages/settings.js"
@@ -1820,7 +1841,7 @@
  "Lanceur de la boutique": [
   "ui/js/pages/game.js"
  ],
- "Lanceurs détectés et tuile Bureau": [
+ "Lanceurs détectés": [
   "ui/js/pages/home.js"
  ],
  "Langue": [
@@ -1883,7 +1904,7 @@
  "Legion Go": [
   "ui/js/pages/settings.js"
  ],
- "Les <b>jeux récents</b> (et le streaming local) restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.": [
+ "Les <b>jeux récents</b> restent en haut. Choisissez l’ordre et l’affichage des rangées suivantes.": [
   "ui/js/pages/settings.js"
  ],
  "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
@@ -2043,6 +2064,9 @@
  "Microsoft Store": [
   "ui/js/pages/add.js"
  ],
+ "Minimal": [
+  "ui/js/pages/settings.js"
+ ],
  "Mise à jour {v} disponible": [
   "ui/js/main.js"
  ],
@@ -2085,12 +2109,21 @@
  "Mode {name}{a}{b}": [
   "ui/js/widget.js"
  ],
+ "Mode appliqué au lancement de {name}": [
+  "ui/js/pages/game.js"
+ ],
  "Mode d’alimentation, profil de la console, puissance, fréquence de l’écran": [
   "ui/js/qam.js"
  ],
  "Mode de performance": [
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
+ ],
+ "Mode de performance du jeu": [
+  "ui/js/pages/game.js"
+ ],
+ "Mode de performance du jeu…": [
+  "ui/js/pages/game.js"
  ],
  "Mode faible latence non pris en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
@@ -2150,9 +2183,16 @@
   "ui/js/widget.js"
  ],
  "Moteur de streaming absent": [
-  "host/server.js"
+  "host/server.js",
+  "ui/js/pages/game.js"
  ],
  "Moyenne": [
+  "ui/js/pages/settings.js"
+ ],
+ "Nature": [
+  "ui/js/pages/settings.js"
+ ],
+ "Néon": [
   "ui/js/pages/settings.js"
  ],
  "Netflix": [
@@ -2387,6 +2427,7 @@
   "ui/js/main.js"
  ],
  "Performance": [
+  "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
   "ui/js/qam.js",
   "ui/js/widget.js"
@@ -2396,6 +2437,7 @@
  ],
  "Personnalisé": [
   "ui/js/monitor.js",
+  "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
  "Personnalisé : réglages ajustés à la main ci-dessous": [
@@ -2562,6 +2604,9 @@
  ],
  "Quitter": [
   "ui/js/pages/game.js"
+ ],
+ "Quitter KaneMode": [
+  "ui/index.html"
  ],
  "Quitter KaneMode ?": [
   "ui/js/pages/game.js"
@@ -2768,6 +2813,12 @@
   "ui/js/pages/search.js",
   "ui/js/pages/settings.js"
  ],
+ "Retour au bureau Windows": [
+  "ui/index.html"
+ ],
+ "Rétro": [
+  "ui/js/pages/settings.js"
+ ],
  "Revient à l’accès public, sans clé": [
   "ui/js/pages/settings.js"
  ],
@@ -2839,6 +2890,7 @@
   "ui/js/nav.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
+  "ui/js/pages/media.js",
   "ui/js/pages/search.js"
  ],
  "Sélectionnez au moins une application": [
@@ -2888,9 +2940,6 @@
  "Sons de l’interface": [
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
- ],
- "Sort du mode Xbox ; KaneMode reste ouvert": [
-  "ui/js/pages/settings.js"
  ],
  "Sortie": [
   "ui/js/pages/game.js"
@@ -2973,10 +3022,17 @@
   "ui/js/pages/settings.js"
  ],
  "Supprimer": [
-  "ui/js/pages/game.js"
+  "ui/js/pages/game.js",
+  "ui/js/pages/media.js"
  ],
  "Supprimer « {name} » ?": [
   "ui/js/pages/game.js"
+ ],
+ "Supprimer {n} captures ?": [
+  "ui/js/pages/media.js"
+ ],
+ "Supprimer cette capture ?": [
+  "ui/js/pages/media.js"
  ],
  "Supprimer de la bibliothèque": [
   "ui/js/pages/game.js"
@@ -3035,6 +3091,9 @@
  "Terminé": [
   "ui/js/widget.js"
  ],
+ "Terminer": [
+  "ui/js/pages/media.js"
+ ],
  "Tester le démarrage": [
   "ui/js/pages/settings.js"
  ],
@@ -3042,6 +3101,9 @@
   "ui/js/pages/settings.js"
  ],
  "Textes plus lisibles et contour jaune très visible autour de l’élément sélectionné": [
+  "ui/js/pages/settings.js"
+ ],
+ "Thème": [
   "ui/js/pages/settings.js"
  ],
  "Toujours afficher la boutique": [
@@ -3057,6 +3119,12 @@
   "ui/js/pages/library.js",
   "ui/js/pages/media.js",
   "ui/js/widget.js"
+ ],
+ "Tout désélectionner": [
+  "ui/js/pages/media.js"
+ ],
+ "Tout sélectionner": [
+  "ui/js/pages/media.js"
  ],
  "Toutes": [
   "ui/js/pages/add.js"
@@ -3160,7 +3228,7 @@
  "Veille simulée · appuyez sur un bouton pour réveiller": [
   "ui/js/power.js"
  ],
- "Veille, streaming local, bureau Windows": [
+ "Veille, alimentation, streaming local": [
   "ui/js/qam.js"
  ],
  "Vérification de la clé…": [

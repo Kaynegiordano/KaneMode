@@ -61,7 +61,7 @@ definePage('library', {
   render(params = {}) {
     if (params.tab) { this.tab = params.tab; params.tab = null; }
     this.tab = this.tab || store.get('libtab', 'installed');
-    const list = tabs();
+    const list = tabs(), visible = lib.visible();
     const cur = list.find(x => x.id === this.tab) || list[0];
     this.tab = cur.id;
     store.set('libtab', this.tab);
@@ -71,7 +71,7 @@ definePage('library', {
     const bar = el('div', 'toolbar');
     bar.append(shoulder('lb'));
     for (const entry of list) {
-      const pool = entry.all ? lib.games : lib.visible();
+      const pool = entry.all ? lib.games : visible;
       const b = el('div', 'tab' + (entry.id === cur.id ? ' active' : ''),
         `${entry.color ? `<span class="dot" style="--src:${entry.color}"></span>` : ''}${entry.collection ? icon('i-collection') : ''}${esc(entry.label)}<span class="count">${pool.filter(entry.filter).length}</span>`);
       bar.append(nav(b, () => this.setTab(entry.id, true), 'tab:' + entry.id));
@@ -89,7 +89,7 @@ definePage('library', {
     bar.append(nav(add, () => go('add'), 'add'));
     root.append(bar);
 
-    let items = (cur.all ? lib.games : lib.visible()).filter(cur.filter);
+    let items = (cur.all ? lib.games : visible).filter(cur.filter);
     // Émulation : filtre secondaire par console
     if (cur.id === 'rom') {
       const systems = [...new Map(items.map(g => [g.system, g.systemName])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));

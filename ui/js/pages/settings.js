@@ -4,7 +4,7 @@ import { el, esc, icon, api, lib, settings, saveSettings, sourceOf, toast, busy,
 import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints, refresh } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog, dialog } from '../widgets.js';
 import { pickFile } from './add.js';
-import { exitToDesktop, openGame, openStreaming } from './game.js';
+import { openGame, openStreaming } from './game.js';
 import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
 import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
@@ -162,7 +162,7 @@ async function updatesBlock(s) {
       if (!u.packaged) {
         actionRow(box, 'i-globe', t('Ouvrir la page de téléchargement'), t('Installateur KaneMode-Setup sur GitHub'), () => api.post('/api/update/page'), 'upd-page');
       } else if (j.phase === 'downloading') {
-        const pct = j.total ? Math.round(100 * j.received / j.total) : 0;
+        const pct = j.total ? Math.min(100, Math.round(100 * j.received / j.total)) : 0;
         infoRow(box, t('Téléchargement de la version {a}… {pct} %', { a: esc(j.version), pct }), t('{size} sur {size2}', { size: fmt.size(j.received), size2: fmt.size(j.total) }));
         clearInterval(timer);
         timer = setInterval(() => draw(), 1000);
@@ -771,7 +771,6 @@ const BUILDERS = {
     updatesBlock(s);
     h2(s, 'i-cpu', t('Interface'));
     actionRow(s, 'i-restart', t('Redémarrer l’interface'), t('Recharge KaneMode sans quitter'), () => location.reload(), 'reload');
-    actionRow(s, 'i-exit', t('Bureau Windows'), t('Sort du mode Xbox ; KaneMode reste ouvert'), exitToDesktop, 'exit');
   },
 };
 

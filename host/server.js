@@ -272,6 +272,10 @@ function trackDir(g) {
   return l && l.kind === 'exe' && /\.exe$/i.test(str(l.target)) ? path.dirname(l.target) : null;
 }
 
+// La date du fichier local change l'URL quand Steam ou SGDBoop remplace un visuel.
+function fileRevision(file) {
+  try { const st = fs.statSync(file); return Math.floor(st.mtimeMs).toString(36) + '-' + st.size.toString(36); } catch { return '0'; }
+}
 function publicEntry(g, st, cfg) {
   const m = meta[g.id] || {};
   const ov = st.overrides[g.id] || {};
@@ -283,7 +287,7 @@ function publicEntry(g, st, cfg) {
   for (const k of ART_KINDS) {
     const local = str(artOv[k]) || str(g.art && g.art[k]);
     if (local || (steamId && k !== 'icon') || (sgdbOn && !g.demo && !noSgdb(g))) {
-      art[k] = `/art/${encodeURIComponent(g.id)}/${k}` + (artOv[k] ? `?v=${artOv._v || 1}` : local ? '' : '?r=' + ((st.artRev || {})[g.id] || 1));
+      art[k] = `/art/${encodeURIComponent(g.id)}/${k}` + (artOv[k] ? `?v=${artOv._v || 1}` : local ? `?local=${fileRevision(local)}` : '?r=' + ((st.artRev || {})[g.id] || 1));
     }
   }
   return {
@@ -522,38 +526,50 @@ async function refreshKanePlay() {
 
 // ---------------------------------------------------------------- visuels : surcharges, Steam, SteamGridDB
 let sgdbCache = readJson(FILES.sgdb, {});
+const gamePending = new Map(), artPending = new Map();
 async function sgdbGameFor(e, key) {
   if (e.id in sgdbCache) return sgdbCache[e.id];
-  const g = await sgdb.gameFor(key, e);
-  sgdbCache[e.id] = g ? { id: g.id, name: g.name } : null;
-  writeJson(FILES.sgdb, sgdbCache);
-  return sgdbCache[e.id];
+  if (gamePending.has(e.id)) return gamePending.get(e.id);
+  const promise = sgdb.gameFor(key, e).then(g => {
+    sgdbCache[e.id] = g ? { id: g.id, name: g.name } : null;
+    writeJson(FILES.sgdb, sgdbCache);
+    return sgdbCache[e.id];
+  }).finally(() => gamePending.delete(e.id));
+  gamePending.set(e.id, promise);
+  return promise;
 }
 const cached = base => { for (const ext of ['.png', '.jpg', '.webp', '.ico']) if (isFile(base + ext)) return base + ext; return null; };
+const recentMiss = base => { try { return Date.now() - fs.statSync(base + '.miss').mtimeMs < 24 * 3600e3; } catch { return false; } };
 
-// Pas plus de 3 recherches SteamGridDB à la fois quand une grille entière se charge
+// Pas plus de 4 recherches SteamGridDB à la fois quand une grille entière se charge
 let sgdbRunning = 0;
 const sgdbWaiting = [];
 async function sgdbSlot(fn) {
-  if (sgdbRunning >= 3) await new Promise(r => sgdbWaiting.push(r));
-  sgdbRunning++;
+  if (sgdbRunning >= 4) await new Promise(r => sgdbWaiting.push(r));
+  else sgdbRunning++;
   try { return await fn(); }
-  finally { sgdbRunning--; const next = sgdbWaiting.shift(); if (next) next(); }
+  finally { const next = sgdbWaiting.shift(); if (next) next(); else sgdbRunning--; }
 }
 
 async function sgdbAuto(e, kind, cfg) {
   const base = path.join(ARTCACHE, `sgdb_${safeId(e.id)}_${kind}`);
   const hit = cached(base);
   if (hit) return hit;
-  if (isFile(base + '.miss')) return null;
-  return sgdbSlot(() => sgdbFetch(e, kind, cfg, base));
+  if (recentMiss(base)) return null;
+  if (artPending.has(base)) return artPending.get(base);
+  const promise = sgdbSlot(() => sgdbFetch(e, kind, cfg, base)).finally(() => artPending.delete(base));
+  artPending.set(base, promise);
+  return promise;
 }
 async function sgdbFetch(e, kind, cfg, base) {
   const again = cached(base);
   if (again) return again;
   try {
     const game = await sgdbGameFor(e, cfg.sgdbKey);
-    const list = game ? await sgdb.assets(cfg.sgdbKey, game.id, kind, { style: kind === 'portrait' ? cfg.sgdbStyle : '' }) : [];
+    const options = { style: kind === 'portrait' ? cfg.sgdbStyle : '' };
+    let list = game ? await sgdb.assets(cfg.sgdbKey, game.id, kind, { ...options, firstPage: !options.style }) : [];
+    // Une seule page suffit généralement ; les autres ne sont lues que sans visuel adapté.
+    if (game && !list.length) list = await sgdb.assets(cfg.sgdbKey, game.id, kind, options);
     if (!list.length) { fs.writeFileSync(base + '.miss', ''); return null; }
     const img = await sgdb.download(list[0].url);
     fs.writeFileSync(base + img.ext, img.data);
@@ -567,21 +583,23 @@ async function steamCdn(steamId, kind) {
   const base = path.join(ARTCACHE, `${steamId}_${kind}`);
   const hit = cached(base);
   if (hit) return hit;
-  if (isFile(base + '.miss')) return null;
+  if (recentMiss(base)) return null;
   const urls = [];
   for (const f of REMOTE[kind] || []) for (const h of HOSTS) urls.push(`${h}/${steamId}/${f}`);
   const m = Object.values(meta).find(x => x.steamId === steamId && x.headerUrl);
   if (kind === 'header' && m) urls.push(m.headerUrl);
+  let unavailable = false;
   for (const u of urls) {
     try {
       const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
+      if (r.status !== 404 && r.status !== 410 && !r.ok) unavailable = true;
       if (!r.ok || !(r.headers.get('content-type') || '').startsWith('image/')) continue;
       const file = base + (u.includes('.png') ? '.png' : '.jpg');
       fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
       return file;
-    } catch { /* essai suivant */ }
+    } catch { unavailable = true; } // panne réseau : réessayer au prochain affichage
   }
-  fs.writeFileSync(base + '.miss', '');
+  if (!unavailable) fs.writeFileSync(base + '.miss', '');
   return null;
 }
 
@@ -813,11 +831,13 @@ function sendFile(res, file, req) {
     // Empreinte (taille + date) : le navigateur garde le fichier et demande seulement s'il a changé
     // (réponse 304 sans contenu). Sans elle, chaque jaquette était retéléchargée à chaque affichage.
     const etag = `W/"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    // Les URLs des visuels portent leur révision ; retour de fiche sans requête supplémentaire.
+    const cacheControl = req && req.url.startsWith('/art/') && req.url.includes('?') ? 'private, max-age=300' : 'no-cache';
     if (req && req.headers['if-none-match'] === etag) {
-      res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+      res.writeHead(304, { ETag: etag, 'Cache-Control': cacheControl });
       return res.end();
     }
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': 'no-cache', ETag: etag, 'Accept-Ranges': 'bytes' });
+    res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': cacheControl, ETag: etag, 'Accept-Ranges': 'bytes' });
     fs.createReadStream(file).pipe(res);
   });
 }
@@ -966,7 +986,7 @@ const routes = {
     catch (err) { json(res, 502, { error: err.message }); }
   },
   'GET /api/sgdb/assets': async (req, res, q) => {
-    try { json(res, 200, await sgdb.assets(config().sgdbKey, +q.get('game'), q.get('kind'), { style: q.get('style') || '' })); }
+    try { json(res, 200, await sgdb.assets(config().sgdbKey, +q.get('game'), q.get('kind'), { style: q.get('style') || '', firstPage: q.get('first') === '1' })); }
     catch (err) { json(res, 502, { error: err.message }); }
   },
   'POST /api/sgdb/match': async (req, res) => {

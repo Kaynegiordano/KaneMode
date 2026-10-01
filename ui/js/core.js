@@ -122,13 +122,12 @@ export function applyTheme() {
 }
 
 // ---------- Sons d'interface ----------
-// Façon Switch 2, en doux : petits « tocs » ronds et boisés. Chaque note a le timbre d'une lame de
-// marimba (fondamentale + un soupçon de partiel à 4 fois la fréquence), une attaque de 5 ms avec un
-// léger glissé vers le bas, un clic à peine audible, des aigus filtrés et un écho court et étouffé.
+// Sons graves et feutrés : attaque progressive de 10 ms, fondamentale ronde,
+// aigus fortement filtrés, sans clic bruité ni glissé. Le démarrage est indépendant.
 // Les sons sont calculés une fois (OfflineAudioContext) puis rejoués : bien plus léger que
 // de créer des oscillateurs à chaque déplacement.
 const SR = 44100;
-let ac, sounds = null, rendering = null;
+let ac, sounds = null, rendering = null, lastMoveSound = 0;
 
 function renderSounds() {
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
@@ -146,27 +145,19 @@ function renderSounds() {
     const delay = o.createDelay(0.1), fb = o.createGain(), lp = o.createBiquadFilter(), wet = o.createGain();
     delay.delayTime.value = SOFT.echoDelay; fb.gain.value = SOFT.echoFeedback; lp.type = 'lowpass'; lp.frequency.value = SOFT.echoLowpass; wet.gain.value = SOFT.echoWet;
     out.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(wet); wet.connect(o.destination);
-    // Bruit pour le clic d'attaque
-    const noise = o.createBuffer(1, Math.ceil(0.006 * SR), SR);
-    const nd = noise.getChannelData(0);
-    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
     for (const [f, t0, amp, dec] of s.notes) {
-      // Partiels : marimba (1 et 4) ; son d'erreur plus mat (1 et 3)
-      for (const [mult, pa, pd] of s.dull ? [[1, 1, 1], [3, 0.2, 0.5]] : [[1, 1, 1], [4, 0.1, 0.25]]) {
+      // Fondamentale dominante ; erreur sans harmonique supplémentaire
+      for (const [mult, pa, pd] of s.dull ? [[1, 1, 1]] : SOFT.partials) {
         const osc = o.createOscillator(), g = o.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(f * mult * 1.03, t0);
+        osc.frequency.setValueAtTime(f * mult * (1 + SOFT.glide), t0);
         osc.frequency.exponentialRampToValueAtTime(f * mult, t0 + 0.015);
         g.gain.setValueAtTime(0, t0);
-        g.gain.linearRampToValueAtTime(amp * pa, t0 + 0.005);
+        g.gain.linearRampToValueAtTime(amp * pa, t0 + SOFT.attack);
         g.gain.exponentialRampToValueAtTime(0.0001, t0 + dec * pd);
         osc.connect(g).connect(out);
         osc.start(t0); osc.stop(t0 + dec * pd + 0.01);
       }
-      const click = o.createBufferSource(), bp = o.createBiquadFilter(), cg = o.createGain();
-      click.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = s.dull ? 1000 : 2400; bp.Q.value = 1.2; cg.gain.value = amp * 0.12;
-      click.connect(bp).connect(cg).connect(out);
-      click.start(t0);
     }
     return [name, await o.startRendering()];
   })).then(Object.fromEntries);
@@ -179,6 +170,11 @@ setTimeout(prepareSounds, 0);
 
 export function sfx(type) {
   if (!settings.sounds) return;
+  if (type === 'move') {
+    const now = performance.now();
+    if (now - lastMoveSound < 45) return;
+    lastMoveSound = now;
+  }
   try { ac = ac || new AudioContext({ latencyHint: 'interactive' }); if (ac.state === 'suspended') ac.resume(); } catch { return; }
   if (!sounds) { prepareSounds(); return; }
   const buf = sounds[type];
@@ -304,7 +300,11 @@ export const fmt = {
     if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
     return t('Le {date}', { date: d.toLocaleDateString(locale, opts) });
   },
-  size: b => b ? (b / 1e9).toLocaleString(locale, { maximumFractionDigits: b >= 1e10 ? 0 : 1 }) + t(' Go') : '—',
+  size(b) {
+    if (!Number.isFinite(b) || b < 0) return '—';
+    const [unit, divisor] = b >= 1e9 ? [t(' Go'), 1e9] : b >= 1e6 ? [t(' Mo'), 1e6] : b >= 1e3 ? [t(' Ko'), 1e3] : [t(' octets'), 1];
+    return (b / divisor).toLocaleString(locale, { maximumFractionDigits: divisor === 1 ? 0 : 2 }) + unit;
+  },
   playtime: m => !m ? null : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`,
   gb: b => (b / 1073741824).toLocaleString(locale, { maximumFractionDigits: 1 }) + t(' Go'),
   duration(s) { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; },
@@ -319,7 +319,7 @@ const layoutSig = d => JSON.stringify([
 ]);
 
 export const lib = {
-  games: [], launchers: [], collections: [], version: 0, generated: null, layout: '',
+  games: [], index: new Map(), launchers: [], collections: [], version: 0, generated: null, layout: '',
   /**
    * Recharge la bibliothèque. background : rechargement de fond (métadonnées, retour d'un jeu),
    * appliqué sans gêner la navigation.
@@ -336,7 +336,7 @@ export const lib = {
       g.name = t('Streaming local');
       if (!/\?v=/.test((g.art && g.art.portrait) || '')) g.art = { ...g.art, ...streamingArt(settings.accent) };
     }
-    Object.assign(this, { games: d.games, launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });
+    Object.assign(this, { games: d.games, index: new Map(d.games.map(g => [g.id, g])), launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });
     if (first || layout !== this.layout) {
       this.layout = layout;
       emit('library', { background });
@@ -346,7 +346,7 @@ export const lib = {
     }
     return this;
   },
-  byId(id) { return this.games.find(g => g.id === id); },
+  byId(id) { return this.index.get(id); },
   visible() { return this.games.filter(g => !g.hidden && !settings.hiddenSources.includes(g.source)); },
   launcher(id) { return this.launchers.find(l => l.id === id); },
 };

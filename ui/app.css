@@ -994,3 +994,8 @@ body.lowfx .game-bar { background: rgba(10, 13, 18, 0.92); }
 .chip-btn.danger { color: #ff8d90; }
 .chip-btn.danger.focused { background: var(--danger); color: #fff; }
 .chip-btn.disabled { opacity: 0.4; }
+
+/* Jaquettes isolées pour limiter la peinture ; badges simples même sur une grande grille. */
+.card { contain: layout style; }
+.src-badge { backdrop-filter: none; }
+body.lowfx .gen::before { filter: none; opacity: .18; }

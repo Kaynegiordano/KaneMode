@@ -16,7 +16,7 @@ export const QAM_SECTIONS = [
   { id: 'quick', label: t('Réglages rapides'), desc: t('Volume, luminosité, Wi-Fi, Bluetooth, mode nuit') },
   { id: 'perf', label: t('Performance'), desc: t('Mode d’alimentation, profil de la console, puissance, fréquence de l’écran') },
   { id: 'battery', label: t('Batterie'), desc: t('Niveau, source, limite de charge') },
-  { id: 'shortcuts', label: t('Raccourcis'), desc: t('Veille, streaming local, bureau Windows') },
+  { id: 'shortcuts', label: t('Raccourcis'), desc: t('Veille, alimentation, streaming local') },
   { id: 'monitor', label: t('Moniteur'), desc: t('Processeur et mémoire en direct') },
   { id: 'notifs', label: t('Notifications'), desc: t('Dernières notifications de KaneMode') },
 ];

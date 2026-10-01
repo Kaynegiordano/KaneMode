@@ -2,6 +2,7 @@
 // manette / clavier / souris.
 import { t } from './i18n.js';
 import { $, $$, sfx, reduceMotion, settings, native } from './core.js';
+import { prioritizeArt } from './cards.js';
 
 export const DIRS = ['up', 'down', 'left', 'right'];
 export const state = { page: null, history: [], layers: [], input: 'kbd', padStyle: 'xbox' };
@@ -122,6 +123,7 @@ export function setFocus(target, { scroll = true, sound = true } = {}) {
     if (focused) focused.classList.remove('focused');
     focused = target;
     target.classList.add('focused');
+    if (target.classList.contains('card')) prioritizeArt(target);
     if (sound) sfx('move');
   }
   // Mémoire de position : chaque rangée et chaque zone retient son dernier élément
@@ -157,7 +159,7 @@ export function scrollToPos(sc, axis, want, instant) {
   want = Math.round(Math.max(0, Math.min(max, want)));
   const cur = axis === 'y' ? sc.scrollTop : sc.scrollLeft;
   const set = v => { if (axis === 'y') sc.scrollTop = v; else sc.scrollLeft = v; };
-  if (instant || reduceMotion) { anims.delete(sc); set(want); return; }
+  if (instant || reduceMotion || settings.reduceMotion) { anims.delete(sc); set(want); return; }
   const a = anims.get(sc);
   if (a && a.axis === axis) { a.target = want; return; }
   if (Math.abs(want - cur) < 1) return;
@@ -212,6 +214,25 @@ function reveal(target, instant) {
 const lastOf = (group, items) => (group && group._navLast && group._navLast.isConnected && items.includes(group._navLast) ? group._navLast : null);
 
 export function move(dir) {
+  // Dans les rangées et grilles, le voisin est connu sans mesurer toute la bibliothèque.
+  if (focused && focused.isConnected && scope().contains(focused) && !focused._dir) {
+    const group = focused.parentElement;
+    if (focused.classList.contains('card') && group && (group.classList.contains('grid') || group.classList.contains('row'))) {
+      let candidate;
+      if (dir === 'left' || dir === 'right') {
+        candidate = dir === 'right' ? focused.nextElementSibling : focused.previousElementSibling;
+        if (candidate && group.classList.contains('grid') && candidate.offsetTop !== focused.offsetTop) candidate = null;
+      } else if (group.classList.contains('grid')) {
+        const columns = getComputedStyle(group).gridTemplateColumns.split(' ').length;
+        const index = Array.prototype.indexOf.call(group.children, focused);
+        const next = index + (dir === 'down' ? columns : -columns);
+        candidate = group.children[next];
+        // Dernière ligne incomplète : garder la colonne la plus proche.
+        if (!candidate && dir === 'down' && Math.floor(index / columns) < Math.floor((group.children.length - 1) / columns)) candidate = group.lastElementChild;
+      }
+      if (candidate && candidate.hasAttribute('data-nav') && candidate.getClientRects().length) return setFocus(candidate);
+    }
+  }
   let items = navItems();
   if (!items.length) return;
   if (!focused || !items.includes(focused)) {

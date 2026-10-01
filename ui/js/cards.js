@@ -3,6 +3,32 @@ import { t } from './i18n.js';
 import { el, esc, favs, sourceOf } from './core.js';
 import { nav } from './nav.js';
 
+const pendingImages = new Set();
+const images = new IntersectionObserver(entries => {
+  for (const entry of entries) if (entry.isIntersecting) loadArt(entry.target);
+}, { rootMargin: '320px' });
+function loadArt(img, priority = 'auto') {
+  if (!img.dataset.artSrc) return;
+  images.unobserve(img); pendingImages.delete(img);
+  img.fetchPriority = priority;
+  img.loading = 'eager';
+  img.src = img.dataset.artSrc;
+  delete img.dataset.artSrc;
+  if (img.complete && img.naturalWidth) img.classList.add('ready', 'instant');
+}
+// Les pages sont reconstruites à certains changements : ne pas garder leurs anciennes images.
+new MutationObserver(records => {
+  for (const record of records) for (const node of record.removedNodes) {
+    if (node.nodeType !== 1 || node.isConnected) continue;
+    const removed = node.matches('img[data-art-src]') ? [node] : node.querySelectorAll('img[data-art-src]');
+    for (const img of removed) { images.unobserve(img); pendingImages.delete(img); }
+  }
+}).observe(document.body, { childList: true, subtree: true });
+export function prioritizeArt(target) {
+  const img = target.querySelector(':scope > img');
+  if (img) { img.fetchPriority = 'high'; loadArt(img, 'high'); }
+}
+
 const hash = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 const initials = name => String(name).replace(/[™®©]/g, '').split(/[\s:–-]+/).filter(w => /^[\p{L}\p{N}]/u.test(w))
   .slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -61,12 +87,13 @@ export function art(g, urls, opts) {
   const img = new Image();
   img.alt = g.name;
   img.decoding = 'async';
-  img.loading = 'lazy'; // jaquettes hors de l'écran chargées au dernier moment
+  // Une marge maîtrisée évite que le chargement natif réclame des centaines de jaquettes.
   let i = 0;
   // Apparaît en fondu une fois chargée (tout de suite si elle est déjà en cache)
   img.onload = () => img.classList.add('ready');
   img.onerror = () => { i++; if (i < list.length) img.src = list[i]; else img.replaceWith(generated(g, opts)); };
-  img.src = list[0];
+  img.dataset.artSrc = list[0];
+  pendingImages.add(img); images.observe(img);
   if (img.complete && img.naturalWidth) img.classList.add('ready', 'instant');
   wrap.append(img);
   return wrap;

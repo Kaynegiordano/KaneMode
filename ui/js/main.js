@@ -101,7 +101,6 @@ export function openPowerMenu() {
 actions['power-open'] = openPowerMenu;
 actions['power-close'] = () => closeLayer();
 const SYSTEM = {
-  desktop: [t('Aller au bureau Windows ?'), t('KaneMode sort du mode Xbox et reste ouvert.'), t('Aller au bureau')],
   sleep: [t('Mettre en veille ?'), t('Le PC passe en veille. Appuyez sur un bouton de la manette pour le réveiller.'), t('Mettre en veille')],
   restart: [t('Redémarrer le PC ?'), t('Pensez à sauvegarder vos parties en cours.'), t('Redémarrer')],
   shutdown: [t('Éteindre le PC ?'), t('Pensez à sauvegarder vos parties en cours.'), t('Éteindre')],
@@ -146,7 +145,6 @@ Object.assign(qamShortcuts, {
     ['i-moon', t('Veille'), () => sleepNow(), 'sc-sleep'],
     ['i-power', t('Alimentation'), () => actions['power-open'](), 'sc-power'],
     ['i-gamepad', t('Streaming local'), () => openStreaming(), 'sc-kaneplay'],
-    ['i-desktop', t('Bureau Windows'), () => exitToDesktop(), 'sc-desktop'],
     // Manette qui ne répond plus (retour d'une autre application) : déconnexion puis reconnexion
     ['i-refresh', t('Reconnecter les manettes'), () => { native.send('pads-reconnect'); toast(t('Manettes reconnectées')); }, 'sc-pads'],
   ],

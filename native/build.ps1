@@ -50,8 +50,10 @@ if ($Unregister) {
 Step 'Compilation de KaneMode.exe'
 if (Test-Path $layout) {
     # Une version enregistrée tourne peut-être depuis ce dossier : on la ferme d'abord.
-    Get-Process KaneMode -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Sleep -Milliseconds 300
+    if (-not $Release) {
+        Get-Process KaneMode -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Sleep -Milliseconds 300
+    }
     Remove-Item $layout -Recurse -Force
 }
 $sc = if ($SelfContained) { 'true' } else { 'false' }

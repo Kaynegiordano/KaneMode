@@ -96,11 +96,11 @@ Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) o
   - **Intel** (Arc, Iris Xe, Intel Graphics Control Library) : limite d'images, mode faible latence, filtre de netteté ; charge, température et puissance du GPU.
 - **Accès rapide réel** : volume et sourdine, luminosité, Wi-Fi, Bluetooth, mode d'alimentation de Windows, limite et turbo du processeur, fréquence de l'écran, profil et puissance (TDP) des ROG Ally / Legion Go, limite de charge ; sections à choisir et ordonner.
 - **Énergie** : un profil sur batterie et un sur secteur (mode d'alimentation, profil constructeur, TDP, limite et turbo du processeur, fréquence, luminosité), appliqués au branchement ou au débranchement du chargeur.
-- **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, bureau Windows.
+- **Menu d'alimentation** au centre de l'écran : veille, redémarrer, éteindre, quitter KaneMode et revenir au bureau Windows.
 - **Langues** : français, anglais, espagnol, allemand, italien, portugais (Brésil), japonais et chinois simplifié, dans l'interface, les widgets Game Bar et le streaming local (Paramètres → Apparence → Langue ; par défaut, la langue de Windows).
 - **Personnalisation** : accent (repris par le streaming local), fond, taille de l'interface et des jaquettes, coins, police, panneaux opaques, horloge, ordre des rangées de l'accueil.
 - **Ajouts perso** : applis installées (Win32 + Microsoft Store), fichiers, liens web.
-- **Style SteamOS** : logo animé qui apparaît pile sur l'éclat du son de démarrage (son synthétisé façon console de salon, aucun fichier ; un son perso est analysé et synchronisé de même ; vidéo et son perso possibles, l'ancienne vidéo est dans `extras\`), accueil avec bouton **Bureau Windows** (ferme KaneMode), menu principal, accès rapide (CPU/RAM en direct), recherche au clavier virtuel, médias (captures Steam / Game Bar), collections, paramètres par catégories (stockage, accessibilité, taille de l'interface, testeur de manette, état du mode Xbox…).
+- **Style SteamOS** : logo animé qui apparaît pile sur l'éclat du son de démarrage (son synthétisé façon console de salon, aucun fichier ; un son perso est analysé et synchronisé de même ; vidéo et son perso possibles, l'ancienne vidéo est dans `extras\`), menu principal, accès rapide (CPU/RAM en direct), recherche au clavier virtuel, médias (captures Steam / Game Bar), collections, paramètres par catégories (stockage, accessibilité, taille de l'interface, testeur de manette, état du mode Xbox…).
 
 ## Structure
 

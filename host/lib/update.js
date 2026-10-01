@@ -8,6 +8,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const { pipeline } = require('stream/promises');
 
 const REPO = 'Kaynegiordano/KaneMode';
 const PAGE = `https://github.com/${REPO}/releases`;
@@ -86,13 +87,17 @@ function job() {
         const r = await fetch(latest.msix.url, { headers: { 'User-Agent': 'KaneMode' } });
         if (!r.ok || !r.body) throw new Error(`Téléchargement impossible (${r.status})`);
         const hash = crypto.createHash('sha256');
-        const out = fs.createWriteStream(file);
-        for await (const chunk of r.body) {
-          hash.update(chunk);
-          state.received += chunk.length;
-          if (!out.write(chunk)) await new Promise(res => out.once('drain', res));
-        }
-        await new Promise((res, rej) => out.end(err => (err ? rej(err) : res())));
+        const length = Number(r.headers.get('content-length'));
+        if (Number.isSafeInteger(length) && length > 0 && !r.headers.get('content-encoding')) state.total = length;
+        // pipeline propage les erreurs du disque et respecte la contre-pression.
+        await pipeline(r.body, async function* (source) {
+          for await (const chunk of source) {
+            hash.update(chunk);
+            state.received += chunk.length;
+            yield chunk;
+          }
+        }, fs.createWriteStream(file));
+        state.total = state.received;
         if (hash.digest('hex').toLowerCase() !== expected.toLowerCase()) {
           fs.rmSync(file, { force: true });
           throw new Error('Empreinte SHA-256 incorrecte : fichier rejeté');

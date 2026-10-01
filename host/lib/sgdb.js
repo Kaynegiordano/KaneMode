@@ -28,22 +28,27 @@ async function request(url, init = {}) {
   return j.data;
 }
 const v2 = (key, route) => request(API + route, { headers: { Authorization: 'Bearer ' + key } });
-const publicAssets = (type, gameId, page) => request(SITE + '/api/public/search/assets', {
+const publicAssets = (type, gameId, page) => remember(`p:${gameId}:${type}:${page}`, () => request(SITE + '/api/public/search/assets', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ asset_type: type, game_id: [gameId], page }),
-});
+}));
 
 // Petit cache mémoire : parcourir les onglets ne relance pas les mêmes requêtes
 const memo = new Map();
+const pending = new Map();
 async function remember(k, fn) {
   const hit = memo.get(k);
   if (hit && Date.now() - hit.t < 15 * 60e3) return hit.v;
-  const v = await fn();
-  memo.set(k, { t: Date.now(), v });
-  if (memo.size > 300) memo.delete(memo.keys().next().value);
-  return v;
+  if (pending.has(k)) return pending.get(k);
+  const promise = Promise.resolve().then(fn).then(v => {
+    if (pending.get(k) === promise) memo.set(k, { t: Date.now(), v });
+    if (memo.size > 300) memo.delete(memo.keys().next().value);
+    return v;
+  }).finally(() => { if (pending.get(k) === promise) pending.delete(k); });
+  pending.set(k, promise);
+  return promise;
 }
-const forget = gameId => { for (const k of memo.keys()) if (k.includes(`:${gameId}:`)) memo.delete(k); };
+const forget = gameId => { for (const map of [memo, pending]) for (const k of map.keys()) if (k.includes(`:${gameId}:`)) map.delete(k); };
 
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[™®©]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -84,12 +89,12 @@ const shape = a => ({
   author: a.author && a.author.name,
 });
 
-async function assets(key, gameId, kind, { style } = {}) {
+async function assets(key, gameId, kind, { style, firstPage = false } = {}) {
   const k = KINDS[kind];
   if (!k) throw new SgdbError('Type de visuel inconnu');
   gameId = +gameId;
   if (!gameId) throw new SgdbError('Jeu SteamGridDB inconnu');
-  const list = await remember(`a:${key ? 'k' : 'p'}:${gameId}:${kind}`, async () => {
+  const list = await remember(`a:${key ? 'k' : 'p'}:${gameId}:${kind}:${firstPage ? 'first' : 'all'}`, async () => {
     if (key) {
       const params = [k.q, 'nsfw=false', 'humor=false', 'types=static'].filter(Boolean).join('&');
       return ((await v2(key, `/${k.ep}/game/${gameId}?${params}`)) || []).map(shape);
@@ -97,7 +102,7 @@ async function assets(key, gameId, kind, { style } = {}) {
     // Accès public : pages de 48 (la première est la page 0), filtres appliqués ici. Les trois pages
     // sont demandées en même temps (l'une après l'autre, il fallait attendre trois allers-retours) ;
     // une page en échec n'empêche pas d'afficher les autres.
-    const pages = await Promise.all([0, 1, 2].map(page => publicAssets(k.type, gameId, page).catch(e => (page ? null : Promise.reject(e)))));
+    const pages = await Promise.all((firstPage ? [0] : [0, 1, 2]).map(page => publicAssets(k.type, gameId, page).catch(e => (page ? null : Promise.reject(e)))));
     const out = [], seen = new Set();
     for (const d of pages) {
       for (const a of (d && d.assets) || []) if (!seen.has(a.id) && clean(a) && k.keep(a)) { seen.add(a.id); out.push(shape(a)); }

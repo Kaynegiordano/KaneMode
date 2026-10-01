@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Écrit les sons d'interface du streaming local (engine/KanePlay/app/res/sounds/*.wav) d'après la table
-// de KaneMode (ui/js/soundtable.js) : même timbre de marimba, mêmes notes, même écho court et étouffé.
+// de KaneMode (ui/js/soundtable.js) : même timbre grave et feutré, mêmes notes, même écho discret.
 // Format conservé : 48 kHz, mono, 16 bits.
 //   node tools/gen-sounds.js
 'use strict';
@@ -29,32 +29,21 @@ function lowpass(x, freq, q = 0.5) {
 function render(s, SOFT) {
   const end = Math.max(...s.notes.map(([, t0, , dec]) => t0 + dec)) + 0.12;
   const dry = new Float32Array(Math.ceil(end * SR) + Math.ceil(SR * 0.1));
-  let seed = 12345;
-  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296) * 2 - 1;
-  const clickLen = Math.ceil(0.006 * SR);
   for (const [f, t0, amp, dec] of s.notes) {
     const start = Math.round(t0 * SR);
-    for (const [mult, pa, pd] of s.dull ? [[1, 1, 1], [3, 0.2, 0.5]] : [[1, 1, 1], [4, 0.1, 0.25]]) {
+    for (const [mult, pa, pd] of s.dull ? [[1, 1, 1]] : SOFT.partials) {
       const d = dec * pd, n = Math.ceil((d + 0.01) * SR);
       let phase = 0;
       for (let i = 0; i < n; i++) {
         const t = i / SR;
-        // Glissé de 3 % vers la note pendant les 15 premières ms
-        const fr = f * mult * (1 + 0.03 * Math.max(0, 1 - t / 0.015));
+        // Glissé discret vers la note pendant les 15 premières ms
+        const fr = f * mult * (1 + SOFT.glide * Math.max(0, 1 - t / 0.015));
         phase += 2 * Math.PI * fr / SR;
-        // Attaque de 5 ms puis extinction exponentielle jusqu'à 0,0001
-        const env = t < 0.005 ? t / 0.005 : Math.pow(0.0001, (t - 0.005) / Math.max(d - 0.005, 1e-3));
+        // Attaque arrondie de 10 ms puis extinction exponentielle jusqu'à 0,0001
+        const env = t < SOFT.attack ? t / SOFT.attack : Math.pow(0.0001, (t - SOFT.attack) / Math.max(d - SOFT.attack, 1e-3));
         if (start + i < dry.length) dry[start + i] += Math.sin(phase) * amp * pa * env;
       }
     }
-    // Clic d'attaque, à peine audible : bruit filtré autour de 2,4 kHz (1 kHz pour l'erreur)
-    const click = new Float32Array(clickLen);
-    for (let i = 0; i < clickLen; i++) click[i] = rnd() * (1 - i / clickLen);
-    const bp = new Float32Array(clickLen);
-    let lo = 0, bandLo = 0;
-    const k = 2 * Math.sin(Math.PI * (s.dull ? 1000 : 2400) / SR);
-    for (let i = 0; i < clickLen; i++) { const hi = click[i] - lo - bandLo / 1.2; bandLo += k * hi; lo += k * bandLo; bp[i] = bandLo; }
-    for (let i = 0; i < clickLen; i++) if (start + i < dry.length) dry[start + i] += bp[i] * amp * 0.12;
   }
   for (let i = 0; i < dry.length; i++) dry[i] *= s.vol * GAIN;
   // Écho court et étouffé
@@ -87,7 +76,9 @@ function wav(samples) {
   return Buffer.concat([h, data]);
 }
 
-(async () => {
+module.exports = { render, wav };
+
+if (require.main === module) (async () => {
   const { SOUNDS, SOFT } = await import(pathToFileURL(path.join(__dirname, '..', 'ui', 'js', 'soundtable.js')).href);
   // Les sons du moteur : move, select, back, tab, on, off, launch, connected, notify, error
   for (const name of ['move', 'select', 'back', 'tab', 'on', 'off', 'launch', 'connected', 'notify', 'error']) {

@@ -24,7 +24,13 @@ const thumbs = new IntersectionObserver(entries => {
   }
 }, { rootMargin: '300px' });
 const preloaded = new Set();
-const preload = urls => { for (const u of urls) if (!preloaded.has(u)) { preloaded.add(u); new Image().src = u; } };
+const preload = urls => {
+  for (const u of urls) if (u && !preloaded.has(u)) {
+    if (preloaded.size >= 160) preloaded.delete(preloaded.values().next().value);
+    preloaded.add(u);
+    const image = new Image(); image.fetchPriority = 'low'; image.src = u;
+  }
+};
 const applied = k => t('{label} appliqué{a}', { label: label(k), a: KINDS.find(x => x.id === k).f ? 'e' : '' });
 const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.glyph = k; return s; };
 
@@ -36,10 +42,12 @@ definePage('artpicker', {
     this.g = lib.byId(id);
     this.draw();
   },
+  leave() { thumbs.disconnect(); },
   back() {
     if (this.mode !== 'browse') return false;
     sfx('back');
     this.mode = 'overview';
+    thumbs.disconnect();
     this.draw('browse:' + this.kind);
     return true;
   },
@@ -83,24 +91,31 @@ definePage('artpicker', {
     focusIn(root, focusKey || 'browse');
   },
   async matchLine(p) {
+    const id = this.forId;
     try {
-      if (this.game === undefined) this.game = (await api.get('/api/sgdb/game?id=' + encodeURIComponent(this.g.id))).game;
+      if (this.game === undefined) {
+        const result = await api.get('/api/sgdb/game?id=' + encodeURIComponent(id));
+        if (id !== this.forId) return;
+        this.game = result.game;
+      }
       if (this.game) this.prefetch();
       if (this.mode !== 'overview' || !p.isConnected) return;
       p.innerHTML = this.game ? t('Visuels · SteamGridDB : <b>{a}</b>', { a: esc(this.game.name) }) : t('Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)');
     } catch (e) { if (p.isConnected) p.textContent = `${t('Visuels')} · ${tx(e.message)}`; }
   },
   /** Liste des visuels d'un type (une seule requête par type, partagée). */
-  list(kind) {
-    if (!this.items[kind]) {
-      this.items[kind] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}`);
-      this.items[kind].catch(() => { delete this.items[kind]; }); // réessayée à la prochaine demande
+  list(kind, first = false) {
+    const key = kind + (first ? ':first' : '');
+    if (!this.items[key]) {
+      const items = this.items;
+      items[key] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}${first ? '&first=1' : ''}`);
+      items[key].catch(() => { delete items[key]; });
     }
-    return this.items[kind];
+    return this.items[key];
   },
   /** Pendant qu'on regarde l'aperçu : toutes les listes, et les premières vignettes des jaquettes. */
   prefetch() {
-    for (const k of KINDS) this.list(k.id).then(list => { if (k.id === 'portrait') preload(list.slice(0, 10).map(a => a.thumb)); }).catch(() => {});
+    for (const k of KINDS) this.list(k.id, true).then(list => { if (k.id === 'portrait') preload(list.slice(0, 10).map(a => a.thumb)); }).catch(() => {});
   },
   browse(kind) {
     this.kind = kind;
@@ -130,33 +145,49 @@ definePage('artpicker', {
   },
   async load(focusKey) {
     const p = this.status.querySelector('p');
-    const kind = this.kind;
+    const kind = this.kind, entryId = this.forId, body = this.body;
+    thumbs.disconnect();
     try {
-      if (this.game === undefined) this.game = (await api.get('/api/sgdb/game?id=' + encodeURIComponent(this.g.id))).game;
+      if (this.game === undefined) {
+        const result = await api.get('/api/sgdb/game?id=' + encodeURIComponent(entryId));
+        if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return;
+        this.game = result.game;
+      }
       if (!this.game) {
         p.textContent = t('Aucun jeu correspondant sur SteamGridDB.');
         this.body.innerHTML = t('<div class="notice">Utilisez <b>Changer de jeu…</b> pour le chercher sous un autre nom.</div>');
         return;
       }
       p.innerHTML = `SteamGridDB : <b>${esc(this.game.name)}</b> · ${esc(label(kind))}`;
-      const list = await this.list(kind);
-      if (kind !== this.kind || this.mode !== 'browse') return; // onglet changé entre-temps
+      const list = await this.list(kind, true);
+      if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return; // onglet changé entre-temps
       const grid = el('div', 'art-grid ' + kind);
-      for (const a of list.slice(0, 96)) {
+      const shown = new Set();
+      const append = items => { for (const a of items.slice(0, 96)) {
+        if (shown.has(a.id)) continue;
+        shown.add(a.id);
         const item = el('div', 'art-item', `<img alt="" decoding="async"><small>${esc([a.author, a.style, a.width && `${a.width}×${a.height}`].filter(Boolean).join(' · '))}</small>`);
         const img = item.firstElementChild;
         img.dataset.src = a.thumb;
         thumbs.observe(img);
         grid.append(nav(item, () => this.choose(a), 'asset:' + a.id));
-      }
+      } };
+      append(list);
       this.body.replaceChildren(list.length ? grid : el('div', 'empty', t('Aucun visuel « {a} » pour ce jeu sur SteamGridDB.', { a: esc(label(kind).toLowerCase()) })));
+      // Les pages suivantes complètent la grille sur place, sans déplacer le focus.
+      this.list(kind).then(all => {
+        if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return;
+        append(all);
+        if (all.length && !grid.isConnected) body.replaceChildren(grid);
+      }).catch(() => {});
       // Onglets voisins : leurs premières vignettes arrivent pendant qu'on regarde celui-ci
       const i = KINDS.findIndex(x => x.id === kind);
       for (const n of [KINDS[(i + 1) % KINDS.length], KINDS[(i + KINDS.length - 1) % KINDS.length]]) {
-        this.list(n.id).then(l => preload(l.slice(0, 8).map(a => a.thumb))).catch(() => {});
+        this.list(n.id, true).then(l => preload(l.slice(0, 8).map(a => a.thumb))).catch(() => {});
       }
       if (focusKey && focusKey.startsWith('asset:')) focusIn(this.el, focusKey);
     } catch (e) {
+      if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return;
       p.textContent = e.message;
       this.body.innerHTML = '';
     }

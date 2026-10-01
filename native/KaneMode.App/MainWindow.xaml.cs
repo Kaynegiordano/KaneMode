@@ -745,11 +745,9 @@ public partial class MainWindow : Window
     private bool _leaving;
 
     /// <summary>
-    /// « Bureau Windows » (2.1.0) : KaneMode ne se ferme plus. En mode Xbox, on en sort seulement
-    /// (Windows + F11, le raccourci de Windows ; Windows peut demander confirmation) et KaneMode reste
-    /// ouvert tel quel sur le bureau. Déjà sur le bureau : KaneMode se réduit pour le laisser voir.
+    /// Quitte KaneMode après la sortie du mode Xbox ; Windows peut demander confirmation.
     /// </summary>
-    private async void ExitToDesktop(bool quit = false)
+    private async void ExitToDesktop(bool quit = true)
     {
         if (_leaving) return;
         _leaving = true;
@@ -758,7 +756,7 @@ public partial class MainWindow : Window
             Native.EnsureDesktop();
             if (Native.FullScreenExperienceActive)
             {
-                Log.Write("Bureau Windows : sortie du mode Xbox, KaneMode reste ouvert");
+                Log.Write("Fermeture de KaneMode : sortie du mode Xbox");
                 Native.ForceForeground(Hwnd);
                 Native.SendKeys(Native.VK_LWIN, Native.VK_F11);
                 var deadline = DateTime.UtcNow.AddSeconds(30);

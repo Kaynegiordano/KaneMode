@@ -4,6 +4,15 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.2.0
+
+- Demande actuelle : sons d'interface graves et feutrés (147–440 Hz, aigus filtrés à 900 Hz, aucun clic bruité ; démarrage intact), taille réelle des mises à jour, retrait des accès Bureau Windows, fermeture complète depuis Alimentation, fluidité et chargements plus rapides.
+- Le bureau n'a plus de bouton direct ; Alimentation → Quitter KaneMode ferme l'app après la sortie du mode Xbox. Cela remplace le comportement 2.1.0 décrit dans l'historique ci-dessous.
+- Streaming : test matériel différé après l'affichage, SDL vidéo différé en mode intégré, serveur local fermé dès le retour vers KaneMode. Le moteur modifié est compilé dans engine/out et versionné dans le sous-module.
+- Visuels : requêtes partagées, première page rapide, galerie complétée sur place, chargement proche de l'écran et priorité au focus ; cache HTTP avec révision. Navigation directe entre voisins des grilles et index des jeux en mémoire.
+- Vérifier : `node --test tools/verify-optimizations.js`, compilation native et compilation du moteur. Les mesures de navigation sur 803 jeux simulés montrent ~2,5× sur le parcours mesuré ; ne pas extrapoler à une session réseau réelle.
+- VERSION : 3.2.0. Notes de version : native/out/notes-3.2.0.md.
+
 ## Le projet
 
 KaneMode est une interface console façon **SteamOS / Big Picture** pour le **mode Xbox (plein écran)
@@ -265,8 +274,7 @@ App native WPF (native/KaneMode.App) : fenêtre plein écran, veille, premier pl
   - suivi des jeux (`GameWatch`) avec un vrai jeu Steam : testé avec de faux jeux (programme de démarrage puis jeu, arrêt poli et forcé) sur le PC de développement ; surveillance des dossiers des boutiques non testée avec une vraie installation ; comportement en mode Xbox (Steam réduit, retour sur KaneMode) testé seulement sur le bureau avec un faux Steam ;
   - mises à jour ASUS : l'API n'a pas pu être appelée depuis l'environnement de développement (proxy), format repris de G-Helper.
 - Idées demandées ou à explorer :
-  - KanePlay : fermer son QLocalServer dès `returnToKaneMode` (avant de quitter) éviterait qu'une relance parte vers l'instance qui se ferme ;
-  - mises à jour officielles pour Lenovo (Legion Go) et MSI (Claw) ;
+    - mises à jour officielles pour Lenovo (Legion Go) et MSI (Claw) ;
   - courbe de ventilateur ; netteté et « Ultra » faible latence NVIDIA (réglages non documentés) ;
   - superposition transparente par-dessus les jeux.
 - Historique récent :
