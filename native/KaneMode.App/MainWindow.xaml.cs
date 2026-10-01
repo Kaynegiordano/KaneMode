@@ -34,6 +34,19 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer _idleTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private bool _preventIdleLock = true, _idleSuspended, _sessionLocked;
     private IntPtr _displayPowerNotification;
+    private readonly ForegroundHandoff _externalOpen = new();
+    private (string Id, HashSet<IntPtr> Before)? _preparedLaunch;
+    private void BeginExternalOpen(string? id)
+    {
+        _preparedLaunch = !string.IsNullOrEmpty(id) && !id.StartsWith("launcher:") ? (id, new HashSet<IntPtr>(Native.VisibleWindows())) : null;
+        _externalOpen.Begin();
+        _pads.StopMouseMode();
+        _returnTo = IntPtr.Zero;
+        StopForegroundWatch();
+        StopInsisting();
+        DropLaunchCover();
+        Native.GiveForeground(null);
+    }
 
     private void UpdateIdleProtection()
     {
@@ -81,7 +94,7 @@ public partial class MainWindow : Window
         Activated += (_, _) => OnActivated();
         // KaneMode quitte le premier plan (jeu, Game Bar, bureau) : l'interface le signale à l'hôte, et
         // WebView2 rend de la mémoire s'il y reste (voir LightenInBackground)
-        Deactivated += (_, _) => { UpdateIdleProtection(); if (!_ready) return; Post(new { type = "background" }); _lighten.Stop(); _lighten.Start(); };
+        Deactivated += (_, _) => { _externalOpen.Observe(false); UpdateIdleProtection(); if (!_ready) return; Post(new { type = "background" }); _lighten.Stop(); _lighten.Start(); };
         _lighten.Tick += (_, _) => { _lighten.Stop(); SetMemoryLow(true); };
         // WebView2 libéré dès le début de la fermeture : sinon, la fenêtre qui se masque le sollicite alors
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès). Plus aucun
@@ -284,6 +297,7 @@ public partial class MainWindow : Window
         if (f == me) return XInputPads.Focus.Ours;
         // Autre fenêtre de KaneMode (curseur du mode souris) : c'est toujours nous
         if (f != IntPtr.Zero && Native.WindowProcessId(f) == (uint)Environment.ProcessId) return XInputPads.Focus.Ours;
+        if (_externalOpen.Active) return XInputPads.Focus.Hidden;
         // Jeu suivi ou KanePlay qu'on met devant : c'est à eux, KaneMode n'y touche pas
         if (_game != null || _watch != null) return XInputPads.Focus.Hidden;
         // Le reste énumère les fenêtres : refait seulement quand le premier plan change, ou après 1 s
@@ -322,6 +336,8 @@ public partial class MainWindow : Window
     private DateTime _reclaimedAt;
     private void ReclaimForeground()
     {
+        // Un rappel de manette peut déjà être dans la file lorsque la boutique est demandée.
+        if (_externalOpen.Active || ComputePadFocus() != XInputPads.Focus.Orphan) return;
         if (DateTime.UtcNow - _reclaimedAt < TimeSpan.FromSeconds(1)) return;
         _reclaimedAt = DateTime.UtcNow;
         IntPtr f = Native.GetForegroundWindow();
@@ -343,6 +359,7 @@ public partial class MainWindow : Window
     /// <summary>Retour sur KaneMode (après un jeu par exemple) : focus et rafraîchissement.</summary>
     private void OnActivated()
     {
+        _externalOpen.Observe(true);
         if (!_ready) return;
         _lighten.Stop();
         SetMemoryLow(false);
@@ -531,6 +548,7 @@ public partial class MainWindow : Window
                 else OpenOverlay(action, front);
                 break;
             case "home":
+                _externalOpen.End();
                 _returnTo = IntPtr.Zero;
                 StopForegroundWatch();
                 DropLaunchCover();
@@ -648,6 +666,7 @@ public partial class MainWindow : Window
                     break;
                 case "show":
                     // Widget : « Ouvrir KaneMode » (accueil, ou une page)
+                    _externalOpen.End();
                     _returnTo = IntPtr.Zero;
                     StopForegroundWatch();
                     DropLaunchCover();
@@ -669,10 +688,16 @@ public partial class MainWindow : Window
                     break;
                 case "return":
                     // Menu ou accès rapide refermé : retour à la fenêtre d'où l'on venait
-                    if (_returnTo != IntPtr.Zero) { Native.Activate(_returnTo); _returnTo = IntPtr.Zero; }
+                    if (_returnTo != IntPtr.Zero) {
+                        IntPtr destination = _returnTo;
+                        if (Stores.Contains(Native.ProcessName(Native.WindowProcessId(destination))) || IsShell(destination)) BeginExternalOpen(null);
+                        Native.Activate(destination); _returnTo = IntPtr.Zero;
+                    }
                     break;
                 case "foreground":
                     string? title = root.TryGetProperty("window", out var w) ? w.GetString() : null;
+                    if (string.IsNullOrEmpty(title)) { BeginExternalOpen(Text(root, "id")); break; }
+                    _externalOpen.End();
                     _pads.StopMouseMode(); // KanePlay prend la manette
                     Native.GiveForeground(title);
                     if (!string.IsNullOrEmpty(title)) WatchForeground(title);
@@ -680,6 +705,7 @@ public partial class MainWindow : Window
                 case "launch":
                     // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture.
                     // La manette est au jeu : fin du mode souris.
+                    _externalOpen.End();
                     _pads.StopMouseMode();
                     StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"), name: Text(root, "name"));
                     break;
@@ -691,10 +717,15 @@ public partial class MainWindow : Window
                     break;
                 case "game-front":
                     // « Reprendre » : le jeu en cours repasse devant
+                    _externalOpen.End();
                     FrontGame(Text(root, "id") ?? "", Text(root, "dir"));
                     break;
                 case "game-stop":
                     StopGame(Text(root, "id") ?? "", Text(root, "dir"), Flag(root, "force"));
+                    break;
+                case "external-cancel":
+                    _preparedLaunch = null;
+                    _externalOpen.End();
                     break;
                 case "idle-protection":
                     _preventIdleLock = Flag(root, "enabled");

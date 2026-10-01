@@ -7,6 +7,9 @@ let dolbyState={available:true,installed:false,appVersion:null,license:null,cont
 let dolbyRefuse=false;const dolbyActions=[];
 let artRequests=0; const apiCalls=[]; let artStyle='';
 let launchers=[], libraryVersion=1;
+let removalState={overrides:{}}, launchFailure=false;
+const launchRequests=[], removalRequests=[];
+const removal=require('./../host/lib/library-removal');
 const games=Array.from({length:803},(_,i)=>({id:'fixture:'+i,source:'steam',name:['Horizon — Les terres oubliées','Forza Horizon 5','Sea of Stars','Ori and the Will of the Wisps','Expédition 33','Hades II','Jusant','No Man’s Sky'][i%8]+(i<8?'':' '+i),installed:true,type:'game',lastPlayed:803-i,playtime:0,art:{portrait:'/art/'+i+'/portrait?r=1',hero:'/art/'+i+'/hero?r=1'},meta:{genres:['Action']}}));
 const latest={version:'3.2.0',notes:'Version de test',msix:{size:117845231}};
 const server=http.createServer(async(req,res)=>{
@@ -16,7 +19,10 @@ const server=http.createServer(async(req,res)=>{
     if(p==='/api/dolby' && req.method==='GET') return json(dolbyState);
     if(p==='/api/dolby' && req.method==='POST') {let data='';for await(const chunk of req)data+=chunk;const body=JSON.parse(data);if(dolbyRefuse){res.statusCode=400;return json({error:'Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.'});}const d=dolbyState.devices.find(d=>d.id===body.device);d.selected=d.active=body.mode;return json({...dolbyState,verified:true});}
     if(p==='/api/dolby/open'){let data='';for await(const chunk of req)data+=chunk;dolbyActions.push(JSON.parse(data));return json({ok:true});}
-    if(p==='/api/library') return json({games,launchers,collections:[{id:'c1',name:'Coop canapé',ids:['fixture:1','fixture:2']}],version:libraryVersion,stream:{engine:true,hosts:[]}});
+    if(p==='/api/library') return json({games:games.map(g=>({...g,removed:!!removalState.overrides[g.id]?.removed})),launchers,collections:[{id:'c1',name:'Coop canapé',ids:['fixture:1','fixture:2']}],version:libraryVersion,stream:{engine:true,hosts:[]}});
+    if(p==='/api/library/remove'){let data='';for await(const chunk of req)data+=chunk;const body=JSON.parse(data);removalRequests.push(body);removalState=removal.update(removalState,games.find(g=>g.id===body.id),body.removed);libraryVersion++;return json({ok:true});}
+    if(p==='/api/scan'){removalState=JSON.parse(JSON.stringify(removalState));libraryVersion++;return json({ok:true,added:[]});}
+    if(p==='/api/launch'){let data='';for await(const chunk of req)data+=chunk;const body=JSON.parse(data);launchRequests.push(body);return json(launchFailure?{ok:false,error:'Erreur de lancement simulée'}:{ok:true});}
     if(p==='/api/system') return json({cpuName:'Processeur simulé',cores:8,cpu:10,memUsed:4e9,memTotal:16e9,os:'Windows test',node:'22',uptime:100,dataDir:'Données simulées'});
     if(p==='/api/update') return json({current:'3.1.0',packaged:true,auto:false,last:{available:true,latest,checked:new Date().toISOString()},job:{phase:'idle'}});
     if(p==='/api/config') { if(req.method==='POST') { let data=''; for await (const chunk of req) data+=chunk; const body=JSON.parse(data||'{}'); if('sgdbStyle' in body) artStyle=body.sgdbStyle; } return json({sgdb:{configured:true,auto:true,preferSteam:true,style:artStyle},emulators:[],romRoots:[]}); }
@@ -153,6 +159,33 @@ const server=http.createServer(async(req,res)=>{
     assert.equal(await page.locator('#page-library .card').count(),1);
     assert.equal(await page.evaluate(()=>core.lib.launchers.find(l=>l.id==='epic')?.installed),true);
     check('Nouvelle boutique Epic et jeu installé : visibles dans Tout et dans la catégorie Epic sans redémarrage');
+    await page.evaluate(async()=>{window.gameActions=await import('./js/pages/game.js');await gameActions.openLauncher(core.lib.launcher('epic'));});
+    assert.equal(await page.evaluate(()=>testNativeMessages.at(-1).type),'foreground');
+    launchFailure=true;
+    await page.evaluate(async()=>gameActions.openLauncher(core.lib.launcher('epic')));
+    assert.equal(await page.evaluate(()=>testNativeMessages.at(-1).type),'external-cancel');
+    await page.evaluate(async()=>gameActions.launch(core.lib.byId('fixture:0')));
+    assert.equal(await page.evaluate(()=>testNativeMessages.some(m=>m.type==='foreground'&&m.id==='fixture:0')),true);
+    assert.match(await page.locator('#launch-status').textContent(),/Impossible de lancer/);
+    await page.evaluate(()=>navigation.closeLayer());launchFailure=false;
+    check('Lancements : passage de la main à la boutique et navigation rendue après un refus');
+    await page.evaluate(()=>navigation.go('game',{id:'epic:fixture'}));await settled();
+    await page.locator('[data-key="remove-library"]').click();await page.locator('#dialog.open [data-key="b0"]').click();
+    assert.equal(removalRequests.length,0,'Annuler ne retire rien');
+    await page.locator('[data-key="remove-library"]').click();await page.locator('#dialog.open [data-key="b1"]').click();
+    await page.waitForFunction(()=>navigation.currentPage().id==='library'&&core.lib.byId('epic:fixture')?.removed);
+    assert.equal(await page.locator('#page-library [data-key="epic:fixture"]').count(),0);
+    assert.equal(await page.evaluate(()=>core.lib.byId('epic:fixture').installed),true);
+    await page.evaluate(async()=>{await core.api.post('/api/scan');await core.lib.load();navigation.go('search');navigation.page('search').set('Jeu Epic ajouté après le démarrage');});
+    assert.equal(await page.locator('#page-search .card').count(),0);
+    await page.evaluate(()=>navigation.go('home'));await settled();assert.equal(await page.locator('#page-home [data-id="epic:fixture"]').count(),0);
+    await page.evaluate(()=>navigation.go('library',{tab:'removed'}));await settled();
+    assert.equal(await page.locator('#page-library [data-key="epic:fixture"]').count(),1);
+    await page.evaluate(()=>navigation.go('game',{id:'epic:fixture'}));await settled();
+    await page.locator('[data-key="remove-library"]').click();
+    await page.waitForFunction(()=>navigation.currentPage().id==='library'&&!core.lib.byId('epic:fixture')?.removed);
+    assert.deepEqual(removalRequests.map(r=>r.removed),[true,false]);
+    check('Retrait : confirmation, annulation, fichiers conservés, recherche/accueil filtrés, actualisation et restauration');
     games.pop();launchers=[];libraryVersion++;
     await page.evaluate(async()=>{await core.lib.load();});
     await settingsSection('power');
@@ -193,6 +226,7 @@ const server=http.createServer(async(req,res)=>{
       await settingsSection('personal');await fit('Traduction '+lang);
       await settingsSection('look');await fit('Traduction '+lang+' apparence');
       await settingsSection('power');await fit('Traduction '+lang+' veille');
+      await page.evaluate(()=>navigation.go('game',{id:'fixture:0'}));await fit('Traduction '+lang+' fiche et retrait');
     }
     check('Français et anglais : choix des réglages sans débordement');
     await page.evaluate(()=>{core.settings.lang='fr';core.settings.uiScale=100;core.settings.lowFx=true;core.settings.reduceMotion=true;core.saveSettings();navigation.go('home');});await settled();
@@ -228,7 +262,8 @@ const server=http.createServer(async(req,res)=>{
       }
     }
     assert.deepEqual(errors,[],'Aucune exception JavaScript');
-    const dangerous=apiCalls.filter(c=>c.method==='POST'&&/^\/api\/(launch(?:\/|$)|power\/mode|sys(?:\/|$)|update\/apply)/.test(c.url));
+    assert.deepEqual(launchRequests.map(r=>r.id),['launcher:epic','launcher:epic','fixture:0'],'Seuls les lancements prévus et simulés');
+    const dangerous=apiCalls.filter(c=>c.method==='POST'&&/^\/api\/(power\/mode|sys(?:\/|$)|update\/apply)/.test(c.url));
     assert.deepEqual(dangerous,[],'Aucune action système pendant les essais');
     check('Aucune exception JavaScript ni action sur le système');
   } finally {await browser.close();server.close();}

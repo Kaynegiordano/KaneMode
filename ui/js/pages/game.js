@@ -164,7 +164,7 @@ export async function launch(g) {
   launching = { g, layer };
   let waitForGame = false;
   try {
-    native.send('foreground'); // le jeu lancé pourra passer au premier plan
+    native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
     const r = await api.post('/api/launch', { id: g.id });
     if (r.already || r.running) {
       status.textContent = t('{name} est déjà lancé', { name: g.name });
@@ -173,10 +173,12 @@ export async function launch(g) {
       native.send('launch', { ...gameRef(g), name: g.name, cover: true });
       waitForGame = true;
     } else {
+      if (!r.ok) native.send('external-cancel');
       status.textContent = r.ok ? (g.installed ? t('Bon jeu !') : t('Suivez l’installation dans Steam')) : t('Impossible de lancer : {a}', { a: r.error || 'erreur inconnue' });
     }
     if (r.ok) lib.load({ background: true });
   } catch (e) {
+    native.send('external-cancel');
     status.textContent = t('Impossible de lancer : {message}', { message: e.message });
   }
   if (waitForGame) return; // l'app native dira quand le jeu est là (ou au bout de 25 s)
@@ -232,15 +234,20 @@ export async function openLauncher(l) {
   if (!l.installed) return toast(t('{name} n’est pas installé sur ce PC', { name: l.name }), { error: true });
   toast(t('Ouverture de {name}…', { name: l.name }));
   native.send('foreground');
-  try { await api.post('/api/launch', { id: 'launcher:' + l.id }); }
-  catch (e) { toast(e.message, { error: true }); }
+  try {
+    const result = await api.post('/api/launch', { id: 'launcher:' + l.id });
+    if (!result.ok) throw new Error(result.error || t('Impossible de lancer cette boutique'));
+  }
+  catch (e) { native.send('external-cancel'); toast(e.message, { error: true }); }
 }
 
 async function openThing(g, what, label) {
+  native.send('foreground');
   try {
-    await api.post('/api/open', { id: g.id, what });
+    const result = await api.post('/api/open', { id: g.id, what });
+    if (!result.ok) throw new Error(result.error || t('Rien à ouvrir'));
     toast(label);
-  } catch (e) { toast(e.message, { error: true }); }
+  } catch (e) { native.send('external-cancel'); toast(e.message, { error: true }); }
 }
 
 /** Ajoute / retire un jeu des collections, ou en crée une nouvelle. */
@@ -271,6 +278,7 @@ export async function collectionsDialog(g) {
 
 async function options(g) {
   const custom = g.source === 'custom' && !g.demo;
+  const removable = g.installed && !g.demo && !g.streamHost && g.source !== 'kaneplay';
   const steamInstalled = g.steamAppId && g.installed && !g.shortcut;
   const choice = await dialog({
     title: g.name,
@@ -283,7 +291,8 @@ async function options(g) {
       ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
       { label: g.type === 'app' ? t('Classer comme jeu') : t('Classer comme application'), value: 'type', icon: 'i-sort' },
       { label: g.hidden ? t('Réafficher dans la bibliothèque') : t('Masquer de la bibliothèque'), value: 'hide', icon: 'i-eye-off' },
-      ...(custom ? [{ label: t('Modifier'), value: 'edit', icon: 'i-edit' }, { label: t('Supprimer de la bibliothèque'), value: 'delete', icon: 'i-trash', danger: true }] : []),
+      ...(removable || g.removed ? [{ label: g.removed ? t('Restaurer dans la bibliothèque') : t('Supprimer de la bibliothèque'), value: 'remove', icon: 'i-trash', danger: !g.removed }] : []),
+      ...(custom ? [{ label: t('Modifier'), value: 'edit', icon: 'i-edit' }, ...(!removable && !g.removed ? [{ label: t('Supprimer de la bibliothèque'), value: 'delete', icon: 'i-trash', danger: true }] : [])] : []),
       { label: t('Fermer'), value: null },
     ],
   });
@@ -303,6 +312,19 @@ async function options(g) {
   }
   if (choice === 'edit') go('details', { editId: g.id, nonce: Math.random() });
   if (choice === 'delete') deleteCustom(g);
+  if (choice === 'remove') removeFromLibrary(g);
+}
+
+export async function removeFromLibrary(g) {
+  const removed = !g.removed;
+  if (removed && !(await confirmDialog(t('Supprimer « {name} » ?', { name: g.name }), t('Le jeu reste installé. Il sera retiré de l’accueil, des recherches et des listes normales, même après une actualisation. Vous pourrez le restaurer dans l’onglet « Retirés ».'), t('Supprimer'), true))) return false;
+  try {
+    await api.post('/api/library/remove', { id: g.id, removed });
+    await lib.load();
+    toast(removed ? t('{name} supprimé', { name: g.name }) : t('{name} restauré dans la bibliothèque', { name: g.name }));
+    go('library', { tab: removed ? 'all' : 'removed' });
+    return true;
+  } catch (error) { toast(error.message, { error: true }); return false; }
 }
 
 // Mode de performance propre à un jeu : l'hôte l'applique à chaque lancement (il reste ensuite le mode en cours)
@@ -423,8 +445,9 @@ definePage('game', {
     link('i-collection', t('Collections'), (lib.collections.filter(c => c.ids.includes(g.id)).map(c => c.name).join(', ')) || t('Ranger ce jeu dans une collection'), () => collectionsDialog(g), 'collections');
     if (g.source === 'custom' && !g.demo) {
       link('i-edit', t('Modifier'), t('Nom, type, jaquette, arguments'), () => go('details', { editId: g.id, nonce: Math.random() }), 'edit');
-      link('i-trash', t('Supprimer'), t('Retirer de la bibliothèque'), () => deleteCustom(g), 'delete', 'danger');
+      if (!g.installed && !g.removed) link('i-trash', t('Supprimer'), t('Retirer de la bibliothèque'), () => deleteCustom(g), 'delete', 'danger');
     }
+    if (g.removed || (g.installed && !g.demo && !g.streamHost && g.source !== 'kaneplay')) link('i-trash', g.removed ? t('Restaurer dans la bibliothèque') : t('Supprimer de la bibliothèque'), t('Le jeu reste installé sur cette machine'), () => removeFromLibrary(g), 'remove-library', g.removed ? '' : 'danger');
     if (links.children.length) {
       root.append(el('h2', 'row-title', t('Raccourcis')), links);
     }

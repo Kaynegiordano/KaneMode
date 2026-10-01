@@ -4,6 +4,15 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.7.0 : lancements, boutiques et jeux connus
+
+- `host/lib/launch.js` valide les fichiers et chemins, lance directement les exécutables et confie les URI, raccourcis et applis Store à `host/launch.ps1` (ShellExecute, requête JSON sur stdin). Aucun repli vers Explorer pour une cible absente. Le recours Windows pour une élévation conserve les arguments et remonte le refus.
+- `ForegroundHandoff.cs` suspend la reprise automatique pendant une ouverture volontaire. La demande est annulée en cas d’échec et libérée au retour volontaire sur KaneMode. Les fenêtres sont relevées avant le lancement pour reconnaître aussi les applis Store rapides. Les boutiques ne sont plus réduites automatiquement et le minuteur qui reprenait le focus pendant 15 s après un jeu est supprimé.
+- Retrait persistant dans `state.overrides[id].removed`, sans désinstallation ni modification des fichiers, collections, visuels ou historique. `/api/library/remove` valide les entrées locales installées ; accueil, recherche et listes normales filtrent les retraits, onglet Retirés pour restaurer. Différent du masquage existant.
+- `host/known-games.ps1` détecte les clients Roblox et Minecraft dans les emplacements connus et les paquets Store installés. Roblox Studio et les installateurs sont exclus ; les identifiants Roblox restent stables entre versions. Pas de recherche Steam pour ces sources.
+- Vérifier les 33 tests Node : commande de la 3.5.0 plus `tools/verify-store-discovery.js` et `tools/verify-launch-and-library.js`. Ce dernier teste aussi PowerShell Windows et les installations simulées de jeux connus. `dotnet run --project tools/idle-protection-tests/IdleProtectionTests.csproj` vérifie aussi le passage du premier plan. `tools/verify-interface.cjs` : 96 mises en page, erreurs de lancement, confirmation/annulation, retrait persistant, recherche/accueil et restauration.
+- VERSION : 3.7.0 ; notes dans `docs/releases/3.7.0.md`. Les essais ne remplacent pas une validation sur la ROG Ally concernée.
+
 ## Version 3.6.0 : verrouillage automatique et détection Epic
 
 - Protection activée par défaut, désactivable dans Paramètres → Veille (`preventIdleLock`). `IdleProtection.cs` conserve l’écran et le système actifs uniquement au premier plan de KaneMode, KanePlay ou d’une fenêtre du jeu suivi. Réinitialisation Windows après 15 s par mouvement nul, sans touche ni clic ; les mouvements nuls ne réinitialisent pas l’inactivité propre à KaneMode.

@@ -51,7 +51,8 @@ function tabs() {
   const sources = [...new Set(vis.map(g => g.source))].filter(s => s !== 'rom')
     .sort((a, b) => (a === 'steam' ? -1 : b === 'steam' ? 1 : a.localeCompare(b)));
   for (const s of sources) list.push({ id: 'src:' + s, label: sourceOf(s).label, color: sourceOf(s).color, filter: g => g.source === s });
-  if (lib.games.some(g => g.hidden)) list.push({ id: 'hidden', label: t('Masqués'), filter: g => g.hidden, all: true });
+  if (lib.games.some(g => g.hidden && !g.removed)) list.push({ id: 'hidden', label: t('Masqués'), filter: g => g.hidden && !g.removed, all: true });
+  if (lib.games.some(g => g.removed)) list.push({ id: 'removed', label: t('Retirés'), filter: g => g.removed, all: true });
   return list;
 }
 

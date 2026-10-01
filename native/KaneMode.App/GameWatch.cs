@@ -88,6 +88,10 @@ public partial class MainWindow
     {
         StopGameWatch();
         var s = new GameState { Id = id, Name = name, SteamAppId = steamAppId, Dir = GameDir(dir), Cover = cover, Launched = !alreadyRunning, Before = new(Native.VisibleWindows()) };
+        // Les applis Store peuvent afficher leur fenêtre avant le retour de ShellExecute.
+        // Conserver le relevé effectué avant le lancement, pas seulement celui après la réponse.
+        if (!alreadyRunning && _preparedLaunch is { } prepared && prepared.Id == id) s.Before = prepared.Before;
+        _preparedLaunch = null;
         if (alreadyRunning)
         {
             // Jeu trouvé en cours (lancé avant, ou KaneMode relancé) : ses fenêtres actuelles restent où elles sont
@@ -128,25 +132,18 @@ public partial class MainWindow
         bool running = IsRunning(s);
         LogForeground(s);
 
-        // Steam reste en arrière-plan : pendant le lancement et la première minute et demie du jeu,
-        // sa fenêtre est réduite dès qu'elle passe devant (le mode Xbox la met en avant à son ouverture)
-        if (s.Launched && elapsed < 90 && SendStoreBack())
-        {
-            if (!s.Cover && Native.IsAppWindow(s.Window)) { Native.Raise(s.Window); Native.PlaceBelow(Hwnd, s.Window); }
-            else Native.Raise(Hwnd);
-        }
-
         // Nouvelle fenêtre du jeu : devant, une fois
         IntPtr win = NewGameWindow(s);
         if (win != IntPtr.Zero)
         {
             bool first = s.Window == IntPtr.Zero;
             Adopt(s, win);
-            ShowGame(s, win);
+            if (!_externalOpen.Active) ShowGame(s, win);
+            else s.Pushed.Add(win);
             if (first) Post(new { type = "game-started", id = s.Id });
             running = true;
         }
-        else if (s.InsistUntil > DateTime.UtcNow && Native.GetForegroundWindow() == Hwnd && Native.IsAppWindow(s.Window))
+        else if (!_externalOpen.Active && s.InsistUntil > DateTime.UtcNow && Native.GetForegroundWindow() == Hwnd && Native.IsAppWindow(s.Window))
         {
             // KaneMode a repris le focus juste après (fenêtre fermée devant lui, Windows qui refuse) : on insiste
             Log.Write($"KaneMode est repassé devant « {Native.WindowTitle(s.Window)} » : le jeu revient devant");
@@ -199,7 +196,7 @@ public partial class MainWindow
         {
             s.Gone = DateTime.UtcNow;
             s.InsistUntil = DateTime.MinValue;
-            BackToKaneMode();
+            if (!_externalOpen.Active) BackToKaneMode();
         }
         double grace = s.Dir != null ? 3 : Native.ProcessRunning(s.Pid) ? 20 : 4;
         if ((DateTime.UtcNow - s.Gone.Value).TotalSeconds < grace) return;
@@ -344,61 +341,22 @@ public partial class MainWindow
         return (long)w * ht >= Native.ScreenArea / 2;
     }
 
-    /// <summary>
-    /// La grande fenêtre de Steam (ou d'une autre boutique) est passée devant : on la réduit. Elle
-    /// reste ouverte en arrière-plan. Ses petites fenêtres (questions) restent visibles.
-    /// </summary>
-    private bool SendStoreBack()
-    {
-        IntPtr fg = Native.GetForegroundWindow();
-        if (fg == IntPtr.Zero || fg == Hwnd || !IsLarge(fg)) return false;
-        string name = Native.ProcessName(Native.WindowProcessId(fg));
-        // L'overlay de Steam (Maj + Tab en jeu) est voulu : on n'y touche pas
-        if (!Stores.Contains(name) || name.StartsWith("gameoverlayui", StringComparison.OrdinalIgnoreCase)) return false;
-        Log.Write($"« {Native.WindowTitle(fg)} » ({name}) passe devant : renvoyée en arrière-plan");
-        Native.Minimize(fg);
-        return true;
-    }
-
-    /// <summary>KaneMode revient devant (jeu fermé), Steam reste derrière.</summary>
+    /// <summary>KaneMode revient devant quand le jeu est fermé.</summary>
     private void BackToKaneMode()
     {
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
         Show();
-        SendStoreBack();
         Native.Raise(Hwnd);
         Web.Focus();
     }
 
     /// <summary>
-    /// Le jeu est fermé : KaneMode est déjà revenu devant. Pendant 15 s, si Steam (en mode Xbox, il
-    /// réapparaît après le jeu) ou le bureau repasse devant, KaneMode reprend la main.
+    /// Le jeu est fermé : retour sans surveillance répétée des boutiques après la session.
     /// </summary>
     private void ReturnFromGame(string id)
     {
-        BackToKaneMode();
+        if (!_externalOpen.Active) BackToKaneMode();
         Post(new { type = "game-ended", id });
-        var until = DateTime.UtcNow.AddSeconds(15);
-        var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        t.Tick += (_, _) =>
-        {
-            if (DateTime.UtcNow > until || _game != null) { t.Stop(); return; }
-            IntPtr fg = Native.GetForegroundWindow();
-            if (fg != _lastForeground && fg != IntPtr.Zero)
-            {
-                _lastForeground = fg;
-                Log.Write($"Premier plan après le jeu : « {Native.WindowTitle(fg)} » ({(fg == Hwnd ? "KaneMode" : Native.ProcessName(Native.WindowProcessId(fg)))})");
-            }
-            if (fg == Hwnd || fg == IntPtr.Zero) return;
-            string name = Native.ProcessName(Native.WindowProcessId(fg));
-            if (Stores.Contains(name) && !IsLarge(fg)) return; // Steam demande quelque chose (synchronisation…)
-            if (Stores.Contains(name) || name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
-            {
-                Log.Write($"« {Native.WindowTitle(fg)} » ({name}) passe devant après le jeu : KaneMode reprend la main");
-                BackToKaneMode();
-            }
-        };
-        t.Start();
     }
 
     // ---------- Demandes de l'interface : état, reprise, arrêt ----------

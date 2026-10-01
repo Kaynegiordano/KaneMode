@@ -21,6 +21,8 @@ const dealsLib = require('./lib/deals');
 const gpuLib = require('./lib/gpudrivers');
 const dolbyLib = require('./lib/dolby');
 const { createPathWatch } = require('./lib/pathwatch');
+const launchLib = require('./lib/launch');
+const libraryRemoval = require('./lib/library-removal');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -76,17 +78,6 @@ function runPs(script, args = []) {
   });
 }
 
-function splitArgs(s) {
-  const out = [];
-  let cur = '', quoted = false, has = false;
-  for (const ch of s || '') {
-    if (ch === '"') { quoted = !quoted; has = true; continue; }
-    if (/\s/.test(ch) && !quoted) { if (cur || has) out.push(cur); cur = ''; has = false; continue; }
-    cur += ch;
-  }
-  if (cur || has) out.push(cur);
-  return out;
-}
 const decodeEntities = s => String(s || '').replace(/<[^>]+>/g, '')
   .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim();
@@ -169,7 +160,7 @@ async function fetchMeta(entry) {
 
 function enqueueMeta(entries) {
   for (const e of entries) {
-    if (e.source === 'rom' || (!e.steamAppId && e.type === 'app')) continue; // rien à chercher sur Steam
+    if (['rom','roblox','minecraft'].includes(e.source) || (!e.steamAppId && e.type === 'app')) continue; // rien à chercher sur Steam
     const m = meta[e.id];
     // Données incomplètes, ou dans une autre langue que celle de l'interface (genres, description)
     const stale = m && m.steamId && (((!m.type || (e.steamAppId && !m.name)) && Date.now() - m.fetched > 3600e3) || (m.name && (m.lang || 'french') !== steamLang()));
@@ -299,7 +290,7 @@ function publicEntry(g, st, cfg) {
   return {
     id: g.id, source: g.source, name: g.name, demo: !!g.demo, shortcut: !!g.shortcut,
     type: ov.type || (g.source === 'custom' || g.source === 'rom' ? g.type : m.type || g.type || 'game'),
-    hidden: !!ov.hidden, installed: g.installed !== false,
+    hidden: !!ov.hidden, removed: !!ov.removed, installed: g.installed !== false,
     lastPlayed: Math.max(g.lastPlayed || 0, played.last || 0), playCount: played.count || 0,
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
@@ -747,30 +738,7 @@ async function warmStores() {
 const recentLaunch = new Map();
 const LAUNCH_GUARD = 30e3;
 
-function run(launch, { dry, onExit } = {}) {
-  if (!launch || !launch.target) return Promise.resolve({ ok: false, error: 'Aucune cible de lancement' });
-  let cmd, args, cwd;
-  if (launch.kind === 'exe' && /\.exe$/i.test(launch.target)) {
-    cmd = launch.target; args = splitArgs(launch.args); cwd = launch.cwd && fs.existsSync(launch.cwd) ? launch.cwd : path.dirname(launch.target);
-  } else {
-    cmd = 'explorer.exe'; args = [launch.target]; // URI, shell:AppsFolder, .lnk, .url, .bat…
-  }
-  if (dry) return Promise.resolve({ ok: true, dry: true, cmd, args, cwd });
-  return new Promise(resolve => {
-    const started = Date.now();
-    const env = launch.env && cmd !== 'explorer.exe' ? { ...process.env, ...launch.env } : undefined;
-    const child = spawn(cmd, args, { cwd, env, detached: true, stdio: 'ignore' });
-    child.on('spawn', () => { child.unref(); resolve({ ok: true }); });
-    // Pour un exécutable lancé directement, on mesure la durée de la session.
-    if (cmd !== 'explorer.exe' && onExit) child.on('exit', () => onExit((Date.now() - started) / 60000));
-    child.on('error', err => {
-      if (cmd === 'explorer.exe') return resolve({ ok: false, error: err.message });
-      // ex. programme qui exige une élévation : on laisse Windows gérer via l'Explorateur
-      spawn('explorer.exe', [launch.target], { detached: true, stdio: 'ignore' }).unref();
-      resolve({ ok: true, fallback: true });
-    });
-  });
-}
+const run = launchLib.create();
 
 // ---------------------------------------------------------------- émulation
 function scanEmulation() {
@@ -1121,6 +1089,14 @@ const routes = {
     version++;
     json(res, 200, { ok: true });
   },
+  'POST /api/library/remove': async (req, res) => {
+    const b = await readBody(req), entry = findEntry(String(b.id || ''));
+    try {
+      writeJson(FILES.state, libraryRemoval.update(state(), entry, b.removed));
+      version++;
+      json(res, 200, { ok: true });
+    } catch (error) { json(res, 400, { ok: false, error: error.message }); }
+  },
   'POST /api/override': async (req, res) => {
     const b = await readBody(req);
     const st = state();
@@ -1237,7 +1213,7 @@ const routes = {
     else if (b.what === 'details' && e.steamAppId) target = `steam://nav/games/details/${e.steamAppId}`;
     else if (b.what === 'uninstall' && e.steamAppId && e.installed !== false) target = `steam://uninstall/${e.steamAppId}`;
     if (!target || (b.what === 'folder' && !fs.existsSync(target))) return json(res, 400, { ok: false, error: 'Rien à ouvrir' });
-    json(res, 200, await run({ kind: 'uri', target }, { dry: !!b.dry }));
+    json(res, 200, await run({ kind: b.what === 'folder' ? 'folder' : 'uri', target }, { dry: !!b.dry }));
   },
 
   // --- Système

@@ -6,6 +6,7 @@ param([string]$DataDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'data'))
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'icon.ps1')
 . (Join-Path $PSScriptRoot 'epic.ps1')
+. (Join-Path $PSScriptRoot 'known-games.ps1')
 $iconDir = Join-Path $DataDir 'icons'
 New-Item -ItemType Directory -Force $DataDir | Out-Null
 
@@ -197,6 +198,22 @@ function First-File([string[]]$candidates) { foreach ($c in $candidates) { if (T
 function Join-Loc($u, $rel) { if ($u -and $u.Location) { Join-Path $u.Location $rel } }
 
 $pf86 = ${env:ProgramFiles(x86)}; $pf = $env:ProgramFiles; $local = $env:LOCALAPPDATA
+$robloxCommand = (Get-ItemProperty -LiteralPath 'Registry::HKEY_CLASSES_ROOT\roblox-player\shell\open\command' -ErrorAction SilentlyContinue).'(default)'
+Get-KnownDesktopGames $local @($pf, $pf86) $uninstall $robloxCommand | ForEach-Object {
+    $_.art = @{icon = Export-Icon $_.launch.target $iconDir}; Add-Game $_
+}
+$knownPackages = Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^ROBLOXCORPORATION\.(ROBLOX|RobloxPlayer)$|^Microsoft\.(MinecraftUWP|MinecraftWindowsBeta|4297127D64EC6)$' } | ForEach-Object {
+    try {
+        $appId = @((Get-AppxPackageManifest $_ -ErrorAction Stop).Package.Applications.Application)[0].Id
+        [pscustomobject]@{Name=$_.Name;Family=$_.PackageFamilyName;AppId=$appId}
+    } catch { }
+}
+Get-KnownStoreGames $knownPackages | ForEach-Object {
+    $g = $_
+    if (-not @($games | Where-Object { $_.id -eq $g.id -or $_.id -eq "xbox:$($g.packageName)" }).Count) {
+        $g.art = @{icon = Export-Icon $g.launch.target $iconDir}; Add-Game $g
+    }
+}
 $epicRegistered = foreach ($key in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',
                                   'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',
                                   'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\EpicGamesLauncher.exe',

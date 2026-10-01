@@ -19,6 +19,8 @@ Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). 
 
 KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (versions stables, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
 
+La [version 3.7.0](docs/releases/3.7.0.md) corrige les lancements qui ouvraient Documents et la reprise intempestive du premier plan lors de l’ouverture d’une boutique. Elle détecte aussi Roblox et Minecraft installés sur le PC. Depuis la fiche d’un jeu installé, **Supprimer de la bibliothèque** conserve les fichiers ; l’onglet **Retirés** permet de le restaurer, même après une actualisation.
+
 ### Publier une version (mainteneur)
 
 ```bash

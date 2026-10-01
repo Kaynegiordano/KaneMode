@@ -323,6 +323,8 @@ export const SOURCES = {
   amazon: { label: t('Amazon'), color: '#ff9900' },
   rockstar: { label: t('Rockstar'), color: '#fcaf17' },
   riot: { label: t('Riot'), color: '#eb0029' },
+  roblox: { label: 'Roblox', color: '#00a2ff' },
+  minecraft: { label: 'Minecraft', color: '#6bb043' },
   custom: { label: t('Ajouts perso'), short: t('Perso'), color: '#f0a030' },
   rom: { label: t('Émulation'), short: t('Émulation'), color: '#e05a2b' },
   kaneplay: { label: t('Streaming local'), short: t('Streaming'), color: 'var(--accent)' },
@@ -357,7 +359,7 @@ export const fmt = {
 // Ce qui change la mise en page (jeux ajoutés ou retirés, noms, rangées, onglets…) : le reste
 // (descriptions, temps de jeu, visuels) se met à jour sur place, sans redessiner la page.
 const layoutSig = d => JSON.stringify([
-  d.games.map(g => [g.id, g.name, g.type, g.hidden, g.installed, g.source, g.lastPlayed, g.system]),
+  d.games.map(g => [g.id, g.name, g.type, g.hidden, g.removed, g.installed, g.source, g.lastPlayed, g.system]),
   d.launchers.map(l => [l.id, l.installed]), d.collections, d.stream,
 ]);
 
@@ -390,7 +392,7 @@ export const lib = {
     return this;
   },
   byId(id) { return this.index.get(id); },
-  visible() { return this.games.filter(g => !g.hidden && !settings.hiddenSources.includes(g.source)); },
+  visible() { return this.games.filter(g => !g.hidden && !g.removed && !settings.hiddenSources.includes(g.source)); },
   launcher(id) { return this.launchers.find(l => l.id === id); },
 };
 

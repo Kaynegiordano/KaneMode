@@ -40,5 +40,14 @@ internal static class Program
         guard.Dispose(); int requests=Native.Requests.Count; guard.Dispose();
         Check(Native.Requests.Last()==false && Native.Requests.Count==requests, "Fermeture idempotente sans requête persistante");
         Console.WriteLine("PASS Protection Windows : activation, inactivité, arrière-plan, veille, bureau sécurisé, refus et fermeture.");
+        var handoff=new ForegroundHandoff();
+        handoff.Begin();handoff.Observe(true);
+        Check(handoff.Active,"Le programme n’a pas encore pris le focus : conserver la protection");
+        handoff.Observe(false);handoff.Observe(false);
+        Check(handoff.Active,"La boutique ouverte garde la main");
+        handoff.Observe(true);Check(!handoff.Active,"Le retour volontaire rend la manette à KaneMode");
+        handoff.Begin();handoff.End();Check(!handoff.Active,"Un lancement refusé rend immédiatement la navigation");
+        handoff.Begin();handoff.Observe(false);handoff.Begin();handoff.Observe(true);Check(handoff.Active,"Une nouvelle ouverture ne reprend pas l’ancien état de retour");
+        Console.WriteLine("PASS Premier plan : ouverture, attente, boutique, retour, refus et demandes successives.");
     }
 }

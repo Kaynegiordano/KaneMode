@@ -321,6 +321,9 @@
  "{name} prêt en arrière-plan": [
   "ui/js/pages/settings.js"
  ],
+ "{name} restauré dans la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
  "{name} retiré des favoris": [
   "ui/js/pages/game.js"
  ],
@@ -712,6 +715,9 @@
  "Application du profil…": [
   "ui/js/pages/settings.js"
  ],
+ "Application Windows introuvable": [
+  "host/launch.ps1"
+ ],
  "Applications": [
   "ui/js/pages/home.js",
   "ui/js/pages/library.js"
@@ -832,7 +838,7 @@
   "ui/js/pages/media.js"
  ],
  "Aucune cible de lancement": [
-  "host/server.js"
+  "host/lib/launch.js"
  ],
  "Aucune image (.png, .jpg, .webp) dans ce dossier.": [
   "ui/js/pages/add.js"
@@ -1036,6 +1042,9 @@
  "Ce format spatial est indisponible sur cette sortie": [
   "host/lib/dolby.js"
  ],
+ "Ce jeu ne peut pas être retiré de la bibliothèque": [
+  "host/lib/library-removal.js"
+ ],
  "Ce PC ne propose pas de veille (voir les options d’alimentation).": [
   "ui/js/pages/settings.js"
  ],
@@ -1113,6 +1122,9 @@
  "Choisissez une collection pour y ajouter le jeu, ou l’en retirer.": [
   "ui/js/pages/game.js"
  ],
+ "Choix de retrait invalide": [
+  "host/lib/library-removal.js"
+ ],
  "Choix du jeu": [
   "ui/js/widget.js"
  ],
@@ -1121,6 +1133,10 @@
  ],
  "Cible : {a} {b}": [
   "ui/js/pages/game.js"
+ ],
+ "Cible de lancement invalide": [
+  "host/launch.ps1",
+  "host/lib/launch.js"
  ],
  "Cible non autorisée": [
   "host/server.js"
@@ -1407,6 +1423,9 @@
   "host/server.js",
   "ui/js/pages/add.js"
  ],
+ "Dossier introuvable": [
+  "host/lib/launch.js"
+ ],
  "Dossier parent": [
   "ui/js/pages/add.js"
  ],
@@ -1630,6 +1649,12 @@
  "Feutré": [
   "ui/js/personalization-settings.js"
  ],
+ "Fichier de lancement introuvable : ": [
+  "host/lib/launch.js"
+ ],
+ "Fichier ou dossier introuvable": [
+  "host/launch.ps1"
+ ],
  "Fichiers locaux": [
   "ui/js/pages/game.js"
  ],
@@ -1767,6 +1792,12 @@
  "Icône": [
   "ui/js/pages/artpicker.js"
  ],
+ "Identifiant d’application Windows invalide": [
+  "host/lib/launch.js"
+ ],
+ "Identifiant Windows invalide": [
+  "host/launch.ps1"
+ ],
  "Il faut un nom et un programme ou une adresse": [
   "ui/js/pages/add.js"
  ],
@@ -1810,6 +1841,9 @@
   "ui/js/pages/game.js"
  ],
  "Impossible de lancer : {message}": [
+  "ui/js/pages/game.js"
+ ],
+ "Impossible de lancer cette boutique": [
   "ui/js/pages/game.js"
  ],
  "Inchangé": [
@@ -2028,6 +2062,9 @@
  "L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.": [
   "ui/js/pages/game.js"
  ],
+ "La cible ne désigne pas un exécutable": [
+  "host/lib/launch.js"
+ ],
  "La console n'a pas accepté le profil {a}": [
   "host/syscontrol.ps1"
  ],
@@ -2073,7 +2110,16 @@
  "Le bouton sous Command Center": [
   "ui/js/pages/settings.js"
  ],
+ "Le chemin de lancement doit être absolu": [
+  "host/lib/launch.js"
+ ],
  "Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.": [
+  "ui/js/pages/game.js"
+ ],
+ "Le jeu reste installé sur cette machine": [
+  "ui/js/pages/game.js"
+ ],
+ "Le jeu reste installé. Il sera retiré de l’accueil, des recherches et des listes normales, même après une actualisation. Vous pourrez le restaurer dans l’onglet « Retirés ».": [
   "ui/js/pages/game.js"
  ],
  "le logiciel du constructeur": [
@@ -2852,6 +2898,9 @@
  "Proposé en premier, automatiquement et dans « Parcourir »": [
   "ui/js/pages/settings.js"
  ],
+ "Protocole non installe : {a}": [
+  "host/launch.ps1"
+ ],
  "publié : {a}{b}{c}": [
   "ui/js/pages/settings.js"
  ],
@@ -3080,6 +3129,9 @@
  "Résolution non proposée par l'écran : {a}": [
   "host/syscontrol.ps1"
  ],
+ "Restaurer dans la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
  "Résultats": [
   "ui/js/pages/search.js"
  ],
@@ -3114,6 +3166,9 @@
  "Retirer le son perso": [
   "ui/js/pages/settings.js"
  ],
+ "Retirés": [
+  "ui/js/pages/library.js"
+ ],
  "Retour": [
   "ui/js/nav.js",
   "ui/js/pages/add.js",
@@ -3147,7 +3202,8 @@
   "ui/js/pages/settings.js"
  ],
  "Rien à ouvrir": [
-  "host/server.js"
+  "host/server.js",
+  "ui/js/pages/game.js"
  ],
  "Rien à régler dans cette catégorie sur ce PC.": [
   "ui/js/widget.js"
@@ -3769,6 +3825,9 @@
  ],
  "Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.": [
   "host/lib/dolby.js"
+ ],
+ "Windows n’a pas répondu à la demande de lancement": [
+  "host/lib/launch.js"
  ],
  "Windows va demander l’autorisation de l’administrateur. Pendant l’installation, l’écran peut clignoter ou s’éteindre un instant.": [
   "ui/js/pages/settings.js"
