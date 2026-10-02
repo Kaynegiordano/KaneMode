@@ -26,6 +26,43 @@ public sealed class HidGamepads : IDisposable
     public bool SonySlot(int slot) { lock (_lock) return _sony[slot] && Connected[slot]; }
     public bool Snapshot(int slot, out XState state) { lock (_lock) { state = States[slot]; return Connected[slot]; } }
 
+    // Lecture par Raw Input : décodage identique à celui de ReadLoop, à partir du rapport reçu par le système
+    private sealed record Dev(int Slot, IntPtr Pre, Dictionary<(byte, ushort), ValueRange> Ranges, bool Sony, int Length);
+    private readonly Dictionary<string, Dev> _devices = new(StringComparer.OrdinalIgnoreCase);
+    private readonly long[] _rawReports = new long[Max];
+
+    /// <summary>Rapport reçu par Raw Input pour une manette déjà ouverte (chemin du périphérique, rapport brut).</summary>
+    internal void Feed(string path, byte[] data)
+    {
+        lock (_lock)
+        {
+            if (!_open.ContainsKey(path) || !_devices.TryGetValue(path, out var d)) return;
+            // Sans identifiant de rapport, Raw Input ne le fournit pas : on le rétablit (0) comme ReadFile
+            byte[] report = data.Length == d.Length ? data : data.Length + 1 == d.Length ? new byte[] { 0 }.Concat(data).ToArray() : Array.Empty<byte>();
+            if (report.Length == 0) return;
+            XState s = States[d.Slot];
+            if (d.Sony)
+            {
+                if (!DualShockReports.TryRead(report.AsSpan(0, report.Length), out s)) return;
+            }
+            else
+            {
+                var usages = new ushort[32];
+                int count = usages.Length;
+                if (HidP_GetUsages(0, 9, 0, usages, ref count, d.Pre, report, d.Length) == HIDP_STATUS_SUCCESS)
+                {
+                    s.Buttons &= 15;
+                    for (int k = 0; k < count; k++) s.Buttons |= Button(usages[k]);
+                }
+                uint? Read(ushort link, ushort usage) => HidP_GetUsageValue(0, 1, link, usage, out uint raw, d.Pre, report, d.Length) == HIDP_STATUS_SUCCESS ? raw : null;
+                s = ApplyValues(s, report[0], d.Ranges, Read);
+            }
+            States[d.Slot] = s; Connected[d.Slot] = true;
+            _rawReports[d.Slot]++;
+            _last[d.Slot] = report.AsSpan(0, Math.Min(report.Length, 24)).ToArray();
+        }
+    }
+
     // Diagnostic : ce que la manette envoie vraiment (nombre de rapports, dernier rapport en hexadécimal)
     private readonly long[] _reports = new long[Max];
     private readonly byte[][] _last = new byte[Max][];
@@ -35,7 +72,7 @@ public sealed class HidGamepads : IDisposable
         {
             var s = States[slot];
             string hex = _last[slot] == null ? "aucun" : BitConverter.ToString(_last[slot]);
-            return $"rapports={_reports[slot]} dernier={hex} décodé=LX{s.LX} LY{s.LY} RX{s.RX} RY{s.RY} boutons=0x{s.Buttons:X}";
+            return $"rapports={_reports[slot]} raw={_rawReports[slot]} dernier={hex} décodé=LX{s.LX} LY{s.LY} RX{s.RX} RY{s.RY} boutons=0x{s.Buttons:X}";
         }
     }
 
@@ -116,6 +153,7 @@ public sealed class HidGamepads : IDisposable
             _sony[slot] = sony;
         }
         var ranges = ValueRanges(pre, caps);
+        lock (_lock) _devices[path] = new Dev(slot, pre, ranges, sony, caps.InputReportByteLength);
         Log.Write($"Manette HID {slot} ouverte ({path.Split('#').ElementAtOrDefault(1) ?? path})");
         // Description du périphérique : permet de vérifier le décodage des axes d'une console donnée
         Log.Write($"Manette HID {slot} : rapport de {caps.InputReportByteLength} octets, valeurs : " +
@@ -167,11 +205,12 @@ public sealed class HidGamepads : IDisposable
         catch (Exception ex) { Log.Write("Manette HID " + slot + " : lecture abandonnée (" + ex.GetType().Name + " : " + ex.Message + ")"); }
         finally
         {
-            HidD_FreePreparsedData(pre);
             lock (_lock)
             {
                 // Après Reconnect, la même manette a pu être rouverte : on ne touche qu'à la sienne
-                if (_open.TryGetValue(path, out var o) && o.Handle == handle) _open.Remove(path);
+                if (_open.TryGetValue(path, out var o) && o.Handle == handle) { _open.Remove(path); _devices.Remove(path); }
+                // Les données de description ne sont libérées qu'ici, sous verrou : Raw Input les utilise aussi
+                HidD_FreePreparsedData(pre);
                 try { handle.Dispose(); } catch (IOException) { }
                 if (!_open.Values.Any(x => x.Slot == slot)) { Connected[slot] = false; States[slot] = default; }
             }

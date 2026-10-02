@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.7 : Raw Input pour le mode souris
+
+- Le journal de l'Ally (4.0.6, Steam fermé) a **corrigé le diagnostic de la 4.0.6** : Steam n'est pas la cause principale. Hors expérience Xbox (ligne « Curseur supplémentaire … expérience Xbox : non »), XInput donne de vraies valeurs hors de KaneMode et le mode souris marche (13:37:56–13:38:18, ~500 mouvements dans Epic et sur le bureau). **Dans l'expérience Xbox**, XInput reste à 0/0 pour KaneMode.exe même devant KaneMode (WebView2 voit le stick), et la lecture HID (`ReadFile`) ne reçoit qu'un rapport à chaque retour devant KaneMode : Windows ne donne la manette qu'à la fenêtre qui a le focus (ici le processus de WebView2). KaneMode relance aussi Steam 12 s après son démarrage (`warmStores`), ce qui annule une fermeture manuelle.
+- `RawInputSink.cs` : fenêtre « message seulement » (`HwndSource`, `HWND_MESSAGE`) inscrite à Raw Input (usages 1/5 et 1/4, `RIDEV_INPUTSINK | RIDEV_DEVNOTIFY`) ; les rapports WM_INPUT (`RAWINPUT` : en-tête 24 octets en x64, puis `dwSizeHid`, `dwCount`, données) passent à `HidGamepads.Feed(chemin, rapport)`, décodé comme `ReadLoop` (`HidP_GetUsages` / `GetUsageValue` avec les données de description de la manette ouverte, identifiant de rapport 0 rétabli). Les données de description ne sont libérées que sous verrou (`_devices`). `Describe` ajoute `raw=` au journal « Sources ».
+- Non vérifié sur la console : si l'expérience Xbox filtre aussi Raw Input (`raw=` n'augmente pas devant une autre fenêtre), essayer **GameInput** (`SetFocusPolicy`, lecture en arrière-plan, outil natif dédié comme `native/KaneMode.Gpu`) ou la configuration de bureau de Steam. Le banc `tools/mouse-mode-tests` définit un faux `RawInputSink` (pas de WPF).
+- VERSION : 4.0.7 ; notes dans `docs/releases/4.0.7.md`.
+
 ## Version 4.0.6 : Steam garde la manette
 
 - Cause trouvée dans le journal de l'Ally (4.0.4 / 4.0.5) : tant que **Steam tourne** (Steam Input), XInput renvoie « connecté » avec des sticks à **0/0 exact** (le repos réel de l'Ally X est 0/-1) pour KaneMode hors de sa fenêtre, et la lecture HID brute ne reçoit plus que 1 à 3 rapports. Steam fermé (13:06, Epic Launcher), le curseur bouge (+283 mouvements acceptés). KaneMode lance lui-même Steam en arrière-plan (`warmStores`, 12 s après le démarrage) : il tourne donc presque toujours. L'utilisateur confirme : Steam fermé, mode souris meilleur en mode bureau.

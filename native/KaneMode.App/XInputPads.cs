@@ -67,6 +67,7 @@ public sealed class XInputPads : IDisposable
     private readonly long[] _startSince = new long[SLOTS];
     private readonly bool[] _startUsed = new bool[SLOTS];
     private readonly HidGamepads _hid = new();
+    private RawInputSink? _raw;
     private State _ui;
     private readonly object _uiLock = new();
     private long _uiAt = -1000;
@@ -111,6 +112,9 @@ public sealed class XInputPads : IDisposable
         var thread = new Thread(Loop) { IsBackground = true, Name = "Manettes XInput", Priority = ThreadPriority.AboveNormal };
         thread.Start();
         _hid.Start();
+        // Doit être créé sur le fil de l'interface (pompe de messages) ; le système livre les rapports même
+        // quand une autre fenêtre a le focus
+        try { _raw = new RawInputSink(_hid.Feed); } catch (Exception ex) { Log.Write("Raw Input indisponible : " + ex.Message); }
     }
 
     /// <summary>
@@ -307,5 +311,5 @@ public sealed class XInputPads : IDisposable
         Log.Write(sb.ToString());
     }
 
-    public void Dispose() { _mouseInput.SetActive(false); _stop.Cancel(); _hid.Dispose(); }
+    public void Dispose() { _mouseInput.SetActive(false); _stop.Cancel(); _raw?.Dispose(); _hid.Dispose(); }
 }
