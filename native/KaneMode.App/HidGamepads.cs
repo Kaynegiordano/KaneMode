@@ -144,6 +144,9 @@ public sealed class HidGamepads : IDisposable
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or UnauthorizedAccessException or OperationCanceledException) { }
+        // Un rapport inattendu d'une manette ne doit jamais arrêter KaneMode : la manette est simplement
+        // refermée (elle est rouverte par la prochaine recherche) et l'erreur est notée dans le journal
+        catch (Exception ex) { Log.Write("Manette HID " + slot + " : lecture abandonnée (" + ex.GetType().Name + " : " + ex.Message + ")"); }
         finally
         {
             HidD_FreePreparsedData(pre);

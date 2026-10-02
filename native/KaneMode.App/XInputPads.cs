@@ -135,7 +135,7 @@ public sealed class XInputPads : IDisposable
     {
         string last = "";
         bool dllMissing = false, mouseShown = false;
-        long lastTick = Environment.TickCount64, lastKnock = 0;
+        long lastTick = Environment.TickCount64, lastKnock = 0, lastError = -10000;
         while (!_stop.IsCancellationRequested)
         {
             long t = Environment.TickCount64;
@@ -165,6 +165,12 @@ public sealed class XInputPads : IDisposable
                     }
                 }
                 catch (DllNotFoundException) { dllMissing = true; Log.Write("XInput absent : manettes lues par WebView2 seulement"); }
+                // Cette boucle fait aussi vivre le mode souris : une erreur isolée ne doit pas l'arrêter
+                // (un thread qui lève une exception ferme tout KaneMode). Journal limité à une ligne par 10 s.
+                catch (Exception ex) when (ex is not ThreadAbortException)
+                {
+                    if (t - lastError > 10000) { lastError = t; Log.Write("Manettes : erreur de lecture (" + ex.GetType().Name + " : " + ex.Message + ")"); }
+                }
             }
             if (!_mouse) _mouseInput.Step(0, 0, 0, t, 0, false);
             if (_mouse != mouseShown) { mouseShown = _mouse; MouseModeChanged?.Invoke(_mouse); }

@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.3 : robustesse
+
+- Revue du code (demande de l'utilisateur) : tests et compilation propres, trois faiblesses corrigées. `sendFile` (`host/server.js`) : flux fermé proprement via `pipeFile` (un fichier supprimé ou verrouillé pendant l'envoi levait une erreur non gérée qui arrêtait l'hôte), plages vidéo validées (416, `bytes=-N`, fin ramenée à la taille). `XInputPads.Loop` attrape toute erreur (journal : une ligne par 10 s) car ce thread fait vivre le mode souris ; `HidGamepads.ReadLoop` referme la manette fautive au lieu de tuer l'application ; `App` journalise `AppDomain.UnhandledException`.
+- À surveiller : pas de filet `uncaughtException` dans l'hôte Node (la relance automatique de l'app le couvre) ; `server.js` fait 1 700 lignes avec des E/S synchrones. Les mises en page Chromium (`tools/verify-interface.cjs`) demandent Playwright, absent de ce PC : non relancées.
+- VERSION : 4.0.3 ; notes dans `docs/releases/4.0.3.md`.
+
 ## Version 4.0.2 : axes du mode souris
 
 - Retour utilisateur : basculement et navigation possibles, mais aucun déplacement du curseur, avec toutes les manettes essayées. Les vérifications précédentes ne prouvaient pas la lecture effective des axes sur sa console.

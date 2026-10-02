@@ -20,6 +20,8 @@ public partial class App : Application
             return;
         }
 
+        // Exception sur un autre thread : l'application s'arrête, mais la cause reste dans le journal
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => Log.Write("Erreur fatale : " + args.ExceptionObject);
         DispatcherUnhandledException += (_, args) =>
         {
             Log.Write("Erreur non gérée : " + args.Exception);

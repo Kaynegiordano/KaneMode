@@ -823,15 +823,27 @@ function cpuPercent() {
 }
 
 // ---------------------------------------------------------------- HTTP
+/**
+ * Envoie un flux de fichier. Sans écouteur d'erreur, un fichier supprimé ou verrouillé pendant l'envoi
+ * (capture effacée alors que sa vignette se charge) levait une exception non gérée et arrêtait l'hôte.
+ */
+function pipeFile(res, stream) {
+  stream.on('error', () => res.destroy());
+  res.on('close', () => stream.destroy());
+  stream.pipe(res);
+}
 function sendFile(res, file, req) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404); return res.end(); }
     const type = TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
-    const range = req && /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
-    if (range && type.startsWith('video/')) { // lecture vidéo avec avance rapide
-      const start = +range[1] || 0, end = range[2] ? +range[2] : st.size - 1;
+    const range = req && /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (range && type.startsWith('video/') && (range[1] || range[2])) { // lecture vidéo avec avance rapide
+      // « bytes=-N » : les N derniers octets ; une fin trop grande est ramenée à la taille du fichier
+      const start = range[1] ? +range[1] : Math.max(0, st.size - +range[2]);
+      const end = range[1] && range[2] ? Math.min(+range[2], st.size - 1) : st.size - 1;
+      if (start > end || start >= st.size) { res.writeHead(416, { 'Content-Range': `bytes */${st.size}` }); return res.end(); }
       res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${st.size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1 });
-      return fs.createReadStream(file, { start, end }).pipe(res);
+      return pipeFile(res, fs.createReadStream(file, { start, end }));
     }
     // Empreinte (taille + date) : le navigateur garde le fichier et demande seulement s'il a changé
     // (réponse 304 sans contenu). Sans elle, chaque jaquette était retéléchargée à chaque affichage.
@@ -843,7 +855,7 @@ function sendFile(res, file, req) {
       return res.end();
     }
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': cacheControl, ETag: etag, 'Accept-Ranges': 'bytes' });
-    fs.createReadStream(file).pipe(res);
+    pipeFile(res, fs.createReadStream(file));
   });
 }
 function json(res, code, body) {
