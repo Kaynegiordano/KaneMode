@@ -2377,7 +2377,7 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
- "Maintenez Start/Options 1 s : stick pour le curseur, A/Croix pour cliquer, B/Cercle pour le clic droit, X/Carré pour le clic du milieu, croix directionnelle pour défiler, LB/RB pour précédent/suivant.": [
+ "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, B/Cercle pour le clic droit, X/Carré pour le clic du milieu, croix pour défiler, LB/RB pour précédent/suivant.": [
   "ui/js/pages/settings.js"
  ],
  "Maintenu une seconde": [

@@ -156,7 +156,7 @@ public sealed class XInputPads : IDisposable
                     // Start maintenu : seulement quand KaneMode a la main (ou pour quitter le mode souris)
                     if (ours || _mouse || focus == Focus.Desktop) CheckHold(t);
                     if (_mouse) MouseStep(t, dt);
-                    else if (ours) now = Json();
+                    now = NavigationJson(focus);
                     if (pressed && !_mouse)
                     {
                         if (focus == Focus.Orphan) Reclaim?.Invoke();
@@ -229,6 +229,9 @@ public sealed class XInputPads : IDisposable
         return sb.Append(']').ToString();
     }
 
+    // Le mode souris ajoute le curseur ; il ne coupe pas la manette de l'interface au premier plan.
+    private string NavigationJson(Focus focus) => focus is Focus.Ours or Focus.Orphan ? Json() : "[]";
+
     private static string Axis(short v) => (Math.Round(v / 32767.0, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Start maintenu 1 s sur une manette : bascule le mode souris (une fois par appui).</summary>
@@ -247,6 +250,7 @@ public sealed class XInputPads : IDisposable
 
     private void MouseStep(long t, double dt)
     {
+        bool ours = _focus() is Focus.Ours or Focus.Orphan;
         ushort buttons = 0;
         int sx = 0, sy = 0, best = 0;
         for (int i = 0; i < SLOTS; i++)
@@ -254,7 +258,7 @@ public sealed class XInputPads : IDisposable
             if (!_connected[i]) continue;
             var p = _state[i].Pad;
             buttons |= p.Buttons;
-            Pick(p.ThumbLX, p.ThumbLY);
+            if (!ours) Pick(p.ThumbLX, p.ThumbLY); // Stick gauche réservé à la navigation dans KaneMode.
             Pick(p.ThumbRX, p.ThumbRY);
         }
         if (t - _desktopChecked >= 250)
@@ -262,7 +266,7 @@ public sealed class XInputPads : IDisposable
             _desktopChecked = t;
             _interactive = Native.InteractiveDesktop();
         }
-        _mouseInput.Step(buttons, sx, sy, t, dt, _interactive && !_mousePaused);
+        _mouseInput.Step(buttons, sx, sy, t, dt, _interactive && !_mousePaused, buttonsEnabled: !ours);
         void Pick(int x, int y)
         {
             int magnitude = Math.Abs(x) + Math.Abs(y);

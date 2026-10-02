@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.1 : manette conservée en mode souris
+
+- Retour utilisateur : le mode souris coupait la manette dans KaneMode. `XInputPads` envoyait `[]` en mode souris ; `nav.js` ignorait tous les boutons. Les deux coupures sont supprimées, tout en gardant la navigation bloquée derrière une autre application ou le streaming.
+- Dans KaneMode : stick gauche/boutons pour la navigation, stick droit pour le curseur. `GamepadMouse` n’injecte ni clic ni molette pendant que KaneMode a la main, pour éviter les doubles actions. Un bouton tenu au passage vers une autre fenêtre attend son relâchement.
+- Start court garde son action ; Start long bascule aussi pour les manettes uniquement WebView2. Le choix du mode au début du maintien empêche un second basculement après celui du lecteur natif.
+- Tests de coexistence natifs et Chromium ajoutés ; guide et traductions actualisés. Tests natifs, tests Node et 120 mises en page Chromium passent ; états de manette et injection simulés, validation physique sur console à confirmer.
+- VERSION : 4.0.1 ; notes dans `docs/releases/4.0.1.md`. Certificat de signature habituel et moteur de streaming conservés.
+
 ## Version 4.0.0 : mode souris global
 
 - Demande : mode souris conservé dans toute l’expérience Xbox, quelle que soit la fenêtre. Suppression des arrêts automatiques à l’ouverture d’une boutique, d’un jeu ou de KanePlay ; nouvel appui long Start/Options pour le couper.

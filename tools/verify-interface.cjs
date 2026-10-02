@@ -135,6 +135,42 @@ const server=http.createServer(async(req,res)=>{
     });
     assert.deepEqual(failures,[],label);
   };
+  const verifyMouseCoexist=async()=>{
+    await page.evaluate(()=>{
+      window.mockPad={id:'054c DualShock 4 Wireless Controller',index:0,buttons:Array.from({length:17},()=>({pressed:false})),axes:[0,0,0,0]};
+      Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[mockPad]});
+      window.nativeTestPad={i:0,kind:'ps',b:0,lt:0,rt:0,lx:0,ly:0,rx:0,ry:0};
+      window.pushPad=b=>{nativeTestPad.b=b;mockPad.buttons[0].pressed=!!(b&0x1000);sendNative({type:'xpad',pads:[nativeTestPad]});};
+      sendNative({type:'mouse-mode',on:true});pushPad(0);
+      const item=document.querySelector('[data-key="home-resume"]');window.oldMouseAct=item._act;window.mouseActions=0;item._act=()=>mouseActions++;navigation.setFocus(item);
+    });await settled();
+    await page.evaluate(()=>pushPad(0x1000));await page.waitForTimeout(500);
+    assert.equal(await page.evaluate(()=>mouseActions),1,'Manette active en mode souris, un seul appui malgré les deux sources et le maintien');
+    await page.evaluate(()=>pushPad(0));await settled();await page.evaluate(()=>pushPad(0x1000));await settled();
+    assert.equal(await page.evaluate(()=>mouseActions),2,'Nouvelle validation en mode souris');
+    await page.evaluate(()=>sendNative({type:'mouse-mode',on:false}));await settled();
+    assert.equal(await page.evaluate(()=>mouseActions),2,'Basculer avec un bouton tenu ne valide pas à nouveau');
+    await page.evaluate(()=>{pushPad(0);sendNative({type:'mouse-mode',on:true});});await settled();
+    await page.evaluate(()=>pushPad(0x1000));await settled();assert.equal(await page.evaluate(()=>mouseActions),3);
+    await page.evaluate(()=>{pushPad(0);sendNative({type:'xpad',pads:[]});});await settled();
+    await page.evaluate(()=>mockPad.buttons[9].pressed=true);await page.waitForTimeout(250);
+    await page.evaluate(()=>mockPad.buttons[9].pressed=false);await settled();
+    assert.equal(await page.locator('#qam').getAttribute('aria-hidden'),'false','Start court ouvre toujours l’accès rapide en mode souris');
+    await page.evaluate(()=>navigation.closeLayer());await settled();
+    const before=await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-mode').length);
+    await page.evaluate(()=>mockPad.buttons[9].pressed=true);await page.waitForTimeout(1600);
+    const request=await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-mode').at(-1));
+    assert.equal(request.on,false,'Start long peut désactiver le mode pour une source WebView2');
+    assert.equal(await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-mode').length),before+1,'Un seul basculement par maintien');
+    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:false});mockPad.buttons[9].pressed=false;});await settled();
+    assert.equal(await page.locator('#qam').getAttribute('aria-hidden'),'true','Start long ne devient pas un appui court');
+    await settingsSection('personal');
+    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});navigation.setFocus(document.querySelector('[data-key="sec:personal"]'));});await settled();
+    await page.evaluate(()=>mockPad.buttons[13].pressed=true);await page.waitForTimeout(200);
+    assert.notEqual(await page.evaluate(()=>navigation.focused.dataset.key),'sec:personal','La croix continue de naviguer en mode souris');
+    await page.evaluate(()=>{mockPad.buttons[13].pressed=false;sendNative({type:'mouse-mode',on:false});document.querySelector('[data-key="home-resume"]')._act=oldMouseAct;Object.defineProperty(navigator,'getGamepads',{value:()=>[]});navigation.go('home');});await settled();
+    check('Souris et manette simultanées : croix, validations uniques, Start court/long, basculement et sources native/WebView2');
+  };
   const visibleFocus=async(label)=>{
     const result=await page.evaluate(()=>{
       const f=navigation.focused,r=f.getBoundingClientRect(),b=document.querySelector('#hints').getBoundingClientRect(),top=document.querySelector('#topbar').getBoundingClientRect();
@@ -149,6 +185,7 @@ const server=http.createServer(async(req,res)=>{
     await page.evaluate(async()=>{window.navigation=await import('./js/nav.js');window.core=await import('./js/core.js');window.widgets=await import('./js/widgets.js');});
     await settled();
     await verifyHandoff();
+    await verifyMouseCoexist();
     assert.equal(await page.locator('.home-info h1').isVisible(),false,'Pas de titre de reprise dupliqué');
     await page.evaluate(()=>navigation.setFocus(document.querySelector('[data-key="pin-collection:c1"]')));
     assert.equal(await page.locator('.home-info h1').textContent(),'Coop canapé');

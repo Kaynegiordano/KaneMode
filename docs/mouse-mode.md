@@ -1,6 +1,10 @@
 # Mode souris global à la manette
 
-Dans l’application native KaneMode, maintenez **Start / Options pendant une seconde** pour activer le mode souris. Maintenez-le à nouveau pour revenir au mode manette.
+Dans l’application native KaneMode, maintenez **Start / Options pendant une seconde** pour activer le mode souris. Maintenez-le à nouveau pour couper le contrôle du curseur. La navigation à la manette reste disponible dans les deux cas ; un appui court sur Start conserve son action habituelle.
+
+Dans KaneMode, le **stick gauche et les boutons** gardent leurs fonctions de navigation ; le **stick droit** déplace le curseur. Les boutons ne génèrent pas en plus un clic ou un défilement Windows, afin d’éviter les doubles actions. Le curseur déplace le focus sur l’élément survolé et A / Croix le valide.
+
+Dans les autres fenêtres, les commandes souris sont les suivantes :
 
 | Commande Xbox / PS4 | Action |
 | --- | --- |

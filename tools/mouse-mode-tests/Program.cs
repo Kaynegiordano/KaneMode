@@ -60,13 +60,33 @@ internal static class Program
         pads.SetUiPad(0, 0, 0, 0, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
         foreach (var f in Enum.GetValues<XInputPads.Focus>())
         {
-            focus = f; tick += 8; pads.SetUiPad(0, 1, 0, 0, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
+            focus = f; tick += 8; pads.SetUiPad(0, 0, 0, 1, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
             Check(pads.MouseMode && Native.Events.Last().Flags == Native.MOUSE_MOVE, "Mode souris conservé dans " + f);
         }
+        focus = XInputPads.Focus.Ours; Native.Events.Clear();
+        pads.SetUiPad(0x1001, 1, 0, 0, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
+        Check(Native.Events.Count == 0, "Dans KaneMode, stick gauche et boutons réservés à la navigation");
+        pads.SetUiPad(0x1001, 0, 0, 1, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
+        Check(Native.Events.All(e => e.Flags == Native.MOUSE_MOVE) && Native.Events.Count > 0, "Stick droit actif sans double clic ni double défilement");
+        focus = XInputPads.Focus.Other; Native.Events.Clear();
+        step.Invoke(pads, new object[] { tick, 8.0 });
+        Check(!Native.Events.Any(e => e.Flags == Native.LEFT_DOWN), "Un bouton tenu en quittant KaneMode ne devient pas un clic");
+        pads.SetUiPad(0, 0, 0, 0, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
         // Une copie WebView2 figée du même type de manette ne remplace pas les rapports natifs.
         var hid = (HidGamepads)typeof(XInputPads).GetField("_hid", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(pads)!;
         var connected = (bool[])typeof(HidGamepads).GetField("Connected", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
         var sony = (bool[])typeof(HidGamepads).GetField("_sony", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
+        var states = (HidGamepads.XState[])typeof(HidGamepads).GetField("States", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
+        var navigation = typeof(XInputPads).GetMethod("NavigationJson", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        connected[0] = true; states[0] = new HidGamepads.XState { Buttons = 0x1000, LX = 32767, LT = 255 };
+        read.Invoke(pads, new object[] { tick });
+        using (var feed = System.Text.Json.JsonDocument.Parse((string)navigation.Invoke(pads, new object[] { XInputPads.Focus.Ours })!))
+        {
+            var pad = feed.RootElement[0];
+            Check(pad.GetProperty("b").GetInt32() == 0x1000 && pad.GetProperty("lx").GetDouble() == 1 && pad.GetProperty("lt").GetInt32() == 255, "Manette native envoyée intacte pendant le mode souris");
+        }
+        Check((string)navigation.Invoke(pads, new object[] { XInputPads.Focus.Other })! == "[]", "Aucune navigation native derrière une autre fenêtre");
+        states[0] = default; connected[0] = false;
         foreach (var source in new[] { "Xbox 360 Controller (XInput STANDARD GAMEPAD)", "DualShock 4 (054c:09cc)" })
         {
             connected[0] = true; sony[0] = source.StartsWith("DualShock"); Native.Events.Clear();

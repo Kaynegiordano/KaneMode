@@ -604,12 +604,12 @@ function readPads() {
       const id = p.index + ':' + k;
       seen.add(id);
       // Retour sur KaneMode (depuis KanePlay, un jeu) : un bouton encore enfoncé ne compte pas.
-      // Mode souris : la manette est une souris, l'interface ne la lit plus.
-      if (swallow || mouseMode.on) { heldBy[id] = Infinity; continue; }
+      // La souris est un contrôle supplémentaire : la navigation à la manette reste disponible.
+      if (swallow) { heldBy[id] = Infinity; continue; }
       if (!heldBy[id]) {
         heldBy[id] = now + 380; // délai avant répétition
         // Start agit au relâchement : maintenu 1 s, il active le mode souris (app native)
-        if (k === 'start') { startAt[id] = { t: now }; continue; }
+        if (k === 'start') { startAt[id] = { t: now, mode: mouseMode.on }; continue; }
         if (now - (lastPress[k] || -1e9) < SAME_PRESS_MS) continue;
         lastPress[k] = now;
         logSource(p);
@@ -629,14 +629,14 @@ function readPads() {
   // Start relâché : appui court = son action (accès rapide ou menu) ; appui long = mode souris
   for (const id in startAt) {
     if (seen.has(id)) {
-      // Toujours tenu après 1,3 s sans que l'app ait activé le mode souris (elle ne voyait pas la
-      // manette : mode Xbox) : l'interface le lui demande
-      if (!startAt[id].sent && !mouseMode.on && now - startAt[id].t >= 1300) { startAt[id].sent = true; native.send('mouse-mode', { on: true }); }
+      // Toujours tenu après 1,3 s sans basculement natif : le relais de l'interface le demande.
+      // Le mode initial évite un second basculement si le lecteur natif a déjà traité le maintien.
+      if (!startAt[id].sent && mouseMode.on === startAt[id].mode && now - startAt[id].t >= 1300) { startAt[id].sent = true; native.send('mouse-mode', { on: !startAt[id].mode }); }
       continue;
     }
     const held = now - startAt[id].t;
     delete startAt[id];
-    if (held >= START_HOLD_MS || mouseMode.on || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
+    if (held >= START_HOLD_MS || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
     lastPress.start = now;
     press(padAction('start'));
   }
@@ -688,7 +688,7 @@ native.on(m => {
 // ---------- Souris ----------
 document.addEventListener('mousemove', e => {
   // Le défilement ou un léger contact de la souris ne doit pas voler le focus à la manette
-  if (Math.abs(e.movementX) + Math.abs(e.movementY) < 3 || Date.now() - input.last < 600) return;
+  if (Math.abs(e.movementX) + Math.abs(e.movementY) < 3 || (!mouseMode.on && Date.now() - input.last < 600)) return;
   if (document.body.classList.contains('pad-mode')) setInput('kbd');
   const t = e.target.closest('[data-nav]');
   if (t && scope().contains(t) && t !== focused) setFocus(t, { scroll: false, sound: false });

@@ -22,20 +22,22 @@ internal sealed class GamepadMouse
         }
     }
     public void Pause() { lock (_lock) { Release(); _neutral = true; _restX = _restY = 0; } }
-    public void Step(ushort buttons, int sx, int sy, long now, double dt, bool interactive)
+    public void Step(ushort buttons, int sx, int sy, long now, double dt, bool interactive, bool buttonsEnabled = true)
     {
         lock (_lock)
         {
             if (!_active || !interactive) { Release(); _neutral = true; return; }
-            if ((buttons & (MOUSE_BUTTONS | 15)) == 0) _neutral = false;
-            if (_neutral) buttons = 0; // Pas de clic tenu provenant de l'activation ou du verrouillage.
-            _rejected &= buttons;
-            buttons = (ushort)(buttons & ~_rejected); // Un clic refusé attend un nouvel appui volontaire.
             _restX += Speed(sx) * Math.Clamp(dt, 0, 50) / 50;
             _restY -= Speed(sy) * Math.Clamp(dt, 0, 50) / 50;
             int dx = (int)_restX, dy = (int)_restY;
             _restX -= dx; _restY -= dy;
             if (dx != 0 || dy != 0) Send(Native.MOUSE_MOVE, dx, dy, 0, now);
+            // Dans KaneMode, les boutons servent à naviguer : aucun second clic ou défilement.
+            if (!buttonsEnabled) { Release(); _neutral = true; return; }
+            if ((buttons & (MOUSE_BUTTONS | 15)) == 0) _neutral = false;
+            if (_neutral) buttons = 0; // Pas de clic tenu provenant de l'activation ou du verrouillage.
+            _rejected &= buttons;
+            buttons = (ushort)(buttons & ~_rejected); // Un clic refusé attend un nouvel appui volontaire.
             Button(buttons, A, Native.LEFT_DOWN, Native.LEFT_UP, 0, now);
             Button(buttons, B, Native.RIGHT_DOWN, Native.RIGHT_UP, 0, now);
             Button(buttons, X, Native.MIDDLE_DOWN, Native.MIDDLE_UP, 0, now);
