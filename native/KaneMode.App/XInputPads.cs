@@ -61,6 +61,8 @@ public sealed class XInputPads : IDisposable
     private readonly bool[] _connected = new bool[SLOTS];
     private readonly long[] _nextScan = new long[4];
     private readonly bool[] _announced = new bool[4];
+    private readonly int[] _xinputResult = new int[4];
+    private long _sourcesAt, _sourcesLogged;
     private readonly State[] _state = new State[SLOTS];
     private readonly long[] _startSince = new long[SLOTS];
     private readonly bool[] _startUsed = new bool[SLOTS];
@@ -100,6 +102,7 @@ public sealed class XInputPads : IDisposable
         if (on == _mouse) return;
         _mouseInput.SetActive(on);
         _mouse = on;
+        if (on) { _sourcesAt = 0; _sourcesLogged = 0; }
         Log.Write(on ? $"Mode souris activé ({why})" : $"Mode souris désactivé ({why})");
     }
 
@@ -190,7 +193,9 @@ public sealed class XInputPads : IDisposable
         {
             // Un emplacement vide est lent à interroger : revu toutes les 2 s seulement
             if (!_connected[i] && t < _nextScan[i]) continue;
-            bool ok = XInputGetState(i, out _state[i]) == 0;
+            int result = XInputGetState(i, out _state[i]);
+            _xinputResult[i] = result;
+            bool ok = result == 0;
             // Branchement et débranchement notés dans le journal (diagnostic sur la console)
             if (ok != _connected[i] && (ok || _announced[i])) { _announced[i] = ok; Log.Write($"XInput : manette {i} {(ok ? "détectée" : "retirée")}"); }
             _connected[i] = ok;
@@ -267,6 +272,7 @@ public sealed class XInputPads : IDisposable
             _desktopChecked = t;
             _interactive = Native.InteractiveDesktop();
         }
+        LogSources(t);
         var selected = _mouseSources.Current;
         _mouseInput.Step(selected.Buttons, selected.X, selected.Y, t, dt, _interactive && !_mousePaused, buttonsEnabled: !ours);
         if (t - _diagnosticAt >= 500)
@@ -281,6 +287,24 @@ public sealed class XInputPads : IDisposable
             string key = status + ":" + source;
             if (key != _diagnosticKey) { _diagnosticKey = key; Log.Write($"Souris : état={status}, source={source}, axes={selected.X}/{selected.Y}, acceptés={counts.Accepted}, refusés={counts.Rejected}"); }
         }
+    }
+
+    /// <summary>
+    /// Diagnostic du mode souris : toutes les 5 s (40 lignes au plus par activation), ce que chaque source
+    /// reçoit réellement et qui a le premier plan. Sert à savoir quelle source est muette sur une console.
+    /// </summary>
+    private void LogSources(long t)
+    {
+        if (t - _sourcesAt < 5000 || _sourcesLogged >= 40) return;
+        _sourcesAt = t; _sourcesLogged++;
+        var sb = new StringBuilder($"Sources (premier plan : {_focus()}) : ");
+        for (int i = 0; i < 4; i++)
+            sb.Append(_xinputResult[i] == 0 ? $"XInput{i}=ok paquet {_state[i].Packet} G{_state[i].Pad.ThumbLX}/{_state[i].Pad.ThumbLY} D{_state[i].Pad.ThumbRX}/{_state[i].Pad.ThumbRY} " : $"XInput{i}=code {_xinputResult[i]} ");
+        for (int k = 0; k < HidGamepads.Max; k++)
+            if (_hid.Snapshot(k, out _)) sb.Append($"HID{k}[{_hid.Describe(k)}] ");
+        long age = Environment.TickCount64 - _uiAt;
+        sb.Append(_connected[UI] ? $"WebView2=actif ({age} ms)" : "WebView2=aucun relais");
+        Log.Write(sb.ToString());
     }
 
     public void Dispose() { _mouseInput.SetActive(false); _stop.Cancel(); _hid.Dispose(); }

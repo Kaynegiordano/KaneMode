@@ -26,6 +26,19 @@ public sealed class HidGamepads : IDisposable
     public bool SonySlot(int slot) { lock (_lock) return _sony[slot] && Connected[slot]; }
     public bool Snapshot(int slot, out XState state) { lock (_lock) { state = States[slot]; return Connected[slot]; } }
 
+    // Diagnostic : ce que la manette envoie vraiment (nombre de rapports, dernier rapport en hexadécimal)
+    private readonly long[] _reports = new long[Max];
+    private readonly byte[][] _last = new byte[Max][];
+    public string Describe(int slot)
+    {
+        lock (_lock)
+        {
+            var s = States[slot];
+            string hex = _last[slot] == null ? "aucun" : BitConverter.ToString(_last[slot]);
+            return $"rapports={_reports[slot]} dernier={hex} décodé=LX{s.LX} LY{s.LY} RX{s.RX} RY{s.RY} boutons=0x{s.Buttons:X}";
+        }
+    }
+
     private readonly CancellationTokenSource _stop = new();
     private readonly object _lock = new();
     private readonly Dictionary<string, (int Slot, SafeFileHandle Handle)> _open = new(StringComparer.OrdinalIgnoreCase);
@@ -104,6 +117,9 @@ public sealed class HidGamepads : IDisposable
         }
         var ranges = ValueRanges(pre, caps);
         Log.Write($"Manette HID {slot} ouverte ({path.Split('#').ElementAtOrDefault(1) ?? path})");
+        // Description du périphérique : permet de vérifier le décodage des axes d'une console donnée
+        Log.Write($"Manette HID {slot} : rapport de {caps.InputReportByteLength} octets, valeurs : " +
+            string.Join(", ", ranges.Select(kv => $"id{kv.Key.Item1}/0x{kv.Key.Item2:X2}={kv.Value.Min}..{kv.Value.Max} ({kv.Value.Bits} bits)")));
         var t = new Thread(() => ReadLoop(path, slot, handle, pre, caps.InputReportByteLength, ranges, sony)) { IsBackground = true, Name = "Manette HID " + slot, Priority = ThreadPriority.AboveNormal };
         t.Start();
     }
@@ -121,6 +137,8 @@ public sealed class HidGamepads : IDisposable
             {
                 int n = stream.Read(report, 0, length);
                 if (n <= 0) break;
+                lock (_lock) { _reports[slot]++; _last[slot] = report.AsSpan(0, Math.Min(n, 24)).ToArray(); }
+                if (_reports[slot] <= 2) Log.Write($"Manette HID {slot} : premier rapport reçu ({BitConverter.ToString(report, 0, Math.Min(n, 24))})");
                 Snapshot(slot, out var s);
                 if (sony)
                 {

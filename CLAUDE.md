@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.4 : diagnostic des sources de manette
+
+- Problème ouvert : le mode souris ne bouge le curseur que dans KaneMode (source WebView2) ; hors de KaneMode, sur la ROG Ally en expérience Xbox, aucune source native ne donne les axes (constaté aussi en 4.0.2). XInput ne donne rien à KaneMode en mode Xbox ; la lecture HID brute (`&ig_`, Ally X : `vid_0b05&pid_1b4c&mi_05&ig_00`) devrait marcher partout mais n'a jamais été vérifiée sur la console : rapports non reçus ou axes mal décodés.
+- Cette version ne change aucun comportement : `HidGamepads` journalise la description de la manette (taille du rapport, plage de chaque axe) et les deux premiers rapports bruts ; `XInputPads.LogSources` écrit toutes les 5 s (40 lignes au plus par activation) le premier plan et ce que reçoit chaque source (code et paquet XInput, rapports et dernier rapport HID, relais WebView2).
+- Suite : l'utilisateur teste (mode souris, autre fenêtre, sticks) et envoie `kanemode.log` ; corriger alors le décodage HID ou changer de source selon les lignes « Sources » et « Manette HID n : … ». Un Raw Input (`RIDEV_INPUTSINK`) reste une piste si la lecture HID ne reçoit rien.
+- VERSION : 4.0.4 ; notes dans `docs/releases/4.0.4.md`.
+
 ## Version 4.0.3 : robustesse
 
 - Revue du code (demande de l'utilisateur) : tests et compilation propres, trois faiblesses corrigées. `sendFile` (`host/server.js`) : flux fermé proprement via `pipeFile` (un fichier supprimé ou verrouillé pendant l'envoi levait une erreur non gérée qui arrêtait l'hôte), plages vidéo validées (416, `bytes=-N`, fin ramenée à la taille). `XInputPads.Loop` attrape toute erreur (journal : une ligne par 10 s) car ce thread fait vivre le mode souris ; `HidGamepads.ReadLoop` referme la manette fautive au lieu de tuer l'application ; `App` journalise `AppDomain.UnhandledException`.
