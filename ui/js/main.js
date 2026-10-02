@@ -3,7 +3,7 @@ import { t, locale, translateDom } from './i18n.js';
 import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native, store } from './core.js';
 import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input, setNativePads } from './nav.js';
 import { swapArt } from './cards.js';
-import { confirmDialog } from './widgets.js';
+import { confirmDialog, dialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
 import { renderQam, prefetchQam, startLive, stopLive, qamShortcuts } from './qam.js';
@@ -211,10 +211,34 @@ async function paintNet() {
 paintNet();
 setInterval(paintNet, 20000);
 native.on(m => { if (m.type === 'resume' || m.type === 'wake') paintNet(); });
+// Steam (Steam Input) garde les manettes Xbox tant qu'il tourne : hors de KaneMode le curseur ne bouge
+// plus. À l'activation du mode souris, on propose de le fermer (une question par activation, et jamais
+// pendant un jeu Steam ni si KaneMode n'est pas devant : personne ne verrait la question).
+let steamAsked = false;
+async function askQuitSteam() {
+  if (steamAsked || settings.steamMouseAsk === false || topLayer() || document.visibilityState !== 'visible' || !document.hasFocus()) return;
+  try {
+    const s = await api.get('/api/steam/state');
+    if (!s.running || s.game) return;
+    steamAsked = true;
+    const choice = await dialog({
+      title: t('Quitter Steam ?'),
+      text: t('Tant que Steam tourne, il garde la manette : le mode souris ne répond que dans KaneMode. Steam se relance tout seul au prochain jeu Steam lancé depuis KaneMode.'),
+      buttons: [{ label: t('Quitter Steam'), value: 'quit', primary: true }, { label: t('Garder Steam'), value: 'keep' }, { label: t('Ne plus demander'), value: 'never' }],
+    });
+    if (choice === 'never') { settings.steamMouseAsk = false; saveSettings(); }
+    if (choice === 'quit') {
+      await api.post('/api/steam/quit', {});
+      toast(t('Steam se ferme…'));
+    }
+  } catch (e) { toast(e.message, { error: true }); }
+}
 // Mode souris (Start maintenu 1 s, comme dans KanePlay) : l'app native déplace la vraie souris
 native.on(m => {
   if (m.type !== 'mouse-mode') return;
   $('#mouse-pill').hidden = !m.on;
+  steamAsked = false;
+  if (m.on) setTimeout(askQuitSteam, 700);
   toast(m.on ? t('Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter') : t('Mode souris désactivé'));
 });
 addEventListener('gamepadconnected', e => toast(t('Manette connectée : {a}', { a: e.gamepad.id.replace(/\(.*?\)/g, '').trim() || t("manette") })));

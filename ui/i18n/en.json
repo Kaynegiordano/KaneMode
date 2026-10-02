@@ -1302,5 +1302,15 @@
  "Tous les jeux renvoyés par les connecteurs, installés ou non · aucune sélection limitée aux jeux déjà joués": "All games returned by the connectors, installed or not · includes games you have never played",
  "Accès à la passerelle refusé": "Access to the bridge denied",
  "La boutique a refusé cette action. Vérifiez sa connexion dans Playnite.": "The store refused this action. Check its connection in Playnite.",
- "Action de bibliothèque inconnue": "Unknown library action"
+ "Action de bibliothèque inconnue": "Unknown library action",
+ "Garder Steam": "Keep Steam",
+ "Ne plus demander": "Don’t ask again",
+ "Proposer de quitter Steam avec le mode souris": "Offer to quit Steam with mouse mode",
+ "Quitter Steam": "Quit Steam",
+ "Quitter Steam ?": "Quit Steam?",
+ "Steam est introuvable": "Steam was not found",
+ "Steam garde les manettes Xbox (Steam Input) tant qu’il tourne : hors de KaneMode, le curseur ne bouge plus": "Steam keeps Xbox controllers (Steam Input) while it runs: outside KaneMode, the cursor stops moving",
+ "Steam se ferme…": "Steam is closing…",
+ "Tant que Steam tourne, il garde la manette : le mode souris ne répond que dans KaneMode. Steam se relance tout seul au prochain jeu Steam lancé depuis KaneMode.": "While Steam runs, it keeps the controller: mouse mode only responds inside KaneMode. Steam starts again by itself the next time you launch a Steam game from KaneMode.",
+ "Un jeu Steam est en cours : Steam reste ouvert": "A Steam game is running: Steam stays open"
 }

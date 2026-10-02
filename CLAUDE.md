@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.6 : Steam garde la manette
+
+- Cause trouvée dans le journal de l'Ally (4.0.4 / 4.0.5) : tant que **Steam tourne** (Steam Input), XInput renvoie « connecté » avec des sticks à **0/0 exact** (le repos réel de l'Ally X est 0/-1) pour KaneMode hors de sa fenêtre, et la lecture HID brute ne reçoit plus que 1 à 3 rapports. Steam fermé (13:06, Epic Launcher), le curseur bouge (+283 mouvements acceptés). KaneMode lance lui-même Steam en arrière-plan (`warmStores`, 12 s après le démarrage) : il tourne donc presque toujours. L'utilisateur confirme : Steam fermé, mode souris meilleur en mode bureau.
+- Hôte : `GET /api/steam/state` ({running, game}) et `POST /api/steam/quit` (`steam.exe -shutdown`, refusé pendant un jeu Steam). UI (`main.js`, `askQuitSteam`) : à l'activation du mode souris, si Steam tourne sans jeu et que KaneMode est visible et a le focus, dialogue Quitter / Garder / Ne plus demander (une fois par activation). Réglage `settings.steamMouseAsk` (défaut vrai ; Paramètres → Manette). Aucun réglage de Steam modifié ; le préchauffage reste.
+- Pas encore vérifié : le mode souris hors de KaneMode en expérience Xbox, Steam fermé. Pistes si insuffisant : GameInput (lecture en arrière-plan), configuration de bureau de Steam, courbe de vitesse du stick.
+- VERSION : 4.0.6 ; notes dans `docs/releases/4.0.6.md`.
+
 ## Version 4.0.5 : curseur du mode souris partout en expérience Xbox
 
 - Journal de l'Ally (4.0.2 et 4.0.4) : le curseur **bouge** hors de KaneMode (XInput : Epic Launcher +283 mouvements acceptés, 0 refus ; vue des tâches) mais n'était pas visible. `CursorOverlay` ne se montrait que si `GetCursorInfo` disait le curseur caché ; devant Epic, Steam, l'Explorateur, l'application annonce un curseur visible alors que l'expérience Xbox ne dessine aucun pointeur. Corrigé : en expérience Xbox (`Native.FullScreenExperienceActive`, relu toutes les 500 ms) la flèche reste affichée partout ; bureau classique inchangé. Un double curseur est possible si Windows en dessine un.
