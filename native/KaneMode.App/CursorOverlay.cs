@@ -11,7 +11,7 @@ namespace KaneMode;
 /// donc inutilisable. Fenêtre minuscule, toujours au-dessus, transparente aux clics, qui suit la
 /// position de la souris à chaque image.
 /// </summary>
-public sealed class CursorOverlay
+public sealed class CursorOverlay : IDisposable
 {
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT { public int X, Y; }
@@ -30,26 +30,36 @@ public sealed class CursorOverlay
     private IntPtr _hwnd;
     private bool _on, _shown;
     private POINT _last = new() { X = int.MinValue };
+    private IntPtr _lastFront;
+    private long _desktopChecked;
+    private bool _interactive = true;
+    private readonly System.Windows.Threading.DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+
+    public CursorOverlay() { _timer.Tick += Follow; }
 
     /// <summary>Mode souris activé ou coupé.</summary>
     public void Set(bool on)
     {
         if (on == _on) return;
         _on = on;
-        if (on) CompositionTarget.Rendering += Follow;
-        else { CompositionTarget.Rendering -= Follow; Hide(); }
+        if (on) { Follow(null, EventArgs.Empty); _timer.Start(); }
+        else { _timer.Stop(); Hide(); }
     }
 
     private void Follow(object? sender, EventArgs e)
     {
         var info = new CURSORINFO { Size = Marshal.SizeOf<CURSORINFO>() };
-        if (!GetCursorInfo(ref info)) return;
+        long now = Environment.TickCount64;
+        if (now - _desktopChecked >= 250) { _desktopChecked = now; _interactive = Native.InteractiveDesktop(); }
+        if (!_interactive || !GetCursorInfo(ref info)) { Hide(); return; }
         // Curseur de Windows visible (bureau) : pas de second curseur
         if ((info.Flags & 1 /* CURSOR_SHOWING */) != 0) { Hide(); return; }
         bool appear = !_shown;
         Ensure();
-        if (appear || info.Pos.X != _last.X || info.Pos.Y != _last.Y)
+        IntPtr front = Native.GetForegroundWindow();
+        if (appear || front != _lastFront || info.Pos.X != _last.X || info.Pos.Y != _last.Y)
         {
+            _lastFront = front;
             _last = info.Pos;
             const uint NOSIZE = 0x1, NOACTIVATE = 0x10;
             // Toujours au-dessus (HWND_TOPMOST), à la position exacte en pixels de l'écran
@@ -123,4 +133,5 @@ public sealed class CursorOverlay
         long want = ex | TRANSPARENT | TOOLWINDOW | LAYERED | NOACTIVATE;
         if (want != ex) SetWindowLongPtr(_hwnd, -20, new IntPtr(want));
     }
+    public void Dispose() { Set(false); _window?.Close(); _window = null; _hwnd = IntPtr.Zero; }
 }

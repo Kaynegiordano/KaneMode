@@ -63,12 +63,15 @@ public sealed class XInputPads : IDisposable
     private readonly bool[] _startUsed = new bool[SLOTS];
     private readonly HidGamepads _hid = new();
     private State _ui;
+    private readonly object _uiLock = new();
+    private bool _uiSony, _uiXbox;
     private long _uiAt = -1000;
 
     private volatile bool _mouse;
-    private ushort _mouseButtons;       // boutons de souris tenus (bits de la manette)
-    private double _restX, _restY;      // fractions de pixel accumulées
-    private long _wheelNext;            // répétition de la molette
+    private readonly GamepadMouse _mouseInput = new((flags, dx, dy, data) => Native.Mouse(flags, dx, dy, data));
+    private volatile bool _mousePaused;
+    private bool _interactive = true;
+    private long _desktopChecked;
     private ushort _prevAll;
 
     /// <param name="focus">Qui a la main (KaneMode, personne, une autre fenêtre).</param>
@@ -76,8 +79,8 @@ public sealed class XInputPads : IDisposable
 
     public bool MouseMode => _mouse;
 
-    /// <summary>Quitte le mode souris (lancement d'un jeu : la manette est à lui).</summary>
-    public void StopMouseMode() { if (_mouse) SetMouseMode(false, "lancement"); }
+    /// <summary>Pause pendant la veille ou le verrouillage, sans changer le choix de l'utilisateur.</summary>
+    public void PauseMouse(bool paused) { _mousePaused = paused; if (paused) _mouseInput.Pause(); }
 
     private long _lastToggle;
     /// <summary>Moment du dernier changement de mode (Environment.TickCount64).</summary>
@@ -92,7 +95,7 @@ public sealed class XInputPads : IDisposable
         _lastToggle = Environment.TickCount64;
         for (int i = 0; i < SLOTS; i++) { _startUsed[i] = true; _startSince[i] = 1; }
         if (on == _mouse) return;
-        _restX = _restY = 0;
+        _mouseInput.SetActive(on);
         _mouse = on;
         Log.Write(on ? $"Mode souris activé ({why})" : $"Mode souris désactivé ({why})");
     }
@@ -115,11 +118,16 @@ public sealed class XInputPads : IDisposable
     }
 
     /// <summary>Manette vue par l'interface (API Gamepad de WebView2), relayée pendant le mode souris.</summary>
-    public void SetUiPad(ushort buttons, double lx, double ly, double rx, double ry)
+    public void SetUiPad(ushort buttons, double lx, double ly, double rx, double ry, string source = "")
     {
         static short A(double v) => (short)Math.Round(Math.Clamp(v, -1, 1) * 32767);
-        _ui = new State { Pad = new Gamepad { Buttons = buttons, ThumbLX = A(lx), ThumbLY = A(-ly), ThumbRX = A(rx), ThumbRY = A(-ry) } };
-        _uiAt = Environment.TickCount64;
+        lock (_uiLock)
+        {
+            _ui = new State { Pad = new Gamepad { Buttons = buttons, ThumbLX = A(lx), ThumbLY = A(-ly), ThumbRX = A(rx), ThumbRY = A(-ry) } };
+            _uiSony = source.Contains("054c", StringComparison.OrdinalIgnoreCase) || source.Contains("dualshock", StringComparison.OrdinalIgnoreCase);
+            _uiXbox = source.Contains("xinput", StringComparison.OrdinalIgnoreCase) || source.Contains("xbox", StringComparison.OrdinalIgnoreCase) || source.Contains("045e", StringComparison.OrdinalIgnoreCase);
+            _uiAt = Environment.TickCount64;
+        }
     }
 
     private void Loop()
@@ -157,7 +165,7 @@ public sealed class XInputPads : IDisposable
                 }
                 catch (DllNotFoundException) { dllMissing = true; Log.Write("XInput absent : manettes lues par WebView2 seulement"); }
             }
-            if (!_mouse && _mouseButtons != 0) ReleaseMouse();
+            if (!_mouse) _mouseInput.Step(0, 0, 0, t, 0, false);
             if (_mouse != mouseShown) { mouseShown = _mouse; MouseModeChanged?.Invoke(_mouse); }
             if (now != last) { last = now; Changed?.Invoke(now); }
             // KaneMode ou mode souris : lecture à 125 Hz ; autre fenêtre : un coup d'œil (journal) ; sinon rien
@@ -166,7 +174,7 @@ public sealed class XInputPads : IDisposable
             // moins de réveils du processeur
             Thread.Sleep(_mouse ? 8 : ours ? 16 : focus == Focus.Desktop ? 50 : 150);
         }
-        if (_mouseButtons != 0) ReleaseMouse();
+        _mouseInput.SetActive(false);
     }
 
     private void ReadAll(long t)
@@ -186,17 +194,24 @@ public sealed class XInputPads : IDisposable
     /// <summary>Manettes HID et manette de l'interface, au format XInput.</summary>
     private void ReadOthers(long t)
     {
+        bool nativeXbox = false;
+        for (int i = 0; i < HID0; i++) nativeXbox |= _connected[i];
         for (int k = 0; k < HidGamepads.Max; k++)
         {
-            bool ok = _hid.Connected[k];
+            bool ok = _hid.Snapshot(k, out var h);
             _connected[HID0 + k] = ok;
             if (!ok) continue;
-            var h = _hid.States[k];
-            _state[HID0 + k] = new State { Pad = new Gamepad { Buttons = h.Buttons, ThumbLX = h.LX, ThumbLY = h.LY, ThumbRX = h.RX, ThumbRY = h.RY } };
+            nativeXbox |= !_hid.SonySlot(k);
+            _state[HID0 + k] = new State { Pad = new Gamepad { Buttons = h.Buttons, LeftTrigger = h.LT, RightTrigger = h.RT, ThumbLX = h.LX, ThumbLY = h.LY, ThumbRX = h.RX, ThumbRY = h.RY } };
         }
         // Relais de l'interface : seulement pendant le mode souris, et s'il est récent
-        _connected[UI] = _mouse && t - _uiAt < 400;
-        _state[UI] = _ui;
+        // Les lectures natives restent fraîches en arrière-plan ; WebView2 ne doit pas doubler
+        // une source Sony/Xbox déjà lue, avec un état figé après un changement de fenêtre.
+        lock (_uiLock)
+        {
+            _connected[UI] = _mouse && t - _uiAt < 400 && !(_uiSony && _hid.SonyConnected) && !(_uiXbox && nativeXbox);
+            _state[UI] = _ui;
+        }
     }
 
     private string Json()
@@ -207,8 +222,9 @@ public sealed class XInputPads : IDisposable
             if (!_connected[i]) continue;
             var p = _state[i].Pad;
             if (sb.Length > 1) sb.Append(',');
+            string kind = i >= HID0 && _hid.SonySlot(i - HID0) ? "ps" : "xbox";
             // Axes arrondis au centième : pas de message pour un tremblement du stick
-            sb.Append($"{{\"i\":{i},\"b\":{p.Buttons},\"lt\":{p.LeftTrigger},\"rt\":{p.RightTrigger},\"lx\":{Axis(p.ThumbLX)},\"ly\":{Axis((short)-Math.Max(p.ThumbLY, (short)-32767))},\"rx\":{Axis(p.ThumbRX)},\"ry\":{Axis((short)-Math.Max(p.ThumbRY, (short)-32767))}}}");
+            sb.Append($"{{\"i\":{i},\"kind\":\"{kind}\",\"b\":{p.Buttons},\"lt\":{p.LeftTrigger},\"rt\":{p.RightTrigger},\"lx\":{Axis(p.ThumbLX)},\"ly\":{Axis((short)-Math.Max(p.ThumbLY, (short)-32767))},\"rx\":{Axis(p.ThumbRX)},\"ry\":{Axis((short)-Math.Max(p.ThumbRY, (short)-32767))}}}");
         }
         return sb.Append(']').ToString();
     }
@@ -231,7 +247,6 @@ public sealed class XInputPads : IDisposable
 
     private void MouseStep(long t, double dt)
     {
-        // Toutes les manettes branchées pilotent la souris ; le stick le plus poussé déplace le curseur
         ushort buttons = 0;
         int sx = 0, sy = 0, best = 0;
         for (int i = 0; i < SLOTS; i++)
@@ -239,64 +254,21 @@ public sealed class XInputPads : IDisposable
             if (!_connected[i]) continue;
             var p = _state[i].Pad;
             buttons |= p.Buttons;
-            foreach (var (x, y) in new[] { (p.ThumbLX, p.ThumbLY), (p.ThumbRX, p.ThumbRY) })
-            {
-                int m = Math.Abs((int)x) + Math.Abs((int)y);
-                if (m > best) { best = m; sx = x; sy = y; }
-            }
+            Pick(p.ThumbLX, p.ThumbLY);
+            Pick(p.ThumbRX, p.ThumbRY);
         }
-        // Même courbe que KanePlay : lent près du centre, rapide en butée (environ 1 250 px/s)
-        double dx = Speed(sx) * dt / 50, dy = -Speed(sy) * dt / 50;
-        _restX += dx; _restY += dy;
-        int mx = (int)_restX, my = (int)_restY;
-        _restX -= mx; _restY -= my;
-        if (mx != 0 || my != 0) Native.Mouse(Native.MOUSE_MOVE, mx, my);
-
-        Button(buttons, A, Native.LEFT_DOWN, Native.LEFT_UP, 0);
-        Button(buttons, B, Native.RIGHT_DOWN, Native.RIGHT_UP, 0);
-        Button(buttons, X, Native.MIDDLE_DOWN, Native.MIDDLE_UP, 0);
-        Button(buttons, LB, Native.X_DOWN, Native.X_UP, 1);
-        Button(buttons, RB, Native.X_DOWN, Native.X_UP, 2);
-
-        // Croix : molette, répétée tant qu'elle est tenue
-        ushort pad = (ushort)(buttons & (UP | DOWN | LEFT | RIGHT));
-        bool fresh = (pad & ~_mouseButtons & (UP | DOWN | LEFT | RIGHT)) != 0;
-        if (pad == 0) _wheelNext = 0;
-        else if (fresh || t >= _wheelNext)
+        if (t - _desktopChecked >= 250)
         {
-            if ((pad & UP) != 0) Native.Mouse(Native.WHEEL, data: 120);
-            if ((pad & DOWN) != 0) Native.Mouse(Native.WHEEL, data: -120);
-            if ((pad & RIGHT) != 0) Native.Mouse(Native.HWHEEL, data: 120);
-            if ((pad & LEFT) != 0) Native.Mouse(Native.HWHEEL, data: -120);
-            _wheelNext = t + (fresh ? 350 : 90);
+            _desktopChecked = t;
+            _interactive = Native.InteractiveDesktop();
         }
-        _mouseButtons = (ushort)((_mouseButtons & ~(UP | DOWN | LEFT | RIGHT)) | pad);
+        _mouseInput.Step(buttons, sx, sy, t, dt, _interactive && !_mousePaused);
+        void Pick(int x, int y)
+        {
+            int magnitude = Math.Abs(x) + Math.Abs(y);
+            if (magnitude > best) { best = magnitude; sx = x; sy = y; }
+        }
     }
 
-    private static double Speed(int raw)
-    {
-        double v = Math.Pow(raw / 32766.0 * 4, 3);
-        return Math.Abs(v) > 2 ? v - Math.Sign(v) * 2 : 0;
-    }
-
-    private void Button(ushort buttons, ushort bit, uint down, uint up, int data)
-    {
-        bool now = (buttons & bit) != 0, was = (_mouseButtons & bit) != 0;
-        if (now == was) return;
-        Native.Mouse(now ? down : up, data: data);
-        _mouseButtons = (ushort)(now ? _mouseButtons | bit : _mouseButtons & ~bit);
-    }
-
-    /// <summary>Relâche les boutons de souris encore tenus (sortie du mode souris).</summary>
-    private void ReleaseMouse()
-    {
-        Button(0, A, Native.LEFT_DOWN, Native.LEFT_UP, 0);
-        Button(0, B, Native.RIGHT_DOWN, Native.RIGHT_UP, 0);
-        Button(0, X, Native.MIDDLE_DOWN, Native.MIDDLE_UP, 0);
-        Button(0, LB, Native.X_DOWN, Native.X_UP, 1);
-        Button(0, RB, Native.X_DOWN, Native.X_UP, 2);
-        _mouseButtons = 0;
-    }
-
-    public void Dispose() => _stop.Cancel();
+    public void Dispose() { _mouseInput.SetActive(false); _stop.Cancel(); _hid.Dispose(); }
 }

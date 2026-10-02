@@ -1,0 +1,34 @@
+# Mode souris global à la manette
+
+Dans l’application native KaneMode, maintenez **Start / Options pendant une seconde** pour activer le mode souris. Maintenez-le à nouveau pour revenir au mode manette.
+
+| Commande Xbox / PS4 | Action |
+| --- | --- |
+| Stick gauche ou droit | Déplacer le curseur |
+| A / Croix | Clic gauche, maintenir pour glisser |
+| B / Cercle | Clic droit |
+| X / Carré | Clic du milieu |
+| Croix directionnelle | Défilement vertical ou horizontal |
+| LB / L1 et RB / R1 | Précédent / suivant |
+
+Le mode reste activé en changeant de fenêtre ou en ouvrant une boutique, une fenêtre de connexion, un jeu ou le streaming. KaneMode peut rester en arrière-plan ou être réduit ; il doit rester ouvert. L’activation n’intercepte pas le périphérique de manette pour les autres logiciels : un jeu peut continuer à lire ses propres entrées de manette.
+
+La lecture native utilise XInput et les collections HID Xbox connues. Les DualShock 4 Sony d’origine (identifiants 054c:05c4 et 054c:09cc) disposent aussi d’une lecture directe de leurs rapports USB/Bluetooth, pour fonctionner sans dépendre du premier plan de WebView2. Une source native Sony/Xbox a priorité sur un relais WebView2 du même type, afin qu’un ancien état du stick ou des boutons ne persiste pas après un changement de fenêtre. Les manettes compatibles utilisant un autre protocole ne sont pas automatiquement prises en charge par ce décodeur.
+
+Le curseur supplémentaire apparaît lorsque Windows cache le sien. Il reste transparent aux clics et ne prend pas le premier plan. Aucun second curseur n’est dessiné lorsque Windows affiche déjà le sien.
+
+La veille et le verrouillage suspendent les entrées et relâchent les clics. Le choix du mode reste enregistré en mémoire jusqu’au retour ; un bouton encore tenu ne devient pas un nouveau clic. Quitter KaneMode désactive le traitement et ferme le curseur.
+
+## Restrictions Windows
+
+Certaines fenêtres lancées en administrateur et les écrans sécurisés (UAC, verrouillage) refusent les entrées d’une application ordinaire. KaneMode ne peut pas garantir leur contrôle avec ce mode souris ; les refus sont notés dans son journal, sans répétition permanente. Un clic refusé attend un nouvel appui, afin de ne pas cliquer dans la fenêtre suivante.
+
+Un jeu qui capture la souris ou utilise un mode plein écran exclusif conserve ses règles de capture. Ce mode ne les remplace pas, et ne fonctionne pas après la fermeture de KaneMode.
+
+Référence : [restrictions de SendInput — Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendinput). Format des rapports PS4 vérifié dans le [pilote SDL2 officiel](https://github.com/libsdl-org/SDL/blob/SDL2/src/joystick/hidapi/SDL_hidapi_ps4.c).
+
+## Vérification
+
+Le banc `tools/mouse-mode-tests` compile les contrôleurs réels avec une injection de souris simulée : mouvements, glissé entre contextes de premier plan, boutons, molette, arrêt, verrouillage et refus. Il valide aussi les rapports PS4 USB/Bluetooth et les axes. Les essais Chromium vérifient le relais souris en arrière-plan sans validation de carte locale.
+
+Les essais ne changent pas les entrées Windows réelles. La validation physique avec une ROG Ally et une PS4 dans l’expérience Xbox reste à confirmer.

@@ -9,17 +9,22 @@ namespace KaneMode;
 /// chaque manette XInput : chemin « …&amp;IG_xx »). Contrairement à XInput, cette lecture ne dépend ni
 /// du premier plan ni du mode Xbox : sur la ROG Ally en mode Xbox, XInput ne donnait rien à KaneMode
 /// (Start maintenu pas vu, mode souris sans stick ni boutons, manette perdue après KanePlay).
+/// DualShock 4 : rapports USB/Bluetooth lus directement, sans dépendre de WebView2 en arrière-plan.
 /// Chaque manette trouvée est lue sur son propre fil ; son état est rendu au format XInput.
 /// </summary>
 public sealed class HidGamepads : IDisposable
 {
     public const int Max = 4;
 
-    /// <summary>État façon XInput (boutons, sticks ; gâchettes non lues) de chaque manette HID.</summary>
-    public readonly XState[] States = new XState[Max];
-    public readonly bool[] Connected = new bool[Max];
+    /// <summary>États publiés et lus sous verrou : aucun mélange de deux rapports de manette.</summary>
+    private readonly XState[] States = new XState[Max];
+    private readonly bool[] Connected = new bool[Max];
 
-    public struct XState { public ushort Buttons; public short LX, LY, RX, RY; }
+    public struct XState { public ushort Buttons; public short LX, LY, RX, RY; public byte LT, RT; }
+    private readonly bool[] _sony = new bool[Max];
+    public bool SonyConnected { get { lock (_lock) return Enumerable.Range(0, Max).Any(i => _sony[i] && Connected[i]); } }
+    public bool SonySlot(int slot) { lock (_lock) return _sony[slot] && Connected[slot]; }
+    public bool Snapshot(int slot, out XState state) { lock (_lock) { state = States[slot]; return Connected[slot]; } }
 
     private readonly CancellationTokenSource _stop = new();
     private readonly object _lock = new();
@@ -67,8 +72,8 @@ public sealed class HidGamepads : IDisposable
             for (uint i = 0; SetupDiEnumDeviceInterfaces(set, IntPtr.Zero, ref hidGuid, i, ref iface); i++)
             {
                 string? path = InterfacePath(set, ref iface);
-                // Manettes XInput seulement (disposition des boutons connue)
-                if (path == null || !path.Contains("&ig_", StringComparison.OrdinalIgnoreCase)) continue;
+                // Dispositions connues : XInput et DualShock 4 ; jamais clavier ou souris HID.
+                if (path == null || (!path.Contains("&ig_", StringComparison.OrdinalIgnoreCase) && !DualShockReports.Candidate(path))) continue;
                 lock (_lock) { if (_open.ContainsKey(path)) continue; }
                 TryOpen(path);
             }
@@ -80,6 +85,9 @@ public sealed class HidGamepads : IDisposable
     {
         var handle = CreateFile(path, 0x80000000 /* GENERIC_READ */, 3 /* FILE_SHARE_READ | FILE_SHARE_WRITE */, IntPtr.Zero, 3 /* OPEN_EXISTING */, 0, IntPtr.Zero);
         if (handle.IsInvalid) { handle.Dispose(); return; }
+        var attrs = new HIDD_ATTRIBUTES { Size = Marshal.SizeOf<HIDD_ATTRIBUTES>() };
+        bool sony = HidD_GetAttributes(handle, ref attrs) && DualShockReports.Device(attrs.VendorID, attrs.ProductID);
+        if (!sony && !path.Contains("&ig_", StringComparison.OrdinalIgnoreCase)) { handle.Dispose(); return; }
         if (!HidD_GetPreparsedData(handle, out IntPtr pre)) { handle.Dispose(); return; }
         HIDP_CAPS caps;
         if (HidP_GetCaps(pre, out caps) != HIDP_STATUS_SUCCESS || caps.UsagePage != 1 || (caps.Usage != 4 && caps.Usage != 5) || caps.InputReportByteLength < 2)
@@ -92,14 +100,15 @@ public sealed class HidGamepads : IDisposable
             slot = Enumerable.Range(0, Max).FirstOrDefault(s => !_open.Values.Any(o => o.Slot == s), -1);
             if (slot < 0) { HidD_FreePreparsedData(pre); handle.Dispose(); return; }
             _open[path] = (slot, handle);
+            _sony[slot] = sony;
         }
         var ranges = ValueRanges(pre, caps);
         Log.Write($"Manette HID {slot} ouverte ({path.Split('#').ElementAtOrDefault(1) ?? path})");
-        var t = new Thread(() => ReadLoop(path, slot, handle, pre, caps.InputReportByteLength, ranges)) { IsBackground = true, Name = "Manette HID " + slot, Priority = ThreadPriority.AboveNormal };
+        var t = new Thread(() => ReadLoop(path, slot, handle, pre, caps.InputReportByteLength, ranges, sony)) { IsBackground = true, Name = "Manette HID " + slot, Priority = ThreadPriority.AboveNormal };
         t.Start();
     }
 
-    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<ushort, (int Min, int Max)> ranges)
+    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<ushort, (int Min, int Max)> ranges, bool sony)
     {
         var report = new byte[length];
         var usages = new ushort[32];
@@ -111,16 +120,26 @@ public sealed class HidGamepads : IDisposable
                 int n = stream.Read(report, 0, length);
                 if (n <= 0) break;
                 var s = new XState();
-                int count = usages.Length;
-                if (HidP_GetUsages(0 /* HidP_Input */, 9 /* boutons */, 0, usages, ref count, pre, report, length) == HIDP_STATUS_SUCCESS)
-                    for (int k = 0; k < count; k++) s.Buttons |= Button(usages[k]);
-                s.LX = Axis(pre, report, length, ranges, 0x30, false);
-                s.LY = Axis(pre, report, length, ranges, 0x31, true);
-                s.RX = Axis(pre, report, length, ranges, 0x33, false);
-                s.RY = Axis(pre, report, length, ranges, 0x34, true);
-                s.Buttons |= Hat(pre, report, length, ranges);
-                States[slot] = s;
-                Connected[slot] = true;
+                if (sony)
+                {
+                    if (!DualShockReports.TryRead(report.AsSpan(0, n), out s)) continue;
+                }
+                else
+                {
+                    int count = usages.Length;
+                    if (HidP_GetUsages(0 /* HidP_Input */, 9 /* boutons */, 0, usages, ref count, pre, report, length) == HIDP_STATUS_SUCCESS)
+                        for (int k = 0; k < count; k++) s.Buttons |= Button(usages[k]);
+                    s.LX = Axis(pre, report, length, ranges, 0x30, false);
+                    s.LY = Axis(pre, report, length, ranges, 0x31, true);
+                    s.RX = Axis(pre, report, length, ranges, 0x33, false);
+                    s.RY = Axis(pre, report, length, ranges, 0x34, true);
+                    s.Buttons |= Hat(pre, report, length, ranges);
+                }
+                lock (_lock)
+                {
+                    if (!_open.TryGetValue(path, out var current) || current.Handle != handle) break;
+                    States[slot] = s; Connected[slot] = true;
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or ObjectDisposedException or UnauthorizedAccessException or OperationCanceledException) { }
@@ -204,6 +223,9 @@ public sealed class HidGamepads : IDisposable
     }
 
     // ---------- HID et SetupAPI ----------
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HIDD_ATTRIBUTES { public int Size; public ushort VendorID, ProductID, VersionNumber; }
+    [DllImport("hid.dll")] private static extern bool HidD_GetAttributes(SafeFileHandle device, ref HIDD_ATTRIBUTES attributes);
     private const int HIDP_STATUS_SUCCESS = 0x00110000;
 
     [StructLayout(LayoutKind.Sequential)]

@@ -106,6 +106,11 @@ const server=http.createServer(async(req,res)=>{
     await settled(); assert.equal(launchRequests.length,0,'Aucun jeu pendant le passage au streaming');
     await page.evaluate(()=>{sendNative({type:'background'});navigation.press('a');});await settled();
     assert.equal(launchRequests.length,0,'Aucun jeu derrière KanePlay');
+    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});mockPad.axes[0]=0.8;navigation.press('a');});await settled();
+    const relay=await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-pad').at(-1));
+    assert.equal(relay.lx,0.8,'Le mode souris relaie les axes en arrière-plan');
+    assert.match(relay.source,/DualShock/);assert.equal(launchRequests.length,0,'Le relais souris ne valide pas une carte');
+    await page.evaluate(()=>{mockPad.axes[0]=0;sendNative({type:'mouse-mode',on:false});});
     await page.evaluate(()=>sendNative({type:'resume'}));await settled();
     assert.equal(launchRequests.length,0,'Validation tenue au retour ignorée');
     await page.evaluate(()=>{mockPad.buttons[0].pressed=false;});await settled();
@@ -279,7 +284,7 @@ const server=http.createServer(async(req,res)=>{
     for(const [width,height,scale] of [[1280,720,100],[1280,720,125],[1280,720,150],[1920,1080,100],[1920,1080,150],[960,540,100],[960,540,150],[800,600,125]]){
       await page.setViewportSize({width,height});
       await page.evaluate(scale=>{core.settings.uiScale=scale;core.saveSettings();},scale);
-      for(const section of ['personal','look','dolby','power','accounts','energy']){
+      for(const section of ['personal','look','dolby','power','accounts','energy','pad']){
         await settingsSection(section);await fit(width+'×'+height+' '+scale+' % '+section);
         await page.evaluate(()=>navigation.page('settings').enter(navigation.page('settings').section));await settled();
         await visibleFocus(width+' '+scale+' '+section);
@@ -300,6 +305,7 @@ const server=http.createServer(async(req,res)=>{
       await settingsSection('look');await fit('Traduction '+lang+' apparence');
       await settingsSection('power');await fit('Traduction '+lang+' veille');
       await settingsSection('accounts');await fit('Traduction '+lang+' comptes');
+      await settingsSection('pad');await fit('Traduction '+lang+' souris globale');
       await page.evaluate(()=>navigation.go('game',{id:'fixture:0'}));await fit('Traduction '+lang+' fiche et retrait');
     }
     check('Français et anglais : choix des réglages sans débordement');

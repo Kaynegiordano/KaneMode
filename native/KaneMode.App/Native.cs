@@ -359,10 +359,10 @@ public static class Native
         MIDDLE_DOWN = 0x0020, MIDDLE_UP = 0x0040, X_DOWN = 0x0080, X_UP = 0x0100, WHEEL = 0x0800, HWHEEL = 0x1000;
 
     /// <summary>Évènement de souris : déplacement relatif, bouton (data = 1 ou 2 pour les boutons X) ou molette (data = ±120).</summary>
-    public static void Mouse(uint flags, int dx = 0, int dy = 0, int data = 0)
+    public static bool Mouse(uint flags, int dx = 0, int dy = 0, int data = 0)
     {
         var input = new INPUT { Type = 0 /* INPUT_MOUSE */, Mouse = new MOUSEINPUT { Dx = dx, Dy = dy, Data = data, Flags = flags } };
-        SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
+        return SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>()) == 1;
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]

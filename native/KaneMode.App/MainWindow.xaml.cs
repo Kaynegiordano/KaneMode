@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     {
         _preparedLaunch = !string.IsNullOrEmpty(id) && !id.StartsWith("launcher:") ? (id, new HashSet<IntPtr>(Native.VisibleWindows())) : null;
         _externalOpen.Begin();
-        _pads.StopMouseMode();
+        // Le mode souris est global : une boutique ou une fenêtre de connexion ne le coupe pas.
         _returnTo = IntPtr.Zero;
         StopForegroundWatch();
         StopInsisting();
@@ -59,7 +59,7 @@ public partial class MainWindow : Window
     private void OnSessionSwitch(object? sender, SessionSwitchEventArgs e)
     {
         if (e.Reason != SessionSwitchReason.SessionLock && e.Reason != SessionSwitchReason.SessionUnlock) return;
-        Dispatcher.BeginInvoke(() => { _sessionLocked = e.Reason == SessionSwitchReason.SessionLock; UpdateIdleProtection(); });
+        Dispatcher.BeginInvoke(() => { _sessionLocked = e.Reason == SessionSwitchReason.SessionLock; _pads.PauseMouse(_sessionLocked || _idleSuspended); UpdateIdleProtection(); });
     }
 
     private static readonly string[] Args = Environment.GetCommandLineArgs();
@@ -100,7 +100,7 @@ public partial class MainWindow : Window
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès). Plus aucun
         // message ne lui est envoyé ensuite (Deactivated arrivait après et levait ObjectDisposedException).
         Closing += (_, _) => { _closing = true; _idleTimer.Stop(); _idleProtection.Dispose(); if (_displayPowerNotification != IntPtr.Zero) { Native.UnregisterPowerSettingNotification(_displayPowerNotification); _displayPowerNotification = IntPtr.Zero; } _lighten.Stop(); try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
-        Closed += (_, _) => { SystemEvents.SessionSwitch -= OnSessionSwitch; SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _host.Dispose(); };
+        Closed += (_, _) => { SystemEvents.SessionSwitch -= OnSessionSwitch; SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _cursor.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
         WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));
@@ -380,6 +380,7 @@ public partial class MainWindow : Window
             if (display is 0 or 1)
             {
                 _idleSuspended = display == 0;
+                _pads.PauseMouse(_sessionLocked || _idleSuspended);
                 UpdateIdleProtection();
             }
         }
@@ -627,6 +628,7 @@ public partial class MainWindow : Window
         // L'événement arrive sur un autre fil : on repasse sur celui de la fenêtre.
         Dispatcher.BeginInvoke(() => {
             _idleSuspended = e.Mode == PowerModes.Suspend;
+            _pads.PauseMouse(_sessionLocked || _idleSuspended);
             UpdateIdleProtection();
             Post(new { type = e.Mode == PowerModes.Suspend ? "suspend" : "wake" });
         });
@@ -698,15 +700,14 @@ public partial class MainWindow : Window
                     string? title = root.TryGetProperty("window", out var w) ? w.GetString() : null;
                     if (string.IsNullOrEmpty(title)) { BeginExternalOpen(Text(root, "id")); break; }
                     _externalOpen.End();
-                    _pads.StopMouseMode(); // KanePlay prend la manette
+                    // Le mode souris reste activé tant que l'utilisateur ne le coupe pas.
                     Native.GiveForeground(title);
                     if (!string.IsNullOrEmpty(title)) WatchForeground(title);
                     break;
                 case "launch":
                     // Jeu lancé : écran de lancement par-dessus tout, puis retour ici à sa fermeture.
-                    // La manette est au jeu : fin du mode souris.
+                    // Le mode souris peut aussi servir dans le jeu ; il reste un choix explicite.
                     _externalOpen.End();
-                    _pads.StopMouseMode();
                     StartGameWatch(Text(root, "id") ?? "", SteamApp(root), Text(root, "dir"), Flag(root, "cover"), name: Text(root, "name"));
                     break;
                 case "launch-cancel":
@@ -760,7 +761,7 @@ public partial class MainWindow : Window
                     // Manette vue par l'interface pendant le mode souris (mode Xbox : XInput muet)
                     var r = root;
                     double D(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
-                    _pads.SetUiPad((ushort)D("b"), D("lx"), D("ly"), D("rx"), D("ry"));
+                    _pads.SetUiPad((ushort)D("b"), D("lx"), D("ly"), D("rx"), D("ry"), Text(root, "source") ?? "");
                     break;
                 }
                 case "mouse-mode":

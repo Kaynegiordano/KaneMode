@@ -4,6 +4,16 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.0 : mode souris global
+
+- Demande : mode souris conservé dans toute l’expérience Xbox, quelle que soit la fenêtre. Suppression des arrêts automatiques à l’ouverture d’une boutique, d’un jeu ou de KanePlay ; nouvel appui long Start/Options pour le couper.
+- `GamepadMouse.cs` : injection indépendante du premier plan, gestes continus, relâchement à l’arrêt/verrouillage/veille, clics refusés attendant un nouvel appui, journal des refus limité. `CursorOverlay` suit par minuterie même lorsque KaneMode est réduit, sans activation de fenêtre, et s’arrête à la fermeture.
+- `HidGamepads` lit aussi les DualShock 4 Sony 054c:05c4/09cc, USB/Bluetooth. `DualShockReports` vérifie les formats et convertit les commandes usuelles au format XInput. Pas de configuration de pilote, commande de sortie, vibration ou modification du périphérique. Publication des rapports et du relais UI sous verrou ; priorité aux sources natives Sony/Xbox par rapport à un état WebView2 ancien du même type. Glyphe PlayStation conservé dans les données natives.
+- `nav.js` sépare le relais souris de la navigation de fond bloquée en 3.9.0. Aucun jeu local ne doit être validé pendant ce relais ; déconnexion d’une manette relayée → rapport neutre.
+- Vérifier : `dotnet run --project tools/mouse-mode-tests/MouseModeTests.csproj` (souris/rapport DualShock simulés, aucun SendInput réel), suite Node de la 3.9.0, tests natifs existants, `tools/verify-interface.cjs` (relais souris derrière le streaming et contrôles existants).
+- Vérifications effectuées : 47 tests Node, tests natifs souris et protection/premier plan, 120 mises en page Chromium dont les réglages Manette, français et anglais. Aucun SendInput réel dans les bancs d’essai ; fonctionnement physique sur ROG Ally/PS4 en FSE à confirmer.
+- VERSION : 4.0.0 ; notes dans `docs/releases/4.0.0.md`, guide `docs/mouse-mode.md`. Restrictions Windows/UIPI documentées. Moteur de streaming inchangé.
+
 ## Version 3.9.0 : silence, modes par alimentation et manette en streaming
 
 - Sons d’interface, veille et réveil désactivés par défaut et une fois après mise à jour (`quietInterfaceDefault`). Réactivation ensuite conservée ; paramètres et synthèse du son de démarrage inchangés. `engineLook()` transmet explicitement le silence si aucun son d’interface n’est configuré.

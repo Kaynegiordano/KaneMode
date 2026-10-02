@@ -508,10 +508,10 @@ const isSony = id => /054c|playstation|dualsense|dualshock|wireless controller/i
 // la vraie manette.
 let xpads = [];
 // Boutons XInput → disposition standard de l'API Gamepad (A, B, X, Y, LB, RB, LT, RT, View, Menu, L3, R3, croix)
-const XBITS = [0x1000, 0x2000, 0x4000, 0x8000, 0x100, 0x200, -1, -2, 0x20, 0x10, 0x40, 0x80, 0x1, 0x2, 0x4, 0x8];
+const XBITS = [0x1000, 0x2000, 0x4000, 0x8000, 0x100, 0x200, -1, -2, 0x20, 0x10, 0x40, 0x80, 0x1, 0x2, 0x4, 0x8, 0x400];
 export function setNativePads(list) {
   const next = (Array.isArray(list) ? list : []).map(x => ({
-    id: 'Manette XInput (KaneMode)', index: 100 + x.i, mapping: 'standard', native: true,
+    id: x.kind === 'ps' ? 'DualShock 4 (KaneMode)' : 'Manette XInput (KaneMode)', index: 100 + x.i, mapping: 'standard', native: true,
     buttons: XBITS.map(bit => ({ pressed: bit === -1 ? x.lt > 30 : bit === -2 ? x.rt > 30 : (x.b & bit) !== 0 })),
     axes: [x.lx, x.ly, x.rx, x.ry],
   }));
@@ -525,7 +525,7 @@ export function setNativePads(list) {
 // Journal de l'app (diagnostic sur la console) : premier appui reçu par chaque source
 const logged = new Set();
 function logSource(p) {
-  const src = p.native ? 'XInput (app)' : 'WebView2 : ' + p.id;
+  const src = p.native ? p.id + ' (app)' : 'WebView2 : ' + p.id;
   if (logged.has(src)) return;
   logged.add(src);
   native.send('log', { text: t('Manette : premier appui reçu par {src}', { src }) });
@@ -554,7 +554,7 @@ function poll() {
   if (!nativeFeed() && canNavigate()) { rafOn = true; requestAnimationFrame(poll); }
 }
 function tickPads() {
-  if (performance.now() - lastRead > (nativeFeed() ? 40 : 100) && (!document.hidden || xpads.length)) readPads();
+  if (performance.now() - lastRead > (nativeFeed() ? 40 : 100) && (!document.hidden || xpads.length || mouseMode.on)) readPads();
   if (!rafOn && !nativeFeed() && canNavigate()) { rafOn = true; requestAnimationFrame(poll); }
   setTimeout(tickPads, canNavigate() && Object.keys(heldBy).length ? 16 : 50);
 }
@@ -576,6 +576,8 @@ function readPads() {
   if (!canNavigate()) {
     swallow = true;
     for (const k in startAt) delete startAt[k];
+    // Le relais souris est distinct de la navigation : il reste permis derrière une autre fenêtre.
+    if (mouseMode.on) relayMouse(navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [], performance.now());
     return; // Chromium peut toujours exposer une DualShock lorsque KanePlay a le premier plan.
   }
   const web = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
@@ -646,11 +648,14 @@ function readPads() {
 let relayed = '', relayedAt = 0;
 function relayMouse(web, now) {
   const p = web.find(g => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.2)) || web[0];
-  if (!p) return;
+  if (!p) {
+    if (relayed) { relayed = ''; relayedAt = 0; native.send('mouse-pad', { b: 0, lx: 0, ly: 0, rx: 0, ry: 0 }); }
+    return;
+  }
   let b = 0;
   p.buttons.forEach((x, i) => { if (x.pressed && XBITS[i] > 0) b |= XBITS[i]; });
   const r = v => Math.round((v || 0) * 100) / 100;
-  const msg = { b, lx: r(p.axes[0]), ly: r(p.axes[1]), rx: r(p.axes[2]), ry: r(p.axes[3]) };
+  const msg = { b, lx: r(p.axes[0]), ly: r(p.axes[1]), rx: r(p.axes[2]), ry: r(p.axes[3]), source: p.id };
   const key = JSON.stringify(msg), moving = [msg.lx, msg.ly, msg.rx, msg.ry].some(a => Math.abs(a) > 0.2);
   if (key === relayed && !(moving || b) ) return;
   if (key === relayed && now - relayedAt < 100) return;
@@ -674,6 +679,7 @@ const START_HOLD_MS = 900;
 native.on(m => {
   if (m.type !== 'mouse-mode') return;
   mouseMode.on = !!m.on;
+  relayed = ''; relayedAt = 0;
   // En sortant du mode souris, Start (encore tenu) et le reste ne doivent pas agir
   if (!m.on) swallow = true;
   document.body.classList.toggle('mouse-mode', mouseMode.on);
