@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.5 : curseur du mode souris partout en expérience Xbox
+
+- Journal de l'Ally (4.0.2 et 4.0.4) : le curseur **bouge** hors de KaneMode (XInput : Epic Launcher +283 mouvements acceptés, 0 refus ; vue des tâches) mais n'était pas visible. `CursorOverlay` ne se montrait que si `GetCursorInfo` disait le curseur caché ; devant Epic, Steam, l'Explorateur, l'application annonce un curseur visible alors que l'expérience Xbox ne dessine aucun pointeur. Corrigé : en expérience Xbox (`Native.FullScreenExperienceActive`, relu toutes les 500 ms) la flèche reste affichée partout ; bureau classique inchangé. Un double curseur est possible si Windows en dessine un.
+- Hypothèse bien appuyée par le journal, pas encore confirmée sur la console : la ligne « Curseur supplémentaire : affiché/masqué (curseur Windows …, expérience Xbox : …) » (20 au plus par activation) servira à le vérifier.
+- Constat HID : sur l'Ally X (`vid_0b05&pid_1b4c&mi_05&ig_00`, rapport de 16 octets : X, Y, Rx, Ry, Z sur 16 bits, centre 0x8000, chapeau 4 bits) le décodage est juste, mais `HidGamepads` ne reçoit que ~29 rapports puis plus rien ; XInput fonctionne hors de KaneMode. Piste si besoin : ne plus compter sur HID pour les manettes XInput.
+- VERSION : 4.0.5 ; notes dans `docs/releases/4.0.5.md`.
+
 ## Version 4.0.4 : diagnostic des sources de manette
 
 - Problème ouvert : le mode souris ne bouge le curseur que dans KaneMode (source WebView2) ; hors de KaneMode, sur la ROG Ally en expérience Xbox, aucune source native ne donne les axes (constaté aussi en 4.0.2). XInput ne donne rien à KaneMode en mode Xbox ; la lecture HID brute (`&ig_`, Ally X : `vid_0b05&pid_1b4c&mi_05&ig_00`) devrait marcher partout mais n'a jamais été vérifiée sur la console : rapports non reçus ou axes mal décodés.

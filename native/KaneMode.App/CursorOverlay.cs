@@ -31,8 +31,10 @@ public sealed class CursorOverlay : IDisposable
     private bool _on, _shown;
     private POINT _last = new() { X = int.MinValue };
     private IntPtr _lastFront;
-    private long _desktopChecked;
-    private bool _interactive = true;
+    private long _desktopChecked, _xboxChecked;
+    private bool _interactive = true, _xbox;
+    private int _logged;
+    private bool? _needed;
     private readonly System.Windows.Threading.DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
 
     public CursorOverlay() { _timer.Tick += Follow; }
@@ -42,7 +44,7 @@ public sealed class CursorOverlay : IDisposable
     {
         if (on == _on) return;
         _on = on;
-        if (on) { Follow(null, EventArgs.Empty); _timer.Start(); }
+        if (on) { _logged = 0; _needed = null; Follow(null, EventArgs.Empty); _timer.Start(); }
         else { _timer.Stop(); Hide(); }
     }
 
@@ -52,8 +54,19 @@ public sealed class CursorOverlay : IDisposable
         long now = Environment.TickCount64;
         if (now - _desktopChecked >= 250) { _desktopChecked = now; _interactive = Native.InteractiveDesktop(); }
         if (!_interactive || !GetCursorInfo(ref info)) { Hide(); return; }
-        // Curseur de Windows visible (bureau) : pas de second curseur
-        if ((info.Flags & 1 /* CURSOR_SHOWING */) != 0) { Hide(); return; }
+        // Curseur de Windows visible (bureau) : pas de second curseur. En expérience Xbox, Windows ne
+        // dessine aucun pointeur, même quand l'application au premier plan annonce le sien (Epic, Steam,
+        // Explorateur…) : la flèche reste donc affichée partout, pas seulement devant KaneMode.
+        if (now - _xboxChecked >= 500) { _xboxChecked = now; _xbox = Native.FullScreenExperienceActive; }
+        bool windowsCursor = (info.Flags & 1 /* CURSOR_SHOWING */) != 0;
+        bool needed = !windowsCursor || _xbox;
+        if (needed != _needed)
+        {
+            _needed = needed;
+            // Journal limité : certaines applications masquent et montrent leur curseur sans cesse
+            if (_logged++ < 20) Log.Write($"Curseur supplémentaire : {(needed ? "affiché" : "masqué")} (curseur Windows {(windowsCursor ? "visible" : "caché")}, expérience Xbox : {(_xbox ? "oui" : "non")})");
+        }
+        if (!needed) { Hide(); return; }
         bool appear = !_shown;
         Ensure();
         IntPtr front = Native.GetForegroundWindow();
