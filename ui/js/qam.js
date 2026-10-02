@@ -242,6 +242,7 @@ const BUILD = {
       if (w) b.insertAdjacentHTML('beforeend', `<small>${w} W</small>`);
     });
     kids.push(el('div', 'live-strip'), label(t('Mode de performance')), modeSeg,
+      el('div', 'qam-note', sys.ac === false ? t('Mode mémorisé pour la batterie') : sys.ac === true ? t('Mode mémorisé pour le secteur') : t('Source d’alimentation indisponible')),
       el('div', 'qam-note perf-note', sys.mode === 'custom' ? t('Personnalisé : réglages ajustés à la main ci-dessous')
         : sys.mode ? esc(modeSummary(sys.mode)) : t('Choisissez un mode : il règle Windows, le processeur et le profil de la console')));
     // Le mode est tenu par l'hôte ; un autre programme qui impose le sien est signalé

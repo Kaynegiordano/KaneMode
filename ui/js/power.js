@@ -134,12 +134,9 @@ setInterval(() => {
     if (!navigator.getBattery) return;
     const b = await navigator.getBattery();
     // PC fixe : « en charge », à 100 %. Branché ou débranché : le profil d'énergie de la source s'applique.
-    let first = true;
     const upd = () => {
-      const was = onBattery;
       onBattery = !b.charging;
-      if (first || was !== onBattery) api.post('/api/power/apply', { source: onBattery ? 'battery' : 'ac' }).catch(() => {});
-      first = false;
+      // L'hôte suit lui-même le chargeur, même lorsque cette page est suspendue pendant un jeu.
     };
     upd();
     b.addEventListener('chargingchange', upd);

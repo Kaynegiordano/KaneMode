@@ -1,6 +1,7 @@
 // Briques partagées : DOM, stockage, réglages, sons, toasts, API de l'hôte, bibliothèque.
 import { t, tx, locale, lang } from './i18n.js';
 import { streamingArt } from './streamcover.js';
+import { quietInterfaceDefaults } from './sound-settings.js';
 import { getSoundPalette } from './soundtable.js';
 import { appearance, activeDisplayProfile, DISPLAY_FIELDS } from './personalization.js';
 
@@ -45,7 +46,7 @@ export const store = {
 };
 
 export const settings = Object.assign({
-  wifi: true, bluetooth: false, night: false, sounds: true, brightness: 70, volume: 45, fps: '0', overlay: 'off',
+  wifi: true, bluetooth: false, night: false, sounds: false, brightness: 70, volume: 45, fps: '0', overlay: 'off',
   accent: '#1a9fff', background: 'art', badges: true, splash: true, bootMode: 'logo', bootSound: 'chime', bootVolume: 70, dimAfter: 5, sleepAfterBattery: 15, sleepAfterAC: 0, wakeAnimation: true, cardSize: 'm', corners: 'soft', solidPanels: false, font: 'segoe', clock24: true, clockSeconds: false, batteryPct: true, homeRows: ['recent', 'emulation', 'apps', 'stores'], qamOrder: null, qamHidden: [], tdp: 0, simulateDevice: '', handheldSeen: '', demo: false, hiddenSources: [], sort: 'name',
   uiScale: 100, reduceMotion: false, highContrast: false, padGlyphs: 'auto', padSwap: false, hintsBar: 'full', lowFx: false, notifications: true, homeApps: true, homeStores: true,
   // Boutons de la ROG Ally (Command Center, Armoury Crate) : voir Paramètres → Appareil et pilotes
@@ -56,6 +57,11 @@ export const settings = Object.assign({
   homePins: [], homeResume: true, homeDensity: 'comfortable', soundTheme: 'round', soundVolume: 100, soundMoves: true,
   motionStyle: 'normal', displayMode: 'manual', displayBindings: {}, displayProfiles: {}, immersive: false, immersiveDelay: 6, preventIdleLock: true,
 }, store.get('settings', {}));
+// 3.9.0 : silence de l'interface au premier lancement après mise à jour ; démarrage indépendant.
+if (!settings.quietInterfaceDefault) {
+  Object.assign(settings, quietInterfaceDefaults(settings));
+  store.set('settings', settings);
+}
 // 1.3.1 : Command Center ouvre la vue des tâches, comme un appui long sur la touche Xbox (avant : l'accès rapide)
 if (!settings.btnCCTaskView) {
   if (settings.btnCC === 'qam') settings.btnCC = 'taskview';

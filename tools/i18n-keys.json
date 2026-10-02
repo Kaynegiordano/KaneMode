@@ -2529,8 +2529,15 @@
   "ui/js/personalization-settings.js"
  ],
  "Mode inconnu": [
+  "host/lib/power-profiles.js",
   "host/server.js",
   "host/syscontrol.ps1"
+ ],
+ "Mode mémorisé pour la batterie": [
+  "ui/js/qam.js"
+ ],
+ "Mode mémorisé pour le secteur": [
+  "ui/js/qam.js"
  ],
  "Mode nuit": [
   "ui/js/qam.js"
@@ -3486,6 +3493,10 @@
  ],
  "Sorties à venir": [
   "ui/js/pages/settings.js"
+ ],
+ "Source d’alimentation indisponible": [
+  "host/lib/power-profiles.js",
+  "ui/js/qam.js"
  ],
  "Sourdine": [
   "ui/js/qam.js",

@@ -2,7 +2,7 @@
 import { pinItem } from '../personalization-settings.js';
 import { t } from '../i18n.js';
 import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native, settings } from '../core.js';
-import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh } from '../nav.js';
+import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh, suspendNavigation, resumeNavigation } from '../nav.js';
 import { art, badges } from '../cards.js';
 import { dialog, confirmDialog, openKeyboard } from '../widgets.js';
 
@@ -211,6 +211,7 @@ let streamRetry = 0, streamOpening = false;
 export async function openStreaming({ retry = false } = {}) {
   if (streamOpening) return;
   streamOpening = true;
+  suspendNavigation();
   if (!retry) streamRetry = Date.now();
   document.body.classList.add('handoff');
   setTimeout(() => document.body.classList.remove('handoff'), 2500);
@@ -220,6 +221,8 @@ export async function openStreaming({ retry = false } = {}) {
   try { const result = await api.post('/api/stream/open'); if (!result.ok) throw new Error(result.error || t('Moteur de streaming absent')); }
   catch (e) {
     streamRetry = 0; // rien n'a été lancé : pas de nouvelle tentative
+    native.send('external-cancel');
+    resumeNavigation();
     document.body.classList.remove('handoff');
     toast(e.message, { error: true });
   } finally { setTimeout(() => { streamOpening = false; }, 700); }

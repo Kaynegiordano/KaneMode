@@ -1,4 +1,7 @@
 {
+ "Mode mémorisé pour la batterie": "Mode saved for battery power",
+ "Mode mémorisé pour le secteur": "Mode saved for AC power",
+ "Source d’alimentation indisponible": "Power source unavailable",
  " · à jour": " · up to date",
  " · dernier scan le {toLocaleString}": " · last scanned {toLocaleString}",
  " · écran {screenInches}″": " · {screenInches}″ screen",

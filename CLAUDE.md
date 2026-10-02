@@ -4,6 +4,15 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 3.9.0 : silence, modes par alimentation et manette en streaming
+
+- Sons d’interface, veille et réveil désactivés par défaut et une fois après mise à jour (`quietInterfaceDefault`). Réactivation ensuite conservée ; paramètres et synthèse du son de démarrage inchangés. `engineLook()` transmet explicitement le silence si aucun son d’interface n’est configuré.
+- `host/lib/power-profiles.js` sérialise les choix de modes et réglages manuels, mémorise les valeurs réellement acceptées pour la source Windows courante et conserve l’autre source. Un nouveau mode remplace les réglages de performance manuels de cette source tout en gardant ses réglages d’écran.
+- L’hôte surveille le chargeur toutes les 5 s, applique le profil au démarrage, au changement de source, à sa modification et au réveil, même avec l’interface en arrière-plan. Le navigateur ne déclenche plus une seconde application concurrente. Mode automatique désactivable dans Paramètres → Énergie ; profil inchangé non réappliqué à chaque tick.
+- `input-gate.js` et `nav.js` bloquent les entrées hors du premier plan et pendant le passage à KanePlay. Boutons tenus au retour ignorés jusqu’au relâchement ; arrêt de la lecture des manettes WebView2 et des boucles d’image de navigation en arrière-plan. Un échec de streaming annule le passage au premier plan et rend la navigation.
+- Vérification : 47 tests Node (`tools/verify-3.9.js` ajouté à la commande de la 3.8.0), tests natifs et 112 mises en page Chromium. DualShock simulée : ouverture, arrière-plan, bouton tenu, refus et nouvel appui. Modes choisis dans l’accès rapide et relus dans Énergie. Aucun changement de puissance réel effectué sur la machine de développement ; validation physique ROG Ally/PS4 à confirmer.
+- VERSION : 3.9.0 ; notes dans `docs/releases/3.9.0.md`. Moteur de streaming inchangé.
+
 ## Version 3.8.0 : bibliothèques de comptes
 
 - Demande : importer tous les jeux possédés, non installés compris, avec installation/lancement depuis KaneMode et extension future aux boutiques. Passerelle optionnelle Playnite ; aucune promesse d’intégration native de toutes les boutiques. Instant Gaming : plateforme d’activation de la clé, pas d’historique d’achats importé.

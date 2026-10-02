@@ -3,6 +3,22 @@
 import { t } from './i18n.js';
 import { $, $$, sfx, reduceMotion, settings, native, emit } from './core.js';
 import { prioritizeArt } from './cards.js';
+import { createInputGate } from './input-gate.js';
+const inputGate = createInputGate();
+let handoffTimer;
+const canNavigate = () => inputGate.allows(!document.hidden, document.hasFocus());
+export function suspendNavigation() {
+  inputGate.suspend(); swallow = true;
+  for (const k in startAt) delete startAt[k];
+  clearTimeout(handoffTimer);
+  // Un moteur qui ne s'ouvre pas ne doit pas bloquer définitivement l'interface.
+  handoffTimer = setTimeout(resumeNavigation, 20000);
+}
+export function resumeNavigation() { clearTimeout(handoffTimer); inputGate.resume(); swallow = true; }
+native.on(m => {
+  if (m.type === 'background') { suspendNavigation(); clearTimeout(handoffTimer); }
+  else if (m.type === 'resume') resumeNavigation();
+});
 
 export const DIRS = ['up', 'down', 'left', 'right'];
 export const state = { page: null, history: [], layers: [], input: 'kbd', padStyle: 'xbox' };
@@ -351,6 +367,7 @@ export function nav(elm, act, key) {
 }
 
 export function activate(t) {
+  if (!canNavigate() || inputLock.on) return;
   if (!t || !scope().contains(t) || t.disabled || t.getAttribute('aria-disabled') === 'true' || t.closest('[inert]')) return;
   const sound = t.dataset.sfx || 'select';
   if (t._act) { sfx(sound); return t._act(t); }
@@ -363,6 +380,7 @@ export const inputLock = { on: false }; // vrai pendant la vidéo de démarrage
 // Dernière action de l'utilisateur : les mises à jour de fond attendent qu'il ne navigue plus
 export const input = { last: 0 };
 export function press(k) {
+  if (!canNavigate()) return;
   input.last = Date.now();
   emit('activity');
   if (inputLock.on) return;
@@ -470,7 +488,7 @@ const padAction = k => (k === 'select' ? (settings.padSwap ? 'view' : 'menu') : 
 const padButton = k => (k === 'menu' ? (settings.padSwap ? 'start' : 'select') : k === 'view' ? (settings.padSwap ? 'select' : 'start') : k);
 export const padLive = { id: '', buttons: [], axes: [0, 0, 0, 0], connected: 0 };
 let swallow = false;
-addEventListener('focus', () => { swallow = true; });
+addEventListener('focus', resumeNavigation);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) swallow = true; });
 const armed = {};
 // Certains pilotes signalent un stick en butée tant qu'il n'a pas bougé :
@@ -533,12 +551,12 @@ const nativeFeed = () => xpads.length > 0;
 function poll() {
   rafOn = false;
   readPads();
-  if (!nativeFeed()) { rafOn = true; requestAnimationFrame(poll); }
+  if (!nativeFeed() && canNavigate()) { rafOn = true; requestAnimationFrame(poll); }
 }
 function tickPads() {
   if (performance.now() - lastRead > (nativeFeed() ? 40 : 100) && (!document.hidden || xpads.length)) readPads();
-  if (!rafOn && !nativeFeed() && !document.hidden) { rafOn = true; requestAnimationFrame(poll); }
-  setTimeout(tickPads, Object.keys(heldBy).length ? 16 : 50);
+  if (!rafOn && !nativeFeed() && canNavigate()) { rafOn = true; requestAnimationFrame(poll); }
+  setTimeout(tickPads, canNavigate() && Object.keys(heldBy).length ? 16 : 50);
 }
 // Widgets Game Bar, par-dessus un jeu : pas de lecture à chaque image (120 fois par seconde sur la
 // ROG Ally), qui prenait du temps au jeu. Le moniteur n'a pas besoin de manette ; le widget la lit
@@ -555,6 +573,11 @@ if (!GAMEBAR_PAGE) {
 
 function readPads() {
   lastRead = performance.now();
+  if (!canNavigate()) {
+    swallow = true;
+    for (const k in startAt) delete startAt[k];
+    return; // Chromium peut toujours exposer une DualShock lorsque KanePlay a le premier plan.
+  }
   const web = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
   const pads = [...xpads, ...web];
   const now = performance.now();

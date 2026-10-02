@@ -3,6 +3,7 @@
 import { t } from './i18n.js';
 import { $, api, settings, saveSettings } from './core.js';
 import { inputLock } from './nav.js';
+import { chimeEnabled } from './sound-settings.js';
 
 // ---------------------------------------------------------------- sons synthétisés
 // Les sons sont calculés à l'avance (OfflineAudioContext) puis joués comme un fichier : leur pic est
@@ -170,6 +171,7 @@ async function ready(volume) {
  * Renvoie false si le navigateur refuse le son (pas encore d'interaction).
  */
 export async function chime(kind = 'boot', volume = settings.bootVolume / 100) {
+  if (!chimeEnabled(settings, kind)) return;
   const ac = await ready(volume);
   const buffer = ac && (await renderSound(kind));
   if (!buffer) return false;

@@ -7,10 +7,12 @@ let dolbyState={available:true,installed:false,appVersion:null,license:null,cont
 let dolbyRefuse=false;const dolbyActions=[];
 let artRequests=0; const apiCalls=[]; let artStyle='';
 let launchers=[], libraryVersion=1;
-let removalState={overrides:{}}, launchFailure=false;
+let removalState={overrides:{}}, launchFailure=false, streamFailure=false;
 const launchRequests=[], removalRequests=[];
 let accountState={enabled:true,installed:true,prepared:true,online:true,exe:'D:\\Playnite\\Playnite.DesktopApp.exe',count:5000,uninstalled:4200,installable:4199,providers:[{id:'10000000-0000-0000-0000-000000000001',name:'Steam',count:3000,settings:true},{id:'10000000-0000-0000-0000-000000000002',name:'Une nouvelle boutique au nom long',count:2000,settings:true}]};
 const accountActions=[];
+let powerConfig={}, sysState={available:true,volume:45,muted:false,brightness:70,radios:[],ac:false,mode:null};
+const powerModel=require('../host/lib/power-profiles').create({read:()=>structuredClone(powerConfig),write:c=>{powerConfig=c;},policy:async()=>({ac:sysState.ac}),expand:async p=>p,apply:async()=>({done:['powermode'],errors:[]}),applied:mode=>{sysState.mode=mode;}});
 const removal=require('./../host/lib/library-removal');
 const games=Array.from({length:803},(_,i)=>({id:'fixture:'+i,source:'steam',name:['Horizon — Les terres oubliées','Forza Horizon 5','Sea of Stars','Ori and the Will of the Wisps','Expédition 33','Hades II','Jusant','No Man’s Sky'][i%8]+(i<8?'':' '+i),installed:true,type:'game',lastPlayed:803-i,playtime:0,art:{portrait:'/art/'+i+'/portrait?r=1',hero:'/art/'+i+'/hero?r=1'},meta:{genres:['Action']}}));
 const latest={version:'3.2.0',notes:'Version de test',msix:{size:117845231}};
@@ -18,6 +20,9 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost'); const p=url.pathname;
   apiCalls.push({method:req.method,url:req.url}); const json=x=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify(x));};
   if(p.startsWith('/api/')) {
+    if(p==='/api/power/profiles') {if(req.method==='POST'){let data='';for await(const c of req)data+=c;const b=JSON.parse(data),v=require('../host/lib/power-profiles').profiles(powerConfig);for(const src of ['battery','ac'])if(b[src])v[src]={...v[src],...b[src]};if('auto' in b)v.auto=b.auto;powerConfig.powerProfiles=v;}return json(require('../host/lib/power-profiles').profiles(powerConfig));}
+    if(p==='/api/power/mode'){let data='';for await(const c of req)data+=c;const b=JSON.parse(data),r=await powerModel.select(b.mode);return json({...r,state:sysState});}
+    if(p==='/api/stream/open') return json(streamFailure?{ok:false,error:'Erreur streaming simulée'}:{ok:true});
     if(p==='/api/accounts')return json(accountState);
     if(p==='/api/accounts/config'){let data='';for await(const c of req)data+=c;accountActions.push(JSON.parse(data));accountState.enabled=JSON.parse(data).enabled;return json(accountState);}
     if(p==='/api/accounts/sync'){accountActions.push({sync:true});return json(accountState);}
@@ -41,7 +46,7 @@ const server=http.createServer(async(req,res)=>{
     if(p==='/api/emulation') return json({romRoots:[],emulators:[],systems:[]});
     if(p==='/api/status') return json({version:libraryVersion,entries:games.length});
     if(p==='/api/deals') return json({items:[]});
-    if(p==='/api/sys') return json({available:true,volume:45,muted:false,brightness:70,radios:[]});
+    if(p==='/api/sys') return json(sysState);
     if(p==='/api/net') return json({type:'ethernet',online:true});
     return json({});
   }
@@ -70,9 +75,11 @@ const server=http.createServer(async(req,res)=>{
   const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
-    localStorage.setItem('km.settings',JSON.stringify({lang:'fr',bootMode:'none',splash:false,sounds:false,homePins:[{type:'game',id:'fixture:2'},{type:'collection',id:'c1'}]}));
+    localStorage.setItem('km.settings',JSON.stringify({lang:'fr',bootMode:'none',splash:false,sounds:true,homePins:[{type:'game',id:'fixture:2'},{type:'collection',id:'c1'}]}));
     window.testNativeMessages=[];
-    window.chrome.webview={postMessage(message){window.testNativeMessages.push(message);},addEventListener(){}};
+    window.nativeListeners=[];
+    window.chrome.webview={postMessage(message){window.testNativeMessages.push(message);},addEventListener(type,fn){if(type==='message')window.nativeListeners.push(fn);}};
+    window.sendNative=message=>window.nativeListeners.forEach(fn=>fn({data:message}));
   });
   const check=(label)=>console.log('PASS '+label);
   const settled=()=>page.waitForTimeout(300);
@@ -83,6 +90,33 @@ const server=http.createServer(async(req,res)=>{
       return p.section===section && s?.querySelector('.settings-section-title h2')?.textContent===p.side.querySelector('[data-key="sec:'+section+'"]').textContent && s.getAttribute('aria-busy')!=='true';
     },section);
     await settled();
+  };
+  const verifyHandoff=async()=>{
+    assert.equal(await page.evaluate(()=>core.settings.sounds),false);
+    assert.equal(await page.evaluate(()=>core.settings.bootSound),'chime');
+    // DualShock visible par WebView2 derrière KanePlay : la validation ne doit atteindre aucune carte.
+    await page.evaluate(async()=>{
+      window.mockPad={id:'054c DualShock 4 Wireless Controller',index:0,buttons:Array.from({length:17},()=>({pressed:false})),axes:[0,0,0,0]};
+      Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[window.mockPad]});
+      window.openStream=(await import('./js/pages/game.js')).openStreaming;
+      navigation.setFocus(document.querySelector('[data-key="home-resume"]'));
+      await window.openStream();
+      navigation.press('a'); window.mockPad.buttons[0].pressed=true;
+    });
+    await settled(); assert.equal(launchRequests.length,0,'Aucun jeu pendant le passage au streaming');
+    await page.evaluate(()=>{sendNative({type:'background'});navigation.press('a');});await settled();
+    assert.equal(launchRequests.length,0,'Aucun jeu derrière KanePlay');
+    await page.evaluate(()=>sendNative({type:'resume'}));await settled();
+    assert.equal(launchRequests.length,0,'Validation tenue au retour ignorée');
+    await page.evaluate(()=>{mockPad.buttons[0].pressed=false;});await settled();
+    streamFailure=true;
+    await page.waitForTimeout(750);await page.evaluate(()=>window.openStream());await settled();
+    assert.equal(await page.evaluate(()=>testNativeMessages.at(-1).type),'external-cancel');
+    await page.evaluate(()=>{window.testAfterStream=0;const item=document.querySelector('[data-key="home-resume"]');window.previousAct=item._act;item._act=()=>window.testAfterStream++;navigation.setFocus(item);mockPad.buttons[0].pressed=true;});
+    await settled();assert.equal(await page.evaluate(()=>window.testAfterStream),1,'Nouvel appui après un refus fonctionnel');
+    await page.evaluate(()=>{mockPad.buttons[0].pressed=false;document.querySelector('[data-key="home-resume"]')._act=window.previousAct;Object.defineProperty(navigator,'getGamepads',{value:()=>[]});});
+    streamFailure=false;
+    check('3.9 : sons désactivés, démarrage conservé, DualShock isolée pendant le streaming et reprise après refus');
   };
   const fit=async(label)=>{
     const failures=await page.evaluate(()=>{
@@ -109,6 +143,7 @@ const server=http.createServer(async(req,res)=>{
     await page.waitForSelector('#page-home.active [data-key="home-resume"]');
     await page.evaluate(async()=>{window.navigation=await import('./js/nav.js');window.core=await import('./js/core.js');window.widgets=await import('./js/widgets.js');});
     await settled();
+    await verifyHandoff();
     assert.equal(await page.locator('.home-info h1').isVisible(),false,'Pas de titre de reprise dupliqué');
     await page.evaluate(()=>navigation.setFocus(document.querySelector('[data-key="pin-collection:c1"]')));
     assert.equal(await page.locator('.home-info h1').textContent(),'Coop canapé');
@@ -142,6 +177,18 @@ const server=http.createServer(async(req,res)=>{
     await page.keyboard.press('Escape');await settled();
     assert.equal(await page.evaluate(()=>document.querySelector('#qam').inert),true);
     check('Accès rapide : contrôle de volume accessible et clavier limité au panneau');
+    await page.evaluate(()=>navigation.press('view'));await settled();
+    await page.locator('#qam [data-key="mode:eco"]').click();await settled();
+    assert.equal(powerConfig.powerProfiles.battery.mode,'eco');
+    await page.keyboard.press('Escape');sysState.ac=true;
+    await page.evaluate(()=>navigation.press('view'));await settled();
+    await page.locator('#qam [data-key="mode:performance"]').click();await settled();
+    assert.equal(powerConfig.powerProfiles.ac.mode,'performance');assert.equal(powerConfig.powerProfiles.battery.mode,'eco');
+    await page.keyboard.press('Escape');await settingsSection('energy');
+    assert.equal(await page.locator('[data-key="battery-mode-eco"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('[data-key="ac-mode-performance"]').getAttribute('aria-pressed'),'true');
+    await settingsSection('personal');await page.evaluate(()=>navigation.page('settings').enter('personal'));await settled();
+    check('3.9 : choix batterie/secteur mémorisés depuis l’accès rapide et relus dans les paramètres');
     const sw=page.locator('[data-key="homeResume"]');
     await sw.click();assert.equal(await sw.getAttribute('aria-checked'),'false');await sw.click();
     assert.equal(await sw.getAttribute('aria-checked'),'true');
@@ -232,7 +279,7 @@ const server=http.createServer(async(req,res)=>{
     for(const [width,height,scale] of [[1280,720,100],[1280,720,125],[1280,720,150],[1920,1080,100],[1920,1080,150],[960,540,100],[960,540,150],[800,600,125]]){
       await page.setViewportSize({width,height});
       await page.evaluate(scale=>{core.settings.uiScale=scale;core.saveSettings();},scale);
-      for(const section of ['personal','look','dolby','power','accounts']){
+      for(const section of ['personal','look','dolby','power','accounts','energy']){
         await settingsSection(section);await fit(width+'×'+height+' '+scale+' % '+section);
         await page.evaluate(()=>navigation.page('settings').enter(navigation.page('settings').section));await settled();
         await visibleFocus(width+' '+scale+' '+section);
@@ -291,7 +338,7 @@ const server=http.createServer(async(req,res)=>{
     assert.deepEqual(errors,[],'Aucune exception JavaScript');
     assert.deepEqual(launchRequests.map(r=>r.id),['launcher:epic','launcher:epic','fixture:0','epic:owned'],'Seuls les lancements prévus et simulés');
     const dangerous=apiCalls.filter(c=>c.method==='POST'&&/^\/api\/(power\/mode|sys(?:\/|$)|update\/apply)/.test(c.url));
-    assert.deepEqual(dangerous,[],'Aucune action système pendant les essais');
+    assert.deepEqual(dangerous.map(c=>c.url),['/api/power/mode','/api/power/mode'],'Deux choix de mode simulés, aucune action système réelle');
     check('Aucune exception JavaScript ni action sur le système');
   } finally {await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

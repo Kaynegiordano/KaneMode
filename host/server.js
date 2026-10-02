@@ -24,6 +24,7 @@ const { createPathWatch } = require('./lib/pathwatch');
 const launchLib = require('./lib/launch');
 const libraryRemoval = require('./lib/library-removal');
 const accountsLib = require('./lib/accounts');
+const powerLib = require('./lib/power-profiles');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -339,12 +340,12 @@ function perfPreset(mode, st, handheld) {
   return base;
 }
 /** Profil complet : le mode choisi, puis les réglages précisés un par un (qui l'emportent). */
-async function expandProfile(profile) {
+async function expandProfile(profile, source) {
   const { mode, ...rest } = profile || {};
   if (!PERF_MODES.includes(mode)) return rest;
   const st = await sysctl.state().catch(() => null);
   const hh = (await device.info().catch(() => ({}))).handheld;
-  const base = perfPreset(mode, st, hh && hh.id);
+  const base = perfPreset(mode, source ? { ...st, ac: source === 'ac' } : st, hh && hh.id);
   for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
   return { ...base, ...rest };
 }
@@ -398,11 +399,13 @@ const losslessCheck = { t: 0, p: null }; // Lossless Scaling ouvert (GET /api/wi
 /** Un réglage vient d'être fait à la main ou par un mode : pas de vérification pendant 4 s. */
 const keeperQuiet = () => { keeper.quiet = Date.now(); };
 async function keepPerf(reason) {
-  if (keeper.busy || Date.now() - keeper.quiet < 4000) return;
-  const hh = (await device.info().catch(() => ({}))).handheld;
-  if (!syscontrol.vendorOf(hh)) return;
+  if (keeper.busy) return;
   keeper.busy = true;
   try {
+    await powerController.sync({ refresh: reason === 'sortie de veille' });
+    if (Date.now() - keeper.quiet < 4000) return;
+    const hh = (await device.info().catch(() => ({}))).handheld;
+    if (!syscontrol.vendorOf(hh)) return;
     const pol = await sysctl.policy();
     const acChanged = keeper.ac != null && pol.ac != null && pol.ac !== keeper.ac;
     if (pol.ac != null) keeper.ac = pol.ac;
@@ -454,10 +457,20 @@ const PROFILE_FIELDS = {
   brightness: v => Number.isInteger(v) && v >= 0 && v <= 100,
 };
 const powerProfiles = () => {
-  const p = config().powerProfiles || {};
-  // Par défaut rien n'est changé : l'utilisateur choisit ce que chaque profil règle
-  return { auto: p.auto !== false, battery: p.battery || {}, ac: p.ac || {} };
+  return powerLib.profiles(config());
 };
+const powerController = powerLib.create({ read: config, write: c => writeJson(FILES.config, c),
+  policy: () => sysctl.policy(), expand: expandProfile,
+  apply: async p => { keeperQuiet(); const r = await sysctl.apply(p); keeperQuiet(); return r; },
+  applied: (mode, profile, source) => {
+    keeper.ac = source === 'ac';
+    keeper.fixes = []; keeper.pausedUntil = 0;
+    setPerfMode(mode);
+    const c = config();
+    if (profile.tdp != null) c.customTdp = profile.tdp; else delete c.customTdp;
+    writeJson(FILES.config, c);
+  },
+});
 // ---------------------------------------------------------------- pilotes (Windows Update)
 const driverJobs = device.drivers(DATA);
 // Mises à jour officielles du constructeur de la console (BIOS, pilotes du modèle)
@@ -509,7 +522,7 @@ const kp = { exe: null, entries: [], hosts: [] };
 const engineLook = () => {
   const cfg = config();
   return { icon: KANEMODE_ICON, accent: cfg.accent, corners: cfg.corners, lang: cfg.lang,
-    sounds: cfg.sounds, soundTheme: cfg.soundTheme, soundVolume: cfg.soundVolume, soundMoves: cfg.soundMoves };
+    sounds: cfg.sounds === true, soundTheme: cfg.soundTheme, soundVolume: cfg.soundVolume, soundMoves: cfg.soundMoves };
 };
 // Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
 const LANGS = ['fr', 'en'];
@@ -1379,16 +1392,8 @@ const routes = {
     try {
       const perf = ['powermode', 'vendor', 'tdp', 'cpumax', 'boost'].includes(cmd);
       if (perf) keeperQuiet();
-      const r = await sysctl.call(cmd, { value: b.value, kind: b.kind });
-      // Un réglage de performance changé à la main : le mode devient « personnalisé »
-      if (perf) {
-        setPerfMode('custom');
-        // Puissance réglée à la main : remise après la veille ou le branchement du chargeur
-        const c = config();
-        if (cmd === 'tdp') c.customTdp = r.tdp ? r.tdp.spl : b.value;
-        else if (cmd === 'vendor') delete c.customTdp;
-        writeJson(FILES.config, c);
-      }
+      const execute = () => sysctl.call(cmd, { value: b.value, kind: b.kind });
+      const r = perf ? await powerController.adjust({ powermode: 'powerMode', vendor: 'vendor', tdp: 'tdp', cpumax: 'cpuMax', boost: 'boost' }[cmd], b.value, execute) : await execute();
       json(res, 200, r);
     } catch (e) { json(res, 400, { error: e.message }); }
   },
@@ -1411,13 +1416,11 @@ const routes = {
     if (!PERF_MODES.includes(b.mode)) return json(res, 400, { error: 'Mode inconnu' });
     keeperQuiet();
     keeper.fixes = []; keeper.pausedUntil = 0; // choix de l'utilisateur : KaneMode reprend la main
-    const profile = await expandProfile({ mode: b.mode });
-    const r = await sysctl.apply(profile);
-    if (!r.errors.length || r.done.length) setPerfMode(b.mode);
+    const r = await powerController.select(b.mode);
     keeperQuiet();
     const st = await sysctl.state(true).catch(() => null);
     const hh = (await device.info().catch(() => ({}))).handheld;
-    json(res, 200, { mode: b.mode, applied: profile, ...r, state: st && { ...st, mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: null } });
+    json(res, 200, { mode: b.mode, ...r, state: st && { ...st, mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: config().customTdp ?? null } });
   },
   // --- Graphismes du pilote (AMD, NVIDIA, Intel) : limite d'images par seconde, faible latence,
   // netteté, RSR et AFMF (AMD), synchronisation verticale (NVIDIA), mesures du GPU (voir lib/gpuctl.js)
@@ -1482,14 +1485,7 @@ const routes = {
   // Branchement ou débranchement du chargeur : le profil de la source d'alimentation s'applique
   'POST /api/power/apply': async (req, res) => {
     const b = await readBody(req);
-    const p = powerProfiles();
-    const src = b.source === 'battery' ? 'battery' : 'ac';
-    if (!p.auto && !b.force) return json(res, 200, { skipped: true });
-    const prof = p[src] || {};
-    keeperQuiet();
-    const r = await sysctl.apply(await expandProfile(prof));
-    keeperQuiet();
-    if (prof.mode) setPerfMode(Object.keys(prof).length === 1 ? prof.mode : 'custom');
+    const r = await powerController.sync({ force: b.force === true, requested: b.source });
     json(res, 200, r);
   },
   // --- Streaming : l'application KanePlay intégrée (voir lib/kaneplay.js)

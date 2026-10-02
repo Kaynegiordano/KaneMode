@@ -19,7 +19,9 @@ Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). 
 
 KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (versions stables, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
 
-La [version 3.8.0](docs/releases/3.8.0.md) ajoute **Paramètres → Comptes et boutiques** : une passerelle optionnelle vers Playnite importe aussi les jeux possédés non installés et jamais joués, avec les boutons **Installer/Jouer** dans KaneMode. Playnite et ses connecteurs gèrent la connexion aux comptes et les boutiques gèrent les téléchargements. [Configuration et limites](docs/library-accounts.md).
+La [version 3.9.0](docs/releases/3.9.0.md) désactive les sons d’interface par défaut en conservant le carillon de démarrage. Les modes de performance de l’accès rapide sont mémorisés séparément sur batterie et sur secteur ; l’hôte applique le bon profil au changement d’alimentation, même pendant un jeu. Les validations de manette ne traversent plus l’interface de streaming vers l’accueil de KaneMode.
+
+Depuis la 3.8.0, **Paramètres → Comptes et boutiques** propose une passerelle optionnelle vers Playnite pour les jeux possédés non installés et jamais joués. Playnite et ses connecteurs gèrent la connexion aux comptes et les boutiques gèrent les téléchargements. [Configuration et limites](docs/library-accounts.md).
 
 Les corrections de lancement de la 3.7.0, la détection de Roblox et Minecraft et le retrait réversible d’un jeu installé restent disponibles. **Supprimer de la bibliothèque** conserve les fichiers ; l’onglet **Retirés** permet de le restaurer.
 
