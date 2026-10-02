@@ -19,7 +19,7 @@ Windows 11 24H2/25H2 récent requis pour le mode Xbox (voir l'outil ci-dessus). 
 
 KaneMode consulte les Releases de ce dépôt : **Paramètres → Système → Mises à jour** (versions stables, vérification au démarrage). Le paquet est vérifié (SHA-256), installé hors de l'app, puis KaneMode se relance.
 
-La [version 4.0.1](docs/releases/4.0.1.md) corrige la coupure de la manette lorsque le mode souris est actif. Dans KaneMode, le stick gauche et les boutons gardent leur navigation habituelle, tandis que le stick droit contrôle le curseur, sans double clic ni double validation. Le mode souris reste actif entre fenêtres ; Start court conserve son action et Start/Options maintenu permet de basculer le contrôle du curseur. Les restrictions des fenêtres administrateur et des écrans sécurisés Windows restent applicables.
+La [version 4.0.2](docs/releases/4.0.2.md) corrige la sélection des sources de manette et la lecture des axes HID utilisés par le mode souris. Une source native inactive ne bloque plus les mouvements reçus par WebView2. **Paramètres → Manette → Diagnostic du curseur** indique les mouvements acceptés ou refusés par Windows. Dans KaneMode, le stick gauche et les boutons gardent leur navigation habituelle, tandis que le stick droit contrôle le curseur. Le fonctionnement physique sur la console concernée reste à confirmer ; les restrictions des fenêtres administrateur et des écrans sécurisés Windows restent applicables.
 
 Depuis la 3.8.0, **Paramètres → Comptes et boutiques** propose une passerelle optionnelle vers Playnite pour les jeux possédés non installés et jamais joués. Playnite et ses connecteurs gèrent la connexion aux comptes et les boutiques gèrent les téléchargements. [Configuration et limites](docs/library-accounts.md).
 

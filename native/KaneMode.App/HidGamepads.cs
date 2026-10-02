@@ -108,10 +108,12 @@ public sealed class HidGamepads : IDisposable
         t.Start();
     }
 
-    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<ushort, (int Min, int Max)> ranges, bool sony)
+    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<(byte, ushort), ValueRange> ranges, bool sony)
     {
         var report = new byte[length];
         var usages = new ushort[32];
+        uint? ReadValue(ushort link, ushort usage) => HidP_GetUsageValue(0, 1, link, usage, out uint raw, pre, report, length) == HIDP_STATUS_SUCCESS ? raw : null;
+        Func<ushort, ushort, uint?> readValue = ReadValue;
         try
         {
             using var stream = new FileStream(handle, FileAccess.Read, 0, isAsync: false);
@@ -119,7 +121,7 @@ public sealed class HidGamepads : IDisposable
             {
                 int n = stream.Read(report, 0, length);
                 if (n <= 0) break;
-                var s = new XState();
+                Snapshot(slot, out var s);
                 if (sony)
                 {
                     if (!DualShockReports.TryRead(report.AsSpan(0, n), out s)) continue;
@@ -128,12 +130,11 @@ public sealed class HidGamepads : IDisposable
                 {
                     int count = usages.Length;
                     if (HidP_GetUsages(0 /* HidP_Input */, 9 /* boutons */, 0, usages, ref count, pre, report, length) == HIDP_STATUS_SUCCESS)
+                    {
+                        s.Buttons &= 15;
                         for (int k = 0; k < count; k++) s.Buttons |= Button(usages[k]);
-                    s.LX = Axis(pre, report, length, ranges, 0x30, false);
-                    s.LY = Axis(pre, report, length, ranges, 0x31, true);
-                    s.RX = Axis(pre, report, length, ranges, 0x33, false);
-                    s.RY = Axis(pre, report, length, ranges, 0x34, true);
-                    s.Buttons |= Hat(pre, report, length, ranges);
+                    }
+                    s = ApplyValues(s, report[0], ranges, readValue);
                 }
                 lock (_lock)
                 {
@@ -162,42 +163,61 @@ public sealed class HidGamepads : IDisposable
     private static ushort Button(ushort usage) => usage >= 1 && usage <= ButtonBits.Length ? ButtonBits[usage - 1] : (ushort)0;
 
     /// <summary>Axe en valeur XInput (−32767 à 32767, haut positif pour Y).</summary>
-    private static short Axis(IntPtr pre, byte[] report, int length, Dictionary<ushort, (int Min, int Max)> ranges, ushort usage, bool invert)
+    internal static XState ApplyValues(XState state, byte report, Dictionary<(byte, ushort), ValueRange> ranges, Func<ushort, ushort, uint?> read)
     {
-        if (!ranges.TryGetValue(usage, out var r) || r.Max <= r.Min) return 0;
-        if (HidP_GetUsageValue(0, 1, 0, usage, out uint raw, pre, report, length) != HIDP_STATUS_SUCCESS) return 0;
-        double v = ((double)raw - r.Min) / (r.Max - r.Min) * 2 - 1;
+        short Axis(ushort usage, bool invert, short previous)
+        {
+            if (!ranges.TryGetValue((report, usage), out var range)) return previous;
+            var raw = read(range.Link, usage);
+            return raw.HasValue ? NormalizeAxis(raw.Value, range, invert) : previous;
+        }
+        state.LX = Axis(0x30, false, state.LX); state.LY = Axis(0x31, true, state.LY);
+        state.RX = Axis(0x33, false, state.RX); state.RY = Axis(0x34, true, state.RY);
+        if (ranges.TryGetValue((report, 0x39), out var hat) && read(hat.Link, 0x39) is uint rawHat)
+        {
+            long d = rawHat - hat.Min;
+            ushort bits = (ushort)(d < 0 || d > 7 || rawHat > hat.Max ? 0 : d switch { 0 => 1, 1 => 9, 2 => 8, 3 => 10, 4 => 2, 5 => 6, 6 => 4, _ => 5 });
+            state.Buttons = (ushort)((state.Buttons & ~15) | bits);
+        }
+        return state;
+    }
+
+    internal readonly record struct ValueRange(long Min, long Max, ushort Bits, ushort Link);
+    internal static short NormalizeAxis(uint raw, ValueRange range, bool invert)
+    {
+        if (range.Max <= range.Min || range.Bits is 0 or > 32) return 0;
+        long value = raw & ((1L << range.Bits) - 1);
+        if (range.Min < 0) { long sign = 1L << (range.Bits - 1); value = (value ^ sign) - sign; }
+        if (value < range.Min || value > range.Max) return 0;
+        double v = (double)(value - range.Min) / (range.Max - range.Min) * 2 - 1;
         if (invert) v = -v; // HID : Y vers le bas ; XInput : Y vers le haut
         return (short)Math.Round(Math.Clamp(v, -1, 1) * 32767);
     }
 
-    /// <summary>Croix (chapeau HID, 8 directions à partir du haut) → bits XInput.</summary>
-    private static ushort Hat(IntPtr pre, byte[] report, int length, Dictionary<ushort, (int Min, int Max)> ranges)
+    /// <summary>Bornes de chaque valeur (axes, chapeau) de la manette.</summary>
+    private static Dictionary<(byte, ushort), ValueRange> ValueRanges(IntPtr pre, HIDP_CAPS caps)
     {
-        if (!ranges.TryGetValue(0x39, out var r)) return 0;
-        if (HidP_GetUsageValue(0, 1, 0, 0x39, out uint raw, pre, report, length) != HIDP_STATUS_SUCCESS) return 0;
-        int d = (int)raw - r.Min;
-        if (d < 0 || d > 7 || (int)raw > r.Max) return 0; // position neutre
-        const ushort UP = 0x1, DOWN = 0x2, LEFT = 0x4, RIGHT = 0x8;
-        return d switch { 0 => UP, 1 => UP | RIGHT, 2 => RIGHT, 3 => DOWN | RIGHT, 4 => DOWN, 5 => DOWN | LEFT, 6 => LEFT, _ => UP | LEFT };
+        ushort n = caps.NumberInputValueCaps;
+        if (n == 0) return new();
+        var list = new HIDP_VALUE_CAPS[n];
+        if (HidP_GetValueCaps(0, list, ref n, pre) != HIDP_STATUS_SUCCESS) return new();
+        return ExpandRanges(list.Take(n));
     }
 
-    /// <summary>Bornes de chaque valeur (axes, chapeau) de la manette.</summary>
-    private static Dictionary<ushort, (int Min, int Max)> ValueRanges(IntPtr pre, HIDP_CAPS caps)
+    // Une capacité HID peut décrire plusieurs axes : conserver toute la plage, le rapport
+    // et la collection. HidP_GetUsageValue renvoie une valeur brute non signée.
+    internal static Dictionary<(byte, ushort), ValueRange> ExpandRanges(IEnumerable<HIDP_VALUE_CAPS> list)
     {
-        var map = new Dictionary<ushort, (int, int)>();
-        ushort n = caps.NumberInputValueCaps;
-        if (n == 0) return map;
-        var list = new HIDP_VALUE_CAPS[n];
-        if (HidP_GetValueCaps(0, list, ref n, pre) != HIDP_STATUS_SUCCESS) return map;
-        for (int i = 0; i < n; i++)
+        var map = new Dictionary<(byte, ushort), ValueRange>();
+        foreach (var c in list)
         {
-            var c = list[i];
-            if (c.UsagePage != 1) continue;
-            int min = c.LogicalMin, max = c.LogicalMax;
+            if (c.UsagePage != 1 || c.BitSize is 0 or > 32) continue;
+            long min = c.LogicalMin, max = c.LogicalMax;
             // Valeur non signée sur 16 bits décrite comme signée : 0 à 65535
-            if (max < min && c.BitSize > 0 && c.BitSize < 32) { min = 0; max = (1 << c.BitSize) - 1; }
-            map[c.UsageMin] = (min, max);
+            if (min >= 0 && max < min) max = (1L << c.BitSize) - 1;
+            int end = c.IsRange != 0 ? c.UsageMax : c.UsageMin;
+            for (int usage = Math.Max(0x30, (int)c.UsageMin); usage <= Math.Min(0x39, end); usage++)
+                map[(c.ReportID, (ushort)usage)] = new(min, max, c.BitSize, c.LinkCollection);
         }
         return map;
     }
@@ -243,7 +263,7 @@ public sealed class HidGamepads : IDisposable
 
     // HIDP_VALUE_CAPS (72 octets) ; pour une valeur simple, Usage est à la place de UsageMin
     [StructLayout(LayoutKind.Sequential)]
-    private struct HIDP_VALUE_CAPS
+    internal struct HIDP_VALUE_CAPS
     {
         public ushort UsagePage; public byte ReportID; public byte IsAlias;
         public ushort BitField, LinkCollection, LinkUsage, LinkUsagePage;

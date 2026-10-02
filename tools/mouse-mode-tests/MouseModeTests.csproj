@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup>
     <Compile Include="../../native/KaneMode.App/GamepadMouse.cs" Link="GamepadMouse.cs" />
+    <Compile Include="../../native/KaneMode.App/MouseSources.cs" Link="MouseSources.cs" />
     <Compile Include="../../native/KaneMode.App/DualShockReports.cs" Link="DualShockReports.cs" />
     <Compile Include="../../native/KaneMode.App/HidGamepads.cs" Link="HidGamepads.cs" />
     <Compile Include="../../native/KaneMode.App/XInputPads.cs" Link="XInputPads.cs" />

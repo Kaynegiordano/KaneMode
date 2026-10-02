@@ -4,6 +4,15 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.0.2 : axes du mode souris
+
+- Retour utilisateur : basculement et navigation possibles, mais aucun déplacement du curseur, avec toutes les manettes essayées. Les vérifications précédentes ne prouvaient pas la lecture effective des axes sur sa console.
+- Suppression du veto WebView2 fondé sur la présence d’une source native de même famille. `MouseSources.cs` choisit la dernière commande réelle et gère les remises au neutre et déconnexions. Une source native muette ne bloque plus le relais. `mouse-relay.js` fait expirer un état figé en arrière-plan d’après valeurs/horodatage ; le message `connected:false` retire le relais sans inventer de remise au neutre.
+- `HidGamepads` développe les plages de capacités (auparavant seulement UsageMin), conserve ReportID/LinkCollection, étend le signe et garde les axes entre rapports distincts. Tests allant des capacités et valeurs HID simulées jusqu’à l’émission d’un mouvement, plus source muette, doublons, expiration et reprise.
+- Diagnostic natif dans Paramètres → Manette : attente, acceptation, refus, suspension ; compteurs de mouvements et transitions dans le journal. L’acceptation par SendInput ne garantit pas qu’un jeu relâche sa capture du curseur.
+- `tools/mouse-platform-tests` lie le vrai `Native.cs` : appel Windows accepté avec déplacement nul, bureau interactif reconnu et position conservée sur ce PC. Aucun clic ni touche. `tools/verify-mouse-relay.js` vérifie la fraîcheur séparément ; les tests d’interface vérifient l’état et les compteurs du diagnostic.
+- Compilation locale complète réussie ; tests natifs, tests Node ciblés et 120 mises en page Chromium passent. VERSION : 4.0.2 ; notes dans `docs/releases/4.0.2.md`. Commit et publication demandés par l’utilisateur. Fonctionnement sur la console concernée encore à confirmer.
+
 ## Version 4.0.1 : manette conservée en mode souris
 
 - Retour utilisateur : le mode souris coupait la manette dans KaneMode. `XInputPads` envoyait `[]` en mode souris ; `nav.js` ignorait tous les boutons. Les deux coupures sont supprimées, tout en gardant la navigation bloquée derrière une autre application ou le streaming.

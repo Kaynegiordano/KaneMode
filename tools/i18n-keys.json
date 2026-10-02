@@ -575,6 +575,9 @@
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
+ "Activez le mode souris puis déplacez le stick droit.": [
+  "ui/js/pages/settings.js"
+ ],
  "Actualiser": [
   "ui/js/dolby-settings.js"
  ],
@@ -1479,6 +1482,9 @@
  "Développeur": [
   "ui/js/pages/game.js"
  ],
+ "Diagnostic du curseur": [
+  "ui/js/pages/settings.js"
+ ],
  "Discrètes": [
   "ui/js/personalization-settings.js"
  ],
@@ -1607,6 +1613,9 @@
  "Émulation <small>{length} jeux · {size} consoles</small>": [
   "ui/js/pages/home.js"
  ],
+ "En attente d’un mouvement du stick droit.": [
+  "ui/js/pages/settings.js"
+ ],
  "En branchant ou débranchant le chargeur, KaneMode applique le profil correspondant": [
   "ui/js/pages/settings.js"
  ],
@@ -1636,6 +1645,9 @@
  ],
  "Entrée inconnue": [
   "host/server.js"
+ ],
+ "Entrées suspendues pendant la veille ou le verrouillage.": [
+  "ui/js/pages/settings.js"
  ],
  "Epic": [
   "ui/js/deals.js"
@@ -2221,6 +2233,9 @@
  "Le bouton sous Command Center": [
   "ui/js/pages/settings.js"
  ],
+ "Le bureau Windows courant suspend les entrées.": [
+  "ui/js/pages/settings.js"
+ ],
  "Le chemin de lancement doit être absolu": [
   "host/lib/launch.js"
  ],
@@ -2595,6 +2610,9 @@
  "Moteur de streaming absent": [
   "host/server.js",
   "ui/js/pages/game.js"
+ ],
+ "Mouvements acceptés : {accepted} · refusés : {rejected}": [
+  "ui/js/pages/settings.js"
  ],
  "Moyenne": [
   "ui/js/pages/settings.js"
@@ -3971,6 +3989,9 @@
  "Windows a refusé le mode d'alimentation (code {a}) : il n'existe qu'avec le mode de gestion « Utilisation normale »": [
   "host/syscontrol.ps1"
  ],
+ "Windows accepte les mouvements du curseur.": [
+  "ui/js/pages/settings.js"
+ ],
  "Windows demande l’accord de l’administrateur ; un redémarrage peut être nécessaire": [
   "ui/js/pages/settings.js"
  ],
@@ -3988,6 +4009,9 @@
  ],
  "Windows n’a pas répondu à la demande de lancement": [
   "host/lib/launch.js"
+ ],
+ "Windows refuse les mouvements du curseur.": [
+  "ui/js/pages/settings.js"
  ],
  "Windows va demander l’autorisation de l’administrateur. Pendant l’installation, l’écran peut clignoter ou s’éteindre un instant.": [
   "ui/js/pages/settings.js"

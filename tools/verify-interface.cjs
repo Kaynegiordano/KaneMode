@@ -107,9 +107,11 @@ const server=http.createServer(async(req,res)=>{
     await page.evaluate(()=>{sendNative({type:'background'});navigation.press('a');});await settled();
     assert.equal(launchRequests.length,0,'Aucun jeu derrière KanePlay');
     await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});mockPad.axes[0]=0.8;navigation.press('a');});await settled();
-    const relay=await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-pad').at(-1));
+    const relay=await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-pad'&&m.lx===0.8).at(-1));
     assert.equal(relay.lx,0.8,'Le mode souris relaie les axes en arrière-plan');
     assert.match(relay.source,/DualShock/);assert.equal(launchRequests.length,0,'Le relais souris ne valide pas une carte');
+    await page.waitForTimeout(450);
+    assert.equal(await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-pad').at(-1).connected),false,'Une manette WebView2 figée ne fait pas dériver le curseur');
     await page.evaluate(()=>{mockPad.axes[0]=0;sendNative({type:'mouse-mode',on:false});});
     await page.evaluate(()=>sendNative({type:'resume'}));await settled();
     assert.equal(launchRequests.length,0,'Validation tenue au retour ignorée');
@@ -186,6 +188,13 @@ const server=http.createServer(async(req,res)=>{
     await settled();
     await verifyHandoff();
     await verifyMouseCoexist();
+    await settingsSection('pad');
+    await page.evaluate(()=>sendNative({type:'mouse-diagnostic',status:'rejected',source:'WebView2',accepted:0,rejected:7,x:20000,y:0}));await settled();
+    assert.match(await page.evaluate(()=>navigation.page('settings').mouseStatus.textContent),/Windows refuse.*refusés : 7/);
+    await page.evaluate(()=>sendNative({type:'mouse-diagnostic',status:'moving',source:'WebView2',accepted:12,rejected:7,x:20000,y:0}));await settled();
+    assert.match(await page.evaluate(()=>navigation.page('settings').mouseStatus.textContent),/Windows accepte.*acceptés : 12/);
+    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:false});navigation.go('home');});await settled();
+    check('Diagnostic du curseur : distinction entre réception des commandes et acceptation/refus Windows');
     assert.equal(await page.locator('.home-info h1').isVisible(),false,'Pas de titre de reprise dupliqué');
     await page.evaluate(()=>navigation.setFocus(document.querySelector('[data-key="pin-collection:c1"]')));
     assert.equal(await page.locator('.home-info h1').textContent(),'Coop canapé');

@@ -4,6 +4,7 @@ import { t } from './i18n.js';
 import { $, $$, sfx, reduceMotion, settings, native, emit } from './core.js';
 import { prioritizeArt } from './cards.js';
 import { createInputGate } from './input-gate.js';
+import { createMouseFreshness } from './mouse-relay.js';
 const inputGate = createInputGate();
 let handoffTimer;
 const canNavigate = () => inputGate.allows(!document.hidden, document.hasFocus());
@@ -646,10 +647,12 @@ function readPads() {
 // l'app ne recevait rien par XInput : le curseur apparaissait mais ni le stick ni les boutons ne
 // répondaient. Envoyé à chaque changement, et 10 fois par seconde tant qu'un stick est poussé.
 let relayed = '', relayedAt = 0;
+const mouseFreshness = createMouseFreshness();
 function relayMouse(web, now) {
+  web = web.filter(p => mouseFreshness.fresh(p, now, canNavigate()));
   const p = web.find(g => g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.2)) || web[0];
   if (!p) {
-    if (relayed) { relayed = ''; relayedAt = 0; native.send('mouse-pad', { b: 0, lx: 0, ly: 0, rx: 0, ry: 0 }); }
+    if (relayed) { relayed = ''; relayedAt = 0; native.send('mouse-pad', { b: 0, lx: 0, ly: 0, rx: 0, ry: 0, connected: false }); }
     return;
   }
   let b = 0;
@@ -674,12 +677,16 @@ native.on(m => {
 
 // Mode souris (Start maintenu, voir native/KaneMode.App/XInputPads.cs) : l'app le signale
 export const mouseMode = { on: false };
+export const mouseDiagnostic = { status: 'off', accepted: 0, rejected: 0, source: '', x: 0, y: 0 };
 const startAt = {};
 const START_HOLD_MS = 900;
 native.on(m => {
+  if (m.type === 'mouse-diagnostic') { Object.assign(mouseDiagnostic, m); return; }
   if (m.type !== 'mouse-mode') return;
   mouseMode.on = !!m.on;
+  mouseDiagnostic.status = m.on ? 'idle' : 'off';
   relayed = ''; relayedAt = 0;
+  mouseFreshness.reset();
   // En sortant du mode souris, Start (encore tenu) et le reste ne doivent pas agir
   if (!m.on) swallow = true;
   document.body.classList.toggle('mouse-mode', mouseMode.on);

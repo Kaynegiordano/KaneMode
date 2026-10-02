@@ -11,6 +11,8 @@ internal sealed class GamepadMouse
     private ushort _held, _pad, _rejected;
     private double _restX, _restY;
     private long _wheelNext, _lastFailure = -30000;
+    private long _movesAccepted, _movesRejected;
+    public (long Accepted, long Rejected) MovementCounts { get { lock (_lock) return (_movesAccepted, _movesRejected); } }
     public GamepadMouse(Func<uint, int, int, int, bool> send) { _send = send; }
     public void SetActive(bool active)
     {
@@ -65,6 +67,7 @@ internal sealed class GamepadMouse
     private bool Send(uint flags, int dx, int dy, int data, long now)
     {
         bool ok = _send(flags, dx, dy, data);
+        if (flags == Native.MOUSE_MOVE && (dx != 0 || dy != 0)) { if (ok) _movesAccepted++; else _movesRejected++; }
         if (!ok && now - _lastFailure >= 30000) { _lastFailure = now; Log.Write("Mode souris : Windows a refusé une entrée (droits de la fenêtre ou bureau sécurisé)"); }
         return ok;
     }

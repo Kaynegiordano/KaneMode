@@ -1,7 +1,7 @@
 // Paramètres, organisés comme SteamOS : catégories à gauche, réglages à droite.
 import { t, tn, tx, locale, LANGS, lang } from '../i18n.js';
 import { el, esc, icon, api, lib, settings, saveSettings, effectiveSettings, setAppearance, sourceOf, toast, busy, fmt, native, mergeOrder } from '../core.js';
-import { definePage, nav, padLive, focusIn, go, focused, setFocus, renderHints, refresh } from '../nav.js';
+import { definePage, nav, padLive, mouseDiagnostic, focusIn, go, focused, setFocus, renderHints, refresh } from '../nav.js';
 import { segmented, switchRow, openKeyboard, confirmDialog, dialog } from '../widgets.js';
 import { pickFile } from './add.js';
 import { openGame, openStreaming } from './game.js';
@@ -674,6 +674,7 @@ const BUILDERS = {
     page.sticks = el('div', 'sticks', t('<div class="stick"><i></i></div>Stick gauche<div class="stick"><i></i></div>Stick droit'));
     tester.append(el('div', 'txt', t('<b>Testeur de boutons</b><small>Les boutons s’allument quand vous appuyez dessus</small>')), page.buttons, page.sticks);
     s.append(tester);
+    page.mouseStatus = infoRow(s, t('Diagnostic du curseur'), t('Activez le mode souris puis déplacez le stick droit.'));
   },
 
   async access(s) {
@@ -873,6 +874,18 @@ page = definePage('settings', {
       const dots = this.sticks.querySelectorAll('i');
       dots[0].style.transform = `translate(${lx * 27}px, ${ly * 27}px)`;
       dots[1].style.transform = `translate(${rx * 27}px, ${ry * 27}px)`;
+      const statuses = {
+        off: t('Activez le mode souris puis déplacez le stick droit.'),
+        idle: t('En attente d’un mouvement du stick droit.'),
+        moving: t('Windows accepte les mouvements du curseur.'),
+        rejected: t('Windows refuse les mouvements du curseur.'),
+        desktop: t('Le bureau Windows courant suspend les entrées.'),
+        suspended: t('Entrées suspendues pendant la veille ou le verrouillage.'),
+        'no-controller': t('Aucune manette détectée'),
+      };
+      const status = (statuses[mouseDiagnostic.status] || statuses.idle) + ' ' + t('Mouvements acceptés : {accepted} · refusés : {rejected}', mouseDiagnostic);
+      const detail = this.mouseStatus.querySelector('small');
+      if (detail.textContent !== status) detail.textContent = status;
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);

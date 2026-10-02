@@ -72,7 +72,7 @@ internal static class Program
         step.Invoke(pads, new object[] { tick, 8.0 });
         Check(!Native.Events.Any(e => e.Flags == Native.LEFT_DOWN), "Un bouton tenu en quittant KaneMode ne devient pas un clic");
         pads.SetUiPad(0, 0, 0, 0, 0); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
-        // Une copie WebView2 figée du même type de manette ne remplace pas les rapports natifs.
+        // Régression : une manette native connectée mais muette ne doit pas éliminer les axes reçus.
         var hid = (HidGamepads)typeof(XInputPads).GetField("_hid", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(pads)!;
         var connected = (bool[])typeof(HidGamepads).GetField("Connected", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
         var sony = (bool[])typeof(HidGamepads).GetField("_sony", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
@@ -92,12 +92,41 @@ internal static class Program
             connected[0] = true; sony[0] = source.StartsWith("DualShock"); Native.Events.Clear();
             tick = Environment.TickCount64; pads.SetUiPad(0x1000, 1, 0, 0, 0, source);
             read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
-            Check(Native.Events.Count == 0, "Un ancien état WebView2 ne supplante pas " + source);
+            Check(Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE), "La source native muette ne bloque pas les axes de " + source);
             connected[0] = false;
             read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
             Check(Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE), "Relais disponible en l’absence de source native : " + source);
             pads.SetUiPad(0, 0, 0, 0, 0, source); read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
         }
+        var sources = new MouseSources(3);
+        sources.Update(0, true, default); sources.Update(1, true, new(0, 20000, 0));
+        Check(sources.Current.X == 20000, "Source native inactive et vrai stick relayé");
+        sources.Update(0, true, new(0, 22000, 0)); sources.Update(1, true, new(0, 20000, 0));
+        Check(sources.Selected == 0, "Un état répété ne supplante pas une nouvelle commande native");
+        sources.Update(0, true, default); sources.Update(1, true, new(0, 20000, 0));
+        Check(sources.Current.X == 0, "Le relâchement natif arrête la copie relayée retardée");
+        sources.Update(1, true, new(0, -24000, 0));
+        Check(sources.Current.X == -24000, "Une nouvelle commande relayée est reçue");
+        sources.Update(1, false, default);
+        Check(sources.Current == default, "Un relais expiré arrête le curseur");
+        sources.Update(0, true, new(0, 21000, 0)); sources.Update(1, true, new(0, 23000, 0)); sources.Update(1, false, default);
+        Check(sources.Current.X == 21000, "Une source native active prend le relais après expiration de WebView2");
+        var ranged = new HidGamepads.HIDP_VALUE_CAPS { UsagePage = 1, ReportID = 2, IsRange = 1, UsageMin = 0x30, UsageMax = 0x34, LogicalMin = 0, LogicalMax = 65535, BitSize = 16, LinkCollection = 3 };
+        var single = ranged; single.ReportID = 3; single.IsRange = 0; single.UsageMin = 0x33; single.LogicalMin = -32768; single.LogicalMax = 32767;
+        var ranges = HidGamepads.ExpandRanges(new[] { ranged, single });
+        Check(ranges.Count == 6 && ranges[(2, 0x34)].Link == 3, "Tous les axes d’une plage HID et leur collection sont conservés");
+        Check(System.Runtime.InteropServices.Marshal.SizeOf<HidGamepads.HIDP_VALUE_CAPS>() == 72, "Structure HID conforme au format Windows");
+        Check(HidGamepads.NormalizeAxis(65535, ranges[(2, 0x33)], false) == 32767 && HidGamepads.NormalizeAxis(0, ranges[(2, 0x34)], true) == 32767, "Stick droit déclaré en plage et inversion Y");
+        Check(HidGamepads.NormalizeAxis(0x8000, ranges[(3, 0x33)], false) == -32767 && Math.Abs(HidGamepads.NormalizeAxis(0, ranges[(3, 0x33)], false)) <= 1, "Extension du signe des axes HID, négatif et neutre");
+        var calls = new List<(ushort Link, ushort Usage)>();
+        var decoded = HidGamepads.ApplyValues(default, 2, ranges, (link, usage) => { calls.Add((link, usage)); return usage == 0x33 ? 65535u : 32768u; });
+        Check(decoded.RX == 32767 && calls.Contains((3, 0x33)) && calls.Contains((3, 0x34)), "Décodage du rapport : le stick droit et sa collection atteignent le lecteur");
+        var preserved = HidGamepads.ApplyValues(decoded, 9, ranges, (_, _) => throw new Exception("Rapport sans axe"));
+        Check(preserved.RX == decoded.RX, "Un autre rapport ne remet pas les axes au neutre");
+        var decodedMouse = new GamepadMouse(Native.Mouse); decodedMouse.SetActive(true); Native.Events.Clear();
+        decodedMouse.Step(0, decoded.RX, decoded.RY, tick, 8, true);
+        Check(Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE && e.X > 0), "Chaîne capacités HID → lecture du stick droit → mouvement souris");
+        Console.WriteLine("PASS Axes simulés en amont : source inactive, relais frais/expiré, doublons retardés, plages HID, valeurs signées et conversion en mouvement.");
         Console.WriteLine("PASS Souris globale : fenêtres, déplacement, glissé, clics, molette, refus, verrouillage et arrêt.");
         Console.WriteLine("PASS DualShock USB/Bluetooth : rapports, axes, boutons, gâchettes et refus de formats inconnus.");
     }

@@ -46,6 +46,9 @@ public sealed class XInputPads : IDisposable
     public event Action? Knock;
     /// <summary>Mode souris activé ou désactivé.</summary>
     public event Action<bool>? MouseModeChanged;
+    public event Action<string>? MouseDiagnosticChanged;
+    private long _diagnosticAt, _acceptedBefore, _rejectedBefore;
+    private string _diagnosticKey = "";
 
     private const ushort START = 0x10, A = 0x1000, B = 0x2000, X = 0x4000, LB = 0x100, RB = 0x200,
         UP = 0x1, DOWN = 0x2, LEFT = 0x4, RIGHT = 0x8;
@@ -64,8 +67,8 @@ public sealed class XInputPads : IDisposable
     private readonly HidGamepads _hid = new();
     private State _ui;
     private readonly object _uiLock = new();
-    private bool _uiSony, _uiXbox;
     private long _uiAt = -1000;
+    private readonly MouseSources _mouseSources = new(SLOTS);
 
     private volatile bool _mouse;
     private readonly GamepadMouse _mouseInput = new((flags, dx, dy, data) => Native.Mouse(flags, dx, dy, data));
@@ -118,15 +121,13 @@ public sealed class XInputPads : IDisposable
     }
 
     /// <summary>Manette vue par l'interface (API Gamepad de WebView2), relayée pendant le mode souris.</summary>
-    public void SetUiPad(ushort buttons, double lx, double ly, double rx, double ry, string source = "")
+    public void SetUiPad(ushort buttons, double lx, double ly, double rx, double ry, string source = "", bool connected = true)
     {
         static short A(double v) => (short)Math.Round(Math.Clamp(v, -1, 1) * 32767);
         lock (_uiLock)
         {
             _ui = new State { Pad = new Gamepad { Buttons = buttons, ThumbLX = A(lx), ThumbLY = A(-ly), ThumbRX = A(rx), ThumbRY = A(-ry) } };
-            _uiSony = source.Contains("054c", StringComparison.OrdinalIgnoreCase) || source.Contains("dualshock", StringComparison.OrdinalIgnoreCase);
-            _uiXbox = source.Contains("xinput", StringComparison.OrdinalIgnoreCase) || source.Contains("xbox", StringComparison.OrdinalIgnoreCase) || source.Contains("045e", StringComparison.OrdinalIgnoreCase);
-            _uiAt = Environment.TickCount64;
+            _uiAt = connected ? Environment.TickCount64 : -1000;
         }
     }
 
@@ -194,22 +195,19 @@ public sealed class XInputPads : IDisposable
     /// <summary>Manettes HID et manette de l'interface, au format XInput.</summary>
     private void ReadOthers(long t)
     {
-        bool nativeXbox = false;
-        for (int i = 0; i < HID0; i++) nativeXbox |= _connected[i];
         for (int k = 0; k < HidGamepads.Max; k++)
         {
             bool ok = _hid.Snapshot(k, out var h);
             _connected[HID0 + k] = ok;
             if (!ok) continue;
-            nativeXbox |= !_hid.SonySlot(k);
             _state[HID0 + k] = new State { Pad = new Gamepad { Buttons = h.Buttons, LeftTrigger = h.LT, RightTrigger = h.RT, ThumbLX = h.LX, ThumbLY = h.LY, ThumbRX = h.RX, ThumbRY = h.RY } };
         }
         // Relais de l'interface : seulement pendant le mode souris, et s'il est récent
-        // Les lectures natives restent fraîches en arrière-plan ; WebView2 ne doit pas doubler
-        // une source Sony/Xbox déjà lue, avec un état figé après un changement de fenêtre.
+        // Une connexion native ne garantit pas que ses axes soient lisibles (mode Xbox).
+        // La fraîcheur est bornée côté interface et ici ; aucun veto fondé sur la marque.
         lock (_uiLock)
         {
-            _connected[UI] = _mouse && t - _uiAt < 400 && !(_uiSony && _hid.SonyConnected) && !(_uiXbox && nativeXbox);
+            _connected[UI] = _mouse && t - _uiAt < 400;
             _state[UI] = _ui;
         }
     }
@@ -251,26 +249,31 @@ public sealed class XInputPads : IDisposable
     private void MouseStep(long t, double dt)
     {
         bool ours = _focus() is Focus.Ours or Focus.Orphan;
-        ushort buttons = 0;
-        int sx = 0, sy = 0, best = 0;
         for (int i = 0; i < SLOTS; i++)
         {
-            if (!_connected[i]) continue;
             var p = _state[i].Pad;
-            buttons |= p.Buttons;
-            if (!ours) Pick(p.ThumbLX, p.ThumbLY); // Stick gauche réservé à la navigation dans KaneMode.
-            Pick(p.ThumbRX, p.ThumbRY);
+            int sx = p.ThumbRX, sy = p.ThumbRY;
+            if (!ours && Math.Abs((int)p.ThumbLX) + Math.Abs((int)p.ThumbLY) > Math.Abs(sx) + Math.Abs(sy)) { sx = p.ThumbLX; sy = p.ThumbLY; }
+            _mouseSources.Update(i, _connected[i], new(p.Buttons, sx, sy));
         }
         if (t - _desktopChecked >= 250)
         {
             _desktopChecked = t;
             _interactive = Native.InteractiveDesktop();
         }
-        _mouseInput.Step(buttons, sx, sy, t, dt, _interactive && !_mousePaused, buttonsEnabled: !ours);
-        void Pick(int x, int y)
+        var selected = _mouseSources.Current;
+        _mouseInput.Step(selected.Buttons, selected.X, selected.Y, t, dt, _interactive && !_mousePaused, buttonsEnabled: !ours);
+        if (t - _diagnosticAt >= 500)
         {
-            int magnitude = Math.Abs(x) + Math.Abs(y);
-            if (magnitude > best) { best = magnitude; sx = x; sy = y; }
+            _diagnosticAt = t;
+            var counts = _mouseInput.MovementCounts;
+            int count = _connected.Count(c => c), slot = _mouseSources.Selected;
+            string source = slot == UI ? "WebView2" : slot >= HID0 ? "HID " + (slot - HID0) : slot >= 0 ? "XInput " + slot : "";
+            string status = _mousePaused ? "suspended" : !_interactive ? "desktop" : counts.Rejected > _rejectedBefore ? "rejected" : counts.Accepted > _acceptedBefore ? "moving" : count == 0 ? "no-controller" : "idle";
+            _acceptedBefore = counts.Accepted; _rejectedBefore = counts.Rejected;
+            MouseDiagnosticChanged?.Invoke(System.Text.Json.JsonSerializer.Serialize(new { type = "mouse-diagnostic", status, source, controllers = count, x = selected.X, y = selected.Y, accepted = counts.Accepted, rejected = counts.Rejected }));
+            string key = status + ":" + source;
+            if (key != _diagnosticKey) { _diagnosticKey = key; Log.Write($"Souris : état={status}, source={source}, axes={selected.X}/{selected.Y}, acceptés={counts.Accepted}, refusés={counts.Rejected}"); }
         }
     }
 

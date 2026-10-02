@@ -84,6 +84,7 @@ public partial class MainWindow : Window
         // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
         _pads = new XInputPads(PadFocus);
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
+        _pads.MouseDiagnosticChanged += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson(json); } catch (InvalidOperationException) { } });
         _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
         _pads.Knock += () => Dispatcher.BeginInvoke(LogPadKnock);
         _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() =>
@@ -761,7 +762,7 @@ public partial class MainWindow : Window
                     // Manette vue par l'interface pendant le mode souris (mode Xbox : XInput muet)
                     var r = root;
                     double D(string k) => r.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
-                    _pads.SetUiPad((ushort)D("b"), D("lx"), D("ly"), D("rx"), D("ry"), Text(root, "source") ?? "");
+                    _pads.SetUiPad((ushort)D("b"), D("lx"), D("ly"), D("rx"), D("ry"), Text(root, "source") ?? "", !root.TryGetProperty("connected", out var connected) || connected.ValueKind != JsonValueKind.False);
                     break;
                 }
                 case "mouse-mode":
