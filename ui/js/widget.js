@@ -290,7 +290,7 @@ function tiles() {
       act: async () => {
         try {
           mouse = !!(await toApp('mouse-mode', { on: !mouse })).on;
-          toast(mouse ? 'Mode souris : stick = curseur, A = clic, B = clic droit' : t('Mode souris désactivé'));
+          toast(mouse ? t('Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour') : t('Mode souris désactivé'));
         } catch (e) { toast(e.message, { error: true }); }
         render();
       } });

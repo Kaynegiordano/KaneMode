@@ -10,10 +10,12 @@ Dans les autres fenêtres, les commandes souris sont les suivantes :
 | --- | --- |
 | Stick gauche ou droit | Déplacer le curseur |
 | A / Croix | Clic gauche, maintenir pour glisser |
-| B / Cercle | Clic droit |
-| X / Carré | Clic du milieu |
-| Croix directionnelle | Défilement vertical ou horizontal |
-| LB / L1 et RB / R1 | Précédent / suivant |
+| Y / Triangle | Clic droit |
+| B / Cercle | Retour (bouton « précédent » de la souris) |
+| X / Carré maintenu + stick | Défilement vertical et horizontal, le curseur reste en place |
+| Croix directionnelle | Défilement par crans |
+| LB / L1 | Clic du milieu |
+| RB / R1 | Avancer (bouton « suivant » de la souris) |
 
 Le mode reste activé en changeant de fenêtre ou en ouvrant une boutique, une fenêtre de connexion, un jeu ou le streaming. KaneMode peut rester en arrière-plan ou être réduit ; il doit rester ouvert. L’activation n’intercepte pas le périphérique de manette pour les autres logiciels : un jeu peut continuer à lire ses propres entrées de manette.
 

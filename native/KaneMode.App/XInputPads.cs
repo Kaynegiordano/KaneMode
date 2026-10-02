@@ -10,8 +10,8 @@ namespace KaneMode;
 /// manettes est envoyé à l'interface à chaque changement (ui/js/nav.js, setNativePads).
 ///
 /// Mode souris (comme dans KanePlay) : Start maintenu 1 s bascule la manette en souris. Stick :
-/// curseur ; A : clic ; B : clic droit ; X : clic du milieu ; LB / RB : précédent / suivant ; croix :
-/// molette. Il marche dans toutes les fenêtres (lanceurs, fenêtres de connexion…), jusqu'à un nouvel
+/// curseur ; A : clic ; Y : clic droit ; B : précédent ; RB : suivant ; LB : clic du milieu ; X maintenu :
+/// le stick fait défiler ; croix : molette par crans. Il marche dans toutes les fenêtres (lanceurs, fenêtres de connexion…), jusqu'à un nouvel
 /// appui long sur Start.
 /// </summary>
 public sealed class XInputPads : IDisposable

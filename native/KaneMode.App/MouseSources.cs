@@ -11,7 +11,7 @@ internal sealed class MouseSources
     public int Selected { get; private set; } = -1;
     public MouseSources(int slots) { _samples = new Sample[slots]; _available = new bool[slots]; _revision = new long[slots]; }
     private static int Axis(int value) => Math.Abs(value) <= 10321 ? 0 : (int)Math.Round(value / 512.0);
-    private static Sample Intent(Sample s) => new((ushort)(s.Buttons & 0x730f), Axis(s.X), Axis(s.Y));
+    private static Sample Intent(Sample s) => new((ushort)(s.Buttons & 0xF30F), Axis(s.X), Axis(s.Y));
     public void Update(int slot, bool available, Sample sample)
     {
         var previous = _available[slot] ? Intent(_samples[slot]) : default;

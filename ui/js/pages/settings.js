@@ -665,9 +665,8 @@ const BUILDERS = {
     infoRow(s, t('Boutons Select et Start'), t('Menu principal et accès rapide'), segmented(
       [{ value: 'false', label: t('Select : menu · Start : accès rapide') }, { value: 'true', label: t('Start : menu · Select : accès rapide') }],
       String(!!settings.padSwap), v => { settings.padSwap = v === 'true'; saveSettings(); renderHints(); }, 'padSwap'));
-    infoRow(s, t('Mode souris'), t('Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, B/Cercle pour le clic droit, X/Carré pour le clic du milieu, croix pour défiler, LB/RB pour précédent/suivant.'));
+    infoRow(s, t('Mode souris'), t('Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.'));
     s.append(el('div', 'notice', t('Le mode souris reste actif dans les autres fenêtres, les boutiques, les jeux et le streaming, jusqu’au prochain appui long sur Start/Options. Certaines fenêtres administrateur et les écrans sécurisés de Windows peuvent refuser les entrées.')));
-    toggle(s, 'steamMouseAsk', t('Proposer de quitter Steam avec le mode souris'), t('Steam garde les manettes Xbox (Steam Input) tant qu’il tourne : hors de KaneMode, le curseur ne bouge plus'));
     page.padName = infoRow(s, t('Aucune manette détectée'), t('Appuyez sur un bouton de la manette pour la réveiller'));
     const tester = el('div', 'set-row');
     tester.style.gridTemplateColumns = '1fr';

@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.1.0 : mode souris complet, plus de question sur Steam
+
+- **Raw Input confirmé par l'utilisateur sur l'Ally** (« ça fonctionne ! ») : le mode souris marche devant toutes les fenêtres de l'expérience Xbox.
+- La question « Quitter Steam ? » de la 4.0.6 est **retirée** à sa demande (dialogue `askQuitSteam`, réglage `steamMouseAsk`, routes `/api/steam/state` et `/api/steam/quit`, textes anglais). Le diagnostic « Steam garde la manette » était faux (voir 4.0.7).
+- Nouvelle disposition des boutons (`GamepadMouse.cs`, hors KaneMode) : **A** clic gauche (maintenu : glisser) ; **Y** clic droit ; **B** retour (bouton précédent de la souris) ; **RB** avancer ; **LB** clic du milieu ; **X maintenu** : le stick fait défiler (vertical et horizontal, courbe du curseur, `SCROLL_GAIN` 1,5, un pas de 20 unités de molette) et le curseur reste en place ; **croix** : molette par crans. `MouseSources.Intent` compte aussi Y (masque 0xF30F). Dans KaneMode, les boutons restent ceux de la navigation. Banc `tools/mouse-mode-tests` mis à jour (disposition, défilement au stick). Textes (toast, Paramètres → Manette, widget), `docs/mouse-mode.md` et traductions anglaises mis à jour.
+- VERSION : 4.1.0 ; notes dans `docs/releases/4.1.0.md`.
+
 ## Version 4.0.7 : Raw Input pour le mode souris
 
 - Le journal de l'Ally (4.0.6, Steam fermé) a **corrigé le diagnostic de la 4.0.6** : Steam n'est pas la cause principale. Hors expérience Xbox (ligne « Curseur supplémentaire … expérience Xbox : non »), XInput donne de vraies valeurs hors de KaneMode et le mode souris marche (13:37:56–13:38:18, ~500 mouvements dans Epic et sur le bureau). **Dans l'expérience Xbox**, XInput reste à 0/0 pour KaneMode.exe même devant KaneMode (WebView2 voit le stick), et la lecture HID (`ReadFile`) ne reçoit qu'un rapport à chaque retour devant KaneMode : Windows ne donne la manette qu'à la fenêtre qui a le focus (ici le processus de WebView2). KaneMode relance aussi Steam 12 s après son démarrage (`warmStores`), ce qui annule une fermeture manuelle.

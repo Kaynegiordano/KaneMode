@@ -1539,20 +1539,6 @@ const routes = {
       source: m.label, game: m.appid ? names.get(m.appid) || null : null, name: m.name,
     })));
   },
-  // Steam (Steam Input) garde les manettes Xbox tant qu'il tourne : hors de KaneMode, leurs sticks
-  // arrivent à zéro et le mode souris ne bouge plus (constaté sur ROG Ally, journal du 2 octobre 2026).
-  'GET /api/steam/state': async (req, res) => {
-    const running = await processOpen('steam');
-    json(res, 200, { running, game: running ? await steamRunningApp() : 0 });
-  },
-  // Ferme Steam par sa commande officielle (-shutdown), jamais pendant un jeu
-  'POST /api/steam/quit': async (req, res) => {
-    const exe = steamClient();
-    if (!exe) return json(res, 400, { error: 'Steam est introuvable' });
-    if (await steamRunningApp()) return json(res, 400, { error: 'Un jeu Steam est en cours : Steam reste ouvert' });
-    spawn(exe, ['-shutdown'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-    json(res, 200, { ok: true });
-  },
   // Supprime des captures (corbeille Windows). Les adresses /mediafile?path=… de la liste sont acceptées.
   'POST /api/media/delete': async (req, res) => {
     const b = await readBody(req);

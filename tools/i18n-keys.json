@@ -1821,9 +1821,6 @@
  "Game Bar": [
   "ui/js/pages/settings.js"
  ],
- "Garder Steam": [
-  "ui/js/main.js"
- ],
  "Gérer l’émulation": [
   "ui/js/pages/settings.js"
  ],
@@ -2395,7 +2392,7 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
- "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, B/Cercle pour le clic droit, X/Carré pour le clic du milieu, croix pour défiler, LB/RB pour précédent/suivant.": [
+ "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.": [
   "ui/js/pages/settings.js"
  ],
  "Maintenu une seconde": [
@@ -2567,7 +2564,10 @@
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
- "Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter": [
+ "Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour": [
+  "ui/js/widget.js"
+ ],
+ "Mode souris · stick : curseur · A : clic · Y : clic droit · B : retour · X + stick : défilement · Start maintenu : quitter": [
   "ui/js/main.js"
  ],
  "Mode souris désactivé": [
@@ -2625,9 +2625,6 @@
  ],
  "Ne modifie pas le volume de Windows ni celui des jeux": [
   "ui/js/personalization-settings.js"
- ],
- "Ne plus demander": [
-  "ui/js/main.js"
  ],
  "Néon": [
   "ui/js/pages/settings.js"
@@ -3063,9 +3060,6 @@
  "Proposé en premier, automatiquement et dans « Parcourir »": [
   "ui/js/pages/settings.js"
  ],
- "Proposer de quitter Steam avec le mode souris": [
-  "ui/js/pages/settings.js"
- ],
  "Protocole non installe : {a}": [
   "host/launch.ps1"
  ],
@@ -3114,12 +3108,6 @@
  ],
  "Quitter KaneMode ?": [
   "ui/js/pages/game.js"
- ],
- "Quitter Steam": [
-  "ui/js/main.js"
- ],
- "Quitter Steam ?": [
-  "ui/js/main.js"
  ],
  "Raccourcis": [
   "ui/js/pages/game.js",
@@ -3561,15 +3549,6 @@
  "Steam Deck": [
   "ui/js/pages/settings.js"
  ],
- "Steam est introuvable": [
-  "host/server.js"
- ],
- "Steam garde les manettes Xbox (Steam Input) tant qu’il tourne : hors de KaneMode, le curseur ne bouge plus": [
-  "ui/js/pages/settings.js"
- ],
- "Steam se ferme…": [
-  "ui/js/main.js"
- ],
  "Steam va s’ouvrir pour confirmer la désinstallation.": [
   "ui/js/pages/game.js"
  ],
@@ -3677,9 +3656,6 @@
  ],
  "Taille des jaquettes": [
   "ui/js/pages/settings.js"
- ],
- "Tant que Steam tourne, il garde la manette : le mode souris ne répond que dans KaneMode. Steam se relance tout seul au prochain jeu Steam lancé depuis KaneMode.": [
-  "ui/js/main.js"
  ],
  "Téléchargement de la version {a}… {pct} %": [
   "ui/js/pages/settings.js"
@@ -3819,9 +3795,6 @@
  ],
  "Un jeu": [
   "ui/js/personalization-settings.js"
- ],
- "Un jeu Steam est en cours : Steam reste ouvert": [
-  "host/server.js"
  ],
  "Une adresse web ou un lien d’application (steam://, ms-settings:…) qui s’ouvre dans le navigateur ou l’appli associée.": [
   "ui/js/pages/add.js"

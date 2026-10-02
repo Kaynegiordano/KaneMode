@@ -7,7 +7,6 @@
  "Le bureau Windows courant suspend les entrées.": "The current Windows desktop is suspending input.",
  "Entrées suspendues pendant la veille ou le verrouillage.": "Input is suspended during sleep or lock.",
  "Mouvements acceptés : {accepted} · refusés : {rejected}": "Accepted movements: {accepted} · rejected: {rejected}",
- "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, B/Cercle pour le clic droit, X/Carré pour le clic du milieu, croix pour défiler, LB/RB pour précédent/suivant.": "Hold Start/Options for 1 s. In KaneMode: left stick and buttons to navigate, right stick for the pointer. In other windows: sticks for the pointer, A/Cross to click, B/Circle to right-click, X/Square to middle-click, D-pad to scroll, LB/RB for back/forward.",
  "Le mode souris reste actif dans les autres fenêtres, les boutiques, les jeux et le streaming, jusqu’au prochain appui long sur Start/Options. Certaines fenêtres administrateur et les écrans sécurisés de Windows peuvent refuser les entrées.": "Mouse mode stays active in other windows, stores, games and streaming until you hold Start/Options again. Some administrator windows and Windows secure screens may reject input.",
  "Mode mémorisé pour la batterie": "Mode saved for battery power",
  "Mode mémorisé pour le secteur": "Mode saved for AC power",
@@ -690,7 +689,6 @@
  "Mode inconnu": "Unknown mode",
  "Mode nuit": "Night mode",
  "Mode souris": "Mouse mode",
- "Mode souris · stick : curseur · A : clic · B : clic droit · croix : défilement · Start maintenu : quitter": "Mouse mode · stick: cursor · A: click · B: right-click · D-pad: scroll · hold Start: exit",
  "Mode souris désactivé": "Mouse mode off",
  "Mode Xbox": "Xbox mode",
  "Mode Xbox (plein écran)": "Xbox mode (full screen)",
@@ -1303,14 +1301,7 @@
  "Accès à la passerelle refusé": "Access to the bridge denied",
  "La boutique a refusé cette action. Vérifiez sa connexion dans Playnite.": "The store refused this action. Check its connection in Playnite.",
  "Action de bibliothèque inconnue": "Unknown library action",
- "Garder Steam": "Keep Steam",
- "Ne plus demander": "Don’t ask again",
- "Proposer de quitter Steam avec le mode souris": "Offer to quit Steam with mouse mode",
- "Quitter Steam": "Quit Steam",
- "Quitter Steam ?": "Quit Steam?",
- "Steam est introuvable": "Steam was not found",
- "Steam garde les manettes Xbox (Steam Input) tant qu’il tourne : hors de KaneMode, le curseur ne bouge plus": "Steam keeps Xbox controllers (Steam Input) while it runs: outside KaneMode, the cursor stops moving",
- "Steam se ferme…": "Steam is closing…",
- "Tant que Steam tourne, il garde la manette : le mode souris ne répond que dans KaneMode. Steam se relance tout seul au prochain jeu Steam lancé depuis KaneMode.": "While Steam runs, it keeps the controller: mouse mode only responds inside KaneMode. Steam starts again by itself the next time you launch a Steam game from KaneMode.",
- "Un jeu Steam est en cours : Steam reste ouvert": "A Steam game is running: Steam stays open"
+ "Mode souris · stick : curseur · A : clic · Y : clic droit · B : retour · X + stick : défilement · Start maintenu : quitter": "Mouse mode · stick: cursor · A: click · Y: right-click · B: back · X + stick: scroll · hold Start: exit",
+ "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.": "Hold Start/Options for 1 s. In KaneMode: left stick and buttons to navigate, right stick for the cursor. In other windows: sticks for the cursor, A/Cross to click, Y/Triangle for right-click, B/Circle to go back, X/Square held with the stick to scroll, LB/L1 for middle-click, RB/R1 to go forward, D-pad to scroll in steps.",
+ "Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour": "Mouse mode: stick = cursor, A = click, Y = right-click, B = back"
 }

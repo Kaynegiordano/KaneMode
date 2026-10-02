@@ -25,11 +25,19 @@ internal static class Program
         // Le premier plan ne fait pas partie de la souris : le clic reste tenu pendant un glissé entre fenêtres.
         mouse.Step(0x1000, 32767, 0, 1016, 8, true); mouse.Step(0, 0, 0, 1024, 8, true);
         Check(Native.Events.Count(e => e.Flags == Native.LEFT_DOWN) == 1 && Native.Events.Count(e => e.Flags == Native.LEFT_UP) == 1, "Glissé sans nouveau clic après changement de fenêtre");
-        foreach (var (button, down, up, data) in new[] { (0x2000, Native.RIGHT_DOWN, Native.RIGHT_UP, 0), (0x4000, Native.MIDDLE_DOWN, Native.MIDDLE_UP, 0), (0x100, Native.X_DOWN, Native.X_UP, 1), (0x200, Native.X_DOWN, Native.X_UP, 2) })
+        foreach (var (button, down, up, data) in new[] { (0x8000, Native.RIGHT_DOWN, Native.RIGHT_UP, 0), (0x100, Native.MIDDLE_DOWN, Native.MIDDLE_UP, 0), (0x2000, Native.X_DOWN, Native.X_UP, 1), (0x200, Native.X_DOWN, Native.X_UP, 2) })
         {
             Native.Events.Clear(); mouse.Step((ushort)button, 0, 0, 1100, 8, true); mouse.Step(0, 0, 0, 1108, 8, true);
             Check(Native.Events.Select(e => (e.Flags, e.Data)).SequenceEqual(new[] { (down, data), (up, data) }), "Autres clics et boutons précédent/suivant");
         }
+        // X maintenu : le stick fait défiler (haut : molette positive) sans bouger le curseur ni cliquer
+        mouse.Step(0, 0, 0, 1500, 8, true); Native.Events.Clear();
+        for (int i = 0; i < 12; i++) mouse.Step(0x4000, 0, 32767, 1510 + i * 8, 8, true);
+        Check(Native.Events.Count(e => e.Flags == Native.WHEEL && e.Data > 0) >= 2 && !Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE || e.Flags == Native.MIDDLE_DOWN || e.Flags == Native.LEFT_DOWN), "X maintenu : défilement au stick, curseur immobile");
+        Native.Events.Clear(); for (int i = 0; i < 12; i++) mouse.Step(0x4000, 32767, 0, 1620 + i * 8, 8, true);
+        Check(Native.Events.Count(e => e.Flags == Native.HWHEEL && e.Data > 0) >= 2, "X maintenu : défilement horizontal");
+        mouse.Step(0, 0, 0, 1720, 8, true); Native.Events.Clear();
+        mouse.Step(0, 32767, 0, 1730, 8, true); Check(Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE), "Le curseur bouge de nouveau X relâché");
         Native.Events.Clear(); mouse.Step(1, 0, 0, 2000, 8, true); mouse.Step(1, 0, 0, 2200, 8, true); mouse.Step(1, 0, 0, 2350, 8, true);
         Check(Native.Events.Count(e => e.Flags == Native.WHEEL) == 2, "Molette et délai de répétition");
         mouse.Step(0, 0, 0, 2400, 8, true); Native.Events.Clear();
