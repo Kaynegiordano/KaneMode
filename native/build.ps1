@@ -17,6 +17,9 @@
 .PARAMETER NoKanePlay
     Paquet sans le moteur de streaming. Sinon, le moteur (KanePlay, sous-module engine\KanePlay)
     est embarqué depuis engine\out, compilé au besoin par engine\build-engine.ps1.
+.PARAMETER NoOpenNow
+    Paquet sans GeForce NOW. Sinon, le client OpenNOW (sous-module engine\OpenNOW) est embarqué
+    depuis engine\out-opennow, compilé au besoin par engine\build-opennow.ps1.
 .PARAMETER NoWidget
     Paquet sans le widget Game Bar (native\KaneMode.Widget, compilé en C++/WinRT).
 .PARAMETER Release
@@ -24,7 +27,7 @@
 .PARAMETER Version
     Version du paquet (x.y.z.0) ; par défaut, celle du fichier VERSION.
 #>
-param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$NoWidget, [switch]$Release, [string]$Version)
+param([switch]$Register, [switch]$Unregister, [switch]$Pack, [switch]$SelfContained, [switch]$NoKanePlay, [switch]$NoOpenNow, [switch]$NoWidget, [switch]$Release, [string]$Version)
 
 $ErrorActionPreference = 'Stop'
 $native = $PSScriptRoot
@@ -103,6 +106,14 @@ if (-not $NoKanePlay) {
     if (-not (Test-Path (Join-Path $engineOut 'KanePlay.exe'))) { & (Join-Path $root 'engine\build-engine.ps1') }
     Step 'Copie du moteur de streaming (engine\out)'
     Copy-Item $engineOut (Join-Path $layout 'kaneplay') -Recurse
+}
+# GeForce NOW (client OpenNOW, sous-module engine\OpenNOW), en affichage console aux couleurs de KaneMode
+if (-not $NoOpenNow) {
+    $cloudOut = Join-Path $root 'engine\out-opennow'
+    if (-not (Test-Path (Join-Path $cloudOut 'bin\OpenNOW.exe'))) { & (Join-Path $root 'engine\build-opennow.ps1') }
+    if (-not $?) { throw 'Echec de compilation de GeForce NOW (OpenNOW)' }
+    Step 'Copie de GeForce NOW (engine\out-opennow)'
+    Copy-Item $cloudOut (Join-Path $layout 'opennow') -Recurse
 }
 
 # Widget Game Bar (application UWP en C++/WinRT, voir native\KaneMode.Widget) : à la racine du paquet,

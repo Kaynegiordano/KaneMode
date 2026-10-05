@@ -227,6 +227,23 @@ export async function openStreaming({ retry = false } = {}) {
     toast(e.message, { error: true });
   } finally { setTimeout(() => { streamOpening = false; }, 700); }
 }
+const CLOUD_WINDOW = 'KaneMode · GeForce NOW'; // titre de la fenêtre d'OpenNOW en mode KaneMode (engine/OpenNOW, Main.qml)
+/** GeForce NOW (client OpenNOW intégré) : même passage de relais que le streaming local. */
+export async function openCloud() {
+  if (streamOpening) return;
+  streamOpening = true;
+  suspendNavigation();
+  document.body.classList.add('handoff');
+  setTimeout(() => document.body.classList.remove('handoff'), 2500);
+  native.send('foreground', { window: CLOUD_WINDOW });
+  try { const result = await api.post('/api/cloud/open'); if (!result.ok) throw new Error(result.error || 'GeForce NOW absent'); }
+  catch (e) {
+    native.send('external-cancel');
+    resumeNavigation();
+    document.body.classList.remove('handoff');
+    toast(e.message, { error: true });
+  } finally { setTimeout(() => { streamOpening = false; }, 700); }
+}
 // KanePlay relancé juste après l'avoir quitté : la commande a pu partir vers l'instance qui se
 // fermait. L'app native le détecte (plus aucun KanePlay ne tourne) et on relance, une fois.
 native.on(m => {

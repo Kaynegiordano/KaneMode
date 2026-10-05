@@ -52,7 +52,7 @@ public partial class MainWindow : Window
     {
         IntPtr front = Native.GetForegroundWindow();
         bool owned = front != IntPtr.Zero && (front == _hwnd || Native.WindowProcessId(front) == (uint)Environment.ProcessId
-            || Native.WindowTitle(front) == KanePlayTitle || (_game != null && (_game.Window == front || _game.Pushed.Contains(front))));
+            || IsEngineWindow(front) || (_game != null && (_game.Window == front || _game.Pushed.Contains(front))));
         _idleProtection.Update(_preventIdleLock && _ready && !_closing && !_idleSuspended && !_sessionLocked && owned);
     }
 
@@ -462,8 +462,17 @@ public partial class MainWindow : Window
 
     // ---------- Fermeture de KanePlay : KaneMode se recharge ----------
     private const string KanePlayTitle = "KaneMode · Streaming"; // titre de la fenêtre du moteur intégré (engine/KanePlay, main.qml)
+    // Moteurs intégrés : titre de leur fenêtre en mode KaneMode → nom de leur processus
+    // (engine/KanePlay main.qml ; engine/OpenNOW, GeForce NOW, Main.qml)
+    private static readonly Dictionary<string, string> EngineWindows = new()
+    {
+        [KanePlayTitle] = "KanePlay",
+        ["KaneMode · GeForce NOW"] = "OpenNOW",
+    };
+    private static bool IsEngineWindow(IntPtr w) => EngineWindows.ContainsKey(Native.WindowTitle(w));
     private System.Windows.Threading.DispatcherTimer? _kanePlayTimer;
     private bool _kanePlayOpen;
+    private string _engineProcess = "KanePlay";
 
     /// <summary>
     /// Après une session KanePlay, la manette ne répondait plus dans KaneMode tant qu'on ne passait pas
@@ -481,9 +490,9 @@ public partial class MainWindow : Window
             // Léger : KanePlay est repéré quand sa fenêtre a le premier plan (pas d'énumération des
             // fenêtres chaque seconde), puis on attend seulement la fin de son processus
             IntPtr front = Native.GetForegroundWindow();
-            if (front != Hwnd && Native.WindowTitle(front) == KanePlayTitle) { _kanePlayOpen = true; return; }
+            if (front != Hwnd && EngineWindows.TryGetValue(Native.WindowTitle(front), out var engine)) { _kanePlayOpen = true; _engineProcess = engine; return; }
             if (!_kanePlayOpen) return;
-            var running = System.Diagnostics.Process.GetProcessesByName("KanePlay");
+            var running = System.Diagnostics.Process.GetProcessesByName(_engineProcess);
             foreach (var p in running) p.Dispose();
             if (running.Length > 0) return;
             _kanePlayOpen = false;

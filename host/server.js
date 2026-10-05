@@ -13,6 +13,7 @@ const emu = require('./lib/emulation');
 const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
+const opennow = require('./lib/opennow');
 const update = require('./lib/update');
 const syscontrol = require('./lib/syscontrol');
 const oem = require('./lib/oem');
@@ -526,6 +527,9 @@ const engineLook = () => {
 };
 // Langues de l'interface (ui/js/i18n.js) : la langue choisie est gardée pour les widgets et le streaming
 const LANGS = ['fr', 'en'];
+// GeForce NOW (OpenNOW) : copie du paquet (dossier opennow\ à côté de app\), sinon compilation de développement
+const cloudExe = () => opennow.findExe(path.join(ROOT, '..', 'opennow', 'bin', 'OpenNOW.exe'),
+  path.join(ROOT, 'engine', 'out-opennow', 'bin', 'OpenNOW.exe'));
 let kpLast = 0;
 async function refreshKanePlay() {
   kpLast = Date.now();
@@ -1513,6 +1517,14 @@ const routes = {
     if (!kp.exe) return json(res, 404, { error: 'Moteur de streaming absent' });
     const r = await run({ kind: 'exe', target: kp.exe, args: '', env: kaneplay.env('show', engineLook()) });
     if (r.ok) recordPlay('kaneplay');
+    json(res, 200, r);
+  },
+  // --- GeForce NOW : le client OpenNOW intégré (voir lib/opennow.js)
+  'GET /api/cloud': (req, res) => json(res, 200, { installed: !!cloudExe() }),
+  'POST /api/cloud/open': async (req, res) => {
+    const exe = cloudExe();
+    if (!exe) return json(res, 404, { error: 'GeForce NOW absent' });
+    const r = await run({ kind: 'exe', target: exe, args: '', env: opennow.env({ accent: config().accent, corners: config().corners }) });
     json(res, 200, r);
   },
   'POST /api/drivers/search': async (req, res) => { await driverJobs.search(); json(res, 200, driverJobs.status()); },
