@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.2.1 : GeForce NOW qui ne reste plus bloqué sur « Loading… »
+
+- Retour utilisateur (Ally) : impossible de se connecter, Magasin bloqué sur « Loading the live catalog… » (0 loaded), presque rien ne répond. Cause : le **moteur** d'OpenNOW (`opennow-core.exe`, processus séparé, protocole JSON ligne par ligne sur stdin/stdout) n'est pas `ready` ; `CatalogState.requestStorePage` sort alors silencieusement (`if (!ready …) return`) et l'état reste « loading ». Le journal du moteur sur le PC de développement (5 octobre, 07:02–07:05) montrait quatre démarrages avortés : « Could not initialize media library : fichier introuvable » (`MediaService::new` créait `Images\\OpenNOW\\Screenshots` et échouait quand le dossier Images est introuvable, par exemple redirigé vers un disque absent). Non confirmé sur l'Ally.
+- Correctifs dans le fork (`engine/OpenNOW`, restent minimes) : `media.rs` : un échec de création des dossiers rend la médiathèque indisponible (`root: None`) au lieu d'arrêter le moteur ; `CoreClient` : le message d'arrêt du moteur reprend sa dernière ligne d'erreur (`m_lastStderrLine`) ; `StoreScreen.qml` : sans moteur, « Starting the OpenNOW core… » et l'erreur (`CoreClient.lastError`) au lieu de « Loading… ».
+- Sonde utile : lancer `opennow-core.exe` avec `OPENNOW_DATA_DIR`, `OPENNOW_APP_EXECUTABLE`, `OPENNOW_APP_PID` et (facultatif) `OPENNOW_PICTURES_DIR`, puis envoyer `{"type":"request","id":"1","method":"core.hello","params":{"protocolVersion":5}}` ; `auth.providers.list` et `catalog.public.list` ({limit, searchQuery}) répondent sans compte ; `catalog.store.list` demande une connexion. Les journaux d'OpenNOW sont dans `%APPDATA%\\OpenNOW\\diagnostics` (`qt-native.log`, `native-streamer.log`), ou dans `%LOCALAPPDATA%\\Packages\\KaneMode_…\\LocalCache\\Roaming\\OpenNOW` si Windows redirige.
+- VERSION : 4.2.1 ; notes dans `docs/releases/4.2.1.md`.
+
 ## Version 4.2.0 : GeForce NOW (OpenNOW)
 
 - Client **OpenNOW** intégré (sous-module `engine/OpenNOW`, fork `Kaynegiordano/OpenNOW`), entrée « GeForce NOW » du menu ; détails dans la section « GeForce NOW (OpenNOW) ».
