@@ -30,6 +30,9 @@ public sealed class HidGamepads : IDisposable
     private sealed record Dev(int Slot, IntPtr Pre, Dictionary<(byte, ushort), ValueRange> Ranges, bool Sony, int Length);
     private readonly Dictionary<string, Dev> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly long[] _rawReports = new long[Max];
+    // Tampons réutilisés (sous verrou) : Raw Input apporte des centaines de rapports par seconde
+    private readonly ushort[] _rawUsages = new ushort[32];
+    private byte[] _rawPadded = new byte[16];
 
     /// <summary>Rapport reçu par Raw Input pour une manette déjà ouverte (chemin du périphérique, rapport brut).</summary>
     internal void Feed(string path, byte[] data)
@@ -38,8 +41,16 @@ public sealed class HidGamepads : IDisposable
         {
             if (!_open.ContainsKey(path) || !_devices.TryGetValue(path, out var d)) return;
             // Sans identifiant de rapport, Raw Input ne le fournit pas : on le rétablit (0) comme ReadFile
-            byte[] report = data.Length == d.Length ? data : data.Length + 1 == d.Length ? new byte[] { 0 }.Concat(data).ToArray() : Array.Empty<byte>();
-            if (report.Length == 0) return;
+            byte[] report;
+            if (data.Length == d.Length) report = data;
+            else if (data.Length + 1 == d.Length)
+            {
+                if (_rawPadded.Length != d.Length) _rawPadded = new byte[d.Length];
+                _rawPadded[0] = 0;
+                Buffer.BlockCopy(data, 0, _rawPadded, 1, data.Length);
+                report = _rawPadded;
+            }
+            else return;
             XState s = States[d.Slot];
             if (d.Sony)
             {
@@ -47,7 +58,7 @@ public sealed class HidGamepads : IDisposable
             }
             else
             {
-                var usages = new ushort[32];
+                var usages = _rawUsages;
                 int count = usages.Length;
                 if (HidP_GetUsages(0, 9, 0, usages, ref count, d.Pre, report, d.Length) == HIDP_STATUS_SUCCESS)
                 {

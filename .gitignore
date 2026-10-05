@@ -24,7 +24,3 @@ vendor/XboxFullScreenExperienceTool/Modules/ViVe/
 # Moteur de streaming compilé (engine\build-engine.ps1)
 engine/out/
 engine/build.log
-
-# GeForce NOW compilé (engine\build-opennow.ps1) et ses dépendances (SDL3, dossier de compilation)
-engine/out-opennow/
-engine/.deps/

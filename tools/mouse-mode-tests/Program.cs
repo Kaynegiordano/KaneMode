@@ -11,7 +11,7 @@ internal static class Native
 }
 internal static class Log { public static void Write(string text) { } }
 // Raw Input demande WPF (fenêtre cachée) : le banc d'essai n'en a pas besoin
-internal sealed class RawInputSink : IDisposable { public RawInputSink(Action<string, byte[]> report) { } public void Dispose() { } }
+internal sealed class RawInputSink : IDisposable { public RawInputSink(Action<string, byte[]> report) { } public void Enable(bool on) { } public void Dispose() { } }
 internal static class Program
 {
     private static void Check(bool ok, string text) { if (!ok) throw new Exception(text); }

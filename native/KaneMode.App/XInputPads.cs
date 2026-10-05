@@ -103,6 +103,7 @@ public sealed class XInputPads : IDisposable
         if (on == _mouse) return;
         _mouseInput.SetActive(on);
         _mouse = on;
+        _raw?.Enable(on); // Raw Input n'écoute que pendant le mode souris
         if (on) { _sourcesAt = 0; _sourcesLogged = 0; }
         Log.Write(on ? $"Mode souris activé ({why})" : $"Mode souris désactivé ({why})");
     }

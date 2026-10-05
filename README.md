@@ -81,16 +81,6 @@ Prérequis : Visual Studio (C++), Qt 6 msvc 64 bits (`C:\Qt\<version>\msvc*_64`)
 
 Mettre à jour le moteur : `git -C engine/KanePlay pull`, puis recompiler et commiter le nouveau pointeur du sous-module.
 
-**GeForce NOW** est aussi intégré : c'est le client libre [OpenNOW](https://github.com/OpenCloudGaming/OpenNOW) (sous-module `engine/OpenNOW`), compilé par :
-
-```bash
-powershell -ExecutionPolicy Bypass -File engine/build-opennow.ps1
-```
-
-Prérequis : Visual Studio 18 (C++ et CMake), Qt 6.8+ msvc 64 bits avec Multimedia et **Shader Tools**, Rust (cargo), libclang (LLVM, ou `python -m pip install libclang`). SDL3 est compilé au besoin depuis ses sources officielles (`engine/.deps`). Le résultat (`engine/out-opennow`) est embarqué par `native/build.ps1` (dossier `opennow\`). KaneMode le lance avec `KANEMODE_EMBEDDED` (plus `KANEMODE_ACCENT`, `KANEMODE_CORNERS`) : plein écran, affichage console, couleurs et surbrillance blanche de KaneMode, **B** sur son accueil revient à KaneMode. La connexion au compte NVIDIA reste entièrement dans OpenNOW.
-
-Suivre les correctifs d'OpenNOW : `git -C engine/OpenNOW pull upstream main` (dépôt d'origine `OpenCloudGaming/OpenNOW`), résoudre les éventuels conflits dans nos fichiers modifiés, recompiler, commiter le nouveau pointeur du sous-module.
-
 Puis ouvrir http://localhost:5173. Le raccourci installé (`setup/launch.ps1`) ouvre la même interface en plein écran dans une fenêtre Edge dédiée.
 
 ## Fonctions
@@ -172,7 +162,6 @@ KaneMode est distribué sous licence **GNU GPL v3** (fichier `LICENSE`), car il 
 - [Xbox Full Screen Experience Tool](https://github.com/8bit2qubit/XboxFullScreenExperienceTool) de 8bit2qubit (GPL v3), copie modifiée dans `vendor/` (mode `/silentenable`, voir `vendor/README-KaneMode.md`) ;
 - [ViVe](https://github.com/thebookisclosed/ViVe) de thebookisclosed (GPL v3), utilisé par l'outil ci-dessus ;
 - [KanePlay](https://github.com/Kaynegiordano/KanePlay), dérivé de [Moonlight](https://github.com/moonlight-stream/moonlight-qt) (GPL v3), moteur de streaming (sous-module `engine/KanePlay`) ;
-- [OpenNOW](https://github.com/OpenCloudGaming/OpenNOW) (licence MIT), client GeForce NOW (sous-module `engine/OpenNOW`), avec SDL3 (zlib) et FFmpeg (LGPL) qu'il embarque. OpenNOW n'est ni affilié ni approuvé par NVIDIA ; GeForce NOW est une marque de NVIDIA ;
 - Node.js (licence MIT), embarqué dans le paquet.
 
 Bibliothèques des fabricants de cartes graphiques, téléchargées à la compilation (pas dans ce dépôt) et compilées dans de petits outils séparés (`app\tools`) :

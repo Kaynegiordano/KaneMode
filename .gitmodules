@@ -1,6 +1,3 @@
 [submodule "engine/KanePlay"]
 	path = engine/KanePlay
 	url = https://github.com/Kaynegiordano/KanePlay.git
-[submodule "engine/OpenNOW"]
-	path = engine/OpenNOW
-	url = https://github.com/Kaynegiordano/OpenNOW.git

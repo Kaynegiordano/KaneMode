@@ -7,7 +7,7 @@ import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
 import { renderQam, prefetchQam, startLive, stopLive, qamShortcuts } from './qam.js';
-import { exitToDesktop, openStreaming, openCloud } from './pages/game.js';
+import { exitToDesktop, openStreaming } from './pages/game.js';
 import './personalization-runtime.js';
 import './pages/home.js';
 import './pages/library.js';
@@ -83,9 +83,6 @@ native.on(m => {
 
 actions.exit = () => { actions['overlay-leave'](); closeLayer(); exitToDesktop(); };
 actions['stream-open'] = () => { actions['overlay-leave'](); closeLayer(); openStreaming(); };
-actions['cloud-open'] = () => { actions['overlay-leave'](); closeLayer(); openCloud(); };
-// GeForce NOW (client OpenNOW intégré) : dans le menu seulement s'il est embarqué
-api.get('/api/cloud').then(c => { const m = document.querySelector('[data-action="cloud-open"]'); if (m) m.hidden = !c.installed; }).catch(() => {});
 
 // ---------- Menu principal ----------
 hooks.menu = () => openLayer({
