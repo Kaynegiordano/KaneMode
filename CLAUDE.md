@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.2.0 : GeForce NOW (OpenNOW)
+
+- Client **OpenNOW** intégré (sous-module `engine/OpenNOW`, fork `Kaynegiordano/OpenNOW`), entrée « GeForce NOW » du menu ; détails dans la section « GeForce NOW (OpenNOW) ».
+- VERSION : 4.2.0 ; notes dans `docs/releases/4.2.0.md`.
+
 ## Version 4.1.0 : mode souris complet, plus de question sur Steam
 
 - **Raw Input confirmé par l'utilisateur sur l'Ally** (« ça fonctionne ! ») : le mode souris marche devant toutes les fenêtres de l'expérience Xbox.
