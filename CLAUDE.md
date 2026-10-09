@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.5.2 : alignement sur Kane OS
+
+- Aucun changement de code : version de maintenance demandée par l'utilisateur pour suivre **Kane OS 4.5.2** (dépôt privé `Kaynegiordano/KaneOS`, `C:\KaneOS`). Kane OS détecte le paquet MSIX, le lance par `shell:AppsFolder\<famille>!App` en le mettant au premier plan, le ferme (`taskkill` sans `/F`) et reprend le canal de mise à jour (releases GitHub, `.msix` + `SHA256SUMS`, installation par un script lancé hors de l'app, comme `host/apply-update.ps1`). Ne rien changer au format des releases (nom `*.msix`, `SHA256SUMS.txt`) sans adapter `launcher/backend/kanemode.py` de KaneOS.
+- VERSION : 4.5.2 ; notes dans `docs/releases/4.5.2.md`.
+
 ## Version 4.5.0 : retour à la base 4.1.0, sans GeForce NOW
 
 - **GeForce NOW / OpenNOW retiré** à la demande de l'utilisateur (« compliqué », connexion impossible sur l'Ally). Les versions 4.2.0 et 4.2.1 sont annulées par `git revert` : sous-module `engine/OpenNOW`, `engine/build-opennow.ps1`, `host/lib/opennow.js`, routes `/api/cloud`, entrée de menu, `openCloud()`, reconnaissance de la fenêtre « KaneMode · GeForce NOW », copie dans `native/build.ps1`. Le code est donc celui de la 4.1.0 ; les dossiers `engine/.deps` (3,4 Go), `engine/out-opennow` et le sous-module ont été supprimés du disque. Le paquet redescend à ~136 Mo. Ne pas le réintroduire sans demande : l'ajout `GeForce NOW` de `ui/js/pages/add.js` (raccourci web `play.geforcenow.com`) existait déjà.
