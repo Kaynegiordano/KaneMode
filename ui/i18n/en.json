@@ -1303,5 +1303,7 @@
  "Action de bibliothèque inconnue": "Unknown library action",
  "Mode souris · stick : curseur · A : clic · Y : clic droit · B : retour · X + stick : défilement · Start maintenu : quitter": "Mouse mode · stick: cursor · A: click · Y: right-click · B: back · X + stick: scroll · hold Start: exit",
  "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.": "Hold Start/Options for 1 s. In KaneMode: left stick and buttons to navigate, right stick for the cursor. In other windows: sticks for the cursor, A/Cross to click, Y/Triangle for right-click, B/Circle to go back, X/Square held with the stick to scroll, LB/L1 for middle-click, RB/R1 to go forward, D-pad to scroll in steps.",
- "Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour": "Mouse mode: stick = cursor, A = click, Y = right-click, B = back"
+ "Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour": "Mouse mode: stick = cursor, A = click, Y = right-click, B = back",
+ "Chargeur branché : mode Performance, profil Turbo à 30 W · un autre choix sur secteur tient jusqu’au prochain branchement": "Charger plugged in: Performance mode, Turbo profile at 30 W · another choice on AC lasts until the next plug-in",
+ "Turbo 30 W au branchement": "Turbo 30 W when plugged in"
 }

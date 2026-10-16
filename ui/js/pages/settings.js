@@ -575,6 +575,11 @@ const BUILDERS = {
       onToggle: v => save({ auto: v }),
     }));
     const hh = d && d.ok && d.handheld;
+    if (hh && /^rog-ally/.test(hh.id)) s.append(switchRow({
+      title: t('Turbo 30 W au branchement'), key: 'pw-plug-turbo', on: p.plugTurbo,
+      desc: t('Chargeur branché : mode Performance, profil Turbo à 30 W · un autre choix sur secteur tient jusqu’au prochain branchement'),
+      onToggle: v => save({ plugTurbo: v }),
+    }));
     const vendor = sys && sys.vendor && sys.vendor.modes ? sys.vendor : null;
     const VL = { silent: t('Silencieux'), quiet: t('Silencieux'), balanced: t('Équilibré'), performance: t('Performance'), turbo: t('Turbo') };
     for (const [src, title, icon1] of [['battery', t('Sur batterie'), 'i-battery'], ['ac', t('Sur secteur'), 'i-power']]) {

@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.6.0 : Turbo 30 W au branchement
+
+- Demande de l'utilisateur : « lorsqu'on branche la console, elle passe automatiquement en 30W ». `host/lib/power-profiles.js` : au passage batterie → secteur (et au démarrage sur secteur), si `powerProfiles.plugTurbo` (défaut vrai) et que la console a un Turbo à 30 W (`turbo()` de `server.js` : `ASUS_WATTS[handheld.id]`, donc ROG Ally / Ally X seulement, jamais le PC de bureau), les champs de performance du profil secteur sont remplacés par `mode: 'performance'` (Turbo, `tdp` 30 via `perfPreset`) ; écran et luminosité gardés. Un réglage fait ensuite sur secteur tient jusqu'au prochain branchement. Sans `auto`, rien ne se passe.
+- `POST /api/power/profiles` accepte `plugTurbo` ; interrupteur dans Paramètres → Énergie (ROG Ally seulement). Testé par simulation (fausse console : branchement, réglage à la main, rebranchement) ; pas encore vérifié sur l'Ally.
+- VERSION : 4.6.0 ; notes dans `docs/releases/4.6.0.md`.
+
 ## Version 4.5.2 : alignement sur Kane OS
 
 - Aucun changement de code : version de maintenance demandée par l'utilisateur pour suivre **Kane OS 4.5.2** (dépôt privé `Kaynegiordano/KaneOS`, `C:\KaneOS`). Kane OS détecte le paquet MSIX, le lance par `shell:AppsFolder\<famille>!App` en le mettant au premier plan, le ferme (`taskkill` sans `/F`) et reprend le canal de mise à jour (releases GitHub, `.msix` + `SHA256SUMS`, installation par un script lancé hors de l'app, comme `host/apply-update.ps1`). Ne rien changer au format des releases (nom `*.msix`, `SHA256SUMS.txt`) sans adapter `launcher/backend/kanemode.py` de KaneOS.

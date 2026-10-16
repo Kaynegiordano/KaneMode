@@ -4,7 +4,7 @@ const MODES = ['eco', 'balanced', 'performance'];
 const PERF_FIELDS = ['mode', 'powerMode', 'vendor', 'tdp', 'cpuMax', 'boost'];
 function profiles(config) {
   const p = config.powerProfiles || {};
-  return { auto: p.auto !== false, battery: { ...p.battery }, ac: { ...p.ac } };
+  return { auto: p.auto !== false, plugTurbo: p.plugTurbo !== false, battery: { ...p.battery }, ac: { ...p.ac } };
 }
 function source(ac) {
   if (typeof ac !== 'boolean') throw new Error('Source d’alimentation indisponible');
@@ -14,8 +14,8 @@ function effectiveMode(profile) {
   if (PERF_FIELDS.some(k => k !== 'mode' && profile[k] != null)) return 'custom';
   return MODES.includes(profile.mode) ? profile.mode : null;
 }
-function create({ read, write, policy, expand, apply, applied }) {
-  let pending = Promise.resolve(), last = '';
+function create({ read, write, policy, expand, apply, applied, turbo = async () => false }) {
+  let pending = Promise.resolve(), last = '', prevSrc = null;
   const serial = work => { const next = pending.catch(() => {}).then(work); pending = next; return next; };
   const key = (src, p) => JSON.stringify([src, p.auto, p[src]]);
   async function perform(src, p) {
@@ -32,6 +32,17 @@ function create({ read, write, policy, expand, apply, applied }) {
       const p = profiles(read());
       if (!p.auto && !force) return { skipped: true };
       const src = force && ['battery', 'ac'].includes(requested) ? requested : source((await policy()).ac);
+      // Chargeur branché (ou démarrage sur secteur) : la console passe en Performance, Turbo 30 W sur
+      // ROG Ally. Un réglage fait ensuite sur secteur tient jusqu'au prochain branchement.
+      if (!force) {
+        const plugged = src === 'ac' && prevSrc !== 'ac';
+        prevSrc = src;
+        if (plugged && p.plugTurbo && await turbo()) {
+          const c = read();
+          for (const field of PERF_FIELDS) delete p.ac[field];
+          p.ac.mode = 'performance'; c.powerProfiles = p; write(c);
+        }
+      }
       if (!force && !refresh && key(src, p) === last) return { skipped: true, source: src };
       if (!Object.keys(p[src]).length) { last = key(src, p); return { skipped: true, source: src }; }
       return perform(src, p);

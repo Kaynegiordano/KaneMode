@@ -461,6 +461,8 @@ const powerProfiles = () => {
 };
 const powerController = powerLib.create({ read: config, write: c => writeJson(FILES.config, c),
   policy: () => sysctl.policy(), expand: expandProfile,
+  // Turbo à 30 W sur secteur : consoles dont le profil constructeur a cette puissance (ROG Ally)
+  turbo: async () => { const hh = (await device.info().catch(() => ({}))).handheld; return !!(hh && ASUS_WATTS[hh.id]); },
   apply: async p => { keeperQuiet(); const r = await sysctl.apply(p); keeperQuiet(); return r; },
   applied: (mode, profile, source) => {
     keeper.ac = source === 'ac';
@@ -1484,6 +1486,7 @@ const routes = {
     const c = config();
     const p = powerProfiles();
     if (typeof b.auto === 'boolean') p.auto = b.auto;
+    if (typeof b.plugTurbo === 'boolean') p.plugTurbo = b.plugTurbo;
     for (const src of ['battery', 'ac']) {
       if (!b[src] || typeof b[src] !== 'object') continue;
       const v = b[src], out = { ...p[src] };
