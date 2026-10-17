@@ -147,6 +147,9 @@
  "{length} nouveaux pilotes disponibles · Paramètres → Appareil et pilotes": [
   "ui/js/main.js"
  ],
+ "{m} min": [
+  "ui/js/statusbar.js"
+ ],
  "{min} à {max} W, les trois limites égales": [
   "ui/js/pages/settings.js"
  ],
@@ -533,6 +536,9 @@
  "6 secondes": [
   "ui/js/personalization-settings.js"
  ],
+ "8 caractères minimum": [
+  "ui/js/statusbar.js"
+ ],
  "À côté de l’icône, sur les consoles et PC portables": [
   "ui/js/pages/settings.js"
  ],
@@ -579,7 +585,8 @@
   "ui/js/pages/settings.js"
  ],
  "Actualiser": [
-  "ui/js/dolby-settings.js"
+  "ui/js/dolby-settings.js",
+  "ui/js/statusbar.js"
  ],
  "Actualiser la bibliothèque": [
   "ui/js/pages/settings.js"
@@ -696,6 +703,7 @@
   "ui/js/pages/add.js",
   "ui/js/pages/artpicker.js",
   "ui/js/personalization-settings.js",
+  "ui/js/statusbar.js",
   "ui/js/widgets.js"
  ],
  "Annuler les modifications": [
@@ -835,6 +843,9 @@
  "Aucun réglage de performance disponible sur ce PC.": [
   "ui/js/qam.js"
  ],
+ "Aucun réseau visible": [
+  "ui/js/statusbar.js"
+ ],
  "Aucun résultat sur SteamGridDB": [
   "ui/js/pages/artpicker.js"
  ],
@@ -859,6 +870,9 @@
  ],
  "Aucune cible de lancement": [
   "host/lib/launch.js"
+ ],
+ "Aucune connexion à Internet": [
+  "ui/js/statusbar.js"
  ],
  "Aucune image (.png, .jpg, .webp) dans ce dossier.": [
   "ui/js/pages/add.js"
@@ -886,7 +900,8 @@
  ],
  "Aucune nouvelle notification": [
   "ui/js/main.js",
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
  ],
  "Aucune version publiée": [
   "ui/js/pages/settings.js"
@@ -894,8 +909,14 @@
  "Aucune vidéo (.mp4, .webm) dans ce dossier.": [
   "ui/js/pages/add.js"
  ],
+ "Aucune ville trouvée pour « {q} »": [
+  "ui/js/statusbar.js"
+ ],
  "Aujourd'hui": [
   "ui/js/core.js"
+ ],
+ "Aujourd’hui": [
+  "ui/js/statusbar.js"
  ],
  "Aussi réglable dans Apparence": [
   "ui/js/pages/settings.js"
@@ -916,6 +937,9 @@
  "Automatique par écran": [
   "ui/js/personalization-settings.js"
  ],
+ "Autoriser la position": [
+  "ui/js/statusbar.js"
+ ],
  "Autre": [
   "ui/js/widget.js"
  ],
@@ -934,6 +958,12 @@
  "Avec Boost": [
   "ui/js/widget.js"
  ],
+ "Averses": [
+  "ui/js/statusbar.js"
+ ],
+ "Averses de neige": [
+  "ui/js/statusbar.js"
+ ],
  "Bannière": [
   "ui/js/pages/artpicker.js"
  ],
@@ -949,13 +979,14 @@
  "Batterie": [
   "ui/js/monitor.js",
   "ui/js/qam.js",
+  "ui/js/statusbar.js",
   "ui/js/widget.js"
  ],
  "batterie {p} %": [
   "ui/js/pages/settings.js"
  ],
  "Batterie {pct} %": [
-  "ui/js/main.js"
+  "ui/js/statusbar.js"
  ],
  "Battle.net": [
   "ui/js/core.js"
@@ -1049,6 +1080,15 @@
  ],
  "Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement": [
   "ui/js/pages/settings.js"
+ ],
+ "Branchée · chargée": [
+  "ui/js/statusbar.js"
+ ],
+ "Brouillard": [
+  "ui/js/statusbar.js"
+ ],
+ "Bruine": [
+  "ui/js/statusbar.js"
  ],
  "build compatible (ancienne méthode)": [
   "ui/js/pages/settings.js"
@@ -1148,6 +1188,9 @@
  "Choisir une jaquette": [
   "ui/js/personalization-settings.js"
  ],
+ "Choisir une ville": [
+  "ui/js/statusbar.js"
+ ],
  "Choisissez l’ordre et l’affichage des rangées de votre accueil.": [
   "ui/js/pages/settings.js"
  ],
@@ -1168,6 +1211,9 @@
  ],
  "Choisissez une collection pour y ajouter le jeu, ou l’en retirer.": [
   "ui/js/pages/game.js"
+ ],
+ "Choisissez une ville pour afficher la météo (ou autorisez la position dans Windows).": [
+  "ui/js/statusbar.js"
  ],
  "Choix de connexion invalide": [
   "host/lib/accounts.js"
@@ -1190,6 +1236,9 @@
  ],
  "Cible non autorisée": [
   "host/server.js"
+ ],
+ "Ciel dégagé": [
+  "ui/js/statusbar.js"
  ],
  "Classé comme {a}": [
   "ui/js/pages/game.js"
@@ -1306,11 +1355,27 @@
  "Confortable": [
   "ui/js/personalization-settings.js"
  ],
+ "Connecté": [
+  "ui/js/statusbar.js"
+ ],
+ "Connecté à {ssid}": [
+  "ui/js/statusbar.js"
+ ],
+ "Connecté à ce réseau.": [
+  "ui/js/statusbar.js"
+ ],
+ "Connecté en Wi-Fi": [
+  "ui/js/statusbar.js"
+ ],
  "Connecté par câble": [
-  "ui/js/main.js"
+  "ui/js/main.js",
+  "ui/js/statusbar.js"
  ],
  "Connectée": [
   "ui/js/accounts-settings.js"
+ ],
+ "Connecter": [
+  "ui/js/statusbar.js"
  ],
  "Connecter mes boutiques dans Playnite": [
   "ui/js/accounts-settings.js"
@@ -1326,6 +1391,9 @@
  ],
  "Connectez vos comptes, activez l’import des jeux non installés et mettez à jour les bibliothèques (F5)": [
   "ui/js/accounts-settings.js"
+ ],
+ "Connexion à {ssid}…": [
+  "ui/js/statusbar.js"
  ],
  "Connexion à {streamHost}…": [
   "ui/js/pages/game.js"
@@ -1376,6 +1444,9 @@
  "Coupée": [
   "ui/js/widget.js"
  ],
+ "Couvert": [
+  "ui/js/statusbar.js"
+ ],
  "Ctrl + Alt + S sur le jeu en cours": [
   "ui/js/widget.js"
  ],
@@ -1390,6 +1461,9 @@
  ],
  "Déclarée à Windows comme application de jeu : elle peut devenir l’application d’accueil du mode Xbox.": [
   "ui/js/pages/settings.js"
+ ],
+ "Déconnecter": [
+  "ui/js/statusbar.js"
  ],
  "Défilement automatique": [
   "ui/js/pages/settings.js"
@@ -1537,12 +1611,18 @@
  "Échec de l’installation : {a}": [
   "ui/js/pages/settings.js"
  ],
+ "Éco": [
+  "ui/js/statusbar.js"
+ ],
  "Éco avec l’économiseur d’énergie": [
   "ui/js/pages/settings.js"
  ],
  "Économie": [
   "ui/js/pages/game.js",
   "ui/js/qam.js"
+ ],
+ "Économiseur d’énergie de Windows actif : la console est en mode Éco.": [
+  "ui/js/statusbar.js"
  ],
  "Économiseur d’énergie de Windows actif : mode Éco à {w} W, icône de batterie verte · la puissance revient quand il s’arrête": [
   "ui/js/pages/settings.js"
@@ -1551,7 +1631,7 @@
   "ui/js/pages/settings.js"
  ],
  "économiseur d’énergie, mode Éco": [
-  "ui/js/main.js"
+  "ui/js/statusbar.js"
  ],
  "Écouter": [
   "ui/js/personalization-settings.js"
@@ -1638,13 +1718,20 @@
   "ui/js/pages/settings.js"
  ],
  "en charge": [
-  "ui/js/main.js"
+  "ui/js/statusbar.js"
  ],
  "En charge": [
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
+ ],
+ "En charge · pleine dans {d}": [
+  "ui/js/statusbar.js"
  ],
  "Énergie": [
   "ui/js/pages/settings.js"
+ ],
+ "Enregistré": [
+  "ui/js/statusbar.js"
  ],
  "Enregistrement…": [
   "ui/js/pages/add.js"
@@ -1693,7 +1780,8 @@
  "Équilibré": [
   "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
  ],
  "Erreur {status}": [
   "ui/js/core.js"
@@ -1709,6 +1797,7 @@
   "ui/js/dolby-settings.js"
  ],
  "État": [
+  "ui/index.html",
   "ui/js/pages/game.js"
  ],
  "Éteindre": [
@@ -1717,6 +1806,9 @@
  ],
  "Éteindre le PC ?": [
   "ui/js/main.js"
+ ],
+ "Ethernet · Internet": [
+  "ui/js/statusbar.js"
  ],
  "Exécutable de {name}": [
   "ui/js/pages/emulation.js"
@@ -1743,7 +1835,8 @@
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/media.js",
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/statusbar.js"
  ],
  "Fermeture de {a}…": [
   "ui/js/widget.js"
@@ -1881,6 +1974,10 @@
  "Guide": [
   "ui/js/pages/settings.js"
  ],
+ "Heure et météo": [
+  "ui/index.html",
+  "ui/js/statusbar.js"
+ ],
  "Hier": [
   "ui/js/core.js"
  ],
@@ -1894,7 +1991,8 @@
   "ui/js/core.js"
  ],
  "Hors ligne": [
-  "ui/js/main.js"
+  "ui/js/main.js",
+  "ui/js/statusbar.js"
  ],
  "Hôte": [
   "ui/js/pages/settings.js"
@@ -1905,6 +2003,9 @@
  "HTTP {a}": [
   "host/lib/deals.js",
   "host/lib/gpudrivers.js"
+ ],
+ "Humidité": [
+  "ui/js/statusbar.js"
  ],
  "Icône": [
   "ui/js/pages/artpicker.js"
@@ -2353,6 +2454,9 @@
  "Lien ou appli web": [
   "ui/js/pages/add.js"
  ],
+ "Lieu invalide": [
+  "host/server.js"
+ ],
  "Limite CPU": [
   "ui/js/widget.js"
  ],
@@ -2485,6 +2589,15 @@
  "Metacritic": [
   "ui/js/pages/game.js"
  ],
+ "Météo": [
+  "ui/js/statusbar.js"
+ ],
+ "Météo indisponible ({a})": [
+  "host/lib/weather.js"
+ ],
+ "Météo…": [
+  "ui/js/statusbar.js"
+ ],
  "Mettre à l’échelle": [
   "ui/js/widget.js"
  ],
@@ -2534,7 +2647,11 @@
   "ui/js/pages/settings.js"
  ],
  "Mode": [
-  "ui/js/monitor.js"
+  "ui/js/monitor.js",
+  "ui/js/statusbar.js"
+ ],
+ "Mode {m}": [
+  "ui/js/statusbar.js"
  ],
  "Mode {name} : {a}": [
   "ui/js/qam.js"
@@ -2562,7 +2679,7 @@
   "ui/js/pages/game.js"
  ],
  "mode Éco": [
-  "ui/js/main.js"
+  "ui/js/statusbar.js"
  ],
  "Mode faible latence non pris en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
@@ -2599,7 +2716,7 @@
   "ui/js/widget.js"
  ],
  "mode Turbo": [
-  "ui/js/main.js"
+  "ui/js/statusbar.js"
  ],
  "Mode Xbox": [
   "ui/js/pages/settings.js"
@@ -2637,6 +2754,12 @@
  "Moniteur ouvert : épinglez-le pour le garder sur le jeu": [
   "ui/js/widget.js"
  ],
+ "Mot de passe de {ssid}": [
+  "ui/js/statusbar.js"
+ ],
+ "Mot de passe de 8 à 63 caractères": [
+  "host/lib/wifi.js"
+ ],
  "Moteur de streaming absent": [
   "host/server.js",
   "ui/js/pages/game.js"
@@ -2652,6 +2775,9 @@
  ],
  "Ne modifie pas le volume de Windows ni celui des jeux": [
   "ui/js/personalization-settings.js"
+ ],
+ "Neige": [
+  "ui/js/statusbar.js"
  ],
  "Néon": [
   "ui/js/pages/settings.js"
@@ -2688,6 +2814,12 @@
  "Nom de la nouvelle collection": [
   "ui/js/pages/game.js"
  ],
+ "Nom de la ville": [
+  "ui/js/statusbar.js"
+ ],
+ "Nom de réseau non pris en charge": [
+  "host/lib/wifi.js"
+ ],
  "Nom du jeu · vide pour les favoris et jeux récents": [
   "ui/js/personalization-settings.js"
  ],
@@ -2718,8 +2850,13 @@
   "ui/js/pages/emulation.js"
  ],
  "Notifications": [
+  "ui/index.html",
   "ui/js/pages/settings.js",
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
+ ],
+ "Notifications ({n} nouvelles)": [
+  "ui/js/statusbar.js"
  ],
  "Nouveau": [
   "ui/js/deals.js"
@@ -2754,11 +2891,20 @@
  "Offre introuvable : la liste a peut-être changé": [
   "host/server.js"
  ],
+ "Onglet": [
+  "ui/js/statusbar.js"
+ ],
  "Options d’alimentation de Windows": [
   "ui/js/pages/settings.js"
  ],
+ "Orage": [
+  "ui/js/statusbar.js"
+ ],
  "Ou Start maintenu 1 s": [
   "ui/js/widget.js"
+ ],
+ "Oublier": [
+  "ui/js/statusbar.js"
  ],
  "Outil {a} absent de cette version": [
   "host/lib/gpuctl.js"
@@ -2768,6 +2914,9 @@
  ],
  "öùûüçœæÿ«»": [
   "ui/js/widgets.js"
+ ],
+ "Ouvert": [
+  "ui/js/statusbar.js"
  ],
  "Ouverture dans {label}…": [
   "ui/js/deals.js"
@@ -2791,7 +2940,8 @@
   "ui/js/pages/game.js"
  ],
  "Ouverture des Paramètres Windows…": [
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/statusbar.js"
  ],
  "Ouverture du dossier…": [
   "ui/js/pages/game.js"
@@ -2855,6 +3005,9 @@
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
+ "Paramètres Wi-Fi de Windows": [
+  "ui/js/statusbar.js"
+ ],
  "Paramètres Windows > Jeux > Mode Xbox : choisissez KaneMode comme application d’accueil": [
   "ui/js/pages/settings.js"
  ],
@@ -2867,11 +3020,20 @@
  "Partie en cours": [
   "ui/js/pages/home.js"
  ],
+ "Partiellement nuageux": [
+  "ui/js/statusbar.js"
+ ],
  "Pas d'écran HDR": [
   "host/syscontrol.ps1"
  ],
+ "Pas de batterie": [
+  "ui/js/statusbar.js"
+ ],
  "Pas de canal officiel pris en charge pour cet appareil": [
   "host/server.js"
+ ],
+ "Pas de carte Wi-Fi sur ce PC": [
+  "ui/js/statusbar.js"
  ],
  "Pas de GPU AMD": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -2928,6 +3090,7 @@
   "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
   "ui/js/qam.js",
+  "ui/js/statusbar.js",
   "ui/js/widget.js"
  ],
  "Perso": [
@@ -2980,11 +3143,17 @@
  "Pleine charge": [
   "ui/js/widget.js"
  ],
+ "Pluie": [
+  "ui/js/statusbar.js"
+ ],
  "Plus bas : moins de chaleur et plus d’autonomie": [
   "ui/js/pages/settings.js"
  ],
  "Police": [
   "ui/js/pages/settings.js"
+ ],
+ "Position actuelle": [
+  "ui/js/statusbar.js"
  ],
  "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
   "ui/js/pages/settings.js"
@@ -3197,6 +3366,9 @@
  "Recherche des pilotes sur Windows Update…": [
   "ui/js/pages/settings.js"
  ],
+ "Recherche des réseaux…": [
+  "ui/js/statusbar.js"
+ ],
  "Recherche en cours sur Windows Update…": [
   "ui/js/pages/settings.js"
  ],
@@ -3207,7 +3379,8 @@
   "ui/index.html",
   "ui/js/pages/home.js",
   "ui/js/pages/library.js",
-  "ui/js/pages/search.js"
+  "ui/js/pages/search.js",
+  "ui/js/statusbar.js"
  ],
  "Rechercher des mises à jour": [
   "ui/js/pages/settings.js"
@@ -3267,6 +3440,9 @@
  "Réglages audio Windows": [
   "ui/js/dolby-settings.js"
  ],
+ "Réglages d’énergie": [
+  "ui/js/statusbar.js"
+ ],
  "Réglages détaillés": [
   "ui/js/qam.js"
  ],
@@ -3313,7 +3489,22 @@
   "host/server.js"
  ],
  "Réseau": [
+  "ui/index.html",
+  "ui/js/statusbar.js",
   "ui/js/widget.js"
+ ],
+ "Réseau d’entreprise : connexion depuis les Paramètres Windows": [
+  "host/lib/wifi.js",
+  "ui/js/statusbar.js"
+ ],
+ "Réseau introuvable : il n’est plus visible": [
+  "host/lib/wifi.js"
+ ],
+ "Réseau non enregistré": [
+  "host/lib/wifi.js"
+ ],
+ "Réseaux Wi-Fi": [
+  "ui/js/statusbar.js"
  ],
  "Résolution": [
   "ui/js/widget.js"
@@ -3323,6 +3514,9 @@
  ],
  "Résolution non proposée par l'écran : {a}": [
   "host/syscontrol.ps1"
+ ],
+ "Ressenti": [
+  "ui/js/statusbar.js"
  ],
  "Restaurer dans la bibliothèque": [
   "ui/js/pages/game.js"
@@ -3445,6 +3639,9 @@
  "Secteur": [
   "ui/js/qam.js"
  ],
+ "Sécurisé": [
+  "ui/js/statusbar.js"
+ ],
  "Segoe UI": [
   "ui/js/pages/settings.js"
  ],
@@ -3463,7 +3660,8 @@
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/media.js",
-  "ui/js/pages/search.js"
+  "ui/js/pages/search.js",
+  "ui/js/statusbar.js"
  ],
  "Sélectionnez au moins une application": [
   "ui/js/pages/add.js"
@@ -3653,7 +3851,11 @@
  ],
  "Sur batterie": [
   "ui/js/pages/settings.js",
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
+ ],
+ "Sur batterie · environ {d} restantes": [
+  "ui/js/statusbar.js"
  ],
  "Sur l’accueil, la bibliothèque et les fiches de jeu · chaque action les fait réapparaître": [
   "ui/js/personalization-settings.js"
@@ -3757,6 +3959,9 @@
  "Tout désélectionner": [
   "ui/js/pages/media.js"
  ],
+ "Tout effacer": [
+  "ui/js/statusbar.js"
+ ],
  "Tout sélectionner": [
   "ui/js/pages/media.js"
  ],
@@ -3777,7 +3982,8 @@
  ],
  "Turbo": [
   "ui/js/pages/settings.js",
-  "ui/js/qam.js"
+  "ui/js/qam.js",
+  "ui/js/statusbar.js"
  ],
  "turbo activé": [
   "ui/js/qam.js"
@@ -3847,6 +4053,9 @@
  "Utilisée ({a}) · passe par l’API officielle · A pour la remplacer": [
   "ui/js/pages/settings.js"
  ],
+ "Utiliser ma position": [
+  "ui/js/statusbar.js"
+ ],
  "Valeur invalide": [
   "host/lib/gpuctl.js"
  ],
@@ -3879,6 +4088,9 @@
  ],
  "Veille, alimentation, streaming local": [
   "ui/js/qam.js"
+ ],
+ "Vent": [
+  "ui/js/statusbar.js"
  ],
  "Vérification de la clé…": [
   "ui/js/pages/settings.js"
@@ -3930,6 +4142,9 @@
  ],
  "Vidéos": [
   "ui/js/pages/media.js"
+ ],
+ "Ville pour la météo": [
+  "ui/js/statusbar.js"
  ],
  "Visuel automatique rétabli": [
   "ui/js/pages/artpicker.js"
@@ -3990,7 +4205,11 @@
  "Wi-Fi": [
   "ui/js/main.js",
   "ui/js/qam.js",
+  "ui/js/statusbar.js",
   "ui/js/widget.js"
+ ],
+ "Wi-Fi désactivé": [
+  "ui/js/statusbar.js"
  ],
  "Windows : économie d’énergie": [
   "ui/js/qam.js"
@@ -4022,8 +4241,14 @@
  "Windows a refusé le mode d'alimentation (code {a}) : il n'existe qu'avec le mode de gestion « Utilisation normale »": [
   "host/syscontrol.ps1"
  ],
+ "Windows a refusé le profil Wi-Fi": [
+  "host/lib/wifi.js"
+ ],
  "Windows accepte les mouvements du curseur.": [
   "ui/js/pages/settings.js"
+ ],
+ "Windows demande l’accès à la position pour lister les réseaux Wi-Fi.": [
+  "ui/js/statusbar.js"
  ],
  "Windows demande l’accord de l’administrateur ; un redémarrage peut être nécessaire": [
   "ui/js/pages/settings.js"

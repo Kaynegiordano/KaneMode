@@ -25,6 +25,8 @@ const launchLib = require('./lib/launch');
 const libraryRemoval = require('./lib/library-removal');
 const accountsLib = require('./lib/accounts');
 const powerLib = require('./lib/power-profiles');
+const wifi = require('./lib/wifi');
+const weatherLib = require('./lib/weather');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -365,6 +367,7 @@ const setPerfMode = mode => {
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
+const weather = weatherLib.create({ read: config, write: c => writeJson(FILES.config, c) }); // panneau Heure (GET /api/weather)
 const deals = dealsLib.create(DATA, { lang: () => config().lang || 'fr' }); // bons plans des boutiques (GET /api/deals)
 // Réglages graphiques du pilote : outil du fabricant de la carte (voir lib/gpuctl.js)
 const gfx = gpuctl.create({ vendors: async () => { const d = await device.info(); return d && d.ok ? (d.gpus || []).map(g => String(g.vendor || '').toUpperCase()) : null; } });
@@ -1281,6 +1284,7 @@ const routes = {
       xbox: 'ms-settings:gaming-fullscreen', startup: 'ms-settings:startupapps', gaming: 'ms-settings:gaming-gamebar',
       power: 'ms-settings:powersleep', battery: 'ms-settings:batterysaver', update: 'ms-settings:windowsupdate',
       'optional-updates': 'ms-settings:windowsupdate-optionalupdates', bluetooth: 'ms-settings:bluetooth', display: 'ms-settings:display',
+      location: 'ms-settings:privacy-location', wifi: 'ms-settings:network-wifi',
     }[b.page];
     if (!uri) return json(res, 400, { error: 'Page inconnue' });
     json(res, 200, await run({ kind: 'uri', target: uri }));
@@ -1482,9 +1486,45 @@ const routes = {
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
   // Icône de batterie de la barre d'état : secteur, économiseur d'énergie, mode de performance
-  'GET /api/power/badge': async (req, res) => {
+  'GET /api/power/badge': async (req, res, q) => {
     const pol = await sysctl.policy().catch(() => ({}));
-    json(res, 200, { ac: pol.ac ?? null, saver: !!pol.saver, mode: config().perfMode || null, vendor: pol.vendor || null });
+    const out = { ac: pol.ac ?? null, saver: !!pol.saver, mode: config().perfMode || null, vendor: pol.vendor || null };
+    // Panneau Batterie : puissance de chaque mode sur la source actuelle (ROG Ally)
+    if (q.get('full') === '1') {
+      const st = await sysctl.state().catch(() => null);
+      const hh = (await device.info().catch(() => ({}))).handheld;
+      out.watts = Object.fromEntries(PERF_MODES.map(m => [m, perfPreset(m, { ...st, ac: pol.ac ?? (st && st.ac) }, hh && hh.id).tdp ?? null]));
+      out.handheld = hh ? hh.id : null;
+    }
+    json(res, 200, out);
+  },
+  // --- Wi-Fi (panneau Réseau de la barre d'état, voir lib/wifi.js)
+  'GET /api/wifi': async (req, res) => {
+    try { json(res, 200, await wifi.scan()); } catch (e) { json(res, 500, { error: e.message }); }
+  },
+  'POST /api/wifi/connect': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await wifi.connect(b.ssid, typeof b.password === 'string' ? b.password : undefined)); netState.p = null; }
+    catch (e) { json(res, 400, { error: e.message }); }
+  },
+  'POST /api/wifi/disconnect': async (req, res) => { json(res, 200, await wifi.disconnect()); netState.p = null; },
+  'POST /api/wifi/forget': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await wifi.forget(String(b.ssid || ''))); } catch (e) { json(res, 400, { error: e.message }); }
+  },
+  // --- Météo (panneau Heure, voir lib/weather.js)
+  'GET /api/weather': async (req, res, q) => {
+    try { json(res, 200, await weather.get(q.get('refresh') === '1')); } catch (e) { json(res, 502, { error: e.message }); }
+  },
+  'GET /api/weather/search': async (req, res, q) => {
+    try { json(res, 200, await weather.search(q.get('q'), config().lang || 'fr')); } catch (e) { json(res, 502, { error: e.message }); }
+  },
+  'POST /api/weather/place': async (req, res) => {
+    const b = await readBody(req);
+    const p = b.place;
+    if (p && !(Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180 && p.name)) return json(res, 400, { error: 'Lieu invalide' });
+    weather.setPlace(p || null);
+    json(res, 200, { ok: true });
   },
   'POST /api/power/profiles': async (req, res) => {
     const b = await readBody(req);

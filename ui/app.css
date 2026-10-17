@@ -97,6 +97,82 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 #mouse-pill[hidden] { display: none; }
 #mouse-pill svg { width: 16px; height: 16px; opacity: 1; }
 #busy { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+/* Icônes de la barre d'état : chacune ouvre son onglet du panneau d'état (js/statusbar.js) */
+.status .st-btn { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 6px; border-radius: var(--radius); color: inherit; font: inherit; cursor: pointer; }
+.status .st-btn:hover, .status .st-btn.current { background: var(--control); }
+.status .st-btn.current { box-shadow: inset 0 0 0 1px var(--line); }
+.status .st-clock { gap: 10px; }
+#clock-weather { color: var(--muted); font-size: 14px; white-space: nowrap; }
+.st-dot { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff; font: 700 10px/16px system-ui, sans-serif; font-style: normal; text-align: center; }
+
+/* Panneau d'état : sous la barre, à droite */
+#status-panel {
+  position: fixed; top: calc(var(--top) + 4px); right: max(12px, calc(var(--gutter) - 12px)); z-index: 32;
+  width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - var(--top) - var(--bottom) - 16px);
+  display: flex; flex-direction: column; border-radius: 14px; border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 97%, transparent); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  opacity: 0; transform: translateY(-10px) scale(0.98); transform-origin: top right; pointer-events: none;
+  transition: opacity 160ms ease, transform 200ms var(--ease);
+}
+#status-panel.open { opacity: 1; transform: none; pointer-events: auto; }
+.sp-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 10px; border-bottom: 1px solid var(--line); }
+.sp-tab { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px; color: var(--muted); font: inherit; font-size: 11px; font-weight: 600; line-height: 1.2; cursor: pointer; text-align: center; }
+.sp-tab svg { width: 22px; height: 22px; fill: currentColor; }
+.sp-tab.active { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
+.sp-tab.focused { background: #fff; color: #111; }
+.sp-body { overflow-y: auto; scrollbar-width: none; padding: 4px 14px 14px; scroll-padding: 12px; }
+.sp-body::-webkit-scrollbar { display: none; }
+.sp-h { margin: 14px 4px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.sp-row { padding: 12px 14px; margin-bottom: 6px; }
+.sp-row.current { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.sp-row.busy { opacity: 0.6; }
+.sp-current { background: color-mix(in srgb, var(--accent) 12%, var(--control)); }
+.sp-lead { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(255, 255, 255, 0.07); }
+.sp-lead svg { width: 20px; height: 20px; fill: currentColor; }
+.sp-sig svg { opacity: calc(0.35 + var(--sig, 100) / 160); }
+.sp-tag svg { width: 20px; height: 20px; fill: var(--play); }
+.sp-empty { display: flex; align-items: center; gap: 12px; padding: 16px 14px; border-radius: var(--radius); background: rgba(255, 255, 255, 0.03); color: var(--muted); font-size: 14px; line-height: 1.5; }
+.sp-empty svg { width: 22px; height: 22px; fill: currentColor; flex: none; }
+.sp-loading { display: flex; align-items: center; gap: 12px; padding: 18px 14px; color: var(--muted); }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radius); background: var(--control); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; line-height: 1; cursor: pointer; }
+.sp-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.sp-btn.focused { background: #fff; color: #111; }
+.sp-body .notice { margin: 8px 0; }
+/* Batterie */
+.sp-bat { display: flex; align-items: center; gap: 18px; padding: 10px 6px; }
+.sp-bat .bat-icon { width: 64px; height: 64px; }
+.sp-bat-txt b { display: block; font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sp-bat-txt small { color: var(--muted); font-size: 14px; }
+.sp-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sp-mode { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 6px; border-radius: 10px; background: var(--control); border: 2px solid transparent; color: var(--text); cursor: pointer; font: inherit; }
+.sp-mode b { font-size: 15px; }
+.sp-mode small { color: var(--muted); font-size: 13px; }
+.sp-mode.eco.active { border-color: #5fd38d; background: rgba(95, 211, 141, 0.14); }
+.sp-mode.bal.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sp-mode.turbo.active { border-color: #ff8a2a; background: rgba(255, 138, 42, 0.14); }
+.sp-mode.focused { background: #fff; color: #111; }
+.sp-mode.focused small { color: #444; }
+/* Heure et météo */
+.sp-time { padding: 14px 6px 4px; }
+.sp-time b { display: block; font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.sp-time span { color: var(--muted); font-size: 16px; }
+.sp-time span::first-letter { text-transform: uppercase; }
+.sp-emoji { font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; font-size: 22px; line-height: 1; }
+.sp-emoji.big { font-size: 54px; }
+.sp-wx { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 16px; padding: 12px 14px; border-radius: 12px; background: var(--control); }
+.sp-wx > div b { display: block; font-size: 34px; font-weight: 700; }
+.sp-wx > div span { display: block; font-size: 15px; }
+.sp-wx > div small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+.sp-wx ul { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 13px; }
+.sp-wx ul b { color: var(--text); }
+.sp-days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+.sp-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 2px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); font-size: 13px; }
+.sp-day > span:first-child { color: var(--muted); text-transform: capitalize; }
+.sp-day small { color: var(--muted); }
+.sp-day em { font-style: normal; font-size: 11px; color: #8fc4ff; }
+@media (max-width: 520px) { .sp-tab span { display: none; } .sp-days { grid-template-columns: repeat(3, 1fr); } }
+
 /* Batterie : niveau réel, charge animée, Turbo, Éco (voir paintBattery dans js/main.js) */
 .bat { display: inline-flex; align-items: center; gap: 4px; --bat: currentColor; color: var(--bat); transition: color 200ms; }
 .status .bat-icon { width: 22px; height: 22px; opacity: 1; overflow: visible; }

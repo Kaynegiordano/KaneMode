@@ -331,7 +331,12 @@ export function move(dir) {
   }
   // Plus rien dans cette direction : on fait défiler pour montrer ce qui reste (notifications de
   // l'accès rapide, fin d'une page…), sinon ces informations resteraient sous la barre des boutons
-  if (!cands.length) { if (vertical) nudgeScroll(focused, dir); return; }
+  if (!cands.length) {
+    const scrolled = vertical && nudgeScroll(focused, dir);
+    // Tout en haut d'une page : Haut ouvre la barre d'état (notifications, réseau, batterie, heure)
+    if (!scrolled && dir === 'up' && !state.layers.length && hooks.statusUp) hooks.statusUp();
+    return;
+  }
   const min = Math.min(...cands.map(c => c.gap));
   let next = cands.filter(c => c.gap <= min + 30).sort((a, b) => a.off - b.off || a.gap - b.gap)[0].e;
   // Retour dans une rangée ou une zone déjà visitée : on retrouve l'élément quitté
@@ -353,8 +358,9 @@ function nudgeScroll(from, dir) {
     const room = dir === 'down' ? e.scrollHeight - e.clientHeight - pos : pos;
     if (room < 2) continue;
     scrollToPos(e, 'y', pos + (dir === 'down' ? 1 : -1) * Math.min(room, e.clientHeight * 0.6));
-    return;
+    return true;
   }
+  return false;
 }
 
 /** Rend un élément navigable ; `act` est appelé à la validation. */

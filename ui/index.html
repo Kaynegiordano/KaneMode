@@ -88,9 +88,10 @@
       <span id="busy" hidden><i class="spinner"></i><span></span></span>
       <svg class="update-dot" id="update-dot" hidden><use href="#i-download2"/></svg>
       <button class="clickable" data-hint="y" aria-label="Rechercher" title="Rechercher" tabindex="-1"><svg><use href="#i-search"/></svg></button>
-      <svg><use href="#i-bell"/></svg>
-      <svg id="net-icon"><use href="#i-wifi"/></svg>
-      <span id="battery" class="bat" data-state="normal" hidden>
+      <!-- Icônes de la barre d'état : chacune ouvre son onglet du panneau d'état (js/statusbar.js) -->
+      <button class="clickable st-btn" id="bell-btn" data-status="notifs" aria-label="Notifications" title="Notifications" tabindex="-1"><svg><use href="#i-bell"/></svg><i class="st-dot" id="bell-dot" hidden></i></button>
+      <button class="clickable st-btn" data-status="net" aria-label="Réseau" title="Réseau" tabindex="-1"><svg id="net-icon"><use href="#i-wifi"/></svg></button>
+      <span id="battery" class="bat clickable st-btn" data-status="battery" role="button" data-state="normal" hidden>
         <svg class="bat-icon" viewBox="0 0 24 24" aria-hidden="true">
           <rect class="bat-cap" x="10" y="1.8" width="4" height="2.4" rx="0.6"/>
           <rect class="bat-body" x="7.2" y="4.2" width="9.6" height="17.6" rx="1.8"/>
@@ -99,7 +100,7 @@
           <path class="bat-glyph bat-leaf" d="M15.4 7.4c-4.6 0-7 2.4-7 6.2 0 1 .3 1.9.8 2.6l-1 1.4 1 .7 1-1.4c.7.4 1.4.6 2.2.6 3.4 0 4.2-3.6 3-10.1zm-4.6 8.2 2.6-4.4-.9-.5-2.6 4.4z"/>
           <path class="bat-glyph bat-turbo" d="M12 6.4c.3 2.2-1.2 3.1-2.2 4.4-.8 1-1.3 2.1-1.3 3.4 0 2.2 1.6 3.9 3.5 3.9s3.5-1.7 3.5-3.9c0-1.5-.6-2.4-1.2-3.1-.1 1-.6 1.6-1.2 1.8.6-2.3-.1-4.9-1.1-6.5z"/>
         </svg><span></span></span>
-      <span id="clock"></span>
+      <button class="clickable st-btn st-clock" data-status="clock" aria-label="Heure et météo" tabindex="-1"><span id="clock-weather" hidden></span><span id="clock"></span></button>
     </div>
   </header>
 
@@ -136,6 +137,11 @@
     <div class="menu-sep"></div>
     <div class="menu-item" data-nav data-key="settings" data-action="menu-go" data-page="settings"><svg><use href="#i-gear"/></svg>Paramètres</div>
     <div class="menu-foot" id="menu-foot"></div>
+  </aside>
+
+  <aside class="layer" id="status-panel" role="dialog" aria-modal="true" aria-label="État" aria-hidden="true" inert>
+    <div class="sp-tabs" id="sp-tabs"></div>
+    <div class="sp-body" id="sp-body"></div>
   </aside>
 
   <aside class="layer panel" id="qam" role="dialog" aria-modal="true" aria-label="Accès rapide" aria-hidden="true" inert>

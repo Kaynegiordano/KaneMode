@@ -67,12 +67,13 @@ export function typingHandler(get, set, submit) {
 }
 
 /** Clavier virtuel en feuille modale. Renvoie le texte saisi, ou null si annulé. */
-export function openKeyboard({ title, value = '', placeholder = '', submitLabel = 'OK' }) {
+// mask : texte masqué (mot de passe), sauf le dernier caractère tapé
+export function openKeyboard({ title, value = '', placeholder = '', submitLabel = 'OK', mask = false }) {
   return new Promise(resolve => {
     const host = $('#osk');
     let v = value;
     const field = textField(placeholder);
-    const set = nv => { v = nv; field.paint(v); };
+    const set = nv => { v = nv; field.paint(mask && v ? '•'.repeat(v.length - 1) + v.slice(-1) : v); };
     let layer;
     const done = () => closeLayer(layer, v);
     const kb = keyboard({ onChar: c => set(v + c), onBackspace: () => set(v.slice(0, -1)), onSubmit: done, submitLabel });

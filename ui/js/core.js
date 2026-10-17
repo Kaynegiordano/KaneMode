@@ -254,6 +254,7 @@ export function toast(msg, { error = false, notify = false } = {}) {
   }
 }
 export const getNotifications = () => notifications;
+export function clearNotifications() { notifications.length = 0; emit('notifications', notifications); }
 
 export function busy(label) {
   const b = $('#busy');
