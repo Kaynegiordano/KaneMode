@@ -68,19 +68,23 @@ function parseProfiles(out) {
   return out.split(/\r?\n/).filter(l => /^\s{4}\S/.test(l) && /\s:/.test(l)).map(value).filter(Boolean);
 }
 
+// Windows 11 24H2 et plus : sans l'accès à la position, netsh refuse TOUTES les commandes Wi-Fi
+// (même la carte) et renvoie un message qui mène à ms-settings:privacy-location
+const LOCATION = /privacy-location|emplacement|localisation|location permission|location services/i;
+// Seuls ces messages disent vraiment qu'il n'y a pas de Wi-Fi (sinon : carte présente, infos refusées)
+const NO_ADAPTER = /aucune interface sans fil|no wireless interface|wlansvc/i;
+
 async function scan() {
   const [ifs, nets, profs] = await Promise.all([netsh('wlan show interfaces'), netsh('wlan show networks mode=bssid'), netsh('wlan show profiles')]);
   const st = parseInterfaces(ifs.out);
-  if (!st.adapter) return { adapter: false, networks: [] };
+  const denied = LOCATION.test(ifs.out) || LOCATION.test(nets.out);
+  if (!st.adapter && !denied) return { adapter: !NO_ADAPTER.test(ifs.out) && null, networks: [] };
   const known = new Set(parseProfiles(profs.out));
   const networks = parseNetworks(nets.out).map(n => {
     const kind = authOf(n.auth);
     return { ssid: n.ssid, signal: n.signal, secure: kind !== 'open', enterprise: kind === null, known: known.has(n.ssid), connected: n.ssid === st.ssid };
   }).sort((a, b) => b.connected - a.connected || b.known - a.known || b.signal - a.signal);
-  // Windows 11 24H2 : la liste des réseaux demande l'accès à la position (netsh renvoie une erreur
-  // qui mène à ms-settings:privacy-location)
-  const denied = !networks.length && /privacy-location|position|location/i.test(nets.out);
-  return { adapter: true, name: st.name, ssid: st.ssid, signal: st.signal, networks, denied, radioOff: !networks.length && !denied && /off|désactiv/i.test(ifs.out) };
+  return { adapter: true, name: st.name, ssid: st.ssid, signal: st.signal, networks, denied: denied && !networks.length };
 }
 
 const xml = s => String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));

@@ -548,6 +548,9 @@
  "À propos": [
   "ui/js/pages/game.js"
  ],
+ "À signaler": [
+  "ui/js/statusbar.js"
+ ],
  "Accès rapide": [
   "ui/index.html",
   "ui/js/pages/settings.js"
@@ -898,10 +901,12 @@
  "Aucune mise à jour téléchargée": [
   "host/lib/update.js"
  ],
+ "Aucune notification pour l’instant": [
+  "ui/js/statusbar.js"
+ ],
  "Aucune nouvelle notification": [
   "ui/js/main.js",
-  "ui/js/qam.js",
-  "ui/js/statusbar.js"
+  "ui/js/qam.js"
  ],
  "Aucune version publiée": [
   "ui/js/pages/settings.js"
@@ -1547,6 +1552,9 @@
  "Désactivé : plus frais et plus économe, un peu moins rapide": [
   "ui/js/pages/settings.js"
  ],
+ "Désactivées : les nouveaux jeux, ajouts et mises à jour ne sont plus notés ici": [
+  "ui/js/statusbar.js"
+ ],
  "Désinstaller (via Steam)": [
   "ui/js/pages/game.js"
  ],
@@ -1981,6 +1989,9 @@
  "Hier": [
   "ui/js/core.js"
  ],
+ "Historique": [
+  "ui/js/statusbar.js"
+ ],
  "Horloge": [
   "ui/js/pages/settings.js"
  ],
@@ -2273,6 +2284,9 @@
  "KaneMode": [
   "ui/index.html",
   "ui/widget.html"
+ ],
+ "KaneMode · installer maintenant": [
+  "ui/js/statusbar.js"
  ],
  "KaneMode · Moniteur": [
   "ui/monitor.html"
@@ -2617,7 +2631,8 @@
   "ui/js/pages/settings.js"
  ],
  "Mise à jour {v} disponible": [
-  "ui/js/main.js"
+  "ui/js/main.js",
+  "ui/js/statusbar.js"
  ],
  "Mise à jour disponible": [
   "ui/index.html"
@@ -3962,6 +3977,9 @@
  "Tout effacer": [
   "ui/js/statusbar.js"
  ],
+ "Tout est à jour": [
+  "ui/js/statusbar.js"
+ ],
  "Tout sélectionner": [
   "ui/js/pages/media.js"
  ],
@@ -4223,6 +4241,9 @@
  "Windows {a} · {b}": [
   "ui/js/pages/settings.js"
  ],
+ "Windows 11 cache les réseaux Wi-Fi tant que la <b>position</b> n’est pas autorisée. Dans la page qui s’ouvre, activez <b>Services de localisation</b>, puis <b>KaneMode</b> dans la liste des applications (et <b>Autoriser les applications de bureau</b>), puis revenez ici.": [
+  "ui/js/statusbar.js"
+ ],
  "Windows a refusé ({a})": [
   "host/syscontrol.ps1"
  ],
@@ -4246,9 +4267,6 @@
  ],
  "Windows accepte les mouvements du curseur.": [
   "ui/js/pages/settings.js"
- ],
- "Windows demande l’accès à la position pour lister les réseaux Wi-Fi.": [
-  "ui/js/statusbar.js"
  ],
  "Windows demande l’accord de l’administrateur ; un redémarrage peut être nécessaire": [
   "ui/js/pages/settings.js"

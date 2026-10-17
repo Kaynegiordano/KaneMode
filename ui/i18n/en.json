@@ -1382,5 +1382,12 @@
  "Windows a refusé le profil Wi-Fi": "Windows refused the Wi-Fi profile",
  "Windows demande l’accès à la position pour lister les réseaux Wi-Fi.": "Windows needs location access to list Wi-Fi networks.",
  "Connexion impossible : mot de passe incorrect ?": "Could not connect: wrong password?",
- "Connexion impossible": "Could not connect"
+ "Connexion impossible": "Could not connect",
+ "À signaler": "Needs attention",
+ "Aucune notification pour l’instant": "No notifications yet",
+ "Désactivées : les nouveaux jeux, ajouts et mises à jour ne sont plus notés ici": "Off: new games, additions and updates are no longer listed here",
+ "Historique": "History",
+ "KaneMode · installer maintenant": "KaneMode · install now",
+ "Tout est à jour": "Everything is up to date",
+ "Windows 11 cache les réseaux Wi-Fi tant que la <b>position</b> n’est pas autorisée. Dans la page qui s’ouvre, activez <b>Services de localisation</b>, puis <b>KaneMode</b> dans la liste des applications (et <b>Autoriser les applications de bureau</b>), puis revenez ici.": "Windows 11 hides Wi-Fi networks until <b>location</b> is allowed. On the page that opens, turn on <b>Location services</b>, then <b>KaneMode</b> in the app list (and <b>Let desktop apps access your location</b>), then come back here."
 }

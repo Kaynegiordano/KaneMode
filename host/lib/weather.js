@@ -44,8 +44,8 @@ function create({ read, write }) {
   async function place() {
     const c = read().weather || {};
     if (c.place && Number.isFinite(c.place.lat)) return { ...c.place, chosen: true };
-    // Position de Windows relue au plus toutes les 6 h
-    if (!pos || Date.now() - pos.t > 6 * 3600e3) pos = { t: Date.now(), v: await windowsPosition() };
+    // Position de Windows relue au plus toutes les 6 h ; refusée ou indisponible : nouvel essai après 2 min
+    if (!pos || Date.now() - pos.t > (pos.v ? 6 * 3600e3 : 120e3)) pos = { t: Date.now(), v: await windowsPosition() };
     return pos.v ? { name: null, ...pos.v, chosen: false } : null;
   }
   async function get(force = false) {

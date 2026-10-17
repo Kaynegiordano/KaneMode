@@ -211,5 +211,7 @@ __WEBVIEW2_CLASSES__
     <rescap:Capability Name="runFullTrust" />
     <rescap:Capability Name="unvirtualizedResources" />
     <uap4:CustomCapability Name="Microsoft.appCategory.gamingHome_8wekyb3d8bbwe" />
+    <!-- Position : Windows 11 24H2 la demande pour lister le Wi-Fi (netsh) ; sert aussi à la météo -->
+    <DeviceCapability Name="location" />
   </Capabilities>
 </Package>

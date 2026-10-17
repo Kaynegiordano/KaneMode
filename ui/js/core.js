@@ -236,7 +236,9 @@ export function stopSoundPreview() { previewSequence++; }
 
 // ---------- Toasts & notifications ----------
 let toastTimer;
-const notifications = [];
+// Historique gardé d'un lancement à l'autre (30 dernières), affiché dans la barre d'état (cloche)
+const notifications = (store.get('notifs', []) || []).map(n => ({ msg: String(n.msg || ''), at: new Date(n.at) })).filter(n => n.msg && !isNaN(n.at));
+const saveNotifs = () => store.set('notifs', notifications.map(n => ({ msg: n.msg, at: n.at.toISOString() })));
 export function toast(msg, { error = false, notify = false } = {}) {
   msg = tx(msg); // message de l'hôte (en français) : traduit s'il est connu
   const t = $('#toast');
@@ -249,12 +251,13 @@ export function toast(msg, { error = false, notify = false } = {}) {
   if (notify && settings.notifications) {
     sfx('notify');
     notifications.unshift({ msg, at: new Date() });
-    notifications.length = Math.min(notifications.length, 8);
+    notifications.length = Math.min(notifications.length, 30);
+    saveNotifs();
     emit('notifications', notifications);
   }
 }
 export const getNotifications = () => notifications;
-export function clearNotifications() { notifications.length = 0; emit('notifications', notifications); }
+export function clearNotifications() { notifications.length = 0; saveNotifs(); emit('notifications', notifications); }
 
 export function busy(label) {
   const b = $('#busy');

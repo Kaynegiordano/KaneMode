@@ -2,8 +2,8 @@
 // Notifications (cloche), Réseau (Wi-Fi ou câble : choix du réseau), Batterie (niveau, mode de
 // performance), Heure (date, heure, météo). À la manette : Haut depuis le haut d'une page.
 import { t, locale } from './i18n.js';
-import { $, $$, el, esc, icon, api, toast, on, getNotifications, clearNotifications, settings } from './core.js';
-import { nav, openLayer, closeLayer, topLayer, focusIn, setFocus, focused, hooks, go } from './nav.js';
+import { $, $$, el, esc, icon, api, toast, on, getNotifications, clearNotifications, settings, saveSettings, store } from './core.js';
+import { nav, openLayer, closeLayer, topLayer, focusIn, setFocus, focused, hooks, go, actions } from './nav.js';
 import { openKeyboard, dialog, switchRow } from './widgets.js';
 
 const TABS = [
@@ -63,14 +63,14 @@ if (navigator.getBattery) {
 }
 
 // ---------------------------------------------------------------- notifications (point sur la cloche)
-let seenAt = 0;
+let seenAt = store.get('notifsSeen', 0); // dernière ouverture de l'onglet : la pastille compte ce qui est plus récent
 const paintBell = () => {
   const n = getNotifications().filter(x => x.at.getTime() > seenAt).length;
   const dot = $('#bell-dot');
   if (dot) { dot.hidden = !n; dot.textContent = n > 9 ? '9+' : String(n); }
   $('#bell-btn') && $('#bell-btn').setAttribute('aria-label', n ? t('Notifications ({n} nouvelles)', { n }) : t('Notifications'));
 };
-on('notifications', () => { if (view.layer && view.tab === 'notifs') { seenAt = Date.now(); render(); } paintBell(); });
+on('notifications', () => { if (view.layer && view.tab === 'notifs') render(); paintBell(); });
 
 // ---------------------------------------------------------------- météo (icône et libellé)
 const WMO = [
@@ -144,13 +144,37 @@ const loading = text => el('div', 'sp-loading', `<i class="spinner"></i><span>${
 
 const RENDER = {
   // ---------- Notifications
-  notifs(out) {
-    seenAt = Date.now(); paintBell();
+  // Deux parties toujours affichées : « À signaler » (mise à jour de KaneMode, pilotes) et l'historique
+  async notifs(out, stale) {
+    seenAt = Date.now(); store.set('notifsSeen', seenAt); paintBell();
+    const [upd, drv] = await Promise.all([api.get('/api/update').catch(() => null), api.get('/api/drivers/summary').catch(() => null)]);
+    if (stale()) return;
+    const close = () => closeLayer(view.layer);
+    out.append(el('h3', 'sp-h', esc(t('À signaler'))));
+    let pending = 0;
+    const last = upd && upd.last;
+    if (last && last.available && last.latest) {
+      pending++;
+      out.append(row(lead('i-download2'), t('Mise à jour {v} disponible', { v: last.latest.version }), esc(t('KaneMode · installer maintenant')), () => { close(); actions['update-open'](); }, 'n-update'));
+    }
+    for (const [i, d] of ((drv && drv.items) || []).slice(0, 4).entries()) {
+      pending++;
+      out.append(row(lead('i-cpu'), d.title, esc(d.detail || ''), () => { close(); go('settings', { section: 'device' }); }, 'n-drv' + i));
+    }
+    if (!pending) out.append(el('div', 'sp-empty', `${icon('i-check')}<span>${esc(t('Tout est à jour'))}</span>`));
+    out.append(el('h3', 'sp-h', esc(t('Historique'))));
+    if (!settings.notifications) {
+      out.append(switchRow({ title: t('Notifications'), desc: esc(t('Désactivées : les nouveaux jeux, ajouts et mises à jour ne sont plus notés ici')), key: 'n-on', on: false,
+        onToggle: v => { settings.notifications = v; saveSettings(); } }));
+    }
     const list = getNotifications();
-    out.append(el('h3', 'sp-h', esc(t('Notifications'))));
-    if (!list.length) out.append(el('div', 'sp-empty', `${icon('i-bell')}<span>${esc(t('Aucune nouvelle notification'))}</span>`));
-    list.forEach((n, i) => out.append(row(lead('i-bell'), n.msg, esc(n.at.toLocaleString(locale, { weekday: 'short', hour: '2-digit', minute: '2-digit' })), () => {}, 'n' + i)));
-    if (list.length) out.append(el('div', 'sp-actions', '')).lastChild.append(button('i-trash', t('Tout effacer'), () => { clearNotifications(); render('tab-notifs'); setFocus($('[data-key="tab-notifs"]', panel), { sound: false }); }, 'n-clear'));
+    if (!list.length) out.append(el('div', 'sp-empty', `${icon('i-bell')}<span>${esc(t('Aucune notification pour l’instant'))}</span>`));
+    list.forEach((n, i) => out.append(row(lead('i-bell'), n.msg, esc(n.at.toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })), () => {}, 'n' + i)));
+    if (list.length) {
+      const acts = el('div', 'sp-actions');
+      acts.append(button('i-trash', t('Tout effacer'), () => { clearNotifications(); show('notifs', { focusTab: true }); }, 'n-clear'));
+      out.append(acts);
+    }
   },
 
   // ---------- Réseau
@@ -164,7 +188,7 @@ const RENDER = {
     ]);
     if (stale()) return;
     const cur = net.kind === 'ethernet' ? [lead('i-ethernet'), t('Connecté par câble'), t('Ethernet · Internet')]
-      : net.kind === 'wifi' ? [lead('i-wifi'), w.ssid || t('Wi-Fi'), t('Connecté en Wi-Fi') + (w.signal != null ? ` · ${w.signal} %` : '')]
+      : net.kind === 'wifi' ? [lead('i-wifi'), w.ssid || t('Wi-Fi'), t('Connecté en Wi-Fi') + ((w.signal ?? net.signal) != null ? ` · ${w.signal ?? net.signal} %` : '')]
       : [lead('i-wifi-off'), t('Hors ligne'), t('Aucune connexion à Internet')];
     const c = row(cur[0], cur[1], esc(cur[2]));
     c.classList.add('sp-current');
@@ -173,13 +197,16 @@ const RENDER = {
     if (radio) out.append(switchRow({ title: t('Wi-Fi'), key: 'wifi-radio', on: radio.on, onToggle: async v => {
       try { await api.post('/api/sys', { cmd: 'radio', kind: 'WiFi', value: v }); setTimeout(() => render('wifi-radio'), 1500); } catch (e) { toast(e.message, { error: true }); }
     } }));
+    // Carte Wi-Fi : vue par netsh, ou à défaut par la connexion en cours ou l'interrupteur radio
+    // (Windows 11 24H2 : sans l'accès à la position, netsh ne montre même pas la carte)
+    const hasWifi = w.adapter === true || net.kind === 'wifi' || !!radio;
     if (w.error) out.append(el('div', 'notice', esc(w.error)));
-    else if (!w.adapter) out.append(el('div', 'sp-empty', `${icon('i-wifi-off')}<span>${esc(t('Pas de carte Wi-Fi sur ce PC'))}</span>`));
+    else if (!hasWifi) out.append(el('div', 'sp-empty', `${icon('i-wifi-off')}<span>${esc(t('Pas de carte Wi-Fi sur ce PC'))}</span>`));
     else if (radio && !radio.on) out.append(el('div', 'sp-empty', `${icon('i-wifi-off')}<span>${esc(t('Wi-Fi désactivé'))}</span>`));
     else {
       out.append(el('h3', 'sp-h', esc(t('Réseaux Wi-Fi'))));
-      if (w.denied) {
-        out.append(el('div', 'notice', esc(t('Windows demande l’accès à la position pour lister les réseaux Wi-Fi.'))));
+      if (w.denied || w.adapter !== true) {
+        out.append(el('div', 'notice', t('Windows 11 cache les réseaux Wi-Fi tant que la <b>position</b> n’est pas autorisée. Dans la page qui s’ouvre, activez <b>Services de localisation</b>, puis <b>KaneMode</b> dans la liste des applications (et <b>Autoriser les applications de bureau</b>), puis revenez ici.')));
         out.append(button('i-open', t('Autoriser la position'), () => openWin('location'), 'w-loc'));
       }
       for (const n of w.networks || []) {
@@ -356,4 +383,6 @@ export function openStatus(tab = view.tab) {
 // Icônes de la barre : clic, toucher ; Haut en haut d'une page à la manette (nav.js, move)
 for (const b of $$('.status [data-status]')) b.addEventListener('click', e => { e.stopPropagation(); openStatus(b.dataset.status); });
 hooks.statusUp = () => openStatus(view.tab);
+// Retour des Paramètres Windows (position autorisée, Wi-Fi changé) : l'onglet ouvert est relu
+document.addEventListener('visibilitychange', () => { if (!document.hidden && view.layer && (view.tab === 'net' || view.tab === 'clock')) render(); });
 paintBell();

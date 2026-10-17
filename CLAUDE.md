@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.9.1 : Wi-Fi bloqué par la position, onglet Notifications
+
+- Retour de l'utilisateur sur l'Ally : « aucune carte wifi » alors que connecté. Cause : Windows 11 24H2 refuse **toutes** les commandes `netsh wlan` (même `show interfaces`) sans accès à la position, et le paquet MSIX ne déclarait pas `location`, donc KaneMode et ses processus enfants (netsh, GeoCoordinateWatcher de la météo) étaient refusés même avec la position activée. Ajout de `<DeviceCapability Name="location" />` dans `native/package/AppxManifest.xml`. `host/lib/wifi.js` : `LOCATION` (message contenant `ms-settings:privacy-location`) → `denied`, `adapter: true` ; `adapter: false` seulement si `NO_ADAPTER` (« aucune interface sans fil », wlansvc), sinon `null`. statusbar.js : carte Wi-Fi = netsh OU connexion Wi-Fi OU radio WiFi ; avis + bouton position ; l'onglet ouvert est relu au retour des Paramètres (`visibilitychange`). weather.js : position refusée réessayée après 2 min (au lieu de 6 h). Simulé dans le navigateur (réponse /api/wifi remplacée) ; pas encore vérifié sur l'Ally (fiche KaneMode dans Paramètres → Position).
+- Notifications : `out.append(...).lastChild` plantait dès qu'il y avait une notification (append renvoie undefined). L'onglet montre toujours « À signaler » (`/api/update` last.available → `actions['update-open']`, `/api/drivers/summary` → Paramètres → Appareil) et « Historique ». Historique gardé dans `store` `notifs` (30), dernière lecture `notifsSeen`.
+
 ## Version 4.9.0 : barre d'état interactive (notifications, réseau, batterie, heure et météo)
 
 - Demande de l'utilisateur : la cloche, le Wi-Fi/Ethernet (choix de la connexion), la batterie (changement de mode) et l'heure (date, heure, météo) doivent fonctionner, dans KaneMode.
