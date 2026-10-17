@@ -1305,5 +1305,13 @@
  "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.": "Hold Start/Options for 1 s. In KaneMode: left stick and buttons to navigate, right stick for the cursor. In other windows: sticks for the cursor, A/Cross to click, Y/Triangle for right-click, B/Circle to go back, X/Square held with the stick to scroll, LB/L1 for middle-click, RB/R1 to go forward, D-pad to scroll in steps.",
  "Mode souris : stick = curseur, A = clic, Y = clic droit, B = retour": "Mouse mode: stick = cursor, A = click, Y = right-click, B = back",
  "Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement": "Plugged in: Turbo at 30 W · unplugged: {w} W · another choice lasts until the next plug-in or unplug",
- "Puissance au branchement": "Power when plugging in"
+ "Puissance au branchement": "Power when plugging in",
+ "Éco avec l’économiseur d’énergie": "Eco with energy saver",
+ "Économiseur d’énergie de Windows actif : mode Éco à {w} W, icône de batterie verte · la puissance revient quand il s’arrête": "Windows energy saver on: Eco mode at {w} W, green battery icon · power comes back when it stops",
+ "Économiseur d’énergie de Windows actif : mode Éco, icône de batterie verte · le profil revient quand il s’arrête": "Windows energy saver on: Eco mode, green battery icon · the profile comes back when it stops",
+ "en charge": "charging",
+ "économiseur d’énergie, mode Éco": "energy saver, Eco mode",
+ "mode Éco": "Eco mode",
+ "mode Turbo": "Turbo mode",
+ "Batterie {pct} %": "Battery {pct}%"
 }

@@ -1481,12 +1481,18 @@ const routes = {
     } catch (e) { json(res, 400, { error: e.message }); }
   },
   'GET /api/power/profiles': (req, res) => json(res, 200, powerProfiles()),
+  // Icône de batterie de la barre d'état : secteur, économiseur d'énergie, mode de performance
+  'GET /api/power/badge': async (req, res) => {
+    const pol = await sysctl.policy().catch(() => ({}));
+    json(res, 200, { ac: pol.ac ?? null, saver: !!pol.saver, mode: config().perfMode || null, vendor: pol.vendor || null });
+  },
   'POST /api/power/profiles': async (req, res) => {
     const b = await readBody(req);
     const c = config();
     const p = powerProfiles();
     if (typeof b.auto === 'boolean') p.auto = b.auto;
     if (typeof b.plugTurbo === 'boolean') p.plugTurbo = b.plugTurbo;
+    if (typeof b.saverEco === 'boolean') p.saverEco = b.saverEco;
     for (const src of ['battery', 'ac']) {
       if (!b[src] || typeof b[src] !== 'object') continue;
       const v = b[src], out = { ...p[src] };

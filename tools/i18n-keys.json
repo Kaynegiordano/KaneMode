@@ -954,6 +954,9 @@
  "batterie {p} %": [
   "ui/js/pages/settings.js"
  ],
+ "Batterie {pct} %": [
+  "ui/js/main.js"
+ ],
  "Battle.net": [
   "ui/js/core.js"
  ],
@@ -1534,9 +1537,21 @@
  "Échec de l’installation : {a}": [
   "ui/js/pages/settings.js"
  ],
+ "Éco avec l’économiseur d’énergie": [
+  "ui/js/pages/settings.js"
+ ],
  "Économie": [
   "ui/js/pages/game.js",
   "ui/js/qam.js"
+ ],
+ "Économiseur d’énergie de Windows actif : mode Éco à {w} W, icône de batterie verte · la puissance revient quand il s’arrête": [
+  "ui/js/pages/settings.js"
+ ],
+ "Économiseur d’énergie de Windows actif : mode Éco, icône de batterie verte · le profil revient quand il s’arrête": [
+  "ui/js/pages/settings.js"
+ ],
+ "économiseur d’énergie, mode Éco": [
+  "ui/js/main.js"
  ],
  "Écouter": [
   "ui/js/personalization-settings.js"
@@ -1621,6 +1636,9 @@
  ],
  "En branchant ou débranchant le chargeur, KaneMode applique le profil correspondant": [
   "ui/js/pages/settings.js"
+ ],
+ "en charge": [
+  "ui/js/main.js"
  ],
  "En charge": [
   "ui/js/qam.js"
@@ -2543,6 +2561,9 @@
  "Mode de performance du jeu…": [
   "ui/js/pages/game.js"
  ],
+ "mode Éco": [
+  "ui/js/main.js"
+ ],
  "Mode faible latence non pris en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
  ],
@@ -2576,6 +2597,9 @@
  "Mode souris désactivé": [
   "ui/js/main.js",
   "ui/js/widget.js"
+ ],
+ "mode Turbo": [
+  "ui/js/main.js"
  ],
  "Mode Xbox": [
   "ui/js/pages/settings.js"

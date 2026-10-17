@@ -10,7 +10,7 @@
 #   {"id":8,"cmd":"vendor","value":"turbo"}    profil du constructeur (ROG Ally, Legion Go)
 #   {"id":9,"cmd":"tdp","value":15}            limite de puissance en watts (ROG Ally, experimental)
 #   {"id":10,"cmd":"chargelimit","value":80}   limite de charge de la batterie (ROG Ally)
-#   {"id":11,"cmd":"policy"}                   profil du constructeur en cours et source d'alimentation (lecture rapide)
+#   {"id":11,"cmd":"policy"}                   profil du constructeur en cours, source d'alimentation, économiseur d'énergie (lecture rapide)
 param([string]$Vendor = '')
 
 $ErrorActionPreference = 'Stop'
@@ -319,6 +319,11 @@ namespace KaneMode {
       if (!GetSystemPowerStatus(out s)) return -1;
       return s.ACLineStatus == 1 ? 1 : s.ACLineStatus == 0 ? 0 : -1;
     }
+    // Économiseur d'énergie de Windows actif (SystemStatusFlag = 1)
+    public static bool Saver() {
+      SYSTEM_POWER_STATUS s;
+      return GetSystemPowerStatus(out s) && s.SystemStatusFlag == 1;
+    }
   }
 
   // ---- ASUS (ROG Ally, Ally X, Xbox Ally) : peripherique ACPI « ATKACPI », comme G-Helper
@@ -604,7 +609,7 @@ function Run($c) {
                 $v = Lenovo-Mode
                 $m = ($lenovoModes.GetEnumerator() | Where-Object { $_.Value -eq $v } | Select-Object -First 1).Key
             }
-            return [ordered]@{ vendor = $m; ac = if ($ac -ge 0) { [bool]$ac } else { $null } }
+            return [ordered]@{ vendor = $m; ac = if ($ac -ge 0) { [bool]$ac } else { $null }; saver = [KaneMode.PowerSource]::Saver() }
         }
         'chargelimit' {
             if ($Vendor -ne 'asus') { throw 'Limite de charge réglable seulement sur ROG Ally pour l''instant' }

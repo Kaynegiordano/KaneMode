@@ -580,6 +580,13 @@ const BUILDERS = {
       desc: t('Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement', { w: hh.id === 'rog-ally-x' ? 17 : 15 }),
       onToggle: v => save({ plugTurbo: v }),
     }));
+    if (hh) s.append(switchRow({
+      title: t('Éco avec l’économiseur d’énergie'), key: 'pw-saver-eco', on: p.saverEco,
+      desc: /^rog-ally/.test(hh.id)
+        ? t('Économiseur d’énergie de Windows actif : mode Éco à {w} W, icône de batterie verte · la puissance revient quand il s’arrête', { w: hh.id === 'rog-ally-x' ? 13 : 10 })
+        : t('Économiseur d’énergie de Windows actif : mode Éco, icône de batterie verte · le profil revient quand il s’arrête'),
+      onToggle: v => save({ saverEco: v }),
+    }));
     const vendor = sys && sys.vendor && sys.vendor.modes ? sys.vendor : null;
     const VL = { silent: t('Silencieux'), quiet: t('Silencieux'), balanced: t('Équilibré'), performance: t('Performance'), turbo: t('Turbo') };
     for (const [src, title, icon1] of [['battery', t('Sur batterie'), 'i-battery'], ['ac', t('Sur secteur'), 'i-power']]) {

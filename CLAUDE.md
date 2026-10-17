@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.8.0 : icône de batterie à quatre états ; économiseur d'énergie → Éco
+
+- Demande de l'utilisateur : l'icône de batterie change selon la situation (normale avec le niveau, charge animée, Turbo, économie d'énergie = mode Éco 13 W).
+- `host/syscontrol.ps1` `policy` renvoie `saver` (`GetSystemPowerStatus` `SystemStatusFlag == 1`). `host/lib/power-profiles.js` `sync()` : si `saverEco` (défaut vrai) et économiseur actif, applique `{ mode: 'eco' }` une fois (`ecoOn`) sans écrire les profils et sans avancer `prevSrc` ; à sa sortie, `prevSrc = null` et `refresh`, donc la puissance au branchement (17/30 W) revient. Sans `auto`, actif seulement sur ROG Ally (comme `plugTurbo`).
+- `GET /api/power/badge` → `{ ac, saver, mode: config.perfMode, vendor }`. `ui/js/main.js` `paintBattery()` : SVG en ligne dans `#battery` (contour, `.bat-fill` en `scaleY(--lvl)`, glyphes éclair/feuille/flamme), `data-state` = charging > eco (saver ou mode eco) > turbo (mode performance ou profil turbo) > normal ; `.bat-low` rouge ≤ 20 %. Branchée et pleine : cachée comme avant sauf en Turbo. Interrogation toutes les 5 s (page visible) et au changement de charge. CSS `.bat*` dans `app.css`.
+- Interrupteur « Éco avec l'économiseur d'énergie » (Paramètres → Énergie, toute console reconnue). Simulé (auto vrai/faux), rendu vérifié dans le navigateur en forçant les états ; pas encore vu sur l'Ally.
+
 ## Version 4.7.0 : 30 W branchée, 17 W débranchée ; Alimentation en haut du menu
 
 - Demande de l'utilisateur : « branchée : 30 W par défaut ; débranchée : retour à 17 W ». Bug de la 4.6.0 : au débranchement, le profil « Sur batterie » (souvent vide) ne changeait rien et `perfMode` restait `performance`, donc le mode tenu remettait le Turbo à **25 W** sur batterie. `host/lib/power-profiles.js` `sync()` : à chaque changement de source (et au démarrage, `prevSrc` nul), si `plugTurbo` et ROG Ally, le profil de la source devient `performance` (secteur, 30 W) ou `balanced` (batterie : profil constructeur Performance, 17 W Ally X / 15 W Ally, `ASUS_WATTS`), et il est appliqué même si `auto` est coupé ou si la clé `last` est identique. Sans `auto`, `turbo()` est demandé avant `policy()` : sur un PC de bureau, la source n'est toujours pas lue.

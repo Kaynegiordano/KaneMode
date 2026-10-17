@@ -181,15 +181,39 @@ const tick = () => {
 };
 tick();
 setInterval(tick, 1000);
+// Batterie : le niveau descend avec la charge restante (rouge sous 20 %). Quatre états :
+// normal, en charge (animation de remplissage), Turbo (mode Performance) et Éco (mode Éco ou
+// économiseur d'énergie de Windows, qui fait passer la console en Éco, voir host/lib/power-profiles.js).
+const batView = { b: null, badge: {} };
+function paintBattery() {
+  const b = batView.b, el = $('#battery');
+  if (!b) return;
+  const { saver, mode, vendor } = batView.badge, pct = Math.round(b.level * 100);
+  const turbo = mode === 'performance' || vendor === 'turbo';
+  const state = b.charging && b.level < 1 ? 'charging' : saver || mode === 'eco' ? 'eco' : turbo ? 'turbo' : 'normal';
+  // Branchée et pleine : cachée comme avant, sauf en Turbo (30 W sur secteur)
+  el.hidden = b.charging && b.level === 1 && state !== 'turbo';
+  el.dataset.state = state;
+  el.classList.toggle('bat-low', pct <= 20 && !b.charging);
+  el.style.setProperty('--lvl', Math.max(0.06, b.level).toFixed(3));
+  $('#battery span').textContent = pct + ' %';
+  const what = { charging: t('en charge'), eco: saver ? t('économiseur d’énergie, mode Éco') : t('mode Éco'), turbo: t('mode Turbo'), normal: '' }[state];
+  el.title = t('Batterie {pct} %', { pct }) + (what ? ' · ' + what : '');
+}
+async function pollBadge() {
+  if (document.hidden) return;
+  try { batView.badge = await api.get('/api/power/badge'); } catch { /* hôte injoignable */ }
+  paintBattery();
+}
 if (navigator.getBattery) {
   navigator.getBattery().then(b => {
-    const upd = () => {
-      $('#battery').hidden = b.charging && b.level === 1;
-      $('#battery span').textContent = Math.round(b.level * 100) + ' %';
-    };
-    b.addEventListener('levelchange', upd);
+    batView.b = b;
+    const upd = () => { paintBattery(); pollBadge(); };
+    b.addEventListener('levelchange', paintBattery);
     b.addEventListener('chargingchange', upd);
     upd();
+    setInterval(pollBadge, 5000);
+    document.addEventListener('visibilitychange', pollBadge);
   }).catch(() => {});
 }
 // Réseau : câble, Wi-Fi (plus pâle quand le signal est faible) ou hors ligne. Relu toutes les 20 s

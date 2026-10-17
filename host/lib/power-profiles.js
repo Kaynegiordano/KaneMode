@@ -4,7 +4,7 @@ const MODES = ['eco', 'balanced', 'performance'];
 const PERF_FIELDS = ['mode', 'powerMode', 'vendor', 'tdp', 'cpuMax', 'boost'];
 function profiles(config) {
   const p = config.powerProfiles || {};
-  return { auto: p.auto !== false, plugTurbo: p.plugTurbo !== false, battery: { ...p.battery }, ac: { ...p.ac } };
+  return { auto: p.auto !== false, plugTurbo: p.plugTurbo !== false, saverEco: p.saverEco !== false, battery: { ...p.battery }, ac: { ...p.ac } };
 }
 function source(ac) {
   if (typeof ac !== 'boolean') throw new Error('Source d’alimentation indisponible');
@@ -15,7 +15,7 @@ function effectiveMode(profile) {
   return MODES.includes(profile.mode) ? profile.mode : null;
 }
 function create({ read, write, policy, expand, apply, applied, turbo = async () => false }) {
-  let pending = Promise.resolve(), last = '', prevSrc = null;
+  let pending = Promise.resolve(), last = '', prevSrc = null, ecoOn = false;
   const serial = work => { const next = pending.catch(() => {}).then(work); pending = next; return next; };
   const key = (src, p) => JSON.stringify([src, p.auto, p[src]]);
   async function perform(src, p) {
@@ -30,15 +30,25 @@ function create({ read, write, policy, expand, apply, applied, turbo = async () 
   return {
     sync: ({ force = false, requested, refresh = false } = {}) => serial(async () => {
       const p = profiles(read());
-      // La puissance au branchement vaut même sans les profils automatiques (ROG Ally seulement :
-      // ailleurs, la source d'alimentation n'est pas lue quand les profils sont coupés).
-      if (!p.auto && !force && !(p.plugTurbo && await turbo())) return { skipped: true };
-      const src = force && ['battery', 'ac'].includes(requested) ? requested : source((await policy()).ac);
-      // Chargeur branché : Performance, Turbo 30 W. Débranché : Équilibré, profil Performance du
-      // constructeur (17 W sur Ally X, 15 W sur Ally). Le démarrage de KaneMode compte comme un
-      // changement. Un réglage fait ensuite à la main tient jusqu'au prochain changement.
+      // La puissance au branchement et l'économiseur d'énergie valent même sans les profils
+      // automatiques (ROG Ally seulement : ailleurs, la source n'est pas lue quand ils sont coupés).
+      if (!p.auto && !force && !((p.plugTurbo || p.saverEco) && await turbo())) return { skipped: true };
+      const pol = force && ['battery', 'ac'].includes(requested) ? null : await policy();
+      const src = pol ? source(pol.ac) : requested;
       let plugged = false;
       if (!force) {
+        // Économiseur d'énergie de Windows : mode Éco (13 W sur Ally X, 10 W sur Ally) tant qu'il est
+        // actif, sans toucher aux profils mémorisés. À sa sortie, la puissance de la source revient.
+        if (p.saverEco && pol.saver) {
+          if (ecoOn) return { skipped: true, source: src, saver: true };
+          const r = await perform(src, { ...p, [src]: { mode: 'eco' } });
+          ecoOn = !r.errors.length;
+          return { ...r, saver: true };
+        }
+        if (ecoOn) { ecoOn = false; prevSrc = null; refresh = true; }
+        // Chargeur branché : Performance, Turbo 30 W. Débranché : Équilibré, profil Performance du
+        // constructeur (17 W sur Ally X, 15 W sur Ally). Le démarrage de KaneMode compte comme un
+        // changement. Un réglage fait ensuite à la main tient jusqu'au prochain changement.
         const switched = src !== prevSrc;
         prevSrc = src;
         plugged = switched && p.plugTurbo && await turbo();
