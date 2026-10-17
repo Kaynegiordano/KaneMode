@@ -115,6 +115,9 @@
   <aside class="layer panel" id="menu" role="dialog" aria-modal="true" aria-label="Menu" aria-hidden="true" inert>
     <div class="panel-head"><svg class="brand-mark"><use href="#i-brand"/></svg> KaneMode</div>
     <div class="menu-item update-item" id="menu-update" data-nav data-key="update" data-action="update-open" hidden><svg><use href="#i-download2"/></svg><span>Mise à jour disponible</span></div>
+    <!-- En haut du menu : à une pression de l'accueil, sans descendre toute la liste -->
+    <div class="menu-item" data-nav data-key="power" data-action="power-open"><svg><use href="#i-power"/></svg>Alimentation</div>
+    <div class="menu-sep"></div>
     <div class="menu-item" data-nav data-key="home" data-action="menu-go" data-page="home"><svg><use href="#i-home"/></svg>Accueil</div>
     <div class="menu-item" data-nav data-key="library" data-action="menu-go" data-page="library"><svg><use href="#i-library"/></svg>Bibliothèque</div>
     <div class="menu-item" data-nav data-key="search" data-action="menu-go" data-page="search"><svg><use href="#i-search"/></svg>Rechercher</div>
@@ -124,7 +127,6 @@
     <div class="menu-item" data-nav data-key="add" data-action="menu-go" data-page="add"><svg><use href="#i-plus"/></svg>Ajouter un jeu ou une appli</div>
     <div class="menu-sep"></div>
     <div class="menu-item" data-nav data-key="settings" data-action="menu-go" data-page="settings"><svg><use href="#i-gear"/></svg>Paramètres</div>
-    <div class="menu-item" data-nav data-key="power" data-action="power-open"><svg><use href="#i-power"/></svg>Alimentation</div>
     <div class="menu-foot" id="menu-foot"></div>
   </aside>
 

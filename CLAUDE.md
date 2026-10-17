@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.7.0 : 30 W branchée, 17 W débranchée ; Alimentation en haut du menu
+
+- Demande de l'utilisateur : « branchée : 30 W par défaut ; débranchée : retour à 17 W ». Bug de la 4.6.0 : au débranchement, le profil « Sur batterie » (souvent vide) ne changeait rien et `perfMode` restait `performance`, donc le mode tenu remettait le Turbo à **25 W** sur batterie. `host/lib/power-profiles.js` `sync()` : à chaque changement de source (et au démarrage, `prevSrc` nul), si `plugTurbo` et ROG Ally, le profil de la source devient `performance` (secteur, 30 W) ou `balanced` (batterie : profil constructeur Performance, 17 W Ally X / 15 W Ally, `ASUS_WATTS`), et il est appliqué même si `auto` est coupé ou si la clé `last` est identique. Sans `auto`, `turbo()` est demandé avant `policy()` : sur un PC de bureau, la source n'est toujours pas lue.
+- Interrupteur renommé « Puissance au branchement » (clé `plugTurbo` inchangée). Simulé (fausse console, auto vrai/faux, réglage à la main, PC de bureau) ; `tools/verify-3.9.js` passe ; pas encore vérifié sur l'Ally.
+- Menu (Select) : « Alimentation » déplacé tout en haut (`ui/index.html`, avant Accueil, séparé par un trait) ; le focus s'ouvre sur la page en cours, donc une pression vers le haut depuis Accueil.
+
 ## Version 4.6.0 : Turbo 30 W au branchement
 
 - Demande de l'utilisateur : « lorsqu'on branche la console, elle passe automatiquement en 30W ». `host/lib/power-profiles.js` : au passage batterie → secteur (et au démarrage sur secteur), si `powerProfiles.plugTurbo` (défaut vrai) et que la console a un Turbo à 30 W (`turbo()` de `server.js` : `ASUS_WATTS[handheld.id]`, donc ROG Ally / Ally X seulement, jamais le PC de bureau), les champs de performance du profil secteur sont remplacés par `mode: 'performance'` (Turbo, `tdp` 30 via `perfPreset`) ; écran et luminosité gardés. Un réglage fait ensuite sur secteur tient jusqu'au prochain branchement. Sans `auto`, rien ne se passe.

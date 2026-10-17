@@ -576,8 +576,8 @@ const BUILDERS = {
     }));
     const hh = d && d.ok && d.handheld;
     if (hh && /^rog-ally/.test(hh.id)) s.append(switchRow({
-      title: t('Turbo 30 W au branchement'), key: 'pw-plug-turbo', on: p.plugTurbo,
-      desc: t('Chargeur branché : mode Performance, profil Turbo à 30 W · un autre choix sur secteur tient jusqu’au prochain branchement'),
+      title: t('Puissance au branchement'), key: 'pw-plug-turbo', on: p.plugTurbo,
+      desc: t('Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement', { w: hh.id === 'rog-ally-x' ? 17 : 15 }),
       onToggle: v => save({ plugTurbo: v }),
     }));
     const vendor = sys && sys.vendor && sys.vendor.modes ? sys.vendor : null;

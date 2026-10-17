@@ -1044,6 +1044,9 @@
  "Boutons, curseurs et reflets · repris par le streaming local": [
   "ui/js/pages/settings.js"
  ],
+ "Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement": [
+  "ui/js/pages/settings.js"
+ ],
  "build compatible (ancienne méthode)": [
   "ui/js/pages/settings.js"
  ],
@@ -1100,9 +1103,6 @@
  ],
  "Charge du processeur": [
   "ui/js/qam.js"
- ],
- "Chargeur branché : mode Performance, profil Turbo à 30 W · un autre choix sur secteur tient jusqu’au prochain branchement": [
-  "ui/js/pages/settings.js"
  ],
  "Chercher le jeu sur SteamGridDB": [
   "ui/js/pages/artpicker.js"
@@ -3085,6 +3085,9 @@
  "Puissance (TDP)": [
   "ui/js/qam.js"
  ],
+ "Puissance au branchement": [
+  "ui/js/pages/settings.js"
+ ],
  "Puissance du profil": [
   "ui/js/widget.js"
  ],
@@ -3751,9 +3754,6 @@
  "Turbo": [
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
- ],
- "Turbo 30 W au branchement": [
-  "ui/js/pages/settings.js"
  ],
  "turbo activé": [
   "ui/js/qam.js"
