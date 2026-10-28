@@ -4,17 +4,21 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
-## HDR automatique (non publié)
+## Version 4.10.0 : HDR automatique, « Streaming », moteur Moonlight 6.2.0
+
+- VERSION : 4.10.0 ; notes dans `docs/releases/4.10.0.md`. Regroupe les deux sections ci-dessous. Moteur KanePlay 1.0.9 poussé sur `Kaynegiordano/KanePlay` (pas de release KanePlay à part).
+
+## HDR automatique
 
 - Demande de l'utilisateur (28/10) : la fonction de **Smart HDR Manager** (outil tiers de VantaCode420, `C:\SmartHdrManager.exe`, non signé, jamais lancé) **intégrée nativement** dans KaneMode, « simple, propre, adaptée à l'interface », tout au choix de l'utilisateur. KaneMode seulement (pas Kane OS). Aucun code repris de l'outil.
 - `host/lib/autohdr.js` : causes en cours (`game:<id>` lancé par KaneMode, `outside:<id>` jeu de la bibliothèque dont un programme tourne dans son dossier, `video`) ; HDR allumé seulement s'il était coupé (`hdrstate` = 0), et coupé seulement si KaneMode l'a allumé (`config.autoHdrOwned`, gardé si l'hôte redémarre). OBS ouvert + option : pause (HDR coupé, rallumé à la fermeture d'OBS). Réglages `config.autoHdr` { games: vrai, outside, videos, obs: vrai } ; choix par jeu `config.gameHdr[id]` = `on` | `off` (absent = réglage général). Les applications (type `app`), le streaming et les lanceurs sont ignorés sauf `on`.
 - `server.js` : `autoHdr.started()` dans `POST /api/launch`, `ended()` dans `POST /api/launch/ended` ; minuterie de 4 s qui ne regarde les programmes que si un écran HDR est branché (`hdrstate` relu chaque minute ; rien sur l'écran de l'Ally seul) et si une option le demande (`needsPoll`). Dossiers suivis : `trackable()` (jeux installés, au moins 3 niveaux, jamais `steamapps\common` ni la racine d'une bibliothèque, pas d'émulation). Routes `GET|POST /api/hdr/auto`, `GET|POST /api/game-hdr`.
 - `syscontrol.ps1` : classe `Procs` (`QueryFullProcessImageName`, session courante) → commande `procpaths` (5 à 8 ms sur le PC de dev, 52 programmes) ; `hdrstate` (lecture seule de `Hdr.State()`).
-- Interface : section **HDR automatique** des Paramètres (icône `i-hdr`, 4 interrupteurs), menu du jeu **HDR du jeu…** (`gameHdrDialog`, comme le mode de performance du jeu). Tests : `node --test tools/verify-autohdr.js` (8 tests). Vérifié dans le navigateur (page et boîte de dialogue) et commandes système réelles en lecture ; **la bascule HDR réelle pendant un jeu n'a pas été essayée** (elle change l'écran de l'utilisateur).
+- Interface : section **HDR automatique** des Paramètres (icône `i-hdr`, 4 interrupteurs), menu du jeu **HDR du jeu…** (`gameHdrDialog`, comme le mode de performance du jeu). Tests : `node --test tools/verify-autohdr.js` (8 tests). Vérifié dans le navigateur (page et boîte de dialogue) et commandes système réelles en lecture ; **la bascule HDR réelle pendant un jeu n'a pas été essayée avant la publication** (elle change l'écran de l'utilisateur).
 
-## Streaming : nouveau nom (non publié)
+## Streaming : nouveau nom
 
-- Demande de l'utilisateur : la fonctionnalité s'appelle **« Streaming »** (plus « Streaming local »), partout où c'est visible : menu, Paramètres, jaquette, accueil, fiche de jeu, README, `en.json`. Le titre technique de la fenêtre du moteur reste « KaneMode · Streaming ». Dans le moteur (sous-module `engine/KanePlay`, dépôt séparé, **modifications non commitées**) : `main.qml` et `PcView.qml` + `qml_fr.ts`. Il faut recompiler le moteur (`engine/build-engine.ps1`) et régénérer les `.qm` avant de publier. À commiter d'abord dans KanePlay, puis dans KaneMode (pointeur du sous-module). Pas de version publiée pour l'instant.
+- Demande de l'utilisateur : la fonctionnalité s'appelle **« Streaming »** (plus « Streaming local »), partout où c'est visible : menu, Paramètres, jaquette, accueil, fiche de jeu, README, `en.json`. Le titre technique de la fenêtre du moteur reste « KaneMode · Streaming ». Dans le moteur (sous-module `engine/KanePlay`, dépôt séparé) : `main.qml` et `PcView.qml` + `qml_fr.ts`.
 - Moteur : fusion de Moonlight **6.2.0** (sous-module `upstream` = moonlight-stream/moonlight-qt) dans KanePlay 1.0.9 : correctifs de sécurité (hôte malveillant qui plante le client), journal ouvert en `NewOnly`, délai TCP/TLS, SSL OpenSSL déployé. Gardé du fork : `d3d11va.cpp` (VRR, interpolation d'images), `plvk.cpp` (+ garde « swapchain nul »). `runConfigChecks` → `isGuiLaunch` comme en amont. Déjà présents avant : débit 500 Mbps, capture des touches système, 4:4:4 + HDR, VRR, gâchettes adaptatives. Pas faisable : prévenir qu'un Sunshine est en retard, la version de Sunshine n'est pas exposée par le protocole.
 
 ## Version 4.9.1 : Wi-Fi bloqué par la position, onglet Notifications
