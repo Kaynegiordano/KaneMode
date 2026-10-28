@@ -293,6 +293,7 @@ async function options(g) {
       { label: t('Collections…'), value: 'collections', icon: 'i-collection' },
       { label: (settings.homePins || []).some(p => p.type === 'game' && p.id === g.id) ? t('Retirer de l’accueil') : t('Épingler sur l’accueil'), value: 'pin', icon: 'i-home' },
       ...(!g.demo && g.type === 'game' ? [{ label: t('Mode de performance du jeu…'), value: 'mode', icon: 'i-cpu' }] : []),
+      ...(!g.demo && !g.streamHost && g.source !== 'kaneplay' ? [{ label: t('HDR du jeu…'), value: 'hdr', icon: 'i-hdr' }] : []),
       ...(!g.demo ? [{ label: t('Visuels (SteamGridDB, image perso)…'), value: 'art', icon: 'i-image' }] : []),
       ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
       { label: g.type === 'app' ? t('Classer comme jeu') : t('Classer comme application'), value: 'type', icon: 'i-sort' },
@@ -306,6 +307,7 @@ async function options(g) {
   if (choice === 'collections') collectionsDialog(g);
   if (choice === 'pin') pinItem('game', g.id);
   if (choice === 'mode') gameModeDialog(g);
+  if (choice === 'hdr') gameHdrDialog(g);
   if (choice === 'art') go('artpicker', { id: g.id });
   if (choice === 'uninstall' && (await confirmDialog(t('Désinstaller {name} ?', { name: g.name }), t('Steam va s’ouvrir pour confirmer la désinstallation.'), t('Continuer'), true))) {
     openThing(g, 'uninstall', t('Ouverture de Steam…'));
@@ -352,6 +354,29 @@ async function gameModeDialog(g) {
   try {
     await api.post('/api/game-mode', { id: g.id, mode });
     toast(mode ? t('Mode appliqué au lancement de {name}', { name: g.name }) : t('{name} garde le mode en cours', { name: g.name }));
+  } catch (e) { toast(e.message, { error: true }); }
+}
+
+// HDR propre à un jeu : suit le réglage général (Paramètres → HDR automatique), toujours ou jamais
+async function gameHdrDialog(g) {
+  const modes = await api.get('/api/game-hdr').catch(() => ({}));
+  const cur = modes[g.id] || null;
+  const mark = v => (v === cur ? ' ✓' : '');
+  const choice = await dialog({
+    title: t('HDR du jeu'),
+    text: t('Pendant {name}, Windows passe en HDR puis revient en SDR à la fermeture.', { name: esc(g.name) }),
+    buttons: [
+      { label: t('Automatique (réglage général)') + mark(null), value: 'auto' },
+      { label: t('Toujours en HDR') + mark('on'), value: 'on' },
+      { label: t('Jamais en HDR') + mark('off'), value: 'off' },
+      { label: t('Fermer'), value: null },
+    ],
+  });
+  if (!choice) return;
+  const mode = choice === 'auto' ? null : choice;
+  try {
+    await api.post('/api/game-hdr', { id: g.id, mode });
+    toast(mode === 'on' ? t('{name} passera toujours en HDR', { name: g.name }) : mode === 'off' ? t('{name} restera en SDR', { name: g.name }) : t('{name} suit le réglage général', { name: g.name }));
   } catch (e) { toast(e.message, { error: true }); }
 }
 

@@ -309,6 +309,28 @@ namespace KaneMode {
     }
   }
 
+  // ---- Programmes ouverts (HDR automatique) : chemin complet de chaque processus de la session
+  public static class Procs {
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, System.Text.StringBuilder name, ref int size);
+    public static string[] Paths() {
+      int session = System.Diagnostics.Process.GetCurrentProcess().SessionId;
+      var list = new System.Collections.Generic.HashSet<string>();
+      var sb = new System.Text.StringBuilder(1024);
+      foreach (var p in System.Diagnostics.Process.GetProcesses()) {
+        try {
+          if (p.SessionId != session) continue;
+          IntPtr h = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, p.Id);
+          if (h == IntPtr.Zero) continue;
+          try { int n = sb.Capacity; sb.Length = 0; if (QueryFullProcessImageName(h, 0, sb, ref n)) list.Add(sb.ToString(0, n)); }
+          finally { CloseHandle(h); }
+        } catch { } finally { p.Dispose(); }
+      }
+      var a = new string[list.Count]; list.CopyTo(a); return a;
+    }
+  }
+
   // ---- Source d'alimentation : 1 secteur, 0 batterie, -1 inconnue
   public static class PowerSource {
     [StructLayout(LayoutKind.Sequential)]
@@ -516,6 +538,8 @@ function Run($c) {
             $names = @($c.value | Where-Object { "$_" -match '^[\w .-]{1,64}$' })
             return @{ running = @($names | Where-Object { Get-Process -Name $_ -ErrorAction SilentlyContinue }) }
         }
+        'procpaths' { return @{ paths = @([KaneMode.Procs]::Paths()) } }
+        'hdrstate' { return @{ hdr = [KaneMode.Hdr]::State() } }
         'steamapp' {
             $v = 0
             try { $v = [int](Get-ItemProperty 'HKCU:\Software\Valve\Steam' -Name RunningAppID -ErrorAction Stop).RunningAppID } catch { }

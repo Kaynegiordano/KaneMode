@@ -25,6 +25,7 @@ const launchLib = require('./lib/launch');
 const libraryRemoval = require('./lib/library-removal');
 const accountsLib = require('./lib/accounts');
 const powerLib = require('./lib/power-profiles');
+const autoHdrLib = require('./lib/autohdr');
 const wifi = require('./lib/wifi');
 const weatherLib = require('./lib/weather');
 
@@ -476,6 +477,38 @@ const powerController = powerLib.create({ read: config, write: c => writeJson(FI
     writeJson(FILES.config, c);
   },
 });
+// ---------------------------------------------------------------- HDR automatique (voir lib/autohdr.js)
+// Jeux de la bibliothèque et leur dossier, gardés 30 s (classement jeu / application de l'utilisateur compris)
+const hdrType = (g, st = state()) => (st.overrides[g.id] || {}).type || (g.source === 'custom' || g.source === 'rom' ? g.type : (meta[g.id] || {}).type || g.type || 'game');
+const hdrGamesMemo = { t: 0, list: [] };
+function hdrGames() {
+  if (Date.now() - hdrGamesMemo.t < 30000) return hdrGamesMemo.list;
+  const st = state();
+  const list = allEntries(false).games.map(g => ({
+    id: g.id, name: g.name, source: g.source, installed: g.installed, demo: g.demo, streamHost: g.streamHost,
+    type: hdrType(g, st),
+    dir: trackDir(g),
+  }));
+  hdrGamesMemo.t = Date.now(); hdrGamesMemo.list = autoHdrLib.trackable(list);
+  return hdrGamesMemo.list;
+}
+const autoHdr = autoHdrLib.create({
+  read: config, write: c => writeJson(FILES.config, c),
+  hdr: async () => (await sysctl.call('hdrstate')).hdr,
+  setHdr: on => sysctl.call('hdr', { value: on }),
+  paths: async () => (await sysctl.call('procpaths')).paths || [],
+  games: async () => hdrGames(),
+  log: m => console.log(m),
+});
+// Écran HDR branché ? Relu chaque minute : sans lui (écran de l'Ally seul), rien n'est surveillé
+const hdrScreen = { t: 0, ok: false };
+setInterval(async () => {
+  try {
+    if (Date.now() - hdrScreen.t > 60000) { hdrScreen.ok = (await sysctl.call('hdrstate')).hdr >= 0; hdrScreen.t = Date.now(); }
+    if (hdrScreen.ok && autoHdr.needsPoll()) await autoHdr.poll();
+  } catch { /* réglages système occupés : prochain passage dans 4 s */ }
+}, 4000);
+
 // ---------------------------------------------------------------- pilotes (Windows Update)
 const driverJobs = device.drivers(DATA);
 // Mises à jour officielles du constructeur de la console (BIOS, pilotes du modèle)
@@ -1207,6 +1240,7 @@ const routes = {
         : await accounts.action(e.bridge.id, e.installed === false ? 'install' : 'start')
       : await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
+    if (r.ok && !b.dry && e.installed !== false) Promise.resolve(autoHdr.started({ ...e, type: hdrType(e) })).catch(err => console.error('HDR automatique :', err.message));
     // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
     const gm = (config().gameModes || {})[id];
     if (r.ok && !b.dry && PERF_MODES.includes(gm) && config().perfMode !== gm) {
@@ -1249,6 +1283,7 @@ const routes = {
   'POST /api/launch/ended': async (req, res) => {
     const b = await readBody(req);
     recentLaunch.delete(String(b.id || ''));
+    Promise.resolve(autoHdr.ended(String(b.id || ''))).catch(err => console.error('HDR automatique :', err.message));
     json(res, 200, { ok: true });
   },
   // Fond d'écran du lancement : une image « hero » du jeu tirée au hasard sur SteamGridDB
@@ -1428,6 +1463,28 @@ const routes = {
     json(res, 200, { id: b.id, mode: b.mode ?? null });
   },
   'GET /api/game-mode': (req, res) => json(res, 200, config().gameModes || {}),
+  // HDR automatique : réglages, état, choix par jeu (toujours / jamais)
+  'GET /api/hdr/auto': async (req, res) => {
+    const st = await sysctl.call('hdrstate').catch(() => ({ hdr: -1 }));
+    json(res, 200, { ...autoHdr.prefs(), screen: st.hdr, ...autoHdr.state() });
+  },
+  'POST /api/hdr/auto': async (req, res) => {
+    const b = await readBody(req);
+    const c = config(), p = autoHdr.prefs();
+    for (const k of Object.keys(autoHdrLib.DEFAULTS)) if (typeof b[k] === 'boolean') p[k] = b[k];
+    c.autoHdr = p; writeJson(FILES.config, c);
+    json(res, 200, p);
+  },
+  'GET /api/game-hdr': (req, res) => json(res, 200, config().gameHdr || {}),
+  'POST /api/game-hdr': async (req, res) => {
+    const b = await readBody(req);
+    if (typeof b.id !== 'string' || !b.id) return json(res, 400, { error: 'Jeu inconnu' });
+    if (b.mode != null && !autoHdrLib.GAME_MODES.includes(b.mode)) return json(res, 400, { error: 'Choix inconnu' });
+    const c = config(), m = { ...(c.gameHdr || {}) };
+    if (b.mode == null) delete m[b.id]; else m[b.id] = b.mode;
+    c.gameHdr = m; writeJson(FILES.config, c);
+    json(res, 200, { id: b.id, mode: b.mode ?? null });
+  },
   // Mode de performance (Économie, Équilibré, Performance) : tout est appliqué d'un coup
   'POST /api/power/mode': async (req, res) => {
     const b = await readBody(req);

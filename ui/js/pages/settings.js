@@ -25,7 +25,7 @@ const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
 const SECTIONS = [
   ['library', 'i-library', t('Bibliothèque')], ['accounts', 'i-store', t('Comptes et boutiques')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming')],
-  ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
+  ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['hdr', 'i-hdr', t('HDR automatique')], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
   ['qam', 'i-grid', t('Accès rapide')], ['access', 'i-info', t('Accessibilité')], ['power', 'i-moon', t('Veille')], ['energy', 'i-power', t('Énergie')],
   ['device', 'i-battery', t('Appareil et pilotes')],
   ['storage', 'i-drive', t('Stockage')], ['xbox', 'i-desktop', t('Mode Xbox')], ['system', 'i-cpu', t('Système')],
@@ -561,6 +561,24 @@ const BUILDERS = {
     h2(s, 'i-grid', t('Accès rapide'));
     s.append(el('div', 'notice', t('Le panneau <b>Accès rapide</b> (bouton {a} de la manette, touche Q) règle vraiment Windows : mode de performance, volume, luminosité, Wi-Fi, Bluetooth, fréquence de l’écran, profil et puissance de la console. Choisissez ses sections et leur ordre.', { a: settings.padSwap ? t("Select") : t("Start") })));
     orderList(s, QAM_SECTIONS, 'qamOrder', 'qamHidden', 'qam');
+  },
+
+  async hdr(s) {
+    h2(s, 'i-hdr', t('HDR automatique'));
+    const p = await api.get('/api/hdr/auto');
+    s.append(el('div', 'notice', p.screen < 0
+      ? t('Aucun écran HDR pour l’instant. Ces réglages servent dès qu’une TV ou un écran HDR est branché.')
+      : t('Windows passe en HDR quand il le faut et revient en SDR ensuite. KaneMode ne coupe que le HDR qu’il a lui-même allumé.')));
+    const save = async patch => {
+      try { Object.assign(p, await api.post('/api/hdr/auto', patch)); } catch (e) { toast(e.message, { error: true }); }
+    };
+    for (const [k, title, desc] of [
+      ['games', t('Jeux lancés depuis KaneMode'), t('HDR au lancement, SDR à la fermeture')],
+      ['outside', t('Jeux ouverts ailleurs'), t('Jeux de la bibliothèque lancés depuis Steam, l’app Xbox ou un raccourci')],
+      ['videos', t('Lecteurs vidéo'), t('VLC, MPC-HC, MPC-BE, PotPlayer ou mpv ouverts')],
+      ['obs', t('Pause pendant OBS'), t('Pas de HDR automatique tant qu’OBS est ouvert : couleurs justes à l’enregistrement')],
+    ]) s.append(switchRow({ title, desc, on: p[k], key: 'hdr-' + k, onToggle: v => save({ [k]: v }) }));
+    s.append(el('div', 'notice', t('Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>.')));
   },
 
   async energy(s) {

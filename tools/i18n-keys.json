@@ -329,10 +329,16 @@
  "{name} ne sera plus démarré à l’avance": [
   "ui/js/pages/settings.js"
  ],
+ "{name} passera toujours en HDR": [
+  "ui/js/pages/game.js"
+ ],
  "{name} prêt en arrière-plan": [
   "ui/js/pages/settings.js"
  ],
  "{name} restauré dans la bibliothèque": [
+  "ui/js/pages/game.js"
+ ],
+ "{name} restera en SDR": [
   "ui/js/pages/game.js"
  ],
  "{name} retiré des favoris": [
@@ -340,6 +346,9 @@
  ],
  "{name} sera prêt pour vos jeux": [
   "ui/js/pages/settings.js"
+ ],
+ "{name} suit le réglage général": [
+  "ui/js/pages/game.js"
  ],
  "{name} supprimé": [
   "ui/js/pages/game.js"
@@ -828,6 +837,9 @@
  "Aucun (mode en cours)": [
   "ui/js/pages/game.js"
  ],
+ "Aucun écran HDR pour l’instant. Ces réglages servent dès qu’une TV ou un écran HDR est branché.": [
+  "ui/js/pages/settings.js"
+ ],
  "Aucun élément à épingler": [
   "ui/js/personalization-settings.js"
  ],
@@ -938,6 +950,9 @@
  ],
  "Automatique (langue de Windows)": [
   "ui/js/pages/settings.js"
+ ],
+ "Automatique (réglage général)": [
+  "ui/js/pages/game.js"
  ],
  "Automatique par écran": [
   "ui/js/personalization-settings.js"
@@ -1149,6 +1164,9 @@
  "Chaque écran associé retrouve son profil automatiquement": [
   "ui/js/personalization-settings.js"
  ],
+ "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>.": [
+  "ui/js/pages/settings.js"
+ ],
  "Charge du processeur": [
   "ui/js/qam.js"
  ],
@@ -1231,6 +1249,9 @@
  ],
  "Choix du profil": [
   "ui/js/personalization-settings.js"
+ ],
+ "Choix inconnu": [
+  "host/server.js"
  ],
  "Cible : {a} {b}": [
   "ui/js/pages/game.js"
@@ -1982,6 +2003,18 @@
  "Guide": [
   "ui/js/pages/settings.js"
  ],
+ "HDR au lancement, SDR à la fermeture": [
+  "ui/js/pages/settings.js"
+ ],
+ "HDR automatique": [
+  "ui/js/pages/settings.js"
+ ],
+ "HDR du jeu": [
+  "ui/js/pages/game.js"
+ ],
+ "HDR du jeu…": [
+  "ui/js/pages/game.js"
+ ],
  "Heure et météo": [
   "ui/index.html",
   "ui/js/statusbar.js"
@@ -2199,6 +2232,9 @@
  "Jamais": [
   "ui/js/pages/settings.js"
  ],
+ "Jamais en HDR": [
+  "ui/js/pages/game.js"
+ ],
  "Jamais joué": [
   "ui/js/core.js"
  ],
@@ -2248,6 +2284,9 @@
  "Jeux": [
   "ui/js/pages/library.js"
  ],
+ "Jeux de la bibliothèque lancés depuis Steam, l’app Xbox ou un raccourci": [
+  "ui/js/pages/settings.js"
+ ],
  "Jeux de vos PC": [
   "ui/js/streamcover.js"
  ],
@@ -2260,7 +2299,13 @@
  "Jeux gratuits de la semaine et à venir": [
   "ui/js/pages/settings.js"
  ],
+ "Jeux lancés depuis KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
  "Jeux offerts ailleurs": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jeux ouverts ailleurs": [
   "ui/js/pages/settings.js"
  ],
  "Jeux récents": [
@@ -2422,6 +2467,9 @@
  ],
  "Le pilote NVIDIA a refusé : {a} ({b})": [
   "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Lecteurs vidéo": [
+  "ui/js/pages/settings.js"
  ],
  "Lecture des réglages du système…": [
   "ui/js/qam.js"
@@ -3059,6 +3107,9 @@
  "Pas de GPU NVIDIA": [
   "native/KaneMode.Gpu/Nvidia.cpp"
  ],
+ "Pas de HDR automatique tant qu’OBS est ouvert : couleurs justes à l’enregistrement": [
+  "ui/js/pages/settings.js"
+ ],
  "Pas de pilote AMD Radeon": [
   "native/KaneMode.Amd/Amd.cpp"
  ],
@@ -3089,11 +3140,17 @@
  "Pastille de la boutique sur chaque jaquette de la bibliothèque": [
   "ui/js/pages/settings.js"
  ],
+ "Pause pendant OBS": [
+  "ui/js/pages/settings.js"
+ ],
  "PC branché ou console en charge": [
   "ui/js/pages/settings.js"
  ],
  "PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils": [
   "ui/js/pages/settings.js"
+ ],
+ "Pendant {name}, Windows passe en HDR puis revient en SDR à la fermeture.": [
+  "ui/js/pages/game.js"
  ],
  "Pendant KaneMode, le streaming et les jeux suivis · la veille choisie et le verrouillage manuel restent disponibles": [
   "ui/js/pages/settings.js"
@@ -3950,6 +4007,9 @@
  "Toujours afficher la boutique": [
   "ui/js/pages/settings.js"
  ],
+ "Toujours en HDR": [
+  "ui/js/pages/game.js"
+ ],
  "Tous": [
   "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
@@ -4186,6 +4246,9 @@
  "Visuels récupérés": [
   "ui/js/pages/artpicker.js"
  ],
+ "VLC, MPC-HC, MPC-BE, PotPlayer ou mpv ouverts": [
+  "ui/js/pages/settings.js"
+ ],
  "Volume": [
   "ui/js/qam.js",
   "ui/js/widget.js"
@@ -4282,6 +4345,9 @@
  ],
  "Windows n’a pas répondu à la demande de lancement": [
   "host/lib/launch.js"
+ ],
+ "Windows passe en HDR quand il le faut et revient en SDR ensuite. KaneMode ne coupe que le HDR qu’il a lui-même allumé.": [
+  "ui/js/pages/settings.js"
  ],
  "Windows refuse les mouvements du curseur.": [
   "ui/js/pages/settings.js"
