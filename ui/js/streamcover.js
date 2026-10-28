@@ -1,4 +1,4 @@
-// Jaquette du streaming local (moteur KanePlay intégré), dessinée ici plutôt qu'en image : elle
+// Jaquette du streaming (moteur KanePlay intégré), dessinée ici plutôt qu'en image : elle
 // reprend la couleur d'accent de KaneMode et son titre est dans la langue de l'interface. Portrait
 // (bibliothèque, accueil) et bandeau (fonds, cartes larges).
 import { t } from './i18n.js';
@@ -49,9 +49,9 @@ function waves(w, h, y0, amp) {
 
 const uri = s => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 
-/** Jaquettes du streaming local : { portrait, hero, header } (adresses data:). */
+/** Jaquettes du streaming : { portrait, hero, header } (adresses data:). */
 export function streamingArt(accent = '#1a9fff') {
-  const title = t('Streaming local'), sub = t('Jeux de vos PC').toUpperCase();
+  const title = t('Streaming'), sub = t('Jeux de vos PC').toUpperCase();
   const pw = 600, ph = 900;
   const ts = fit(title, 520, 76), ss = fit(sub, 1100, 22);
   const portrait = svg(pw, ph, `

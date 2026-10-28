@@ -1,5 +1,5 @@
 // Sons d'interface graves et feutrés : fondamentale ronde, sans clic ni tintement aigu.
-// Table partagée entre core.js et tools/gen-sounds.js pour le streaming local.
+// Table partagée entre core.js et tools/gen-sounds.js pour le streaming.
 // Chaque note : [fréquence, départ (s), volume, durée]. Le démarrage reste dans boot.js.
 export const SOUNDS = {
   move: { notes: [[294, 0, 1, 0.085]], vol: 0.028 },

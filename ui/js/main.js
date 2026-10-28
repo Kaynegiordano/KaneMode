@@ -151,7 +151,7 @@ Object.assign(qamShortcuts, {
   list: [
     ['i-moon', t('Veille'), () => sleepNow(), 'sc-sleep'],
     ['i-power', t('Alimentation'), () => actions['power-open'](), 'sc-power'],
-    ['i-gamepad', t('Streaming local'), () => openStreaming(), 'sc-kaneplay'],
+    ['i-gamepad', t('Streaming'), () => openStreaming(), 'sc-kaneplay'],
     ['i-volume', 'Dolby Atmos', () => go('settings', { section: 'dolby' }), 'sc-dolby'],
     // Manette qui ne répond plus (retour d'une autre application) : déconnexion puis reconnexion
     ['i-refresh', t('Reconnecter les manettes'), () => { native.send('pads-reconnect'); toast(t('Manettes reconnectées')); }, 'sc-pads'],

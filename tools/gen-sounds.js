@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Écrit les sons d'interface du streaming local (engine/KanePlay/app/res/sounds/*.wav) d'après la table
+// Écrit les sons d'interface du streaming (engine/KanePlay/app/res/sounds/*.wav) d'après la table
 // de KaneMode (ui/js/soundtable.js) : même timbre grave et feutré, mêmes notes, même écho discret.
 // Format conservé : 48 kHz, mono, 16 bits.
 //   node tools/gen-sounds.js

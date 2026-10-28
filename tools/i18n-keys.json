@@ -1080,7 +1080,7 @@
  "Boutons Select et Start": [
   "ui/js/pages/settings.js"
  ],
- "Boutons, curseurs et reflets · repris par le streaming local": [
+ "Boutons, curseurs et reflets · repris par le streaming": [
   "ui/js/pages/settings.js"
  ],
  "Branchée : Turbo à 30 W · débranchée : {w} W · un autre choix tient jusqu’au prochain branchement ou débranchement": [
@@ -2360,7 +2360,7 @@
  "Langue": [
   "ui/js/pages/settings.js"
  ],
- "Langue de l’interface, des widgets Game Bar et du streaming local": [
+ "Langue de l’interface, des widgets Game Bar et du streaming": [
   "ui/js/pages/settings.js"
  ],
  "Le {date}": [
@@ -2441,7 +2441,7 @@
  "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
   "ui/js/pages/settings.js"
  ],
- "Les jeux de vos PC se choisissent dans le streaming local, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming local, <b>B</b> revient à KaneMode.": [
+ "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
  "Les menus, dialogues et réglages restent visibles": [
@@ -2990,7 +2990,7 @@
  "Ouvrir la page de téléchargement": [
   "ui/js/pages/settings.js"
  ],
- "Ouvrir le streaming local": [
+ "Ouvrir le streaming": [
   "ui/js/pages/settings.js"
  ],
  "Ouvrir les réglages du mode Xbox": [
@@ -3808,21 +3808,18 @@
   "ui/js/pages/settings.js"
  ],
  "Streaming": [
+  "ui/index.html",
   "ui/js/core.js",
+  "ui/js/main.js",
+  "ui/js/pages/game.js",
+  "ui/js/pages/settings.js",
+  "ui/js/streamcover.js"
+ ],
+ "Streaming · {host}": [
   "ui/js/pages/game.js"
  ],
  "Streaming depuis vos PC": [
   "ui/js/pages/home.js"
- ],
- "Streaming local": [
-  "ui/index.html",
-  "ui/js/core.js",
-  "ui/js/main.js",
-  "ui/js/pages/settings.js",
-  "ui/js/streamcover.js"
- ],
- "Streaming local · {host}": [
-  "ui/js/pages/game.js"
  ],
  "Style de jaquettes": [
   "ui/js/personalization-settings.js"
@@ -4104,7 +4101,7 @@
  "Veille simulée · appuyez sur un bouton pour réveiller": [
   "ui/js/power.js"
  ],
- "Veille, alimentation, streaming local": [
+ "Veille, alimentation, streaming": [
   "ui/js/qam.js"
  ],
  "Vent": [

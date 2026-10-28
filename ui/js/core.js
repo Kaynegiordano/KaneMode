@@ -102,7 +102,7 @@ function syncSounds() {
 }
 setTimeout(syncSounds, 0);
 
-// Le streaming local reprend la couleur d'accent et les coins de KaneMode : l'hôte les lui transmet au lancement
+// Le streaming reprend la couleur d'accent et les coins de KaneMode : l'hôte les lui transmet au lancement
 let sentAccent = null;
 function syncAccent() {
   const look = JSON.stringify([settings.accent, settings.corners]);
@@ -337,7 +337,7 @@ export const SOURCES = {
   minecraft: { label: 'Minecraft', color: '#6bb043' },
   custom: { label: t('Ajouts perso'), short: t('Perso'), color: '#f0a030' },
   rom: { label: t('Émulation'), short: t('Émulation'), color: '#e05a2b' },
-  kaneplay: { label: t('Streaming local'), short: t('Streaming'), color: 'var(--accent)' },
+  kaneplay: { label: t('Streaming'), short: t('Streaming'), color: 'var(--accent)' },
 };
 export const sourceOf = id => SOURCES[id] || { label: id, color: '#888' };
 
@@ -385,11 +385,11 @@ export const lib = {
     const old = new Map(this.games.map(g => [g.id, g]));
     const layout = layoutSig(d);
     const first = !this.games.length;
-    // Streaming local : nom donné par l'hôte en français, traduit ici, et jaquette aux couleurs de
+    // Streaming : nom donné par l'hôte en français, traduit ici, et jaquette aux couleurs de
     // KaneMode dans la langue de l'interface (sauf visuel choisi par l'utilisateur, « ?v= »)
     for (const g of d.games) {
       if (g.id !== 'kaneplay') continue;
-      g.name = t('Streaming local');
+      g.name = t('Streaming');
       if (!/\?v=/.test((g.art && g.art.portrait) || '')) g.art = { ...g.art, ...streamingArt(settings.accent) };
     }
     Object.assign(this, { games: d.games, index: new Map(d.games.map(g => [g.id, g])), launchers: d.launchers, stream: d.stream || { engine: false, hosts: [] }, collections: d.collections || [], version: d.version, generated: d.generated });

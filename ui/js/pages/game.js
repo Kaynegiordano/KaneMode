@@ -411,7 +411,7 @@ definePage('game', {
       (g.playtime ? stat(t('Temps de jeu'), fmt.playtime(g.playtime)) : '') +
       (g.playCount ? stat(t('Lancements'), g.playCount) : '') +
       (g.sizeOnDisk ? stat(t('Taille'), fmt.size(g.sizeOnDisk)) : '') +
-      (g.streamHost ? stat(t('Streaming'), t('Streaming local · {host}', { host: esc(g.streamHost) })) : '') +
+      (g.streamHost ? stat(t('Streaming'), t('Streaming · {host}', { host: esc(g.streamHost) })) : '') +
       (g.systemName ? stat(t('Console'), esc(g.systemName) + (g.region ? ` · ${esc(g.region)}` : '')) : '') +
       (g.source === 'rom' ? stat(t('Émulateur'), g.emulator ? esc(g.emulator + (g.core ? ` (${g.core})` : '')) : t('<span style="color:#ff9a9d">Non trouvé</span>')) : '') +
       stat(t('Boutique'), `<span class="pill src" style="--src:${src.color}">${esc(src.label)}${g.shortcut ? t(' · non-Steam') : ''}</span>`));

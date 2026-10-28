@@ -71,14 +71,14 @@ async function hosts() {
 }
 
 /**
- * Entrée de bibliothèque : le streaming local (moteur KanePlay intégré), avec sa jaquette. Les jeux
+ * Entrée de bibliothèque : le streaming (moteur KanePlay intégré), avec sa jaquette. Les jeux
  * des PC se choisissent dans le moteur (bibliothèque de chaque PC, reprise d'une session en pause).
  * Nom en français, traduit par l'interface (core.js, lib.load).
  */
 function entry(exe, art, opts) {
   if (!exe) return null;
   return {
-    id: 'kaneplay', source: 'kaneplay', name: 'Streaming local', type: 'app', installed: true,
+    id: 'kaneplay', source: 'kaneplay', name: 'Streaming', type: 'app', installed: true,
     launch: { kind: 'exe', target: exe, args: '', env: env('show', opts) },
     art: art && isFile(art) ? { portrait: art, hero: art } : {},
   };

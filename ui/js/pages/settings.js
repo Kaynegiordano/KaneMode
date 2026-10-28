@@ -24,7 +24,7 @@ const THEMES = [
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
 const SECTIONS = [
-  ['library', 'i-library', t('Bibliothèque')], ['accounts', 'i-store', t('Comptes et boutiques')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming local')],
+  ['library', 'i-library', t('Bibliothèque')], ['accounts', 'i-store', t('Comptes et boutiques')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming')],
   ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
   ['qam', 'i-grid', t('Accès rapide')], ['access', 'i-info', t('Accessibilité')], ['power', 'i-moon', t('Veille')], ['energy', 'i-power', t('Énergie')],
   ['device', 'i-battery', t('Appareil et pilotes')],
@@ -473,7 +473,7 @@ const BUILDERS = {
   },
 
   async stream(s) {
-    h2(s, 'i-gamepad', t('Streaming local'));
+    h2(s, 'i-gamepad', t('Streaming'));
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, t('<span class="dot-ko"></span>Moteur de streaming absent'), t('L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1'));
@@ -483,14 +483,14 @@ const BUILDERS = {
     for (const h of d.hosts) {
       infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? t('Appairé') : t('Non appairé')} · ${tn(h.apps, '{n} application', '{n} applications')}`);
     }
-    actionRow(s, 'i-gamepad', t('Ouvrir le streaming local'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
-    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming local, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming local, <b>B</b> revient à KaneMode.')));
+    actionRow(s, 'i-gamepad', t('Ouvrir le streaming'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
+    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
   },
   async look(s) {
     h2(s, 'i-palette', t('Apparence'));
     // Langue : l'interface se recharge pour l'appliquer partout (menus, widgets, streaming)
     const langName = t(LANGS.find(([id]) => id === lang)[1]);
-    actionRow(s, 'i-globe', `${t('Langue')} · ${esc(langName)}`, esc(settings.lang ? t('Langue de l’interface, des widgets Game Bar et du streaming local') : t('Automatique : langue de Windows')), async () => {
+    actionRow(s, 'i-globe', `${t('Langue')} · ${esc(langName)}`, esc(settings.lang ? t('Langue de l’interface, des widgets Game Bar et du streaming') : t('Automatique : langue de Windows')), async () => {
       const v = await dialog({
         title: t('Langue'),
         buttons: [{ label: t('Automatique (langue de Windows)'), value: 'auto', primary: !settings.lang }, ...LANGS.map(([value, label]) => ({ label: t(label), value, primary: settings.lang === value }))],
@@ -512,7 +512,7 @@ const BUILDERS = {
       saveSettings();
       refresh();
     }, 'theme');
-    const sw = infoRow(s, t('Couleur d’accent'), t('Boutons, curseurs et reflets · repris par le streaming local'));
+    const sw = infoRow(s, t('Couleur d’accent'), t('Boutons, curseurs et reflets · repris par le streaming'));
     const swatches = el('div', 'swatches');
     for (const c of ACCENTS) {
       const d = el('div', 'swatch' + (settings.accent === c ? ' active' : ''), icon('i-check'));
