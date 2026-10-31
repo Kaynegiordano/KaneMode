@@ -20,6 +20,9 @@
  " · réglé automatiquement": [
   "ui/js/pages/settings.js"
  ],
+ " · Sunshine redémarre": [
+  "ui/js/pages/settings.js"
+ ],
  " · télécharger sur le site officiel": [
   "ui/js/pages/settings.js"
  ],
@@ -64,6 +67,9 @@
  ],
  "{a} · installé : {b}": [
   "host/server.js"
+ ],
+ "{a} appli(s) de Sunshine × 5 échelles (100 à 200 %)": [
+  "ui/js/pages/settings.js"
  ],
  "{a} introuvable": [
   "host/syscontrol.ps1"
@@ -383,7 +389,7 @@
  "<b>{a}</b><small>dossier « {b} » · .{join}{c}</small>": [
   "ui/js/pages/emulation.js"
  ],
- "<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Elle demande le complément KaneMode sur le PC hôte : <b>KaneMode-Hote-Echelle</b> (page des versions de KaneMode), à décompresser puis <b>Installer.cmd</b>.": [
+ "<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Il faut le <b>complément PC hôte</b> sur le PC qui diffuse : il s’installe ci-dessous quand KaneMode est aussi sur ce PC.": [
   "ui/js/pages/settings.js"
  ],
  "<b>Testeur de boutons</b><small>Les boutons s’allument quand vous appuyez dessus</small>": [
@@ -464,6 +470,9 @@
  "<span class=\"dot-ko\"></span>Moteur de streaming absent": [
   "ui/js/pages/settings.js"
  ],
+ "<span class=\"dot-ko\"></span>Non installé": [
+  "ui/js/pages/settings.js"
+ ],
  "<span class=\"dot-ko\"></span>Pas une console portable": [
   "ui/js/pages/settings.js"
  ],
@@ -474,6 +483,9 @@
   "ui/js/pages/settings.js"
  ],
  "<span class=\"dot-ok\"></span>App native KaneMode": [
+  "ui/js/pages/settings.js"
+ ],
+ "<span class=\"dot-ok\"></span>Installé": [
   "ui/js/pages/settings.js"
  ],
  "<span class=\"dot-ok\"></span>Mode Xbox activé": [
@@ -647,6 +659,9 @@
  ],
  "Ajouté à « {name} »": [
   "ui/js/pages/game.js"
+ ],
+ "Ajoute à Sunshine des variantes cachées de vos applis · droits d’administrateur demandés, Sunshine redémarre (streaming en cours coupé)": [
+  "ui/js/pages/settings.js"
  ],
  "Ajoute des jeux fictifs de toutes les boutiques et des ROMs pour voir une grosse bibliothèque. Marqués « DÉMO », ils ne se lancent pas.": [
   "ui/js/pages/settings.js"
@@ -1359,6 +1374,18 @@
   "ui/js/pages/library.js"
  ],
  "Compilée et prête (setup\\bin\\xfset)": [
+  "ui/js/pages/settings.js"
+ ],
+ "Complément absent de cette version de KaneMode": [
+  "host/lib/hostscale.js"
+ ],
+ "Complément installé · Sunshine redémarré": [
+  "ui/js/pages/settings.js"
+ ],
+ "Complément PC hôte": [
+  "ui/js/pages/settings.js"
+ ],
+ "Complément retiré · Sunshine redémarré": [
   "ui/js/pages/settings.js"
  ],
  "Complète": [
@@ -2142,6 +2169,7 @@
   "ui/js/pages/settings.js"
  ],
  "Installation annulée": [
+  "host/lib/hostscale.js",
   "ui/js/pages/settings.js"
  ],
  "Installation de la mise à jour…": [
@@ -2149,6 +2177,9 @@
  ],
  "Installation déjà en cours": [
   "host/server.js",
+  "ui/js/pages/settings.js"
+ ],
+ "Installation du complément…": [
   "ui/js/pages/settings.js"
  ],
  "INSTALLATION EN COURS": [
@@ -2206,6 +2237,9 @@
   "ui/js/pages/settings.js"
  ],
  "Installer la version {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Installer le complément": [
   "ui/js/pages/settings.js"
  ],
  "Installer les {length} mises à jour": [
@@ -2492,6 +2526,9 @@
  "Les boutons de la console sont lus par l’app KaneMode installée (pas dans le navigateur).": [
   "ui/js/pages/settings.js"
  ],
+ "Les consoles ne pourront plus changer l’échelle de ce PC pendant le streaming. Sunshine redémarre.": [
+  "ui/js/pages/settings.js"
+ ],
  "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
@@ -2662,6 +2699,9 @@
  ],
  "Météo…": [
   "ui/js/statusbar.js"
+ ],
+ "Mettre à jour le complément": [
+  "ui/js/pages/settings.js"
  ],
  "Mettre à l’échelle": [
   "ui/js/widget.js"
@@ -2944,6 +2984,9 @@
  ],
  "Nouvelle collection…": [
   "ui/js/pages/game.js"
+ ],
+ "Nouvelle version du complément dans KaneMode": [
+  "ui/js/pages/settings.js"
  ],
  "Nuit": [
   "ui/js/personalization-settings.js"
@@ -3602,6 +3645,9 @@
  "Retiré de « {name} »": [
   "ui/js/pages/game.js"
  ],
+ "Retire les variantes de Sunshine et le script de ce PC": [
+  "ui/js/pages/settings.js"
+ ],
  "Retirer": [
   "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
@@ -3627,6 +3673,12 @@
  "Retirer la vidéo perso": [
   "ui/js/pages/settings.js"
  ],
+ "Retirer le complément": [
+  "ui/js/pages/settings.js"
+ ],
+ "Retirer le complément ?": [
+  "ui/js/pages/settings.js"
+ ],
  "Retirer le son perso": [
   "ui/js/pages/settings.js"
  ],
@@ -3646,6 +3698,9 @@
  ],
  "Retour au bureau Windows": [
   "ui/index.html"
+ ],
+ "Retrait du complément…": [
+  "ui/js/pages/settings.js"
  ],
  "Rétro": [
   "ui/js/pages/settings.js"
@@ -3703,6 +3758,9 @@
   "ui/js/pages/add.js"
  ],
  "Sans transparence ni flou : plus lisible, un peu plus léger pour la carte graphique": [
+  "ui/js/pages/settings.js"
+ ],
+ "Sans variantes : {list}": [
   "ui/js/pages/settings.js"
  ],
  "Scan des ROMs…": [
@@ -3895,6 +3953,9 @@
  ],
  "Suivez l’installation dans {store}": [
   "ui/js/pages/game.js"
+ ],
+ "Sunshine diffuse depuis ce PC : avec le complément, une console peut passer son écran à 150 % (par exemple) le temps du streaming": [
+  "ui/js/pages/settings.js"
  ],
  "Super Resolution": [
   "ui/js/widget.js"

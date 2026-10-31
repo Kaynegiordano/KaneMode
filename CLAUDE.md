@@ -4,6 +4,10 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.11.1 : complément PC hôte installé depuis KaneMode
+
+- Demande de l'utilisateur : le complément de la 4.11.0 doit être « installé nativement dans KaneMode », pour ne pas dépendre du dossier `setup/hote-echelle` plus tard. `native/build.ps1` copie `setup/hote-echelle` dans `app/setup/hote-echelle` du paquet. `host/lib/hostscale.js` : `status()` lit `apps.json` de Sunshine (`file_apps` de sunshine.conf respecté) et renvoie sunshine/bundled/installed/apps/variants/missing (applis sans leurs 5 variantes)/outdated (SHA-256 du script de ProgramData ≠ celui embarqué). `install()`/`remove()` lancent `Installer.ps1` par `Start-Process -Verb RunAs -Wait -PassThru` (refus de l'UAC → « Installation annulée »). Routes `GET/POST /api/stream/hostscale` (`{remove:true}`). Paramètres → Streaming : `hostScaleBlock()` (affiché seulement si Sunshine est sur ce PC, aussi sans moteur). Vérifié : rendu des 3 états (simulés), passage des arguments et du code de sortie (sans `-Verb RunAs`, script factice) ; l'installation élevée réelle n'a pas été relancée (déjà installé sur ce PC).
+
 ## Version 4.11.0 : profil Bureau et mise à l'échelle du PC hôte (streaming)
 
 - Demandes de l'utilisateur : « mettre l'hôte à 150 % quand je me connecte » (intégré à KaneMode → Streaming), et l'option « bureau » de Moonlight introuvable (elle existait : Réglages avancés → Souris et clavier → « Souris bureau à distance », trop cachée).

@@ -136,6 +136,44 @@ function restore(box, snap, focus, fallback = []) {
   else if (focus || snap.key) focusIn(box);
 }
 
+// ---------- Complément PC hôte (streaming) : mise à l'échelle de ce PC quand une console y joue
+// Seulement sur un PC qui a Sunshine (host/lib/hostscale.js)
+async function hostScaleBlock(s) {
+  const box = el('div');
+  s.append(box);
+  const act = async (remove, focus) => {
+    const snap = snapshot(box);
+    busy(remove ? t('Retrait du complément…') : t('Installation du complément…'));
+    try {
+      await api.post('/api/stream/hostscale', remove ? { remove: true } : {});
+      toast(remove ? t('Complément retiré · Sunshine redémarré') : t('Complément installé · Sunshine redémarré'), { notify: true });
+    } catch (e) { toast(e.message, { error: true }); }
+    busy();
+    await render();
+    restore(box, snap, focus);
+  };
+  async function render() {
+    const st = await api.get('/api/stream/hostscale').catch(() => null);
+    box.replaceChildren();
+    if (!st || !st.sunshine) return;
+    h2(box, 'i-desktop', t('Complément PC hôte'));
+    if (!st.installed) {
+      infoRow(box, t('<span class="dot-ko"></span>Non installé'), t('Sunshine diffuse depuis ce PC : avec le complément, une console peut passer son écran à 150 % (par exemple) le temps du streaming'));
+      if (st.bundled) actionRow(box, 'i-download2', t('Installer le complément'), t('Ajoute à Sunshine des variantes cachées de vos applis · droits d’administrateur demandés, Sunshine redémarre (streaming en cours coupé)'), () => act(false, 'hs-install'), 'hs-install');
+      return;
+    }
+    infoRow(box, t('<span class="dot-ok"></span>Installé'), esc(t('{a} appli(s) de Sunshine × 5 échelles (100 à 200 %)', { a: st.apps })));
+    if (st.missing.length || st.outdated) {
+      const why = st.missing.length ? t('Sans variantes : {list}', { list: st.missing.join(', ') }) : t('Nouvelle version du complément dans KaneMode');
+      actionRow(box, 'i-refresh', t('Mettre à jour le complément'), esc(why) + esc(t(' · Sunshine redémarre')), () => act(false, 'hs-update'), 'hs-update');
+    }
+    actionRow(box, 'i-trash', t('Retirer le complément'), t('Retire les variantes de Sunshine et le script de ce PC'), async () => {
+      if (await confirmDialog(t('Retirer le complément ?'), t('Les consoles ne pourront plus changer l’échelle de ce PC pendant le streaming. Sunshine redémarre.'), t('Retirer'), true)) act(true, 'hs-install');
+    }, 'hs-remove');
+  }
+  await render();
+}
+
 // ---------- Mises à jour de KaneMode (Releases GitHub)
 async function updatesBlock(s) {
   h2(s, 'i-download2', t('Mises à jour'));
@@ -477,7 +515,7 @@ const BUILDERS = {
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, t('<span class="dot-ko"></span>Moteur de streaming absent'), t('L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1'));
-      return;
+      return hostScaleBlock(s);
     }
     infoRow(s, t('<span class="dot-ok"></span>Streaming intégré{a}', { a: d.dev ? t(" (moteur compilé : engine\\out)") : '' }), t('Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran'));
     for (const h of d.hosts) {
@@ -485,7 +523,8 @@ const BUILDERS = {
     }
     actionRow(s, 'i-gamepad', t('Ouvrir le streaming'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
     s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
-    s.append(el('div', 'notice', t('<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Elle demande le complément KaneMode sur le PC hôte : <b>KaneMode-Hote-Echelle</b> (page des versions de KaneMode), à décompresser puis <b>Installer.cmd</b>.')));
+    s.append(el('div', 'notice', t('<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Il faut le <b>complément PC hôte</b> sur le PC qui diffuse : il s’installe ci-dessous quand KaneMode est aussi sur ce PC.')));
+    hostScaleBlock(s);
   },
   async look(s) {
     h2(s, 'i-palette', t('Apparence'));

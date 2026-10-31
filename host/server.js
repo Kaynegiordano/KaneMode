@@ -28,6 +28,7 @@ const powerLib = require('./lib/power-profiles');
 const autoHdrLib = require('./lib/autohdr');
 const wifi = require('./lib/wifi');
 const weatherLib = require('./lib/weather');
+const hostScaleLib = require('./lib/hostscale');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -368,6 +369,7 @@ const setPerfMode = mode => {
 const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0, busy: false, st: null, stAt: 0 };
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
+const hostScale = hostScaleLib.create(ROOT); // complément PC hôte (Paramètres → Streaming)
 const weather = weatherLib.create({ read: config, write: c => writeJson(FILES.config, c) }); // panneau Heure (GET /api/weather)
 const deals = dealsLib.create(DATA, { lang: () => config().lang || 'fr' }); // bons plans des boutiques (GET /api/deals)
 // Réglages graphiques du pilote : outil du fabricant de la carte (voir lib/gpuctl.js)
@@ -1613,6 +1615,13 @@ const routes = {
       engine: !!kp.exe, bundled: kp.exe === KANEPLAY_BUNDLED, dev: kp.exe === KANEPLAY_DEV,
       hosts: kp.hosts.map(h => ({ uuid: h.uuid, name: h.name, paired: h.paired, apps: h.apps.filter(a => !a.hidden).length })),
     });
+  },
+  // Complément PC hôte : mise à l'échelle de l'écran de ce PC quand on y joue en streaming
+  'GET /api/stream/hostscale': (req, res) => json(res, 200, hostScale.status()),
+  'POST /api/stream/hostscale': async (req, res) => {
+    const b = await readBody(req);
+    try { json(res, 200, await (b.remove === true ? hostScale.remove() : hostScale.install())); }
+    catch (e) { json(res, 400, { error: e.message }); }
   },
   // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
   'POST /api/stream/open': async (req, res) => {
