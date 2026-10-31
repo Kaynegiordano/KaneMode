@@ -63,6 +63,9 @@ Copy-Item (Join-Path $setupOut 'KaneMode-Setup.exe') (Join-Path $rel "KaneMode-S
 Copy-Item $msix $rel
 Copy-Item (Join-Path $out 'KaneMode.cer') $rel
 
+# Complément pour le PC hôte (Sunshine) : mise à l'échelle de l'écran pendant le streaming
+Compress-Archive -Path (Join-Path $root 'setup\hote-echelle\*') -DestinationPath (Join-Path $rel "KaneMode-Hote-Echelle-$version.zip") -Force
+
 # ---------------------------------------------------------------- 4. Empreintes
 Step 'Empreintes SHA-256'
 $sums = Get-ChildItem $rel -File | Where-Object Name -ne 'SHA256SUMS.txt' | Sort-Object Name | ForEach-Object {

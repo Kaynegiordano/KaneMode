@@ -485,6 +485,7 @@ const BUILDERS = {
     }
     actionRow(s, 'i-gamepad', t('Ouvrir le streaming'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
     s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
+    s.append(el('div', 'notice', t('<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Elle demande le complément KaneMode sur le PC hôte : <b>KaneMode-Hote-Echelle</b> (page des versions de KaneMode), à décompresser puis <b>Installer.cmd</b>.')));
   },
   async look(s) {
     h2(s, 'i-palette', t('Apparence'));

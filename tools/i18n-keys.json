@@ -383,6 +383,9 @@
  "<b>{a}</b><small>dossier « {b} » · .{join}{c}</small>": [
   "ui/js/pages/emulation.js"
  ],
+ "<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Elle demande le complément KaneMode sur le PC hôte : <b>KaneMode-Hote-Echelle</b> (page des versions de KaneMode), à décompresser puis <b>Installer.cmd</b>.": [
+  "ui/js/pages/settings.js"
+ ],
  "<b>Testeur de boutons</b><small>Les boutons s’allument quand vous appuyez dessus</small>": [
   "ui/js/pages/settings.js"
  ],
