@@ -4,6 +4,10 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.11.2 : Ctrl+Alt+Maj+Q quitte l'appli sur l'hôte
+
+- Moteur : `KeyComboQuit` (`streaming/input/keyboard.cpp`) appelle `Session::setQuitHostApp()` avant `SDL_QUIT`. Le nouveau drapeau `m_QuitHostApp`, valable pour la session seulement, s'ajoute à `quitAppAfter` dans `DeferredSessionCleanupTask::run()` : écran de fin, puis l'appli est quittée sur l'hôte et Sunshine lance ses commandes de fin (échelle, écran, son). `setShouldExit(true)` (Ctrl+Alt+Maj+E) utilise aussi ce drapeau au lieu d'écrire `m_Preferences->quitAppAfter` dans les préférences globales. La combinaison de la manette et « Déconnecter » du menu de jeu laissent l'appli tourner. Le texte d'aide devient « Press %1 to end your session » (fr : « Appuyez sur %1 pour quitter la session »).
+
 ## Version 4.11.1 : complément PC hôte installé depuis KaneMode
 
 - Demande de l'utilisateur : le complément de la 4.11.0 doit être « installé nativement dans KaneMode », pour ne pas dépendre du dossier `setup/hote-echelle` plus tard. `native/build.ps1` copie `setup/hote-echelle` dans `app/setup/hote-echelle` du paquet. `host/lib/hostscale.js` : `status()` lit `apps.json` de Sunshine (`file_apps` de sunshine.conf respecté) et renvoie sunshine/bundled/installed/apps/variants/missing (applis sans leurs 5 variantes)/outdated (SHA-256 du script de ProgramData ≠ celui embarqué). `install()`/`remove()` lancent `Installer.ps1` par `Start-Process -Verb RunAs -Wait -PassThru` (refus de l'UAC → « Installation annulée »). Routes `GET/POST /api/stream/hostscale` (`{remove:true}`). Paramètres → Streaming : `hostScaleBlock()` (affiché seulement si Sunshine est sur ce PC, aussi sans moteur). Vérifié : rendu des 3 états (simulés), passage des arguments et du code de sortie (sans `-Verb RunAs`, script factice) ; l'installation élevée réelle n'a pas été relancée (déjà installé sur ce PC).
