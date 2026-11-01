@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.12.0 : compteur de données du streaming
+
+- Moteur : `streaming/datausage.{h,cpp}` (classe statique `DataUsage`). Octets reçus = (paquets vidéo + FEC de `LiGetRTPVideoStats()`) × (packetSize + 40) + audio (charge Opus comptée dans `Session::arDecodeAndPlaySample`, plus la FEC audio au prorata, plus 40 o par paquet). 40 = RTP 12 + UDP 8 + IPv4 20 ; le packetSize vidéo inclut déjà l'en-tête NV. Le chiffrement et le trafic montant (entrées, contrôle) ne sont pas comptés. moonlight-common-c n'est **pas** modifié (sous-module amont).
+- `DataUsage::reset(packetSize)` à la création du StreamHealthMonitor ; `sample()` chaque seconde dans le décodeur ffmpeg, avant la mise à jour de la superposition ; ligne `DATA …` en tête des extras de `stringifyVideoStatsCompact`. Le menu de jeu ajoute « · X de données » au sous-titre (relu à chaque ouverture et action, pas en continu).
+- `StreamHealthMonitor::finishSession()` : `DataUsage::addToMonth()` (QSettings `kanemodedatamonth` = « yyyy-MM », `kanemodedatabytes`), à chaque session même courte ; le bilan reçoit `dataBytes` et `monthBytes`. `SessionSummaryView.qml` : 5e carte « Données » (unités Mo/Go, en base 1000) avec le total du mois.
+
 ## Version 4.11.2 : Ctrl+Alt+Maj+Q quitte l'appli sur l'hôte
 
 - Moteur : `KeyComboQuit` (`streaming/input/keyboard.cpp`) appelle `Session::setQuitHostApp()` avant `SDL_QUIT`. Le nouveau drapeau `m_QuitHostApp`, valable pour la session seulement, s'ajoute à `quitAppAfter` dans `DeferredSessionCleanupTask::run()` : écran de fin, puis l'appli est quittée sur l'hôte et Sunshine lance ses commandes de fin (échelle, écran, son). `setShouldExit(true)` (Ctrl+Alt+Maj+E) utilise aussi ce drapeau au lieu d'écrire `m_Preferences->quitAppAfter` dans les préférences globales. La combinaison de la manette et « Déconnecter » du menu de jeu laissent l'appli tourner. Le texte d'aide devient « Press %1 to end your session » (fr : « Appuyez sur %1 pour quitter la session »).
