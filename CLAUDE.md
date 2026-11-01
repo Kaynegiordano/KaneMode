@@ -4,7 +4,9 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
-## Version 4.12.0 : compteur de données du streaming
+## Version 4.12.0 : compteur de données du streaming, menus depuis les bords
+
+- Interface : `ui/js/edges.js` (importé par main.js). Souris contre le bord (4 px, 220 ms) : gauche → `hooks.menu`, droite → `hooks.qam`, seulement si `#pages` existe (pas dans le widget Game Bar), pas de vidéo de démarrage (`inputLock`) et aucune couche ouverte. Un panneau ouvert ainsi se referme quand la souris passe 80 px au-delà de sa largeur (`offsetWidth`, pas le rectangle affiché, encore hors écran pendant l'animation) ; ouvert autrement, il ne dépend pas de la souris. Doigt : glissement de 56 px depuis 36 px du bord (Windows garde le tout bord) pour ouvrir, vers le bord du panneau pour fermer ; un geste surtout vertical est ignoré. Testé dans le navigateur avec des événements simulés, pas sur l'Ally.
 
 - Moteur : `streaming/datausage.{h,cpp}` (classe statique `DataUsage`). Octets reçus = (paquets vidéo + FEC de `LiGetRTPVideoStats()`) × (packetSize + 40) + audio (charge Opus comptée dans `Session::arDecodeAndPlaySample`, plus la FEC audio au prorata, plus 40 o par paquet). 40 = RTP 12 + UDP 8 + IPv4 20 ; le packetSize vidéo inclut déjà l'en-tête NV. Le chiffrement et le trafic montant (entrées, contrôle) ne sont pas comptés. moonlight-common-c n'est **pas** modifié (sous-module amont).
 - `DataUsage::reset(packetSize)` à la création du StreamHealthMonitor ; `sample()` chaque seconde dans le décodeur ffmpeg, avant la mise à jour de la superposition ; ligne `DATA …` en tête des extras de `stringifyVideoStatsCompact`. Le menu de jeu ajoute « · X de données » au sous-titre (relu à chaque ouverture et action, pas en continu).

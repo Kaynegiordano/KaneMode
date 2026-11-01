@@ -8,6 +8,7 @@ import { playBoot } from './boot.js';
 import { sleepNow } from './power.js';
 import { renderQam, prefetchQam, startLive, stopLive, qamShortcuts } from './qam.js';
 import './statusbar.js';
+import './edges.js';
 import { exitToDesktop, openStreaming } from './pages/game.js';
 import './personalization-runtime.js';
 import './pages/home.js';
