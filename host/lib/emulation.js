@@ -8,6 +8,8 @@ const os = require('os');
 const crypto = require('crypto');
 
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
+// Date d'arrivée du jeu dans le dossier (création du fichier sous Windows) : rangée « Ajoutés récemment »
+const addedAt = p => { try { const st = fs.statSync(p); return Math.floor(st.birthtimeMs || st.mtimeMs); } catch { return 0; } };
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 
 // ---------- Consoles ----------
@@ -296,7 +298,7 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}
     const how = launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
-      romPath: r.path, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0,
+      romPath: r.path, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0, added: addedAt(r.romFile || r.path),
       emulator: how ? how.emulator : null, emulatorId: how ? how.emulatorId : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
     };
   });

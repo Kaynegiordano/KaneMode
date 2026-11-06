@@ -152,6 +152,8 @@ export async function launch(g) {
     img.src = g.art.logo;
   }
   const status = $('#launch-status');
+  // Jeu d'émulateur : la façon de revenir ici est dite avant que le jeu ne prenne l'écran
+  $('#launch-hint').innerHTML = g.source === 'rom' ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b>') : '';
   status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
     : !g.installed ? t('Ouverture de {store} pour installer {name}…', { store: sourceOf(g.source).label, name: g.name })
     : g.emulator ? t('Lancement de {name} avec {emulator}…', { name: g.name, emulator: g.emulator }) : t('Lancement de {name}…', { name: g.name });

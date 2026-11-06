@@ -1603,5 +1603,21 @@
  "TOUS LES JEUX": "ALL GAMES",
  "TOUT": "ALL",
  "Un dossier par console est déjà prêt : déposez-y vos jeux, même en .zip": "A folder for each console is ready: drop your games in, even as .zip",
- "Une rangée de vignettes, le jeu en grand derrière": "A row of tiles, the game large behind"
+ "Une rangée de vignettes, le jeu en grand derrière": "A row of tiles, the game large behind",
+ "{t} de jeu": "{t} played",
+ "Adaptée à l’écran": "Fitted to the screen",
+ "Ajoutés récemment": "Recently added",
+ "Aucun jeu lancé pour l’instant.": "No game played yet.",
+ "D’origine (plus léger)": "Original (lighter)",
+ "Dernier : {name}": "Last: {name}",
+ "Écran large (16:9)": "Widescreen (16:9)",
+ "Dernière partie : {d}": "Last played: {d}",
+ "Joués récemment": "Recently played",
+ "Net, sans scintillement": "Sharp, no shimmering",
+ "Oui": "Yes",
+ "Pas encore de favori ici : X sur un jeu l’ajoute.": "No favourites here yet: press X on a game to add it.",
+ "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b>": "To return to KaneMode: hold <b>Select + Start</b> or <b>Esc</b>",
+ "Qualité de l’image": "Image quality",
+ "Retour aux jeux": "Back to games",
+ "Voir les jeux": "See the games"
 }

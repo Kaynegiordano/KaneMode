@@ -87,6 +87,7 @@ public partial class MainWindow : Window
         _pads.MouseDiagnosticChanged += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson(json); } catch (InvalidOperationException) { } });
         _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
         _pads.Knock += () => Dispatcher.BeginInvoke(LogPadKnock);
+        _pads.QuitRequested += how => Dispatcher.BeginInvoke(() => QuitEmulatedGame(how));
         _pads.MouseModeChanged += on => Dispatcher.BeginInvoke(() =>
         {
             _cursor.Set(on); // curseur de KaneMode quand Windows cache le sien (mode Xbox)

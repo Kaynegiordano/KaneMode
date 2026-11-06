@@ -100,6 +100,7 @@ public partial class MainWindow
             foreach (IntPtr h in GameWindows(s)) s.Pushed.Add(h);
         }
         _game = s;
+        _pads.QuitArmed = id.StartsWith("rom:", StringComparison.Ordinal);
         if (cover) Topmost = true;
         Log.Write($"{(alreadyRunning ? "Jeu en cours suivi" : "Lancement suivi")} : {id}{(steamAppId != 0 ? $", Steam {steamAppId}" : "")}{(s.Dir != null ? $", dossier {s.Dir}" : ", sans dossier")}{(cover ? " (écran de lancement par-dessus)" : "")}{(Native.FullScreenExperienceActive ? ", mode Xbox" : ", bureau")}");
         _lastForeground = IntPtr.Zero;
@@ -113,7 +114,32 @@ public partial class MainWindow
         _gameTimer?.Stop();
         _gameTimer = null;
         _game = null;
+        _pads.QuitArmed = false;
         Topmost = false;
+    }
+
+    /// <summary>
+    /// Select + Start (ou Échap) maintenus pendant un jeu d'émulateur : ses fenêtres sont priées de se
+    /// fermer (l'émulateur enregistre la partie), puis il est arrêté s'il tourne encore 4 s plus tard.
+    /// Le suivi du jeu voit sa fin et ramène KaneMode devant.
+    /// </summary>
+    private void QuitEmulatedGame(string how)
+    {
+        var s = _game;
+        if (s == null || !s.Id.StartsWith("rom:", StringComparison.Ordinal)) return;
+        Log.Write($"Quitter le jeu ({how}) : {s.Id}");
+        Post(new { type = "game-quitting", id = s.Id });
+        StopGame(s.Id, s.Dir, force: false);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (_game != s) return;
+            string? d = GameDir(s.Dir);
+            bool alive = (d != null && Native.ProcessesIn(d).Count > 0) || (s.Pid != 0 && Native.ProcessRunning(s.Pid));
+            if (alive) StopGame(s.Id, s.Dir, force: true);
+        };
+        timer.Start();
     }
 
     /// <summary>Retire l'écran de lancement (B, bouton de la console) sans cesser de suivre le jeu.</summary>

@@ -306,7 +306,7 @@ function publicEntry(g, st, cfg) {
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
-    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null,
+    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null, added: g.added || 0,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
     art,
@@ -844,19 +844,48 @@ function ensureEmuHome() {
 /** Avant un lancement : BIOS présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. */
 // Réglages de l'émulation choisis par l'utilisateur : par console, puis par jeu (le jeu l'emporte)
 const EMU_SETTING_KEYS = { emulator: v => typeof v === 'string' && /^[\w-]+$/.test(v), core: v => typeof v === 'string' && /^[\w-]+$/.test(v),
-  filter: v => ['none', 'crt', 'scanlines', 'lcd', 'smooth', 'sharp'].includes(v), aspect: v => ['auto', '4:3', '16:9', 'full'].includes(v) };
+  filter: v => ['none', 'crt', 'scanlines', 'lcd', 'smooth', 'sharp'].includes(v), aspect: v => ['auto', '4:3', '16:9', 'full'].includes(v),
+  quality: v => ['auto', 'native'].includes(v), wide: v => ['on', 'off'].includes(v) };
 const emuSettings = () => ({ systems: {}, games: {}, ...(config().emuSettings || {}) });
-const emuEffective = (sys, id) => { const s = emuSettings(); return { ...(s.systems[sys] || {}), ...(s.games[id] || {}) }; };
+// Réglages par défaut d'une console : écran d'époque pour les consoles de salon 2D, écran LCD pour
+// les portables, image agrandie à la taille de l'écran, écran large quand il est sans défaut (PS2)
+const CRT_SYSTEMS = ['nes', 'snes', 'megadrive', 'mastersystem', 'pcengine', 'neogeo', 'arcade', 'atari2600', 'segacd'];
+const LCD_SYSTEMS = ['gb', 'gbc', 'gba', 'gamegear'];
+const emuDefaults = sys => ({ filter: CRT_SYSTEMS.includes(sys) ? 'crt' : LCD_SYSTEMS.includes(sys) ? 'lcd' : 'none', aspect: 'auto', quality: 'auto', wide: sys === 'ps2' ? 'on' : 'off' });
+const emuEffective = (sys, id) => { const s = emuSettings(); return { ...emuDefaults(sys), ...(s.systems[sys] || {}), ...(s.games[id] || {}) }; };
+// Écran et carte graphique : la résolution interne des émulateurs 3D en dépend (relevé au démarrage)
+const emuDisplay = { screenH: 1080, tier: 'low' };
+function detectDisplay() {
+  const cache = path.join(DATA, 'emu-cache', 'display.json');
+  Object.assign(emuDisplay, readJson(cache, {}));
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Get-CimInstance Win32_VideoController | Select-Object Name, CurrentVerticalResolution | ConvertTo-Json -Compress'],
+    { windowsHide: true, timeout: 20000 }, (err, out) => {
+      if (err) return;
+      try {
+        const list = [].concat(JSON.parse(String(out)) || []);
+        const h = Math.max(0, ...list.map(v => +v.CurrentVerticalResolution || 0));
+        // Carte dédiée (GeForce, Radeon RX, Arc) : résolutions plus hautes ; sinon puce intégrée (ROG Ally)
+        const high = list.some(v => /nvidia|geforce|rtx|radeon\s*(rx|pro)|\barc\b/i.test(v.Name || ''));
+        Object.assign(emuDisplay, { screenH: h || 1080, tier: high ? 'high' : 'low', gpu: list.map(v => v.Name).join(', ') });
+        writeJson(cache, emuDisplay);
+        console.log(`Émulation : écran ${emuDisplay.screenH} lignes, carte ${emuDisplay.gpu} (${emuDisplay.tier === 'high' ? 'dédiée' : 'intégrée'})`);
+      } catch { /* relevé illisible : valeurs précédentes */ }
+    });
+}
 // Filtres et formats de RetroArch (préréglages slang livrés avec RetroArch, pilote Direct3D 11)
-const RA_SHADERS = { crt: 'crt/crt-geom.slangp', scanlines: 'scanlines/res-independent-scanlines.slangp', lcd: 'handheld/lcd-grid-v2.slangp' };
+const RA_SHADERS = {
+  crt: () => (emuDisplay.tier === 'high' ? 'crt/crt-guest-advanced-fast.slangp' : 'crt/crt-easymode.slangp'),
+  scanlines: () => 'scanlines/res-independent-scanlines.slangp', lcd: () => 'handheld/lcd-grid-v2.slangp',
+  sharp: () => 'pixel-art-scaling/sharp-shimmerless.slangp',
+};
 const RA_ASPECT = { auto: '22', '4:3': '0', '16:9': '1', full: '24' };
 function retroarchLook(raDir, gameId, set) {
   const file = path.join(DATA, 'emu-ra', safeId(gameId) + '.cfg');
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const shader = RA_SHADERS[set.filter];
+  const shader = RA_SHADERS[set.filter] && RA_SHADERS[set.filter]();
   emuSetup.mergeCfg(file, {
     video_shader_enable: shader ? 'true' : 'false', video_smooth: set.filter === 'smooth' ? 'true' : 'false',
-    video_scale_integer: set.filter === 'sharp' ? 'true' : 'false', aspect_ratio_index: RA_ASPECT[set.aspect] || '22',
+    video_scale_integer: 'false', aspect_ratio_index: RA_ASPECT[set.aspect] || '22',
   });
   return ` --appendconfig "${file}"` + (shader ? ` --set-shader "${path.join(raDir, 'shaders', 'shaders_slang', shader)}"` : '');
 }
@@ -901,7 +930,7 @@ async function prepareRom(e) {
     }
   }
   const set = emuEffective(e.system, e.id);
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto' });
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', ...emuDisplay });
   if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set) };
   return { launch };
 }
@@ -1253,7 +1282,7 @@ const routes = {
   // Réglages d'un jeu ou d'une console ; une valeur null revient au réglage de la console / par défaut
   'GET /api/emu/settings': (req, res, q) => {
     const s = emuSettings();
-    json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {} });
+    json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {}, defaults: emuDefaults(q.get('system')) });
   },
   'POST /api/emu/settings': async (req, res) => {
     const b = await readBody(req);
@@ -2048,6 +2077,7 @@ ensureEmuHome();
 watchEmuGames();
 // Jeux ajoutés pendant que KaneMode était fermé, puis contrôle léger toutes les 30 s
 setTimeout(() => { try { if (isFile(FILES.library)) checkEmuGames('démarrage'); } catch (e) { console.error('Émulation :', e.message); } }, 3000);
+setTimeout(detectDisplay, 4000);
 setInterval(() => { try { checkEmuGames('contrôle du dossier'); } catch (e) { console.error('Émulation :', e.message); } }, 30e3).unref();
 if (!isFile(FILES.library)) {
   console.log('Premier lancement : analyse de la bibliothèque');

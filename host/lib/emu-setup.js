@@ -83,6 +83,18 @@ function switchFiles(dir, src) {
 const DUCK_ASPECT = { auto: 'Auto (Game Native)', '4:3': '4:3', '16:9': '16:9', full: 'Stretch To Fill' };
 const PCSX2_ASPECT = { auto: 'Auto 4:3/3:2', '4:3': '4:3', '16:9': '16:9', full: 'Stretch' };
 
+/**
+ * Agrandissement interne d'un émulateur 3D : la hauteur de l'écran divisée par celle de la console,
+ * bornée selon la carte graphique (puce intégrée de la ROG Ally : moins). « Origine » : 1.
+ */
+function upscale(c, base, capLow, capHigh) {
+  if (c.quality === 'native') return 1;
+  const cap = c.tier === 'high' ? capHigh : capLow;
+  return Math.max(1, Math.min(cap, Math.round((c.screenH || 1080) / base)));
+}
+// Qt (Eden, Eglantine, Azahar) : une valeur choisie s'écrit avec « \default=false »
+const qt = values => Object.fromEntries(Object.entries(values).flatMap(([k, v]) => [[`${k}\\default`, 'false'], [k, v]]));
+
 const SETUP = {
   retroarch(dir, c) {
     mergeCfg(path.join(dir, 'retroarch.cfg'), {
@@ -93,17 +105,38 @@ const SETUP = {
       system_directory: c.bios, savefile_directory: mkdir(path.join(c.saves, 'RetroArch', 'saves')),
       savestate_directory: mkdir(path.join(c.saves, 'RetroArch', 'states')),
       savestate_auto_save: 'true', savestate_auto_load: 'true',
-      menu_driver: 'ozone', config_save_on_exit: 'true', video_font_enable: 'true',
+      // Le jeu, rien d'autre : pas de messages ni de notifications à l'écran, réglages non réécrits en quittant
+      menu_driver: 'ozone', config_save_on_exit: 'false', video_font_enable: 'false', menu_enable_widgets: 'false',
+      notification_show_autoconfig: 'false', notification_show_remap_load: 'false', notification_show_config_override_load: 'false',
+      notification_show_set_initial_disk: 'false', notification_show_refresh_rate: 'false', notification_show_save_state: 'false',
+      notification_show_fast_forward: 'false', notification_show_cheats_applied: 'false', notification_show_patch_applied: 'false',
+      notification_show_screenshot: 'false', notification_show_disk_control: 'false',
+      network_cmd_enable: 'false', video_shader_watch_files: 'false', video_hdr_enable: 'false',
     });
+    // Nintendo 64 (Mupen64Plus-Next) : rendu à la taille de l'écran
+    if (c.system === 'n64') {
+      const sizes = ['640x480', '960x720', '1280x960', '1440x1080', '1600x1200', '1920x1440', '2240x1680', '2560x1920', '2880x2160'];
+      const maxH = c.quality === 'native' ? 480 : Math.min(c.screenH || 1080, c.tier === 'high' ? 2160 : 1080);
+      const size = sizes.filter(s => +s.split('x')[1] <= maxH).pop() || sizes[0];
+      const opt = path.join(dir, 'config', 'Mupen64Plus-Next', 'Mupen64Plus-Next.opt');
+      mkdir(path.dirname(opt));
+      mergeCfg(opt, { 'mupen64plus-43screensize': size, 'mupen64plus-BilinearMode': 'standard', 'mupen64plus-MultiSampling': c.tier === 'high' ? '4' : '0' });
+    }
   },
   duckstation(dir, c) {
+    const native = c.quality === 'native';
     mergeIni(path.join(dir, 'settings.ini'), {
       Main: { SettingsVersion: 3, SetupWizardIncomplete: 'false', StartFullscreen: 'true', ConfirmPowerOff: 'false', PauseOnFocusLoss: 'false', SaveStateOnExit: 'true', InhibitScreensaver: 'true' },
-      BIOS: { SearchDirectory: c.bios },
-      Display: { AspectRatio: DUCK_ASPECT[c.aspect] || DUCK_ASPECT.auto },
+      // Logo PlayStation passé : le jeu démarre tout de suite
+      BIOS: { SearchDirectory: c.bios, PatchFastBoot: 'true' },
+      Display: { AspectRatio: c.wide ? '16:9' : DUCK_ASPECT[c.aspect] || DUCK_ASPECT.auto, ShowOSDMessages: 'false' },
+      // Résolution agrandie, géométrie précise (PGXP : plus de polygones qui tremblent), écran large
+      GPU: { ResolutionScale: upscale(c, 240, 4, 8), PGXPEnable: native ? 'false' : 'true', PGXPCulling: 'true', PGXPTextureCorrection: 'true', WidescreenHack: c.wide ? 'true' : 'false', TrueColor: native ? 'false' : 'true' },
       InputSources: { SDL: 'true', XInput: 'false' },
       Pad1: { Type: 'AnalogController', ...PS_PAD, Analog: SDL('Guide') },
       Hotkeys: { PowerOff: QUIT_CHORD },
+      // Pas de recherche de mise à jour au lancement (KaneMode s'en charge, et elle retarde le jeu)
+      AutoUpdater: { CheckAtStartup: 'false' },
     });
   },
   pcsx2(dir, c) {
@@ -112,19 +145,28 @@ const SETUP = {
       UI: { SettingsVersion: 1, SetupWizardIncomplete: 'false', StartFullscreen: 'true', ConfirmShutdown: 'false', PauseOnFocusLoss: 'false', HideMouseCursor: 'true' },
       Folders: { Bios: c.bios, MemoryCards: mkdir(path.join(c.saves, 'PCSX2', 'memcards')), Savestates: mkdir(path.join(c.saves, 'PCSX2', 'sstates')) },
       ...(bios ? { Filenames: { BIOS: bios } } : {}),
-      EmuCore: { EnableFastBoot: 'true', SaveStateOnShutdown: 'true' },
-      'EmuCore/GS': { AspectRatio: PCSX2_ASPECT[c.aspect] || PCSX2_ASPECT.auto },
+      // Correctifs d'écran large et de désentrelacement fournis avec PCSX2, par jeu
+      EmuCore: { EnableFastBoot: 'true', SaveStateOnShutdown: 'true', EnableWideScreenPatches: c.wide ? 'true' : 'false', EnableNoInterlacingPatches: 'true' },
+      'EmuCore/GS': { AspectRatio: c.wide ? '16:9' : PCSX2_ASPECT[c.aspect] || PCSX2_ASPECT.auto, upscale_multiplier: upscale(c, 448, 2, 6), OsdShowMessages: 'false' },
       InputSources: { SDL: 'true', XInput: 'false' },
       Pad1: { Type: 'DualShock2', ...PS_PAD, Analog: SDL('Guide') },
       Hotkeys: { ShutdownVM: QUIT_CHORD, OpenPauseMenu: SDL('Guide') },
+      AutoUpdater: { CheckAtStartup: 'false' },
     });
   },
-  dolphin(dir) {
+  dolphin(dir, c) {
     const cfg = path.join(dir, 'User', 'Config');
     const x = b => `\`${b}\``;
     mergeIni(path.join(cfg, 'Dolphin.ini'), {
       Display: { Fullscreen: 'True' },
-      Interface: { ConfirmStop: 'False' },
+      Interface: { ConfirmStop: 'False', OnScreenDisplayMessages: 'False' },
+      Core: { SkipIPL: 'True' },
+      AutoUpdate: { UpdateTrack: '' },
+      Analytics: { PermissionAsked: 'True', Enabled: 'False' },
+    });
+    mergeIni(path.join(cfg, 'GFX.ini'), {
+      Settings: { InternalResolution: upscale(c, 528, 2, 6), AspectRatio: c.wide ? 1 : 0, wideScreenHack: c.wide ? 'True' : 'False', MSAA: c.tier === 'high' && c.quality !== 'native' ? '0x00000004' : '0x00000001' },
+      Enhancements: { MaxAnisotropy: c.quality === 'native' ? 0 : c.tier === 'high' ? 4 : 2 },
     });
     const gc = {
       Device: 'XInput/0/Gamepad',
@@ -152,16 +194,31 @@ const SETUP = {
     });
     mergeIni(path.join(cfg, 'Hotkeys.ini'), { Hotkeys: { Device: 'XInput/0/Gamepad', 'General/Exit': `${x('Back')}&${x('Start')}` } });
   },
-  ppsspp(dir) {
-    // PPSSPP reconnaît les manettes XInput tout seul ; plein écran et pas de confirmation
+  ppsspp(dir, c) {
+    // PPSSPP reconnaît les manettes XInput tout seul ; résolution 0 = celle de la fenêtre (l'écran)
     mergeIni(path.join(dir, 'memstick', 'PSP', 'SYSTEM', 'ppsspp.ini'), {
-      Graphics: { FullScreen: 'True' },
+      Graphics: { FullScreen: 'True', InternalResolution: c.quality === 'native' ? 1 : 0, AnisotropyLevel: c.quality === 'native' ? 0 : 4 },
       General: { FirstRun: 'False', CheckForNewVersion: 'False' },
     });
   },
-  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); },
-  eglantine(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); },
+  azahar(dir, c) {
+    mergeIni(path.join(dir, 'user', 'config', 'qt-config.ini'), {
+      Renderer: qt({ resolution_factor: upscale(c, 240, 3, 6) }),
+      UI: qt({ fullscreen: 'true', confirmClose: 'false' }),
+    }, { sep: '=' });
+  },
+  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir); },
+  eglantine(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir); },
 };
+
+// Eden et Eglantine : plein écran, pas de question en quittant, shaders compilés sans à-coups
+function switchConfig(dir) {
+  mergeIni(path.join(dir, 'user', 'config', 'qt-config.ini'), {
+    UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }),
+    Miscellaneous: qt({ first_launch: 'false' }),
+    Renderer: qt({ use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true' }),
+  }, { sep: '=' });
+}
 
 /** Prépare l'émulateur avant un lancement ; une erreur n'empêche jamais de jouer. */
 function prepare(id, dir, ctx) {

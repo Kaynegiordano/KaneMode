@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
 
 namespace KaneMode;
@@ -22,6 +22,8 @@ public sealed class XInputPads : IDisposable
     private struct State { public uint Packet; public Gamepad Pad; }
     [DllImport("xinput1_4.dll")]
     private static extern int XInputGetState(int index, out State state);
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int key);
 
     /// <summary>Qui a la main, vu de KaneMode (lu hors du fil de l'interface).</summary>
     public enum Focus
@@ -44,13 +46,21 @@ public sealed class XInputPads : IDisposable
     public event Action? Reclaim;
     /// <summary>Bouton pressé alors qu'une autre fenêtre a la main et que KaneMode est affiché (journal).</summary>
     public event Action? Knock;
+    /// <summary>
+    /// Jeu d'émulateur en cours : Select + Start maintenus (ou Échap maintenu) le ferment et ramènent
+    /// à KaneMode, quel que soit l'émulateur. Lu même quand le jeu a la main.
+    /// </summary>
+    public volatile bool QuitArmed;
+    public event Action<string>? QuitRequested;
+    private long _quitPadSince, _quitKeySince;
+    private bool _quitFired;
     /// <summary>Mode souris activé ou désactivé.</summary>
     public event Action<bool>? MouseModeChanged;
     public event Action<string>? MouseDiagnosticChanged;
     private long _diagnosticAt, _acceptedBefore, _rejectedBefore;
     private string _diagnosticKey = "";
 
-    private const ushort START = 0x10, A = 0x1000, B = 0x2000, X = 0x4000, LB = 0x100, RB = 0x200,
+    private const ushort START = 0x10, BACK = 0x20, A = 0x1000, B = 0x2000, X = 0x4000, LB = 0x100, RB = 0x200,
         UP = 0x1, DOWN = 0x2, LEFT = 0x4, RIGHT = 0x8;
     private const int HOLD_MS = 1000; // Start maintenu : bascule du mode souris
 
@@ -152,7 +162,8 @@ public sealed class XInputPads : IDisposable
             Focus focus = _focus();
             bool ours = focus == Focus.Ours || focus == Focus.Orphan;
             string now = "[]";
-            if (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop)
+            bool quitWatch = QuitArmed && !ours;
+            if (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop || quitWatch)
             {
                 try
                 {
@@ -165,6 +176,7 @@ public sealed class XInputPads : IDisposable
                     // Start maintenu : seulement quand KaneMode a la main (ou pour quitter le mode souris)
                     if (ours || _mouse || focus == Focus.Desktop) CheckHold(t);
                     if (_mouse) MouseStep(t, dt);
+                    if (quitWatch) CheckQuit(t);
                     now = NavigationJson(focus);
                     if (pressed && !_mouse)
                     {
@@ -187,7 +199,7 @@ public sealed class XInputPads : IDisposable
             // (derrière une fenêtre ordinaire : 20 fois par seconde, assez pour un appui long sur Start)
             // Mode souris : 125 Hz (curseur fluide) ; interface : 60 Hz, assez pour naviguer et deux fois
             // moins de réveils du processeur
-            Thread.Sleep(_mouse ? 8 : ours ? 16 : focus == Focus.Desktop ? 50 : 150);
+            Thread.Sleep(_mouse ? 8 : ours ? 16 : focus == Focus.Desktop || QuitArmed ? 50 : 150);
         }
         _mouseInput.SetActive(false);
     }
@@ -247,6 +259,21 @@ public sealed class XInputPads : IDisposable
     private string NavigationJson(Focus focus) => focus is Focus.Ours or Focus.Orphan ? Json() : "[]";
 
     private static string Axis(short v) => (Math.Round(v / 32767.0, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Select + Start maintenus 1 s sur une manette, ou Échap maintenu 1 s : fermer le jeu (une fois par appui).</summary>
+    private void CheckQuit(long t)
+    {
+        bool pad = false;
+        for (int i = 0; i < SLOTS; i++)
+            if (_connected[i] && (_state[i].Pad.Buttons & (BACK | START)) == (BACK | START)) { pad = true; break; }
+        bool key = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
+        _quitPadSince = pad ? (_quitPadSince == 0 ? t : _quitPadSince) : 0;
+        _quitKeySince = key ? (_quitKeySince == 0 ? t : _quitKeySince) : 0;
+        if (!pad && !key) { _quitFired = false; return; }
+        if (_quitFired) return;
+        if (pad && t - _quitPadSince >= 900) { _quitFired = true; QuitRequested?.Invoke("Select + Start"); }
+        else if (key && t - _quitKeySince >= 1000) { _quitFired = true; QuitRequested?.Invoke("Échap"); }
+    }
 
     /// <summary>Start maintenu 1 s sur une manette : bascule le mode souris (une fois par appui).</summary>
     private void CheckHold(long t)

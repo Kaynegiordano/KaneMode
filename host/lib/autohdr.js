@@ -54,7 +54,7 @@ function create({ read, write, hdr, setHdr, paths, games, log = () => {} }) {
     prefs: () => prefs(read()),
     /** Jeu lancé par KaneMode (route /api/launch). */
     started(entry) {
-      if (!entry || entry.source === 'kaneplay' || entry.streamHost || String(entry.id).startsWith('launcher:')) return;
+      if (!entry || entry.source === 'kaneplay' || entry.source === 'rom' || entry.streamHost || String(entry.id).startsWith('launcher:')) return;
       const mode = gameMode(entry.id);
       const auto = prefs(read()).games && entry.type !== 'app';
       if (mode === 'off' || (mode !== 'on' && !auto)) return;

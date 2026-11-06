@@ -181,3 +181,27 @@ test('Jeu Switch décompressé (base/exefs/main) reconnu, son .iso en double mas
   const s1 = roms.filter(r => r.system === 'switch').map(r => [r.name, r.archive]);
   assert.deepEqual(s1.sort(), [['Final Fantasy Resonance', null], ['Zelda Totk', 'mount']]);
 });
+
+test('Image adaptée à l’écran : résolution interne selon l’écran et la carte, écran large, démarrage rapide', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'km-quality-'));
+  const ini = f => fs.readFileSync(path.join(dir, f), 'utf8');
+  setup.prepare('duckstation', dir, { bios: 'C:\B', saves: dir, screenH: 1080, tier: 'low', quality: 'auto' });
+  assert.match(ini('settings.ini'), /ResolutionScale = 4/);
+  assert.match(ini('settings.ini'), /PatchFastBoot = true/);
+  setup.prepare('duckstation', dir, { bios: 'C:\B', saves: dir, screenH: 2160, tier: 'high', quality: 'auto', wide: true });
+  assert.match(ini('settings.ini'), /ResolutionScale = 8/);
+  assert.match(ini('settings.ini'), /WidescreenHack = true/);
+  assert.match(ini('settings.ini'), /AspectRatio = 16:9/);
+  setup.prepare('duckstation', dir, { bios: 'C:\B', saves: dir, screenH: 1080, tier: 'low', quality: 'native' });
+  assert.match(ini('settings.ini'), /ResolutionScale = 1/);
+  setup.prepare('pcsx2', dir, { bios: 'C:\B', saves: dir, screenH: 1440, tier: 'high', quality: 'auto', wide: true });
+  assert.match(ini('inis/PCSX2.ini'), /upscale_multiplier = 3/);
+  assert.match(ini('inis/PCSX2.ini'), /EnableWideScreenPatches = true/);
+  setup.prepare('retroarch', dir, { bios: 'C:\B', saves: dir, system: 'n64', screenH: 1080, tier: 'low' });
+  assert.match(fs.readFileSync(path.join(dir, 'retroarch.cfg'), 'utf8'), /video_font_enable = "false"/);
+  assert.match(fs.readFileSync(path.join(dir, 'config', 'Mupen64Plus-Next', 'Mupen64Plus-Next.opt'), 'utf8'), /1440x1080/);
+  setup.prepare('eglantine', dir, { bios: dir, saves: dir });
+  const qt = ini('user/config/qt-config.ini');
+  assert.ok(qt.includes("confirmStop" + String.fromCharCode(92) + "default=false"));
+  assert.match(qt, /use_asynchronous_shaders=true/);
+});

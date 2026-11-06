@@ -1,12 +1,11 @@
-// Monde Émulation : un accueil en carrousel de consoles, puis, dans chaque console, une étagère de
-// boîtes (la choisie de face) avec juste le nom du jeu et Jouer ; la fiche et les réglages glissent
-// par-dessus. Un écran « Gérer » pour le dossier de jeux, les BIOS et les émulateurs de KaneMode.
+// Monde Émulation, style KaneMode : une grande bannière qui suit la tuile choisie, des rangées
+// (Reprendre, Consoles, Favoris, Ajoutés récemment) puis, dans une console, la grille de ses jaquettes.
+// La fiche et les réglages glissent par-dessus. « Gérer » : dossier de jeux, BIOS, émulateurs.
 import { t, tn, locale } from '../i18n.js';
 import { el, esc, icon, api, lib, toast, busy, sfx, store, favs, fmt } from '../core.js';
 import { definePage, nav, focusIn, setFocus, glyph, renderHints, go, openLayer, closeLayer, topLayer } from '../nav.js';
 import { dialog, confirmDialog } from '../widgets.js';
 import { launch, toggleFav, setBackground } from './game.js';
-import { THEMES, drawThemed, themedFocus, paintDetail, themedButton, themedHints } from './emu-themes.js';
 import { pickFile } from './add.js';
 
 // Couleur de chaque console ; motif de fond par constructeur
@@ -26,9 +25,6 @@ const BRAND = {
   dreamcast: 'DREAMCAST', pcengine: 'PC ENGINE', neogeo: 'NEO GEO', arcade: 'ARCADE', atari2600: 'ATARI 2600', xbox: 'XBOX', xbox360: 'XBOX 360',
 };
 const HANDHELD = ['gb', 'gbc', 'gba', 'nds', 'n3ds', 'psp', 'psvita', 'gamegear'];
-// Format de la boîte (largeur / hauteur) avant que la jaquette ne soit chargée, et épaisseur
-const RATIO = { snes: 1.38, n64: 1.38, gb: 0.98, gbc: 0.98, gba: 0.98, nds: 0.9, n3ds: 0.86, psp: 0.58, psvita: 0.62, switch: 0.62, switch2: 0.62, psx: 1.0, segacd: 1.0, saturn: 0.62, dreamcast: 1.0, pcengine: 1.0, atari2600: 0.74 };
-const DEPTH = { psx: 0.075, segacd: 0.075, dreamcast: 0.075, pcengine: 0.075, gb: 0.16, gbc: 0.16, gba: 0.16, nes: 0.14, snes: 0.14, n64: 0.14, megadrive: 0.13, mastersystem: 0.13, gamegear: 0.13, atari2600: 0.14 };
 const lookOf = s => ({ color: LOOK[s.id] || '#7c9eff', motif: MOTIF[s.maker] || 'scan' });
 const brandOf = id => BRAND[id] || t('RÉTRO');
 
@@ -78,10 +74,15 @@ export async function extractGame(id, onText = () => {}) {
 
 const metaCache = new Map();
 
-// Réglages proposés (jeu ou console) ; filtre seulement avec RetroArch, format aussi avec DuckStation et PCSX2
-const FILTERS = () => [['none', t('Aucun (pixels d’origine)')], ['crt', t('Écran CRT (télé d’époque)')], ['scanlines', t('Lignes de balayage')], ['lcd', t('Écran LCD (portables)')], ['smooth', t('Lissé')], ['sharp', t('Net, taille entière')]];
+// Réglages proposés (jeu ou console) : filtre avec RetroArch, format avec RetroArch, DuckStation et
+// PCSX2, qualité et écran large avec les émulateurs 3D
+const FILTERS = () => [['none', t('Aucun (pixels d’origine)')], ['crt', t('Écran CRT (télé d’époque)')], ['scanlines', t('Lignes de balayage')], ['lcd', t('Écran LCD (portables)')], ['smooth', t('Lissé')], ['sharp', t('Net, sans scintillement')]];
 const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'], ['16:9', '16:9'], ['full', t('Plein écran (étiré)')]];
+const QUALITIES = () => [['auto', t('Adaptée à l’écran')], ['native', t('D’origine (plus léger)')]];
+const WIDES = () => [['on', t('Oui')], ['off', t('Non')]];
 const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
+const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar'];
+const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
 // Année de sortie (première sortie, Japon compris)
@@ -90,35 +91,38 @@ const YEAR = {
   psx: 1994, ps2: 2000, ps3: 2006, ps4: 2013, psvita: 2011, psp: 2004, megadrive: 1988, mastersystem: 1985, gamegear: 1990, segacd: 1991, saturn: 1994,
   dreamcast: 1998, pcengine: 1987, neogeo: 1990, atari2600: 1977, xbox: 2001, xbox360: 2005,
 };
-const kindOf = id => (id === 'all' ? t('Toutes les consoles') : HANDHELD.includes(id) ? t('Console portable') : ['arcade', 'neogeo'].includes(id) ? t('Arcade') : t('Console de salon'));
+const kindOf = id => (HANDHELD.includes(id) ? t('Console portable') : ['arcade', 'neogeo'].includes(id) ? t('Arcade') : t('Console de salon'));
 const lastPlayedFirst = (a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0);
-export { LOOK, YEAR, lookOf, brandOf, kindOf, lastPlayedFirst };
+const hasArt = g => !!(g.art && g.art.portrait);
+const heroOf = g => g && g.art && (g.art.hero || g.art.header);
+// Consoles « virtuelles » : tous les jeux, favoris
+const VIRTUAL = { all: () => t('Tous les jeux'), fav: () => t('Favoris') };
+
+/** Jaquette d'un jeu, ou boîte dessinée à ses couleurs si elle manque ou ne se charge pas. */
+function cover(g) {
+  const box = el('div', 'kw-cover');
+  box.style.setProperty('--g', LOOK[g.system] || '#7c9eff');
+  const gen = () => el('div', 'kw-gen', `<small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b>`);
+  if (hasArt(g)) {
+    const img = new Image();
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.onerror = () => { img.replaceWith(gen()); box.style.removeProperty('--img'); };
+    img.src = g.art.portrait;
+    // Jaquette carrée ou large (PlayStation, Super Nintendo) : entière, sur son propre fond flouté
+    box.style.setProperty('--img', `url("${g.art.portrait}")`);
+    box.append(img);
+  } else box.append(gen());
+  return box;
+}
 
 definePage('emulation', {
   libBound: true,
   title: () => t('Émulation'),
   initialFocus() {
     if (this.mode === 'manage') return this.roms().length ? 'back-shelf' : 'open-games';
-    if (this.themed()) return this.mode === 'console' ? 'g:' + (this.current() ? this.current().id : '') : 'c:' + (this.sys || '');
-    return this.mode === 'console' ? 'shelf' : 'hub';
-  },
-  get theme() { return this._theme || (this._theme = store.get('emutheme', 'modern')); },
-  themed() { return this.theme !== 'modern' && THEMES().some(([id]) => id === this.theme); },
-  onFocus(target) { if (this.themed() && this.mode !== 'manage') themedFocus(this, target); },
-  savePos() { store.set('emupos', this.pos); },
-  /** Métadonnées d'un jeu déjà chargées (sinon chargées en fond, l'encart se redessine ensuite). */
-  meta(g) { const m = metaCache.get(g.id); if (!m) this.loadMeta(g); return m; },
-  async pickTheme() {
-    const cur = this.theme;
-    const v = await dialog({
-      title: t('Thème du monde Émulation'),
-      text: t('Change l’apparence des consoles et des jeux. La manette fonctionne de la même façon partout.'),
-      buttons: [...THEMES().map(([id, name]) => ({ label: name + (id === cur ? '  ✓' : ''), value: id, primary: id === cur })), { label: t('Fermer'), value: null }],
-    });
-    if (!v || v === cur) return;
-    this._theme = v;
-    store.set('emutheme', v);
-    this.draw(this.mode === 'console' ? 'shelf' : 'hub');
+    return this.lastKey || (this.mode === 'console' ? 'filter:all' : 'manage');
   },
   render(p = {}) {
     document.body.classList.add('emu-world');
@@ -129,426 +133,265 @@ definePage('emulation', {
   },
   leave() {
     document.body.classList.remove('emu-world');
-    delete document.body.dataset.emuTheme;
     document.body.style.removeProperty('--emu');
     clearInterval(this.poll); this.poll = null;
-    clearTimeout(this.infoTimer);
+    clearTimeout(this.heroTimer);
   },
 
   roms() { return lib.visible().filter(g => g.source === 'rom'); },
-  /** Consoles qui ont des jeux, dans l'ordre de la liste des consoles ; « Tout » en premier. */
+  /** Consoles qui ont des jeux, dans l'ordre de la liste des consoles. */
   systems() {
     const counts = {};
     for (const g of this.roms()) counts[g.system] = (counts[g.system] || 0) + 1;
-    const list = this.data.systems.filter(s => counts[s.id]).map(s => ({ ...s, count: counts[s.id] }));
-    return list.length > 1 ? [{ id: 'all', name: t('Tous les jeux'), maker: '', count: this.roms().length }, ...list] : list;
+    return this.data.systems.filter(s => counts[s.id]).map(s => ({ ...s, count: counts[s.id] }));
   },
-  gamesOf(sys) {
-    const list = this.roms().filter(g => sys === 'all' || g.system === sys);
-    if (sys === 'all') return list.sort((a, b) => lastPlayedFirst(a, b) || a.name.localeCompare(b.name, locale));
+  /** Jeux d'une console (ou de « Tous les jeux », des favoris), triés par nom. */
+  gamesOf(id) {
+    const list = this.roms().filter(g => id === 'all' || (id === 'fav' ? favs.has(g.id) : g.system === id));
     return list.sort((a, b) => a.name.localeCompare(b.name, locale));
+  },
+  sysInfo(id) {
+    if (VIRTUAL[id]) return { id, name: VIRTUAL[id](), maker: '', count: this.gamesOf(id).length };
+    return this.systems().find(s => s.id === id) || this.data.systems.find(s => s.id === id);
   },
 
   draw(focusKey) {
     const has = this.roms().length;
     this.mode = this.manage || !has ? 'manage' : this.view === 'console' ? 'console' : 'hub';
-    this.el.classList.toggle('sx-mode', this.mode !== 'manage');
-    this.el.classList.remove('th-mode');
-    if (this.mode === 'manage' || !this.themed()) delete document.body.dataset.emuTheme;
-    if (this.mode !== 'manage' && this.themed()) drawThemed(this, focusKey);
-    else if (this.mode === 'hub') this.drawHub(focusKey);
-    else if (this.mode === 'console') this.drawConsole(focusKey);
-    else this.drawManage(focusKey);
-    if (!this.resizeBound) {
-      this.resizeBound = true;
-      addEventListener('resize', () => {
-        if (!this.el.classList.contains('active') || this.themed()) return;
-        if (this.mode === 'console') this.layout(true);
-        else if (this.mode === 'hub') this.hubLayout();
-      });
+    this.el.classList.toggle('kw-mode', this.mode !== 'manage');
+    if (this.mode === 'manage') this.drawManage(focusKey);
+    else {
+      if (this.mode === 'hub') this.drawHub(); else this.drawConsole();
+      this.focusTile(focusKey);
     }
     renderHints();
   },
-  focusPage(key) { if (!topLayer()) focusIn(this.el, key); },
-
-  // ---------------------------------------------------------------- accueil : les consoles
-  drawHub(focusKey) {
-    const systems = this.systems();
-    const cards = [...systems, { id: 'add', name: t('Ajouter des jeux') }];
-    this.hubList = cards;
-    if (this.hubIdx == null) this.hubIdx = Math.max(0, cards.findIndex(s => s.id === (this.sys || store.get('emusys', ''))));
-    this.hubIdx = Math.min(this.hubIdx, cards.length - 1);
-    const roms = this.roms();
-    const last = roms.filter(g => g.lastPlayed).sort(lastPlayedFirst)[0];
-    const root = el('div', 'hx' + (this.hubSeen ? '' : ' intro'));
-    this.hubSeen = true;
-    const top = el('div', 'hx-top', `<div class="hx-brand"><b>${t('ÉMULATION')}</b>
-      <small>${tn(roms.length, '{n} jeu', '{n} jeux')} · ${tn(systems.filter(s => s.id !== 'all').length, '{n} console', '{n} consoles')}</small></div>`);
-    const tools = el('div', 'hx-tools');
-    if (last) {
-      tools.append(nav(el('div', 'hx-resume', `${last.art && last.art.portrait ? `<img src="${last.art.portrait}" alt="" onerror="this.remove()">` : icon('i-play')}
-        <span><small>${t('Reprendre')}</small><b>${esc(last.name)}</b></span>`), () => launch(last), 'resume'));
-    }
-    tools.append(nav(el('div', 'chip-btn', `${icon('i-image')}${t('Thème')}`), () => this.pickTheme(), 'theme'));
-    tools.append(nav(el('div', 'chip-btn', `${icon('i-gear')}${t('Gérer')}`), () => this.openManage(), 'manage'));
-    top.append(tools);
-
-    const stage = el('div', 'hx-stage', '<div class="hx-floor"><i></i></div><div class="hx-track"></div>');
-    stage.setAttribute('aria-label', t('Consoles'));
-    nav(stage, () => this.enter(), 'hub');
-    const track = stage.querySelector('.hx-track');
-    this.hubCards = cards.map((s, i) => {
-      const c = this.consoleCard(s);
-      c.dataset.i = i;
-      track.append(c);
-      return c;
-    });
-    this.bindHub(stage);
-    this.hubInfo = el('div', 'hx-info');
-    root.append(top, stage, this.hubInfo);
-    this.el.replaceChildren(root);
-    this.hubLayout();
-    this.focusPage(focusKey || 'hub');
+  /** Après un dessin : le focus revient sur la tuile d'avant (ou la première). */
+  focusTile(key) {
+    if (topLayer()) return;
+    const want = key || this.lastKey;
+    const f = (want && this.el.querySelector(`[data-key="${CSS.escape(want)}"]`)) || this.el.querySelector('.kw-tile');
+    if (f) { setFocus(f, { sound: false, scroll: 'instant' }); f.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   },
 
-  /** Carte d'une console : sa couleur, son nom en grand et les jaquettes de ses derniers jeux. */
-  consoleCard(s) {
-    if (s.id === 'add') {
-      const c = el('div', 'hx-card add', `<div class="hx-add">${icon('i-plus')}<b>${t('Ajouter des jeux')}</b><small>${t('Un dossier par console est déjà prêt : déposez-y vos jeux, même en .zip')}</small></div><div class="hx-dim"></div>`);
-      return c;
+  // ---------------------------------------------------------------- en-tête, bannière, tuiles
+  head(title, sub, back) {
+    const h = el('div', 'kw-head');
+    if (back) h.append(nav(el('div', 'kw-chip back', `${icon('i-grid')}<span>${t('Consoles')}</span>`), () => this.toHub(), 'to-hub'));
+    h.append(el('div', 'kw-title', `<b>${esc(title)}</b><small>${esc(sub)}</small>`));
+    if (back) {
+      // Consoles voisines (LB / RB), cliquables
+      const list = this.consoleOrder();
+      const i = list.indexOf(this.sys);
+      if (list.length > 1 && i >= 0) {
+        const near = el('div', 'kw-near');
+        const go = (id, k) => { const b = el('div', 'kw-nb', `${k === 'lb' ? shoulder('lb').outerHTML : ''}<span>${esc(this.sysInfo(id).name)}</span>${k === 'rb' ? shoulder('rb').outerHTML : ''}`); b.addEventListener('click', () => this.openConsole(id)); return b; };
+        near.append(go(list[(i - 1 + list.length) % list.length], 'lb'), go(list[(i + 1) % list.length], 'rb'));
+        h.append(near);
+      }
     }
-    const all = s.id === 'all';
-    const c = el('div', 'hx-card' + (all ? ' all' : ''));
-    c.style.setProperty('--c', all ? 'var(--accent)' : lookOf(s).color);
-    c.dataset.motif = all ? 'scan' : lookOf(s).motif;
-    // Jaquettes des derniers jeux joués (une boîte dessinée pour un jeu sans jaquette)
-    const hasArt = g => !!(g.art && g.art.portrait);
+    const tools = el('div', 'kw-tools');
+    if (back && !VIRTUAL[this.sys]) tools.append(nav(el('div', 'kw-chip', `${icon('i-palette')}<span>${t('Réglages')}</span>`), () => this.openSettings('system', this.sys), 'sys-settings'));
+    if (!back) tools.append(nav(el('div', 'kw-chip', `${icon('i-folder')}<span>${t('Ajouter des jeux')}</span>`), () => this.open({ what: 'games' }), 'add-games'));
+    if (!back) tools.append(nav(el('div', 'kw-chip', `${icon('i-gear')}<span>${t('Gérer')}</span>`), () => this.openManage(), 'manage'));
+    h.append(tools);
+    return h;
+  },
+  hero() {
+    const h = el('div', 'kw-hero', '<div class="kw-bg a"></div><div class="kw-bg b"></div><div class="kw-shade"></div><div class="kw-hero-in"></div>');
+    this.heroEl = h;
+    this.heroBg = null;
+    return h;
+  },
+  gameTile(g, prefix) {
+    const tile = el('div', 'kw-tile game' + (favs.has(g.id) ? ' fav' : ''));
+    tile.dataset.gid = g.id;
+    tile.style.setProperty('--c', LOOK[g.system] || '#7c9eff');
+    tile.append(cover(g));
+    tile.insertAdjacentHTML('beforeend', `<div class="kw-name">${esc(g.name)}</div>`);
+    return nav(tile, () => { this.sel = g; this.play(); }, prefix + g.id);
+  },
+  sysTile(s) {
+    const tile = el('div', 'kw-tile sys' + (VIRTUAL[s.id] ? ' virtual' : ''));
+    tile.dataset.sys = s.id;
+    tile.style.setProperty('--c', VIRTUAL[s.id] ? 'var(--accent)' : LOOK[s.id] || '#7c9eff');
     const games = this.gamesOf(s.id).sort((a, b) => hasArt(b) - hasArt(a) || lastPlayedFirst(a, b)).slice(0, 3);
-    const cover = (g, i) => (hasArt(g) ? `<img class="c${i}" src="${g.art.portrait}" alt="">`
-      : `<div class="c${i} hx-gen" style="--g:${LOOK[g.system] || '#7c9eff'}"><small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b></div>`);
-    const brand = all ? t('TOUT') : brandOf(s.id);
-    c.innerHTML = `<div class="hx-motif"></div>
-      <div class="hx-maker">${esc(all ? t('Toutes les consoles') : s.maker || '')}</div>
-      <div class="hx-covers n${games.length}">${games.map(cover).join('')}</div>
-      <div class="hx-name${brand.length > 9 ? ' long' : ''}">${esc(brand)}</div>
-      <div class="hx-count">${tn(s.count, '{n} jeu', '{n} jeux')}</div>
-      <div class="hx-dim"></div>`;
-    // Jaquette introuvable : boîte dessinée à la place
-    c.querySelectorAll('.hx-covers img').forEach((img, i) => img.addEventListener('error', () => {
-      const g = games[i];
-      img.replaceWith(el('div', `c${i} hx-gen`, `<small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b>`));
-      c.querySelector(`.c${i}.hx-gen`).style.setProperty('--g', LOOK[g.system] || '#7c9eff');
-    }));
-    return c;
+    const fan = el('div', 'kw-fan n' + games.length);
+    games.forEach((g, i) => { const c = cover(g); c.classList.add('f' + i); fan.append(c); });
+    tile.append(el('div', 'kw-sysbg'), fan);
+    tile.insertAdjacentHTML('beforeend', `<div class="kw-sysname"><small>${esc(VIRTUAL[s.id] ? t('Toutes les consoles') : s.maker || '')}</small><b>${esc(VIRTUAL[s.id] ? VIRTUAL[s.id]() : brandOf(s.id))}</b><i>${tn(s.count, '{n} jeu', '{n} jeux')}</i></div>`);
+    return nav(tile, () => this.openConsole(s.id), 'c:' + s.id);
+  },
+  row(key, title, tiles) {
+    const sec = el('section', 'kw-sec');
+    sec.dataset.row = key;
+    sec.append(el('h3', '', esc(title)));
+    const strip = el('div', 'kw-row row');
+    strip.append(...tiles);
+    sec.append(strip);
+    return sec;
   },
 
-  /** Carrousel : la console choisie au centre, les autres de part et d'autre, plus petites. */
-  hubLayout() {
-    const cards = this.hubCards;
-    if (!cards || !cards[0].isConnected) return;
-    const cw = cards[0].offsetWidth || 300;
-    cards.forEach((c, i) => {
-      const d = i - this.hubIdx, a = Math.abs(d);
-      const x = d === 0 ? 0 : Math.sign(d) * (cw * 0.74 + (a - 1) * cw * 0.5);
-      const s = d === 0 ? 1 : Math.max(0.56, 0.8 - (a - 1) * 0.08);
-      c.style.transform = `translate(-50%, -50%) translateX(${x}px) scale(${s})`;
-      // Cartes voisines assombries mais opaques : on ne voit pas les suivantes au travers
-      c.style.opacity = a > 3 ? '0' : '1';
-      c.style.setProperty('--dim', d === 0 ? '0' : String(Math.min(0.82, 0.42 + (a - 1) * 0.16)));
-      c.style.zIndex = String(20 - a);
-      c.classList.toggle('current', d === 0);
-    });
-    const s = this.hubList[this.hubIdx];
-    this.tint(s.id === 'add' ? null : s);
-    const info = this.hubInfo;
-    if (s.id === 'add') {
-      info.innerHTML = `<b>${t('Ajouter des jeux')}</b><span>${esc(this.data.dirs.games)}</span>`;
-    } else {
-      const bits = [s.id === 'all' ? '' : s.maker, YEAR[s.id], kindOf(s.id)].filter(Boolean).map(esc);
-      info.innerHTML = `<b>${esc(s.name)}</b><span>${bits.join('<i>·</i>')}</span>`;
-    }
-    const roms = this.gamesOf(s.id === 'add' ? 'none' : s.id);
-    const hero = roms.map(g => g.art && (g.art.hero || g.art.header)).find(Boolean);
-    if (hero) setBackground(hero);
-  },
-  bindHub(stage) {
-    stage.addEventListener('click', e => {
-      const c = e.target.closest('.hx-card');
-      if (!c) return;
-      e.stopPropagation();
-      const i = Number(c.dataset.i);
-      if (i === this.hubIdx) this.enter(); else this.hubGo(i);
-    });
-    this.bindSwipe(stage, dir => this.hubGo(this.hubIdx + dir));
-  },
-  /** Molette et glissé du doigt sur une scène : une carte ou une boîte à la fois. */
-  bindSwipe(stage, step) {
-    let wheelAt = 0;
-    stage.addEventListener('wheel', e => {
-      e.preventDefault();
-      if (Date.now() - wheelAt < 110) return;
-      wheelAt = Date.now();
-      step((e.deltaY || e.deltaX) > 0 ? 1 : -1);
-    }, { passive: false });
-    let sx = null;
-    stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') sx = e.clientX; });
-    stage.addEventListener('pointermove', e => {
-      if (sx == null) return;
-      const dx = e.clientX - sx;
-      if (Math.abs(dx) > 60) { step(dx < 0 ? 1 : -1); sx = e.clientX; }
-    });
-    stage.addEventListener('pointerup', () => { sx = null; });
-    stage.addEventListener('pointercancel', () => { sx = null; });
-  },
-  hubGo(i) {
-    i = Math.max(0, Math.min(this.hubList.length - 1, i));
-    if (i === this.hubIdx) return;
-    this.hubIdx = i;
-    sfx('move');
-    this.hubLayout();
-  },
-  /** Entrer dans la console choisie (ou ouvrir le dossier des jeux depuis « Ajouter »). */
-  enter() {
-    const s = this.hubList[this.hubIdx];
-    if (!s) return;
-    if (s.id === 'add') { this.open({ what: 'games' }); return; }
-    this.sys = s.id;
-    store.set('emusys', s.id);
-    const card = this.hubCards[this.hubIdx];
-    this.el.querySelector('.hx')?.classList.add('leaving');
-    card.classList.add('entering');
-    clearTimeout(this.enterTimer);
-    this.enterTimer = setTimeout(() => { this.view = 'console'; this.draw('shelf'); }, 170);
+  // ---------------------------------------------------------------- accueil
+  consoleOrder() { const s = this.systems().map(x => x.id); return s.length > 1 ? ['all', ...s] : s; },
+  drawHub() {
+    const roms = this.roms();
+    const systems = this.systems();
+    const root = el('div', 'kw hub');
+    root.append(this.head(t('Émulation'), `${tn(roms.length, '{n} jeu', '{n} jeux')} · ${tn(systems.length, '{n} console', '{n} consoles')}`));
+    root.append(this.hero());
+    const body = el('div', 'kw-body');
+    const recent = roms.filter(g => g.lastPlayed).sort(lastPlayedFirst).slice(0, 12);
+    if (recent.length) body.append(this.row('recent', t('Reprendre'), recent.map(g => this.gameTile(g, 'r:'))));
+    const cards = [...(systems.length > 1 ? [this.sysInfo('all')] : []), ...systems].map(s => this.sysTile(s));
+    body.append(this.row('sys', t('Consoles'), cards));
+    const fav = roms.filter(g => favs.has(g.id)).sort((a, b) => a.name.localeCompare(b.name, locale));
+    if (fav.length) body.append(this.row('fav', t('Favoris'), fav.map(g => this.gameTile(g, 'f:'))));
+    const fresh = roms.filter(g => g.added).sort((a, b) => b.added - a.added).slice(0, 12);
+    if (roms.length > 4 && fresh.length) body.append(this.row('new', t('Ajoutés récemment'), fresh.map(g => this.gameTile(g, 'n:'))));
+    root.append(body);
+    this.tint(null);
+    this.el.replaceChildren(root);
   },
   toHub() {
     this.view = 'hub';
-    this.hubIdx = Math.max(0, (this.hubList || this.systems()).findIndex(s => s.id === this.sys));
     sfx('back');
-    this.draw('hub');
+    this.draw('c:' + this.sys);
+  },
+  openConsole(id) {
+    if (this.sys !== id) this.filter = 'all';
+    this.sys = id;
+    store.set('emusys', id);
+    this.view = 'console';
+    this.lastKey = null;
+    const keep = this.pos && this.pos[id];
+    this.draw(keep ? 'g:' + keep : null);
   },
   openManage() { this.manage = true; this.draw(); },
 
-  // ---------------------------------------------------------------- une console : l'étagère
-  drawConsole(focusKey) {
-    const systems = this.systems();
-    if (!systems.some(s => s.id === this.sys)) { this.view = 'hub'; this.drawHub(); return; }
-    const sys = systems.find(s => s.id === this.sys);
-    this.list = this.gamesOf(this.sys);
+  // ---------------------------------------------------------------- une console
+  drawConsole() {
+    const s = this.sysInfo(this.sys);
+    const all = this.gamesOf(this.sys);
+    if (!s || !all.length) { this.view = 'hub'; this.drawHub(); return; }
     this.pos = this.pos || store.get('emupos', {});
-    this.idx = Math.max(0, this.list.findIndex(g => g.id === this.pos[this.sys]));
-    this.tint(sys);
-
-    const root = el('div', 'sx cx');
-    root.style.setProperty('--sys', sys.id === 'all' ? 'var(--accent)' : lookOf(sys).color);
-    const top = el('div', 'cx-top');
-    top.append(nav(el('div', 'chip-btn cx-back', `${icon('i-grid')}${t('Consoles')}`), () => this.toHub(), 'to-hub'));
-    const sw = el('div', 'cx-switch');
-    const n = systems.length, i = systems.indexOf(sys);
-    const near = (s, k) => {
-      const b = el('div', 'cx-near ' + k, `${k === 'prev' ? shoulder('lb').outerHTML : ''}<span>${esc(s.id === 'all' ? t('Tout') : brandOf(s.id))}</span>${k === 'next' ? shoulder('rb').outerHTML : ''}`);
-      b.addEventListener('click', () => this.setSys(s.id));
-      return b;
-    };
-    if (n > 1) sw.append(near(systems[(i - 1 + n) % n], 'prev'));
-    const brand = sys.id === 'all' ? t('TOUS LES JEUX') : brandOf(sys.id);
-    sw.append(el('div', 'cx-brand' + (brand.length > 9 ? ' long' : ''), `<b>${esc(brand)}</b><small>${[sys.id === 'all' ? '' : sys.maker, tn(sys.count, '{n} jeu', '{n} jeux')].filter(Boolean).map(esc).join(' · ')}</small>`));
-    if (n > 1) sw.append(near(systems[(i + 1) % n], 'next'));
-    top.append(sw);
-    const tools = el('div', 'cx-tools');
-    if (sys.id !== 'all') tools.append(nav(el('div', 'chip-btn', `${icon('i-palette')}${t('Réglages')}`), () => this.openSettings('system', sys.id), 'sys-settings'));
-    top.append(tools);
-
-    const stage = el('div', 'sx-stage', '<div class="sx-glow"></div><div class="sx-track"></div><div class="sx-floor"></div><div class="sx-letter"></div>');
-    stage.setAttribute('aria-label', t('Étagère'));
-    nav(stage, () => this.play(), 'shelf');
-    this.stage = stage;
-    this.track = stage.querySelector('.sx-track');
-    this.nodes = new Map();
-    this.bindStage(stage);
-
-    this.info = el('div', 'cx-info');
-    root.append(top, stage, this.info);
+    this.filter = this.filter || 'all';
+    const list = this.filter === 'fav' ? all.filter(g => favs.has(g.id)) : this.filter === 'recent' ? all.filter(g => g.lastPlayed).sort(lastPlayedFirst) : all;
+    this.list = list;
+    const root = el('div', 'kw console');
+    root.style.setProperty('--sys', VIRTUAL[s.id] ? 'var(--accent)' : LOOK[s.id] || 'var(--accent)');
+    root.append(this.head(VIRTUAL[s.id] ? VIRTUAL[s.id]() : s.name, [VIRTUAL[s.id] ? '' : s.maker, tn(all.length, '{n} jeu', '{n} jeux')].filter(Boolean).join(' · '), true));
+    root.append(this.hero());
+    const body = el('div', 'kw-body');
+    const chips = el('div', 'kw-filters');
+    for (const [k, l] of [['all', t('Tous')], ['fav', t('Favoris')], ['recent', t('Joués récemment')]]) {
+      chips.append(nav(el('div', 'kw-filter' + (this.filter === k ? ' on' : ''), esc(l)), () => { this.filter = k; this.draw('filter:' + k); }, 'filter:' + k));
+    }
+    body.append(chips);
+    const grid = el('div', 'kw-grid');
+    if (!list.length) grid.append(el('div', 'kw-empty', this.filter === 'fav' ? t('Pas encore de favori ici : X sur un jeu l’ajoute.') : t('Aucun jeu lancé pour l’instant.')));
+    list.forEach(g => grid.append(this.gameTile(g, 'g:')));
+    body.append(grid, el('div', 'kw-letter'));
+    root.append(body);
+    this.tint(VIRTUAL[s.id] ? null : s);
     this.el.replaceChildren(root);
-    // Pas de requestAnimationFrame : il ne tourne pas tant que la page est masquée
-    this.drawInfo(); // avant les boîtes : la barre du dessous fixe la hauteur de l’étagère
-    this.layout(true);
-    this.focusPage(focusKey || 'shelf');
   },
-
-  /** Place les boîtes : la choisie de face, deux de chaque côté inclinées, les autres sur la tranche. */
-  layout(instant) {
-    const st = this.stage;
-    if (!st || !st.isConnected) return;
-    const W = st.clientWidth, H = st.clientHeight;
-    const boxH = Math.max(140, Math.min(H * 0.7, W * 0.36));
-    const floor = H * 0.84;
-    const cx = W / 2;
-    const keep = new Set();
-    // Taille d'une boîte : même hauteur pour toutes, sauf les boîtes en largeur (Super Nintendo,
-    // N64) qui ne dépassent pas un tiers de l'étagère
-    const size = g => {
-      const n = this.node(g);
-      const ar = n.ar || RATIO[g.system] || 0.72;
-      const h = Math.min(boxH, (W * 0.3) / ar);
-      return { n, h, bw: h * ar, depth: Math.max(18, boxH * (DEPTH[g.system] || 0.1)) };
-    };
-    const place = (i, mode, x, scale, side) => {
-      const g = this.list[i];
-      const { n, h, bw, depth } = size(g);
-      keep.add(g.id);
-      n.el.className = `sx-box mode-${mode}` + (side ? ' side-' + side : '') + (n.hasArt ? ' has-art' : '') + (instant ? ' instant' : '');
-      n.el.style.width = (mode === 'spine' ? depth : bw) + 'px';
-      n.el.style.height = h + 'px';
-      n.el.style.setProperty('--depth', depth + 'px');
-      const rot = mode === 'angled' ? (side === 'left' ? -56 : 56) : 0;
-      const z = mode === 'center' ? 0 : mode === 'angled' ? -90 : -120;
-      n.el.style.transform = `translate3d(${x}px, ${floor - h}px, ${z}px) rotateY(${rot}deg) scale(${scale})`;
-      n.el.style.zIndex = String(mode === 'center' ? 100 : 50 - Math.abs(i - this.idx));
-    };
-    if (!this.list.length) return;
-    const c = size(this.list[this.idx]);
-    place(this.idx, 'center', cx - c.bw / 2, 1);
-    for (const dir of [-1, 1]) {
-      let edge = cx + dir * (c.bw / 2 + boxH * 0.06);
-      for (let d = 1; ; d++) {
-        const i = this.idx + dir * d;
-        if (i < 0 || i >= this.list.length) break;
-        if (dir < 0 ? edge < -80 : edge > W + 80) break;
-        const s = size(this.list[i]);
-        if (d <= 2) {
-          // Inclinée vers le centre, pivot sur le bord le plus proche
-          place(i, 'angled', dir < 0 ? edge - s.bw : edge, 0.92, dir < 0 ? 'left' : 'right');
-          edge += dir * (s.bw * 0.92 * 0.5 + 6);
-        } else {
-          const w = s.depth * 0.94;
-          place(i, 'spine', dir < 0 ? edge - s.depth : edge, 0.94, dir < 0 ? 'left' : 'right');
-          edge += dir * (w + 3);
-        }
-      }
-    }
-    for (const [id, n] of this.nodes) if (!keep.has(id)) { n.el.remove(); this.nodes.delete(id); }
-    if (instant) setTimeout(() => this.track.querySelectorAll('.instant').forEach(e => e.classList.remove('instant')), 60);
-  },
-
-  /** Boîte d'un jeu : jaquette (ou boîte dessinée si elle manque) et tranche. */
-  node(g) {
-    let n = this.nodes.get(g.id);
-    if (n) return n;
-    const color = LOOK[g.system] || '#7c9eff';
-    const box = el('div', 'sx-box');
-    box.dataset.id = g.id;
-    box.style.setProperty('--c', color);
-    box.innerHTML = `<div class="sx-front"><div class="sx-gen"><small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b></div></div>
-      <div class="sx-spine"><small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b></div>`;
-    n = { el: box, ar: null };
-    const url = g.art && g.art.portrait;
-    if (url) {
-      const img = new Image();
-      img.decoding = 'async';
-      img.onload = () => {
-        n.ar = Math.min(1.6, Math.max(0.5, img.naturalWidth / img.naturalHeight));
-        box.querySelector('.sx-front').replaceChildren(img);
-        box.querySelector('.sx-spine').style.setProperty('--img', `url("${url}")`);
-        n.hasArt = true;
-        box.classList.add('has-art');
-        if (this.mode === 'console') this.layout();
-      };
-      img.src = url;
-    }
-    this.track.append(box);
-    this.nodes.set(g.id, n);
-    return n;
-  },
-
-  bindStage(stage) {
-    stage.addEventListener('click', e => {
-      const b = e.target.closest('.sx-box');
-      if (!b) return;
-      e.stopPropagation();
-      const i = this.list.findIndex(g => g.id === b.dataset.id);
-      if (i === this.idx) this.play(); else this.go(i);
-    });
-    this.bindSwipe(stage, dir => this.go(this.idx + dir));
-  },
-
-  go(i) {
-    i = Math.max(0, Math.min(this.list.length - 1, i));
-    if (i === this.idx) return;
-    this.idx = i;
-    this.pos[this.sys] = this.list[i].id;
-    store.set('emupos', this.pos);
-    sfx('move');
-    this.layout();
-    clearTimeout(this.infoTimer);
-    this.infoTimer = setTimeout(() => this.drawInfo(), 90);
-  },
-  /** Gâchettes : première boîte de la lettre suivante (ou précédente). */
+  /** Gâchettes : premier jeu de la lettre suivante (ou précédente). */
   jumpLetter(dir) {
-    if (this.sys === 'all' || !this.list.length) return;
-    const cur = firstLetter(this.list[this.idx]);
-    let i = this.idx;
-    if (dir > 0) { while (i < this.list.length && firstLetter(this.list[i]) === cur) i++; if (i >= this.list.length) return; }
+    const tiles = [...this.el.querySelectorAll('.kw-grid .kw-tile')];
+    const cur = this.el.querySelector('.kw-grid .kw-tile.focused');
+    if (!tiles.length) return;
+    let i = Math.max(0, tiles.indexOf(cur));
+    const letterOf = tile => firstLetter({ name: tile.querySelector('.kw-name').textContent });
+    const from = letterOf(tiles[i]);
+    if (dir > 0) { while (i < tiles.length && letterOf(tiles[i]) === from) i++; if (i >= tiles.length) return; }
     else {
-      while (i > 0 && firstLetter(this.list[i - 1]) === cur) i--;
-      if (i === this.idx && i > 0) { const prev = firstLetter(this.list[i - 1]); i--; while (i > 0 && firstLetter(this.list[i - 1]) === prev) i--; }
+      while (i > 0 && letterOf(tiles[i - 1]) === from) i--;
+      if (tiles[i] === cur && i > 0) { const prev = letterOf(tiles[i - 1]); i--; while (i > 0 && letterOf(tiles[i - 1]) === prev) i--; }
     }
-    this.go(i);
-    const l = this.stage.querySelector('.sx-letter');
-    l.textContent = firstLetter(this.list[this.idx]);
+    setFocus(tiles[i]);
+    const l = this.el.querySelector('.kw-letter');
+    l.textContent = letterOf(tiles[i]);
     l.classList.remove('show'); void l.offsetWidth; l.classList.add('show');
   },
-  setSys(id, focusKey) {
-    if (id === this.sys) return;
-    this.sys = id;
-    store.set('emusys', id);
-    sfx('move');
-    this.view = 'console';
-    this.draw(focusKey || 'shelf');
-  },
-  current() { return this.list && this.list[this.idx]; },
-  play() { const g = this.current(); if (g) launch(g); },
 
-  /** Sous l'étagère : le nom du jeu, quelques repères et trois boutons, rien de plus. */
-  drawInfo() {
-    const g = this.current();
-    const box = this.info;
-    if (!g || !box || !box.isConnected) return;
-    const focusedKey = box.querySelector('.focused')?.dataset.key;
-    const m = metaCache.get(g.id);
-    const hero = g.art && (g.art.hero || g.art.header);
-    if (hero) setBackground(hero);
-    const bits = [];
-    if (this.sys === 'all') bits.push(esc(brandOf(g.system)));
-    if (m?.year) bits.push(esc(m.year));
-    if (m?.genre) bits.push(esc(m.genre));
-    if (m?.players > 1) bits.push(esc(tn(m.players, '{n} joueur', '{n} joueurs')));
-    if (g.discs) bits.push(esc(tn(g.discs, '{n} disque', '{n} disques')));
-    bits.push(esc(g.lastPlayed ? fmt.played(g.lastPlayed) : t('Jamais joué')));
-    box.innerHTML = `<div class="cx-text"><small>${this.idx + 1} / ${this.list.length}</small>
-      <h2>${favs.has(g.id) ? '<i class="cx-fav">★</i>' : ''}${esc(g.name)}</h2><div class="cx-meta">${bits.join('<i>·</i>')}</div></div>`;
-    const acts = el('div', 'cx-acts');
-    const btn = (cls, glyphKey, ic, label, fn, key) => {
-      const b = el('div', 'cx-btn ' + cls, `${icon(ic)}<span>${label}</span>`);
-      b.append(shoulder(glyphKey));
-      acts.append(nav(b, fn, key));
-    };
-    btn('play', 'a', 'i-play', t('Jouer'), () => this.play(), 'play');
-    btn('', 'y', 'i-info', t('Fiche'), () => this.openSheet(), 'sheet');
-    btn(favs.has(g.id) ? 'on' : '', 'x', 'i-star', t('Favori'), () => this.toggleFav(), 'fav');
+  // ---------------------------------------------------------------- tuile choisie : la bannière suit
+  onFocus(target) {
+    if (this.mode === 'manage' || !target || !this.el.contains(target)) return;
+    const key = target.dataset.key;
+    if (target.dataset.gid || target.dataset.sys) {
+      this.lastKey = key;
+      if (target.dataset.gid) {
+        this.sel = this.roms().find(g => g.id === target.dataset.gid) || null;
+        if (this.mode === 'console' && this.sel) { this.pos[this.sys] = this.sel.id; store.set('emupos', this.pos); }
+        this.selSys = null;
+      } else { this.selSys = target.dataset.sys; this.sel = null; }
+      clearTimeout(this.heroTimer);
+      this.heroTimer = setTimeout(() => this.paintHero(), 70);
+      renderHints();
+    }
+  },
+  current() { return this.sel || null; },
+  play() { const g = this.current(); if (g) launch(g); },
+  setHeroBg(url) {
+    if (!this.heroEl || url === this.heroBg) return;
+    this.heroBg = url;
+    const [a, b] = this.heroEl.querySelectorAll('.kw-bg');
+    const next = a.classList.contains('on') ? b : a, prev = next === a ? b : a;
+    next.style.backgroundImage = url ? `url("${url}")` : 'none';
+    next.classList.add('on'); prev.classList.remove('on');
+    if (url) setBackground(url);
+  },
+  paintHero() {
+    const box = this.heroEl && this.heroEl.querySelector('.kw-hero-in');
+    if (!box || !box.isConnected) return;
+    const keep = box.querySelector('.focused')?.dataset.key;
+    const btn = (cls, ic, text, fn, key, glyphKey) => nav(el('div', 'kw-btn ' + cls, `${icon(ic)}<span>${text}</span>${glyphKey ? shoulder(glyphKey).outerHTML : ''}`), fn, key);
+    const acts = el('div', 'kw-acts');
+    if (this.sel) {
+      const g = this.sel;
+      const m = metaCache.get(g.id);
+      if (!m) this.loadMeta(g);
+      this.setHeroBg(heroOf(g));
+      this.heroEl.style.setProperty('--c', LOOK[g.system] || 'var(--accent)');
+      const bits = [brandOf(g.system)];
+      if (m?.year) bits.push(m.year);
+      if (m?.genre) bits.push(m.genre);
+      if (m?.players > 1) bits.push(tn(m.players, '{n} joueur', '{n} joueurs'));
+      const played = g.lastPlayed ? t('Dernière partie : {d}', { d: fmt.played(g.lastPlayed) }) + (g.playtime ? ' · ' + fmt.playtime(g.playtime) : '') : t('Jamais joué');
+      const logo = g.art && g.art.logo;
+      box.innerHTML = `<div class="kw-logo">${logo ? `<img src="${logo}" alt="${esc(g.name)}">` : ''}<h1${logo ? ' hidden' : ''}>${favs.has(g.id) ? '<i class="kw-star">★</i>' : ''}${esc(g.name)}</h1></div>
+        <p class="kw-meta">${bits.map(b => esc(String(b))).join('<i>·</i>')}</p><p class="kw-played">${esc(played)}</p>
+        ${m?.description ? `<p class="kw-desc">${esc(m.description)}</p>` : ''}`;
+      const img = box.querySelector('.kw-logo img');
+      // Logo illisible ou absent : le nom en texte
+      if (img) img.onerror = () => { img.remove(); box.querySelector('.kw-logo h1').hidden = false; };
+      acts.append(btn('primary', 'i-play', t('Jouer'), () => this.play(), 'h-play', 'a'));
+      acts.append(btn('', 'i-info', t('Fiche'), () => this.openSheet(), 'h-sheet', 'y'));
+      acts.append(btn(favs.has(g.id) ? 'on' : '', 'i-star', favs.has(g.id) ? t('Favori') : t('Ajouter aux favoris'), () => this.toggleFav(), 'h-fav', 'x'));
+    } else if (this.selSys) {
+      const s = this.sysInfo(this.selSys);
+      const games = this.gamesOf(s.id);
+      const last = games.filter(g => g.lastPlayed).sort(lastPlayedFirst)[0];
+      this.setHeroBg(heroOf(last) || games.map(heroOf).find(Boolean) || null);
+      this.heroEl.style.setProperty('--c', VIRTUAL[s.id] ? 'var(--accent)' : LOOK[s.id] || 'var(--accent)');
+      const minutes = games.reduce((n, g) => n + (g.playtime || 0), 0);
+      const bits = VIRTUAL[s.id] ? [tn(this.systems().length, '{n} console', '{n} consoles')] : [s.maker, YEAR[s.id], kindOf(s.id)];
+      box.innerHTML = `<div class="kw-logo"><h1 class="sys">${esc(VIRTUAL[s.id] ? VIRTUAL[s.id]() : s.name)}</h1></div>
+        <p class="kw-meta">${bits.filter(Boolean).map(b => esc(String(b))).join('<i>·</i>')}</p>
+        <p class="kw-played">${esc([tn(games.length, '{n} jeu', '{n} jeux'), minutes ? t('{t} de jeu', { t: fmt.playtime(minutes) }) : '', last ? t('Dernier : {name}', { name: last.name }) : ''].filter(Boolean).join(' · '))}</p>`;
+      acts.append(btn('primary', 'i-library', t('Voir les jeux'), () => this.openConsole(s.id), 'h-enter', 'a'));
+      if (!VIRTUAL[s.id]) acts.append(btn('', 'i-palette', t('Réglages de la console'), () => this.openSettings('system', s.id), 'h-settings', 'y'));
+    } else return;
     box.append(acts);
-    renderHints();
-    if (focusedKey) { const f = box.querySelector(`[data-key="${focusedKey}"]`); if (f) setFocus(f, { scroll: false, sound: false }); }
-    if (!m) this.loadMeta(g);
+    if (keep) { const f = box.querySelector(`[data-key="${keep}"]`); if (f) setFocus(f, { scroll: false, sound: false }); }
   },
   toggleFav() {
     const g = this.current();
     if (!g) return;
     toggleFav(g);
-    this.drawInfo();
-    if (this.themed()) {
-      this.el.querySelectorAll(`.th-tile[data-gid="${CSS.escape(g.id)}"]`).forEach(x => x.classList.toggle('fav', favs.has(g.id)));
-      paintDetail(this);
-    }
+    this.el.querySelectorAll(`.kw-tile[data-gid="${CSS.escape(g.id)}"]`).forEach(x => x.classList.toggle('fav', favs.has(g.id)));
+    this.paintHero();
     if (this.sheet && this.sheet.view === 'info') this.drawSheetInfo('s-fav');
   },
   async loadMeta(g) {
@@ -559,9 +402,8 @@ definePage('emulation', {
       metaCache.set(g.id, r.meta || {});
     } catch { metaCache.set(g.id, {}); }
     this.metaLoading = null;
-    if (this.themed() && this.thSel && this.thSel.gid === g.id) paintDetail(this);
-    if (this.current() === g && this.mode === 'console') {
-      this.drawInfo();
+    if (this.sel === g) {
+      this.paintHero();
       if (this.sheet && this.sheet.view === 'info') this.drawSheetInfo();
     }
   },
@@ -676,7 +518,9 @@ definePage('emulation', {
     const base = s.scope === 'game' ? (r.system || {}) : {};
     const emuName = id => (sys.emus.find(e => e.id === id) || {}).name || id;
     const defEmu = (s.scope === 'game' && !base.emulator && g.emulatorId) || (sys.emus[0] || {}).id;
-    const inherited = { emulator: base.emulator || defEmu, core: base.core || sys.cores[0], filter: base.filter || 'none', aspect: base.aspect || 'auto' };
+    const d = r.defaults || {};
+    const inherited = { emulator: base.emulator || defEmu, core: base.core || sys.cores[0], filter: base.filter || d.filter || 'none', aspect: base.aspect || d.aspect || 'auto',
+      quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off' };
     const value = k => (own[k] !== undefined ? own[k] : inherited[k]);
     const emuId = value('emulator');
     const options = {
@@ -684,13 +528,17 @@ definePage('emulation', {
       core: sys.cores.map(c => [c, c]),
       filter: FILTERS(),
       aspect: ASPECTS(),
+      quality: QUALITIES(),
+      wide: WIDES(),
     };
     s.state = { sysId, own, options, inherited };
     const kinds = [];
     if (sys.emus.length > 1) kinds.push(['emulator', t('Émulateur'), 'i-gamepad']);
     if (emuId === 'retroarch' && sys.cores.length > 1) kinds.push(['core', t('Cœur RetroArch'), 'i-cpu']);
     if (emuId === 'retroarch') kinds.push(['filter', t('Filtre d’image'), 'i-palette']);
-    if (ASPECT_EMUS.includes(emuId)) kinds.push(['aspect', t('Format de l’image'), 'i-desktop']);
+    if (QUALITY_EMUS.includes(emuId) || (emuId === 'retroarch' && sysId === 'n64')) kinds.push(['quality', t('Qualité de l’image'), 'i-image']);
+    if (WIDE_EMUS.includes(emuId)) kinds.push(['wide', t('Écran large (16:9)'), 'i-desktop']);
+    if (ASPECT_EMUS.includes(emuId) && value('wide') !== 'on') kinds.push(['aspect', t('Format de l’image'), 'i-desktop']);
     const p = this.sheetBox;
     const auto = s.scope === 'game' ? t('comme la console') : t('par défaut');
     p.innerHTML = `<div class="es-head"><small>${s.scope === 'game' ? t('Réglages du jeu') : t('Réglages de la console')}</small>
@@ -765,10 +613,9 @@ definePage('emulation', {
       <p>${roms.length ? tn(roms.length, '{n} jeu', '{n} jeux') : t('Ajoutez vos jeux, KaneMode s’occupe du reste')}</p></div>`);
     const actions = el('div', 'emu-actions');
     const chip = (ic, label, fn, key, primary) => actions.append(nav(el('div', 'chip-btn' + (primary ? ' primary' : ''), `${icon(ic)}${label}`), fn, key));
-    if (roms.length) chip('i-library', t('Retour à l’étagère'), () => { this.manage = false; this.draw(); }, 'back-shelf', true);
+    if (roms.length) chip('i-library', t('Retour aux jeux'), () => { this.manage = false; this.draw(); }, 'back-shelf', true);
     chip('i-folder', t('Dossier des jeux'), () => this.open({ what: 'games' }), 'open-games', !roms.length);
     chip('i-rom', t('BIOS'), () => this.biosDialog(), 'bios');
-    if (roms.length) chip('i-image', t('Thème'), () => this.pickTheme(), 'theme');
     head.append(actions);
     page.append(head);
     if (!roms.length) {
@@ -922,38 +769,42 @@ definePage('emulation', {
       if (k === 'b' && this.roms().length) { this.manage = false; this.draw(); return true; }
       return false;
     }
-    if (this.themed()) return themedButton(this, k);
     const focused = this.el.querySelector('.focused');
-    const key = focused && focused.dataset.key;
-    if (this.mode === 'hub') {
-      if (key === 'hub' && (k === 'left' || k === 'right')) { this.hubGo(this.hubIdx + (k === 'right' ? 1 : -1)); return true; }
-      if (k === 'lb' || k === 'rb') { this.hubGo(this.hubIdx + (k === 'rb' ? 1 : -1)); if (key !== 'hub') focusIn(this.el, 'hub'); return true; }
-      if (k === 'y') {
-        const s = this.hubList[this.hubIdx];
-        if (s && s.id !== 'all' && s.id !== 'add') this.openSettings('system', s.id);
-        return true;
-      }
-      if (k === 'x') { this.openManage(); return true; }
-      return false;
+    const onGame = focused && (focused.dataset.gid || this.el.querySelector('.kw-hero')?.contains(focused)) && this.sel;
+    if (k === 'x') { if (onGame) this.toggleFav(); return true; }
+    if (k === 'y') {
+      if (onGame) this.openSheet();
+      else if (this.selSys && !VIRTUAL[this.selSys]) this.openSettings('system', this.selSys);
+      return true;
     }
+    // Des boutons de la bannière, ↑ mène aux boutons de l'en-tête (Gérer, Réglages, Consoles)
+    if (k === 'up' && focused && this.heroEl && this.heroEl.contains(focused)) {
+      const head = this.el.querySelector(this.mode === 'hub' ? '[data-key="add-games"]' : '[data-key="to-hub"]');
+      if (head) { setFocus(head); return true; }
+    }
+    if (k === 'down' && focused && focused.closest('.kw-head')) {
+      const first = this.heroEl && this.heroEl.querySelector('.kw-btn');
+      if (first) { setFocus(first); return true; }
+    }
+    if (this.mode === 'hub') return false;
+    if (k === 'b') { this.toHub(); return true; }
     if (k === 'lb' || k === 'rb') {
-      const list = this.systems();
-      if (list.length < 2) return true;
-      const i = list.findIndex(s => s.id === this.sys);
-      this.setSys(list[(i + (k === 'rb' ? 1 : -1) + list.length) % list.length].id, 'shelf');
+      const list = this.consoleOrder();
+      const i = list.indexOf(this.sys);
+      if (list.length > 1) this.openConsole(list[(Math.max(0, i) + (k === 'rb' ? 1 : -1) + list.length) % list.length]);
       return true;
     }
     if (k === 'lt' || k === 'rt') { this.jumpLetter(k === 'rt' ? 1 : -1); return true; }
-    if (k === 'x') { this.toggleFav(); return true; }
-    if (k === 'y') { this.openSheet(); return true; }
-    if (k === 'b') { this.toHub(); return true; }
-    if (key === 'shelf' && (k === 'left' || k === 'right')) { this.go(this.idx + (k === 'right' ? 1 : -1)); return true; }
     return false;
   },
   hints() {
     if (this.mode === 'manage') return [['a', t('Sélectionner')], ['b', t('Retour')]];
-    if (this.themed()) return themedHints(this);
-    if (this.mode === 'hub') return [[['left', 'right'], t('Console')], ['y', t('<span class="label-long">Réglages</span>')], ['x', t('Gérer')], ['a', t('Entrer')], ['b', t('Retour')]];
-    return [[['lb', 'rb'], t('<span class="label-long">Console</span>')], [['lt', 'rt'], t('<span class="label-long">Lettre</span>')], ['a', t('Jouer')], ['b', t('Consoles')]];
+    const game = !!this.sel;
+    const list = [];
+    if (this.mode === 'console') list.push([['lb', 'rb'], t('<span class="label-long">Console</span>')], [['lt', 'rt'], t('<span class="label-long">Lettre</span>')]);
+    if (game) list.push(['x', t('Favori')], ['y', t('Fiche')], ['a', t('Jouer')]);
+    else list.push(['y', t('<span class="label-long">Réglages</span>')], ['a', t('Ouvrir')]);
+    list.push(['b', this.mode === 'console' ? t('Consoles') : t('Retour')]);
+    return list;
   },
 });
