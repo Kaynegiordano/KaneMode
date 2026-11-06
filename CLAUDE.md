@@ -4,6 +4,15 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.22.0 : jeux Switch en dossier lancés depuis leur mise à jour fusionnée
+
+- Signalé : Pokopia (Switch 2) ne démarre pas. Journal Lichii : `FindLooseRomFS: Base RomFS is absent and the update RomFS belongs to a different build … Load the update's exefs instead of the base one`, puis arrêt net à 1,9 s. Le dump a `base/exefs` (36 Mo, build D4E6…) sans `base/romfs`, et `updates/655360/{exefs,romfs}` (6,8 Go, build 76A4…).
+- Source de Lichii (`deconstructed_rom_directory.cpp`) : un exefs en vrac est lancé avec le seul romfs posé à côté. La mise à jour d’à côté n’est pas appliquée. Lancer `base/exefs/main` = jouer en 1.0 (et planter sans romfs de base).
+- Les dumpers écrivent le romfs d’une mise à jour déjà fusionné : Donkey Kong Bananza `updates/458752/romfs` contient les 60 dossiers de la base + `Game`. Remarque de l’utilisateur : « valable pour tous les jeux Switch 2 ».
+- `emulation.js` `dirGameInner(sys, sub)` : quand c’est `base/exefs/main`, on prend la mise à jour numérique la plus récente qui a `exefs/main` + `romfs`. Elle doit contenir au moins 90 % des dossiers du premier niveau du romfs de base ; sinon c’est une mise à jour « fichiers modifiés seulement » et on garde la base. Les DLC (`dlc/<id>/0/romfs`, sans exefs) ne se lancent pas.
+- `idPath` : l’identifiant reste tiré de `base/exefs/main` (favoris, jaquettes et réglages gardés). `cleanName(file, dir)` : un nom de dossier n’a plus d’« extension » retirée (« Pokopia (v2.0 »).
+- Vérifié : Pokopia et Donkey Kong lancés depuis leur mise à jour (40 s, ~13 Go, fermés poliment), scan réel, 78 tests. Restant : `Cache\78f22abe510a3681\Pokopia (v2.0.1a) (DUMP)` (copie de 6,8 Go du dossier), origine non vérifiée.
+
 ## Version 4.21.0 : profil Lichii (tuto vidéo) posé une fois, adapté à la machine
 
 - Demande : appliquer par défaut à Lichii la configuration d’un tuto YouTube (RTX 4060 portable). Correspondances lues dans les sources de Lichii (branche nx2 : `settings.h`, `settings_enums.h`, `shared_translation.cpp`).

@@ -350,6 +350,34 @@ test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précisio
   assert.equal(roms[0].system, 'switch2');
 });
 
+test('Dump Switch 2 base + mise à jour sans romfs de base : l’exefs de la mise à jour la plus récente avec ses données', () => {
+  const root = tmp();
+  const game = path.join(root, 'Nintendo Switch 2', 'Pokopia (v2.0.1a) (DUMP)');
+  const put = rel => { const f = path.join(game, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, 'NSO'); };
+  put('base/exefs/main');
+  put('updates/65536/exefs/main'); put('updates/65536/romfs/data.bin');
+  put('updates/655360/exefs/main'); put('updates/655360/romfs/data.bin');
+  put('updates/700000/exefs/main'); // sans romfs : ignorée
+  let roms = emu.scanRoms([root], {}, {});
+  assert.equal(roms.length, 1);
+  assert.equal(path.relative(game, roms[0].romPath).split(path.sep).join('/'), 'updates/655360/exefs/main');
+  assert.equal(roms[0].name, 'Pokopia');
+  // Même identifiant que si la base était lancée (favoris, jaquettes, réglages gardés)
+  const idOf = p => 'rom:' + require('crypto').createHash('sha1').update(p.toLowerCase()).digest('hex').slice(0, 12);
+  assert.equal(roms[0].id, idOf(path.join(game, 'base', 'exefs', 'main')));
+  // Base complète et mise à jour fusionnée (tous les dossiers de la base) : la mise à jour
+  const rel = () => path.relative(game, emu.scanRoms([root], {}, {})[0].romPath).split(path.sep).join('/');
+  put('base/romfs/data.bin'); put('base/romfs/Model/a.bin');
+  put('updates/655360/romfs/Model/a.bin'); put('updates/655360/romfs/Game/b.bin');
+  assert.equal(rel(), 'updates/655360/exefs/main');
+  // Mise à jour qui n'a que les fichiers modifiés (dossiers de la base absents) : la base
+  for (let i = 0; i < 9; i++) put(`base/romfs/Dir${i}/x.bin`);
+  assert.equal(rel(), 'base/exefs/main');
+  // Dossier DLC (romfs seul) : jamais lancé, un seul jeu
+  put('dlc/040074a01bf13001/0/romfs/x.bin');
+  assert.equal(emu.scanRoms([root], {}, {}).length, 1);
+});
+
 test('Quitter complètement : RetroArch ne quitte plus dès Select + Start, la reprise automatique du jeu est effaçable', () => {
   const ra = tmp();
   setup.prepare('retroarch', ra, { bios: ra, saves: ra });

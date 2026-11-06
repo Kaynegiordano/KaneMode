@@ -270,8 +270,10 @@ function launchFor(sys, rom, emulators, prefs = {}, wantedCore = null) {
 // ---------- Scan des ROMs ----------
 // Nom affiché : sans les étiquettes (région, version) ; un nom de « release » (« FINAL.FANTASY_(EU)_SuperXCI-NX »)
 // perd aussi ses points, son groupe et ses majuscules
-function cleanName(file) {
-  let n = path.basename(file, path.extname(file));
+// Dossier (dir) : pas d'extension à retirer (« Pokopia (v2.0.1a) (DUMP) » devenait « Pokopia (v2.0 »)
+function cleanName(file, dir = false) {
+  const raw = dir ? path.basename(file) : path.basename(file, path.extname(file));
+  let n = raw;
   const release = !/\s/.test(n) && /[._]/.test(n);
   n = n.replace(/_/g, ' ');
   if (release) n = n.replace(/\.(?=\S)/g, ' ');
@@ -279,7 +281,7 @@ function cleanName(file) {
   if (release) n = n.replace(/\s+(Super)?(XCI|XCZ|NSP|NSZ)(-\w+)?$/i, '').replace(/\s+-\s*\w+$/, '');
   n = n.replace(/\s{2,}/g, ' ').trim();
   if (release && n === n.toUpperCase()) n = n.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
-  return n || path.basename(file, path.extname(file));
+  return n || raw;
 }
 const regionOf = file => { const m = /\((USA|Europe|Japan|World|France|Germany|Spain|Italy|Korea|En[^)]*|Fr[^)]*)\)/i.exec(file); return m ? m[1] : null; };
 
@@ -288,6 +290,33 @@ const rank = (sys, ext) => (sys.exts.includes(ext) ? sys.exts.indexOf(ext) : 100
 
 // Consoles dont l'émulateur choisi lit une liste .m3u de disques
 const M3U_SYSTEMS = ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'];
+
+/**
+ * Fichier à lancer d'un jeu décompressé (chemin relatif au dossier du jeu). Dump Switch en
+ * base/ + updates/<version>/ : Lichii et Eden lancent un exefs avec le seul romfs posé à côté,
+ * sans appliquer la mise à jour d'à côté. Lancer la base, c'est donc jouer à la version 1.0, et
+ * même planter quand la base n'a pas de romfs (Pokopia : le code 1.0 avec rien). Les dumpers
+ * écrivent le romfs d'une mise à jour déjà fusionné avec la base (Donkey Kong Bananza : les 60
+ * dossiers de la base + « Game ») : on lance l'exefs de la mise à jour la plus récente, sauf si son
+ * romfs ne contient que les fichiers modifiés (il lui manque des dossiers de la base).
+ * Les DLC (dlc/<id>/…/romfs, sans exefs) ne se lancent pas.
+ */
+function dirGameInner(sys, sub) {
+  const inner = [].concat(sys.dirGames || []).find(g => isFile(path.join(sub, g)));
+  if (inner !== 'base/exefs/main') return inner;
+  const list = d => { try { return fs.readdirSync(d); } catch { return null; } };
+  const base = list(path.join(sub, 'base', 'romfs'));
+  const versions = (list(path.join(sub, 'updates')) || []).filter(v => /^\d+$/.test(v)).sort((a, b) => Number(b) - Number(a));
+  for (const v of versions) {
+    if (!isFile(path.join(sub, 'updates', v, 'exefs', 'main'))) continue;
+    const own = list(path.join(sub, 'updates', v, 'romfs'));
+    if (!own) continue;
+    const has = new Set(own.map(n => n.toLowerCase()));
+    const kept = base ? base.filter(n => has.has(n.toLowerCase())).length : 0;
+    if (!base || !base.length || kept >= base.length * 0.9) return `updates/${v}/exefs/main`;
+  }
+  return inner;
+}
 
 function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   const startAt = out.length;
@@ -361,9 +390,12 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   for (const e of entries) {
     if (!e.isDirectory() || /^(media|images|videos|manuals|downloaded_media|\.)/i.test(e.name)) continue;
     const sub = path.join(dir, e.name);
-    const inner = [].concat(sys.dirGames || []).find(g => isFile(path.join(sub, g)));
+    const inner = dirGameInner(sys, sub);
     if (inner) {
-      out.push({ sys, path: path.join(sub, inner), name: cleanName(e.name), region: regionOf(e.name), size: 0, dirGame: true });
+      // Identifiant tiré de base/exefs/main même quand la mise à jour est lancée : favoris, jaquettes
+      // et réglages du jeu restent quand une mise à jour est ajoutée au dump
+      const idPath = inner.startsWith('updates/') ? path.join(sub, 'base', 'exefs', 'main') : null;
+      out.push({ sys, path: path.join(sub, inner), idPath, name: cleanName(e.name, true), region: regionOf(e.name), size: 0, dirGame: true });
     } else if (depth < 2) scanSystemDir(sys, sub, out, depth + 1, m3uDir);
   }
   // Même jeu en dossier décompressé et en image (.iso) : le dossier, qui démarre sans montage
@@ -387,7 +419,7 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}
     }
   }
   return found.map(r => {
-    const id = 'rom:' + crypto.createHash('sha1').update(r.path.toLowerCase()).digest('hex').slice(0, 12);
+    const id = 'rom:' + crypto.createHash('sha1').update((r.idPath || r.path).toLowerCase()).digest('hex').slice(0, 12);
     const set = { ...((settings.systems || {})[r.sys.id] || {}), ...((settings.games || {})[id] || {}) };
     const how = launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
     // Archive à plusieurs fichiers : RetroArch reçoit le jeu lui-même (« archive.zip#jeu.md »)
