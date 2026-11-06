@@ -212,8 +212,8 @@ const SETUP = {
       ...(pads.azaharPad(file, c.pads) || {}),
     }, { sep: '=' });
   },
-  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir, c); },
-  lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c); },
+  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir, c, 'eden'); },
+  lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'lichii'); },
   rpcs3(dir, c) { pads.rpcs3Pad(dir, c.pads); },
   cemu(dir, c) { pads.cemuPad(dir, c.pads); },
   // melonDS : réglages à côté de l'exécutable (dossier portable), manette n° 0
@@ -225,14 +225,34 @@ const SETUP = {
 };
 
 // Eden et Lichii (même base, mêmes clés) : plein écran, pas de question en quittant, shaders compilés sans à-coups
-function switchConfig(dir, c = {}) {
+// Image selon la machine (valeurs des énumérations d'Eden et de Lichii : résolution 3 = 1x, 5 = 1,5x,
+// 6 = 2x ; filtre 6 = FSR ; anticrénelage 0 = aucun, 1 = FXAA ; mode 0 = portable, 1 = TV).
+// Puce intégrée (ROG Ally…) : mode portable (moins de pixels à calculer), précision GPU basse,
+// FSR pour agrandir à l'écran. Carte dédiée : mode TV, résolution d'après l'écran (1080p de la console TV).
+function switchVideo(c, variant) {
+  const low = c.tier !== 'high';
+  const native = c.quality === 'native';
+  const h = c.screenH || 1080;
+  const res = native || low ? 3 : h >= 2000 ? (variant === 'lichii' ? 5 : 6) : h > 1100 ? 5 : 3;
+  return {
+    Renderer: qt({
+      resolution_setup: res, scaling_filter: 6, anti_aliasing: low ? 0 : 1,
+      // Eden : Low/Medium/High (0-2), Lichii : Low/High (0-1)
+      gpu_accuracy: low ? 0 : 1,
+      use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true',
+    }),
+    System: qt({ use_docked_mode: low ? 0 : 1 }),
+  };
+}
+
+function switchConfig(dir, c = {}, variant = 'eden') {
   const file = path.join(dir, 'user', 'config', 'qt-config.ini');
   const pad = pads.yuzuPad(file, c.pads);
   mergeIni(file, {
     ...(pad || {}),
     UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }),
     Miscellaneous: qt({ first_launch: 'false' }),
-    Renderer: qt({ use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true' }),
+    ...switchVideo(c, variant),
   }, { sep: '=' });
 }
 

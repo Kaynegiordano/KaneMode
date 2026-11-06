@@ -82,7 +82,7 @@ const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'
 const QUALITIES = () => [['auto', t('Adaptée à l’écran')], ['native', t('D’origine (plus léger)')]];
 const WIDES = () => [['on', t('Oui')], ['off', t('Non')]];
 const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
-const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar'];
+const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii'];
 const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 

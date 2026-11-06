@@ -314,3 +314,25 @@ test('Manette XInput (ROG Ally, Xbox) posée dans Eden, Lichii, Azahar, RPCS3, C
   setup.prepare('retroarch', ra, { bios: ra, saves: ra });
   assert.match(fs.readFileSync(path.join(ra, 'retroarch.cfg'), 'utf8'), /input_joypad_driver = "xinput"/);
 });
+
+test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précision basse et FSR ; carte dédiée en mode TV ; jeux .nup', () => {
+  const dir = tmp();
+  const qt = () => fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8');
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1080, tier: 'low', quality: 'auto' });
+  assert.match(qt(), /^gpu_accuracy=0$/m);
+  assert.match(qt(), /^use_docked_mode=0$/m);
+  assert.match(qt(), /^resolution_setup=3$/m);
+  assert.match(qt(), /^scaling_filter=6$/m);
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1440, tier: 'high', quality: 'auto' });
+  assert.match(qt(), /^use_docked_mode=1$/m);
+  assert.match(qt(), /^resolution_setup=5$/m);
+  setup.prepare('eden', dir, { bios: dir, saves: dir, screenH: 2160, tier: 'high', quality: 'auto' });
+  assert.match(qt(), /^resolution_setup=6$/m);
+  const root = tmp();
+  fs.mkdirSync(path.join(root, 'Nintendo Switch 2'));
+  fs.writeFileSync(path.join(root, 'Nintendo Switch 2', 'The Legend of Zelda Ocarina of Time [0400486024dec000][v131072].nup'), 'NUP');
+  const roms = emu.scanRoms([root], {}, {});
+  assert.equal(roms.length, 1);
+  assert.equal(roms[0].name, 'The Legend of Zelda Ocarina of Time');
+  assert.equal(roms[0].system, 'switch2');
+});

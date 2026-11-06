@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.19.0 : jeux Switch 2 .nup, Eden et Lichii réglés selon la machine
+
+- Signalé : dans « Nintendo Switch 2 », « Pokopia (v2.0.1a) (DUMP) » et « The Legend of Zelda Ocarina of Time [0400486024dec000][v131072].nup » (24 Go, signature `NUP\x01`) non reconnus ; « optimiser les réglages pour la ROG Ally X ». Pokopia : dossier copié par FTP (`.listing`), `base\` et `updates\` encore VIDES (rien à reconnaître). .nup = conteneur propre à Lichii (`src/core/loader/nup.cpp`, `file_sys/nup_container`) → ajouté en tête des `exts` de switch2.
+- `emu-setup.js` : `switchVideo(c, variant)` d'après `emuDisplay` : puce intégrée (`tier` ≠ high) = `use_docked_mode=0` [System], `gpu_accuracy=0`, `resolution_setup=3` (1x), `scaling_filter=6` (FSR), `anti_aliasing=0` ; carte dédiée = mode TV, résolution 1x (1080p), 1,5x (1440p), 2x en 4K (Lichii plafonné à 1,5x), FXAA, précision 1 (Eden Medium, Lichii High). Énumérations lues dans les deux sources (Eden v0.2.1 : GpuAccuracy Low/Medium/High ; Lichii : Low/High ; ResolutionSetup, ScalingFilter, ConsoleMode identiques). `nx2_switches.txt` de Lichii déjà réglé pour les perfs (SPLIT=2, FENCE_BATCH). UI : eden/lichii dans `QUALITY_EMUS`.
+- Vérifié : Zelda .nup lancé par l'hôte (« Max Resolution » et « Dynamic FPS » intégrés de Lichii appliqués, 12 Go de mémoire à 35 s ; ne s'est pas fermé poliment, arrêté de force) ; réglages écrits pour ce PC (1,5x, TV, FSR). Non vérifié : sur l'Ally, rendu et fluidité.
+
 ## Version 4.18.0 : manette XInput réglée dans Eden, Lichii, Azahar, RPCS3, Cemu, melonDS ; RetroArch en xinput
 
 - Bug signalé : Eden ne prend pas la manette « Xbox » de la ROG Ally X ; « faire attention pour tous les émulateurs ». Cause : rien n'écrivait leurs touches, les défauts sont au clavier (Eden/Lichii `player_0_* = engine:keyboard`, Azahar idem, RPCS3 « Adding default keyboard pad handler » sans Default.yml, Cemu sans controllerProfiles, melonDS `Instance*.Joystick = -1`). RetroArch était en `sdl2` (profil trouvé seulement si le nom SDL est connu) → `xinput` (profil « XInput Controller »).

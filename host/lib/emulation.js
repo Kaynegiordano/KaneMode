@@ -31,7 +31,8 @@ const SYSTEMS = [
   // Switch : aussi un jeu décompressé (dossier avec exefs/main et romfs, ou base/…) et l'image .iso
   // d'un tel dossier, montée par Windows au lancement (mount) plutôt que copiée
   { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['eden', 'ryujinx', 'citron'] },
-  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii'], experimental: true },
+  // .nup : conteneur de jeu de Lichii (compressé), ouvert tel quel
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nup', 'xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii'], experimental: true },
   { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'pbp', 'ecm', 'iso', 'img', 'bin', 'exe'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
   { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'zso', 'gz', 'mdf', 'nrg', 'img', 'bin', 'elf'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
