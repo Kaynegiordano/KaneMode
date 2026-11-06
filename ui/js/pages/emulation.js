@@ -1,11 +1,11 @@
-// Monde Émulation : étagère des consoles (couleur et motif propres à chacune), jeux de la console
-// choisie, dossier de jeux prêt à remplir, émulateurs installés et tenus à jour par KaneMode.
+// Monde Émulation : une étagère de boîtes par console (la boîte choisie sort face à soi, les
+// autres montrent leur tranche), la fiche du jeu à droite, et un écran « Gérer » pour le dossier
+// de jeux, les BIOS et les émulateurs installés et tenus à jour par KaneMode.
 import { t, tn, locale } from '../i18n.js';
-import { el, esc, icon, api, lib, toast, busy, sfx, store } from '../core.js';
-import { definePage, nav, focusIn, glyph, renderHints } from '../nav.js';
+import { el, esc, icon, api, lib, toast, busy, sfx, store, favs, fmt } from '../core.js';
+import { definePage, nav, focusIn, setFocus, glyph, renderHints, go } from '../nav.js';
 import { dialog, confirmDialog } from '../widgets.js';
-import { gameCard } from '../cards.js';
-import { openGame, setBackground, heroUrl } from './game.js';
+import { launch, toggleFav, setBackground } from './game.js';
 import { pickFile } from './add.js';
 
 // Couleur de chaque console ; motif de fond par constructeur
@@ -17,10 +17,23 @@ const LOOK = {
   pcengine: '#f0a500', neogeo: '#d4af37', arcade: '#ff7a1a', atari2600: '#c0703a', xbox: '#3fae2a', xbox360: '#7cc242',
 };
 const MOTIF = { Nintendo: 'dots', Sony: 'grid', Sega: 'stripes', Microsoft: 'grid' };
+// Nom court affiché en grand, et sur la tranche des boîtes
+const BRAND = {
+  nes: 'NES', snes: 'SUPER NES', n64: 'N64', gb: 'GAME BOY', gbc: 'GB COLOR', gba: 'GBA', nds: 'DS', n3ds: '3DS', gc: 'GAMECUBE',
+  wii: 'Wii', wiiu: 'Wii U', switch: 'SWITCH', switch2: 'SWITCH 2', psx: 'PS1', ps2: 'PS2', ps3: 'PS3', ps4: 'PS4', psvita: 'VITA',
+  psp: 'PSP', megadrive: 'MEGA DRIVE', mastersystem: 'MASTER SYSTEM', gamegear: 'GAME GEAR', segacd: 'MEGA-CD', saturn: 'SATURN',
+  dreamcast: 'DREAMCAST', pcengine: 'PC ENGINE', neogeo: 'NEO GEO', arcade: 'ARCADE', atari2600: 'ATARI 2600', xbox: 'XBOX', xbox360: 'XBOX 360',
+};
+const HANDHELD = ['gb', 'gbc', 'gba', 'nds', 'n3ds', 'psp', 'psvita', 'gamegear'];
+// Format de la boîte (largeur / hauteur) avant que la jaquette ne soit chargée, et épaisseur
+const RATIO = { snes: 1.38, n64: 1.38, gb: 0.98, gbc: 0.98, gba: 0.98, nds: 0.9, n3ds: 0.86, psp: 0.58, psvita: 0.62, switch: 0.62, switch2: 0.62, psx: 1.0, segacd: 1.0, saturn: 0.62, dreamcast: 1.0, pcengine: 1.0, atari2600: 0.74 };
+const DEPTH = { psx: 0.075, segacd: 0.075, dreamcast: 0.075, pcengine: 0.075, gb: 0.16, gbc: 0.16, gba: 0.16, nes: 0.14, snes: 0.14, n64: 0.14, megadrive: 0.13, mastersystem: 0.13, gamegear: 0.13, atari2600: 0.14 };
 const lookOf = s => ({ color: LOOK[s.id] || '#7c9eff', motif: MOTIF[s.maker] || 'scan' });
+const brandOf = id => BRAND[id] || t('RÉTRO');
 
 const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.glyph = k; return s; };
 const pct = j => (j.total ? Math.min(99, Math.round(j.received / j.total * 100)) : 0);
+const firstLetter = g => (g.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z]/i) || ['#'])[0].toUpperCase();
 
 /** Texte d'avancement d'une installation (écran de lancement, liste des émulateurs). */
 export function jobText(j) {
@@ -49,10 +62,12 @@ export async function installEmulator(id, onText = () => {}) {
   }
 }
 
+const metaCache = new Map();
+
 definePage('emulation', {
   libBound: true,
   title: () => t('Émulation'),
-  initialFocus() { return 'sys:' + (this.sys || 'all'); },
+  initialFocus() { return this.mode === 'shelf' ? 'shelf' : 'open-games'; },
   render(p = {}) {
     document.body.classList.add('emu-world');
     if (!this.data) this.el.innerHTML = t('<div class="loading"><i class="spinner big"></i>Ouverture du monde Émulation…</div>');
@@ -64,102 +79,286 @@ definePage('emulation', {
     document.body.classList.remove('emu-world');
     document.body.style.removeProperty('--emu');
     clearInterval(this.poll); this.poll = null;
+    clearTimeout(this.panelTimer);
   },
 
-  /** Consoles de l'étagère : celles qui ont des jeux, toutes si on le demande ou s'il n'y en a aucune. */
-  shelf() {
-    const d = this.data;
-    const withGames = d.systems.filter(s => s.count);
-    const list = this.allSystems || !withGames.length ? d.systems : withGames;
-    return [{ id: 'all', name: t('Tout'), maker: t('Récents'), count: withGames.reduce((n, s) => n + s.count, 0) }, ...list];
+  roms() { return lib.visible().filter(g => g.source === 'rom'); },
+  /** Consoles qui ont des jeux, dans l'ordre de la liste des consoles ; « Tout » en premier. */
+  systems() {
+    const counts = {};
+    for (const g of this.roms()) counts[g.system] = (counts[g.system] || 0) + 1;
+    const list = this.data.systems.filter(s => counts[s.id]).map(s => ({ ...s, count: counts[s.id] }));
+    return list.length > 1 ? [{ id: 'all', name: t('Tout'), maker: '', count: this.roms().length }, ...list] : list;
+  },
+  gamesOf(sys) {
+    const list = this.roms().filter(g => sys === 'all' || g.system === sys);
+    if (sys === 'all') return list.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || a.name.localeCompare(b.name, locale));
+    return list.sort((a, b) => a.name.localeCompare(b.name, locale));
   },
 
   draw(focusKey) {
-    const d = this.data;
-    const root = this.el;
-    const roms = lib.visible().filter(g => g.source === 'rom');
-    const shelf = this.shelf();
-    if (!this.sys) this.sys = store.get('emusys', 'all');
-    if (!shelf.some(s => s.id === this.sys)) this.sys = 'all';
-    const cur = shelf.find(s => s.id === this.sys);
-    this.tint(cur);
-
-    const page = el('div', 'emu');
-    // ---------- En-tête
-    const consoles = new Set(roms.map(g => g.system)).size;
-    const head = el('div', 'emu-hero', `<div class="emu-title"><span class="emu-tag">${t('Rétro')}</span><h1>${t('Émulation')}</h1>
-      <p>${roms.length ? tn(roms.length, '{n} jeu', '{n} jeux') + ' · ' + tn(consoles, '{n} console', '{n} consoles') : t('Ajoutez vos jeux, KaneMode s’occupe du reste')}</p></div>`);
-    const actions = el('div', 'emu-actions');
-    const chip = (ic, label, fn, key, primary) => actions.append(nav(el('div', 'chip-btn' + (primary ? ' primary' : ''), `${icon(ic)}${label}`), fn, key));
-    chip('i-folder', t('Dossier des jeux'), () => this.open({ what: 'games' }), 'open-games', !roms.length);
-    chip('i-rom', t('BIOS'), () => this.biosDialog(), 'bios');
-    chip('i-gamepad', t('Émulateurs'), () => this.toggle('emus'), 'emus');
-    chip('i-gear', t('Avancé'), () => this.toggle('advanced'), 'advanced');
-    head.append(actions);
-    page.append(head);
-
-    // ---------- Premiers pas
-    if (!roms.length) {
-      page.append(el('div', 'emu-welcome', `
-        <div class="emu-step"><b>1</b><div><strong>${t('Ouvrez le dossier des jeux')}</strong><small>${esc(d.dirs.games)}</small></div></div>
-        <div class="emu-step"><b>2</b><div><strong>${t('Déposez chaque jeu dans le dossier de sa console')}</strong><small>${t('« Super Nintendo », « PlayStation 2 »… un dossier par console est déjà prêt')}</small></div></div>
-        <div class="emu-step"><b>3</b><div><strong>${t('Jouez')}</strong><small>${t('Au premier jeu d’une console, KaneMode installe son émulateur et le règle : écran, manette, sauvegardes')}</small></div></div>`));
-    }
-
-    // ---------- Étagère des consoles
-    const bar = el('div', 'toolbar emu-shelf-bar');
-    bar.append(shoulder('lb'));
-    const strip = el('div', 'row emu-shelf');
-    for (const s of shelf) {
-      const look = s.id === 'all' ? { color: 'var(--accent)', motif: 'scan' } : lookOf(s);
-      const tile = el('div', `emu-sys motif-${look.motif}` + (s.id === cur.id ? ' active' : '') + (s.count ? '' : ' empty'),
-        `<small>${esc(s.maker)}</small><b>${esc(s.name)}</b><span class="emu-count">${s.count ? '×' + s.count : t('vide')}</span>${s.experimental ? `<i class="emu-exp">${t('expérimental')}</i>` : ''}`);
-      tile.style.setProperty('--sys', look.color);
-      tile.dataset.sys = s.id;
-      strip.append(nav(tile, () => this.setSys(s.id, true), 'sys:' + s.id));
-    }
-    if (d.systems.some(s => s.count)) {
-      const more = el('div', 'emu-sys emu-more', `<small>${t('Consoles')}</small><b>${this.allSystems ? t('Masquer les vides') : t('Toutes les consoles')}</b><span class="emu-count">${d.systems.length}</span>`);
-      strip.append(nav(more, () => { this.allSystems = !this.allSystems; this.draw('sys-more'); }, 'sys-more'));
-    }
-    bar.append(strip, shoulder('rb'));
-    page.append(bar);
-
-    // ---------- Console choisie
-    let items = roms;
-    if (cur.id !== 'all') {
-      items = roms.filter(g => g.system === cur.id);
-      const s = d.systems.find(x => x.id === cur.id);
-      const state = s.bios && !s.bios.ok ? `<span class="emu-warn">${icon('i-info')}${t('Il manque : {what}', { what: esc(s.bios.what) })}</span>`
-        : s.ready ? `<span class="emu-ok">${icon('i-check')}${t('Prêt')}</span>`
-          : s.emulator ? `<span>${t('{name} s’installera au premier jeu', { name: esc(s.emulatorName) })}</span>` : '';
-      const info = el('div', 'emu-sys-head', `<div><h2>${esc(s.name)}${s.experimental ? ` <i class="emu-exp">${t('expérimental')}</i>` : ''}</h2><p>${state}<span class="emu-exts">${s.exts.length ? '.' + esc(s.exts.join(' .')) : t('un dossier par jeu')}</span></p></div>`);
-      info.append(nav(el('div', 'chip-btn', `${icon('i-folder')}${t('Ouvrir son dossier')}`), () => this.open({ system: s.id }), 'open-sys'));
-      page.append(info);
-      items.sort((a, b) => a.name.localeCompare(b.name, locale));
-    } else {
-      items.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || a.name.localeCompare(b.name, locale));
-    }
-    const grid = el('div', 'grid emu-grid');
-    for (const g of items) {
-      const card = gameCard(g, 'capsule', openGame);
-      card.append(el('span', 'card-caption', '<b>' + esc(g.name) + '</b>'));
-      card.style.setProperty('--sys', LOOK[g.system] || 'var(--accent)');
-      grid.append(card);
-    }
-    if (cur.id !== 'all' || roms.length) {
-      const add = el('div', 'card capsule more-card emu-add', `${icon('i-plus')}<div>${t('Ajouter des jeux')}</div>`);
-      grid.append(nav(add, () => this.open(cur.id === 'all' ? { what: 'games' } : { system: cur.id }), 'add-games'));
-    }
-    page.append(grid);
-
-    // ---------- Émulateurs et réglages avancés
-    if (this.view === 'emus') page.append(this.emulatorsSection());
-    if (this.view === 'advanced') page.append(this.advancedSection());
-
-    root.replaceChildren(page);
-    focusIn(root, focusKey);
+    const shelf = !this.manage && this.roms().length;
+    this.mode = shelf ? 'shelf' : 'manage';
+    this.el.classList.toggle('sx-mode', !!shelf);
+    if (shelf) this.drawShelf(focusKey); else this.drawManage(focusKey);
     renderHints();
+  },
+
+  // ---------------------------------------------------------------- étagère
+  drawShelf(focusKey) {
+    const systems = this.systems();
+    if (!this.sys) this.sys = store.get('emusys', systems[0].id);
+    if (!systems.some(s => s.id === this.sys)) this.sys = systems[0].id;
+    const sys = systems.find(s => s.id === this.sys);
+    this.list = this.gamesOf(this.sys);
+    this.pos = this.pos || store.get('emupos', {});
+    const wanted = this.pos[this.sys];
+    this.idx = Math.max(0, this.list.findIndex(g => g.id === wanted));
+    this.tint(sys);
+
+    const root = el('div', 'sx');
+    root.style.setProperty('--sys', sys.id === 'all' ? 'var(--accent)' : lookOf(sys).color);
+    const kind = sys.id === 'all' ? t('Toutes les consoles') : HANDHELD.includes(sys.id) ? t('Console portable') : ['arcade', 'neogeo'].includes(sys.id) ? t('Arcade') : t('Console de salon');
+    const brand = brandOf(sys.id === 'all' ? null : sys.id);
+    const top = el('div', 'sx-top', `<div class="sx-brand${brand.length > 8 ? ' long' : ''}"><b>${esc(brand)}</b><small>${kind}</small><small>${tn(sys.count, '{n} jeu', '{n} jeux')}</small></div>`);
+    const pills = el('div', 'sx-systems');
+    pills.append(shoulder('lb'));
+    const strip = el('div', 'sx-pills');
+    for (const s of systems) {
+      const p = el('div', 'sx-pill' + (s.id === sys.id ? ' active' : ''), esc(s.id === 'all' ? s.name : brandOf(s.id)));
+      p.style.setProperty('--c', s.id === 'all' ? 'var(--accent)' : lookOf(s).color);
+      strip.append(nav(p, () => this.setSys(s.id, 'sys:' + s.id), 'sys:' + s.id));
+    }
+    pills.append(strip, shoulder('rb'));
+    const tools = el('div', 'sx-tools');
+    tools.append(nav(el('div', 'chip-btn', `${icon('i-gear')}${t('Gérer')}`), () => { this.manage = true; this.draw(); }, 'manage'));
+    top.append(pills, tools);
+
+    const stage = el('div', 'sx-stage', '<div class="sx-glow"></div><div class="sx-track"></div><div class="sx-floor"></div><div class="sx-letter"></div>');
+    stage.setAttribute('aria-label', t('Étagère'));
+    nav(stage, () => this.play(), 'shelf');
+    this.stage = stage;
+    this.track = stage.querySelector('.sx-track');
+    this.nodes = new Map();
+    this.bindStage(stage);
+
+    const panel = el('aside', 'sx-panel');
+    this.panel = panel;
+    root.append(top, stage, panel);
+    this.el.replaceChildren(root);
+    // Pas de requestAnimationFrame : il ne tourne pas tant que la page est masquée
+    this.layout(true);
+    this.drawPanel();
+    if (!this.resizeBound) { this.resizeBound = true; addEventListener('resize', () => { if (this.mode === 'shelf' && this.el.classList.contains('active')) this.layout(true); }); }
+    focusIn(this.el, focusKey || 'shelf');
+  },
+
+  /** Place les boîtes : la choisie de face, deux de chaque côté inclinées, les autres sur la tranche. */
+  layout(instant) {
+    const st = this.stage;
+    if (!st || !st.isConnected) return;
+    const W = st.clientWidth, H = st.clientHeight;
+    const boxH = Math.max(140, Math.min(H * 0.66, W * 0.42));
+    const floor = H * 0.8;
+    const cx = W / 2;
+    const keep = new Set();
+    // Taille d'une boîte : même hauteur pour toutes, sauf les boîtes en largeur (Super Nintendo,
+    // N64) qui ne dépassent pas un tiers de l'étagère
+    const size = g => {
+      const n = this.node(g);
+      const ar = n.ar || RATIO[g.system] || 0.72;
+      const h = Math.min(boxH, (W * 0.34) / ar);
+      return { n, h, bw: h * ar, depth: Math.max(18, boxH * (DEPTH[g.system] || 0.1)) };
+    };
+    const place = (i, mode, x, scale, side) => {
+      const g = this.list[i];
+      const { n, h, bw, depth } = size(g);
+      keep.add(g.id);
+      n.el.className = `sx-box mode-${mode}` + (side ? ' side-' + side : '') + (n.hasArt ? ' has-art' : '') + (instant ? ' instant' : '');
+      n.el.style.width = (mode === 'spine' ? depth : bw) + 'px';
+      n.el.style.height = h + 'px';
+      n.el.style.setProperty('--depth', depth + 'px');
+      const rot = mode === 'angled' ? (side === 'left' ? -56 : 56) : 0;
+      const z = mode === 'center' ? 60 : mode === 'angled' ? -30 : -60;
+      n.el.style.transform = `translate3d(${x}px, ${floor - h}px, ${z}px) rotateY(${rot}deg) scale(${scale})`;
+      n.el.style.zIndex = String(mode === 'center' ? 100 : 50 - Math.abs(i - this.idx));
+    };
+    if (!this.list.length) return;
+    const c = size(this.list[this.idx]);
+    place(this.idx, 'center', cx - c.bw / 2, 1);
+    for (const dir of [-1, 1]) {
+      let edge = cx + dir * (c.bw / 2 + boxH * 0.06);
+      for (let d = 1; ; d++) {
+        const i = this.idx + dir * d;
+        if (i < 0 || i >= this.list.length) break;
+        if (dir < 0 ? edge < -80 : edge > W + 80) break;
+        const s = size(this.list[i]);
+        if (d <= 2) {
+          // Inclinée vers le centre, pivot sur le bord le plus proche
+          place(i, 'angled', dir < 0 ? edge - s.bw : edge, 0.92, dir < 0 ? 'left' : 'right');
+          edge += dir * (s.bw * 0.92 * 0.5 + 6);
+        } else {
+          const w = s.depth * 0.94;
+          place(i, 'spine', dir < 0 ? edge - s.depth : edge, 0.94, dir < 0 ? 'left' : 'right');
+          edge += dir * (w + 3);
+        }
+      }
+    }
+    for (const [id, n] of this.nodes) if (!keep.has(id)) { n.el.remove(); this.nodes.delete(id); }
+    if (instant) setTimeout(() => this.track.querySelectorAll('.instant').forEach(e => e.classList.remove('instant')), 60);
+  },
+
+  /** Boîte d'un jeu : jaquette (ou boîte dessinée si elle manque) et tranche. */
+  node(g) {
+    let n = this.nodes.get(g.id);
+    if (n) return n;
+    const color = LOOK[g.system] || '#7c9eff';
+    const box = el('div', 'sx-box');
+    box.dataset.id = g.id;
+    box.style.setProperty('--c', color);
+    box.innerHTML = `<div class="sx-front"><div class="sx-gen"><small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b></div></div>
+      <div class="sx-spine"><small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b></div>`;
+    n = { el: box, ar: null };
+    const url = g.art && g.art.portrait;
+    if (url) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        n.ar = Math.min(1.6, Math.max(0.5, img.naturalWidth / img.naturalHeight));
+        box.querySelector('.sx-front').replaceChildren(img);
+        box.querySelector('.sx-spine').style.setProperty('--img', `url("${url}")`);
+        n.hasArt = true;
+        box.classList.add('has-art');
+        if (this.mode === 'shelf') this.layout();
+      };
+      img.src = url;
+    }
+    this.track.append(box);
+    this.nodes.set(g.id, n);
+    return n;
+  },
+
+  bindStage(stage) {
+    stage.addEventListener('click', e => {
+      const b = e.target.closest('.sx-box');
+      if (!b) return;
+      e.stopPropagation();
+      const i = this.list.findIndex(g => g.id === b.dataset.id);
+      if (i === this.idx) this.play(); else this.go(i);
+    });
+    let wheelAt = 0;
+    stage.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (Date.now() - wheelAt < 110) return;
+      wheelAt = Date.now();
+      this.go(this.idx + ((e.deltaY || e.deltaX) > 0 ? 1 : -1));
+    }, { passive: false });
+    let sx = null;
+    stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') sx = e.clientX; });
+    stage.addEventListener('pointermove', e => {
+      if (sx == null) return;
+      const dx = e.clientX - sx;
+      if (Math.abs(dx) > 60) { this.go(this.idx + (dx < 0 ? 1 : -1)); sx = e.clientX; }
+    });
+    stage.addEventListener('pointerup', () => { sx = null; });
+    stage.addEventListener('pointercancel', () => { sx = null; });
+  },
+
+  go(i) {
+    i = Math.max(0, Math.min(this.list.length - 1, i));
+    if (i === this.idx) return;
+    this.idx = i;
+    this.pos[this.sys] = this.list[i].id;
+    store.set('emupos', this.pos);
+    sfx('move');
+    this.layout();
+    clearTimeout(this.panelTimer);
+    this.panelTimer = setTimeout(() => this.drawPanel(), 90);
+  },
+  /** Gâchettes : première boîte de la lettre suivante (ou précédente). */
+  jumpLetter(dir) {
+    if (this.sys === 'all' || !this.list.length) return;
+    const cur = firstLetter(this.list[this.idx]);
+    let i = this.idx;
+    if (dir > 0) { while (i < this.list.length && firstLetter(this.list[i]) === cur) i++; if (i >= this.list.length) return; }
+    else {
+      while (i > 0 && firstLetter(this.list[i - 1]) === cur) i--;
+      if (i === this.idx && i > 0) { const prev = firstLetter(this.list[i - 1]); i--; while (i > 0 && firstLetter(this.list[i - 1]) === prev) i--; }
+    }
+    this.go(i);
+    const l = this.stage.querySelector('.sx-letter');
+    l.textContent = firstLetter(this.list[this.idx]);
+    l.classList.remove('show'); void l.offsetWidth; l.classList.add('show');
+  },
+  setSys(id, focusKey) {
+    if (id === this.sys) return;
+    this.sys = id;
+    store.set('emusys', id);
+    sfx('move');
+    this.draw(focusKey);
+  },
+  current() { return this.list && this.list[this.idx]; },
+  play() { const g = this.current(); if (g) launch(g); },
+
+  // ---------------------------------------------------------------- fiche du jeu
+  drawPanel() {
+    const g = this.current();
+    const p = this.panel;
+    if (!g || !p) return;
+    const focusedKey = p.querySelector('.focused')?.dataset.key;
+    const sysName = brandOf(g.system);
+    const m = metaCache.get(g.id);
+    const hero = g.art && (g.art.hero || g.art.header);
+    if (hero) setBackground(hero);
+    const chips = [];
+    if (m?.year) chips.push(esc(m.year));
+    if (m?.genre) chips.push(esc(m.genre));
+    if (m?.players) chips.push(esc(tn(m.players, '{n} joueur', '{n} joueurs')));
+    if (g.discs) chips.push(esc(tn(g.discs, '{n} disque', '{n} disques')));
+    const played = g.lastPlayed ? fmt.played(g.lastPlayed) + (g.playtime ? ' · ' + fmt.playtime(g.playtime) : '') : t('Jamais joué');
+    p.innerHTML = `
+      <div class="sxp-head" style="${hero ? `--hero:url('${hero}')` : ''}">
+        <div class="sxp-cover">${g.art && g.art.portrait ? `<img src="${g.art.portrait}" alt="" onerror="this.remove()">` : ''}</div>
+        <div class="sxp-title">
+          <small>${esc(sysName)} · ${t('{a} sur {b}', { a: this.idx + 1, b: this.list.length })}</small>
+          <h2>${esc(g.name)}</h2>
+          <div class="sxp-chips">${chips.map(c => `<span>${c}</span>`).join('')}${favs.has(g.id) ? '<span class="fav">★</span>' : ''}</div>
+          <p>${esc(played)}</p>
+        </div>
+      </div>
+      <div class="sxp-shots">${['hero', 'header'].map(k => g.art && g.art[k] ? `<img src="${g.art[k]}" alt="" onerror="this.remove()">` : '').join('')}</div>
+      <div class="sxp-desc ${m ? '' : 'loading'}">${m ? (m.description ? `<p>${esc(m.description)}</p>` : `<p class="muted">${t('Pas de description trouvée pour ce jeu.')}</p>`) : '<i class="spinner"></i>'}</div>
+      <div class="sxp-tiles">
+        <div><small>${t('Développeur')}</small><b>${esc(m?.developer || '—')}</b></div>
+        <div><small>${t('Éditeur')}</small><b>${esc(m?.publisher || '—')}</b></div>
+        <div><small>${t('Région')}</small><b>${esc(g.region || '—')}</b></div>
+        <div><small>${t('Émulateur')}</small><b>${esc(g.emulator ? g.emulator + (g.core ? ` · ${g.core}` : '') : '—')}</b></div>
+      </div>
+      <div class="sxp-actions"></div>`;
+    const desc = p.querySelector('.sxp-desc');
+    if (m?.description && m.description.length > 260) {
+      const more = nav(el('div', 'sxp-more', t('Lire la suite')), () => { desc.classList.toggle('open'); more.textContent = desc.classList.contains('open') ? t('Réduire') : t('Lire la suite'); }, 'more');
+      desc.append(more);
+    }
+    if (m?.descriptionUrl) desc.append(el('small', 'sxp-src', t('Source : Wikipédia')));
+    const acts = p.querySelector('.sxp-actions');
+    acts.append(nav(el('div', 'sxp-play', `${icon('i-play')}${t('Jouer')}`), () => this.play(), 'play'));
+    const grid = el('div', 'sxp-grid');
+    const btn = (ic, label, fn, key, on) => grid.append(nav(el('div', 'sxp-btn' + (on ? ' on' : ''), `${icon(ic)}${label}`), fn, key));
+    btn('i-star', favs.has(g.id) ? t('Favori') : t('Ajouter aux favoris'), () => { toggleFav(g); this.drawPanel(); }, 'fav', favs.has(g.id));
+    btn('i-image', t('Visuels'), () => go('artpicker', { id: g.id }), 'art');
+    btn('i-info', t('Fiche complète'), () => go('game', { id: g.id }), 'sheet');
+    btn('i-folder', t('Dossier'), () => this.open({ system: g.system }), 'folder');
+    acts.append(grid);
+    if (focusedKey) { const f = p.querySelector(`[data-key="${focusedKey}"]`); if (f) setFocus(f, { scroll: false, sound: false }); }
+    if (!m) this.loadMeta(g);
+  },
+  async loadMeta(g) {
+    try {
+      const r = await api.get('/api/emu/game?id=' + encodeURIComponent(g.id));
+      metaCache.set(g.id, r.meta || {});
+    } catch { metaCache.set(g.id, {}); }
+    if (this.current() === g && this.mode === 'shelf') this.drawPanel();
   },
 
   tint(s) {
@@ -168,19 +367,32 @@ definePage('emulation', {
     else document.body.style.setProperty('--emu', lookOf(s).color);
     document.body.dataset.emuMotif = all ? 'scan' : lookOf(s).motif;
   },
-  setSys(id, keepOnShelf) {
-    if (id === this.sys) return;
-    this.sys = id;
-    store.set('emusys', id);
-    sfx('move');
-    this.draw(keepOnShelf ? 'sys:' + id : null);
-    if (!keepOnShelf) focusIn(this.el.querySelector('.emu-grid') || this.el);
-  },
-  toggle(view) {
-    this.view = this.view === view ? null : view;
-    this.draw(view);
-    if (this.view) this.el.querySelector('.emu-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (view === 'emus' && this.view) this.checkUpdates();
+
+  // ---------------------------------------------------------------- gérer
+  drawManage(focusKey) {
+    const d = this.data;
+    const roms = this.roms();
+    this.tint(null);
+    const page = el('div', 'emu');
+    const head = el('div', 'emu-hero', `<div class="emu-title"><span class="emu-tag">${t('Rétro')}</span><h1>${t('Émulation')}</h1>
+      <p>${roms.length ? tn(roms.length, '{n} jeu', '{n} jeux') : t('Ajoutez vos jeux, KaneMode s’occupe du reste')}</p></div>`);
+    const actions = el('div', 'emu-actions');
+    const chip = (ic, label, fn, key, primary) => actions.append(nav(el('div', 'chip-btn' + (primary ? ' primary' : ''), `${icon(ic)}${label}`), fn, key));
+    if (roms.length) chip('i-library', t('Retour à l’étagère'), () => { this.manage = false; this.draw(); }, 'back-shelf', true);
+    chip('i-folder', t('Dossier des jeux'), () => this.open({ what: 'games' }), 'open-games', !roms.length);
+    chip('i-rom', t('BIOS'), () => this.biosDialog(), 'bios');
+    head.append(actions);
+    page.append(head);
+    if (!roms.length) {
+      page.append(el('div', 'emu-welcome', `
+        <div class="emu-step"><b>1</b><div><strong>${t('Ouvrez le dossier des jeux')}</strong><small>${esc(d.dirs.games)}</small></div></div>
+        <div class="emu-step"><b>2</b><div><strong>${t('Déposez chaque jeu dans le dossier de sa console')}</strong><small>${t('« Super Nintendo », « PlayStation 2 »… un dossier par console est déjà prêt')}</small></div></div>
+        <div class="emu-step"><b>3</b><div><strong>${t('Jouez')}</strong><small>${t('Au premier jeu d’une console, KaneMode installe son émulateur et le règle : écran, manette, sauvegardes')}</small></div></div>`));
+    }
+    page.append(this.emulatorsSection(), this.advancedSection());
+    this.el.replaceChildren(page);
+    focusIn(this.el, focusKey || (roms.length ? 'back-shelf' : 'open-games'));
+    if (!this.checked) { this.checked = true; this.checkUpdates(); }
   },
   async open(what) {
     try { await api.post('/api/emu/open', what); toast(t('Dossier ouvert dans l’Explorateur')); }
@@ -235,7 +447,7 @@ definePage('emulation', {
     try {
       const d = await api.get('/api/emu/world?check=1');
       this.data = { ...d, emulators: this.withLatest(d.emulators) };
-      if (this.el.classList.contains('active') && this.view === 'emus') this.draw(this.focusedKey());
+      if (this.el.classList.contains('active') && this.mode === 'manage') this.draw(this.focusedKey());
     } catch { /* hors ligne : la liste reste sans versions */ }
   },
   focusedKey() { return this.el.querySelector('.focused')?.dataset.key || null; },
@@ -247,11 +459,10 @@ definePage('emulation', {
       const d = await api.get('/api/emu/world').catch(() => null);
       if (!d) return;
       this.data = { ...d, emulators: this.withLatest(d.emulators) };
-      if (this.el.classList.contains('active')) this.draw(this.focusedKey());
+      if (this.el.classList.contains('active') && this.mode === 'manage') this.draw(this.focusedKey());
       if (!d.jobs.some(j => j.busy)) { clearInterval(this.poll); this.poll = null; lib.load({ background: true }); }
     }, 800);
   },
-
   advancedSection() {
     const d = this.data;
     const s = el('div', 'emu-panel settings');
@@ -304,18 +515,34 @@ definePage('emulation', {
     this.draw(focus);
   },
 
-  onFocus(target) {
-    if (target.dataset.sys) { const s = this.shelf().find(x => x.id === target.dataset.sys); if (s) this.tint(s); return; }
-    const g = target.dataset.id && lib.byId(target.dataset.id);
-    if (g) setBackground(heroUrl(g));
-  },
+  // ---------------------------------------------------------------- manette
   button(k) {
-    if ((k !== 'lb' && k !== 'rb') || !this.data) return false;
-    const list = this.shelf();
-    const i = list.findIndex(s => s.id === this.sys);
-    const next = list[(i + (k === 'rb' ? 1 : -1) + list.length) % list.length];
-    this.setSys(next.id, !!this.el.querySelector('.emu-sys.focused'));
-    return true;
+    if (!this.data) return false;
+    if (this.mode === 'manage') {
+      if (k === 'b' && this.roms().length) { this.manage = false; this.draw(); return true; }
+      return false;
+    }
+    const focused = this.el.querySelector('.focused');
+    const onShelf = focused && focused.dataset.key === 'shelf';
+    const inPanel = focused && this.panel && this.panel.contains(focused);
+    if (k === 'lb' || k === 'rb') {
+      const list = this.systems();
+      if (list.length < 2) return true;
+      const i = list.findIndex(s => s.id === this.sys);
+      this.setSys(list[(i + (k === 'rb' ? 1 : -1) + list.length) % list.length].id, onShelf ? 'shelf' : null);
+      return true;
+    }
+    if (k === 'lt' || k === 'rt') { this.jumpLetter(k === 'rt' ? 1 : -1); return true; }
+    if (k === 'x') { const g = this.current(); if (g) { toggleFav(g); this.drawPanel(); } return true; }
+    if (onShelf) {
+      if (k === 'left' || k === 'right') { this.go(this.idx + (k === 'right' ? 1 : -1)); return true; }
+      if (k === 'down') { focusIn(this.panel, 'play'); return true; }
+    }
+    if (inPanel && k === 'b') { focusIn(this.el, 'shelf'); return true; }
+    return false;
   },
-  hints: () => [[['lb', 'rb'], t('<span class="label-long">Consoles</span>')], ['a', t('Ouvrir')], ['b', t('Retour')]],
+  hints() {
+    if (this.mode === 'manage') return [['a', t('Sélectionner')], ['b', t('Retour')]];
+    return [[['lb', 'rb'], t('<span class="label-long">Console</span>')], [['left', 'right'], t('Jeu')], [['lt', 'rt'], t('<span class="label-long">Lettre</span>')], ['x', t('Favori')], ['a', t('Jouer')], ['b', t('Retour')]];
+  },
 });

@@ -84,3 +84,35 @@ test('Un jeu Master System en .zip est reconnu', () => {
   assert.equal(roms[0].system, 'mastersystem');
   assert.equal(roms[0].name, 'Sonic The Hedgehog');
 });
+
+test('Même jeu en .zip et .sms : une seule entrée, le format natif', () => {
+  const root = tmp();
+  fs.mkdirSync(path.join(root, 'Master System'));
+  for (const e of ['zip', 'sms']) fs.writeFileSync(path.join(root, 'Master System', `Sonic (Europe).${e}`), 'x');
+  const roms = emu.scanRoms([root], {}, {});
+  assert.equal(roms.length, 1);
+  assert.match(roms[0].romPath, /\.sms$/);
+});
+
+test('Disques d\'un jeu PlayStation : une entrée et une liste .m3u', () => {
+  const root = tmp(), m3uDir = tmp();
+  fs.mkdirSync(path.join(root, 'PlayStation'));
+  for (const n of [1, 2, 3]) fs.writeFileSync(path.join(root, 'PlayStation', `Final Fantasy VII (Europe) (Disc ${n}).chd`), 'x');
+  const roms = emu.scanRoms([root], {}, {}, { m3uDir });
+  assert.equal(roms.length, 1);
+  assert.equal(roms[0].name, 'Final Fantasy VII');
+  assert.equal(roms[0].discs, 3);
+  const list = fs.readFileSync(roms[0].romPath, 'utf8').trim().split(/\r?\n/);
+  assert.equal(list.length, 3);
+  assert.match(list[2], /Disc 3\)\.chd$/);
+});
+
+test('Jaquette libretro : même jeu, région voulue, jamais une bêta', () => {
+  const { bestMatch } = require('../host/lib/emu-meta');
+  const names = ['Sonic The Hedgehog (USA, Europe, Brazil) (En)', 'Sonic The Hedgehog (Japan) (Beta)', 'Sonic Chaos (Europe, Brazil) (En)'];
+  assert.equal(bestMatch('Sonic The Hedgehog (USA, Europe, Brazil) (En)', names), names[0]);
+  assert.equal(bestMatch('Sonic The Hedgehog (Europe)', names), names[0]);
+  assert.equal(bestMatch('Legend of Zelda, The - A Link to the Past (Europe)', ['Legend of Zelda, The - A Link to the Past (Europe)']), 'Legend of Zelda, The - A Link to the Past (Europe)');
+  assert.equal(bestMatch('Ratchet & Clank (Europe)', ['Ratchet _ Clank (Europe)']), 'Ratchet _ Clank (Europe)');
+  assert.equal(bestMatch('Inconnu (Europe)', names), null);
+});

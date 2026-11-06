@@ -92,6 +92,9 @@
  "{a} introuvable": [
   "host/syscontrol.ps1"
  ],
+ "{a} sur {b}": [
+  "ui/js/pages/emulation.js"
+ ],
  "{a}<div>Ajouter un jeu ou une appli</div>": [
   "ui/js/pages/home.js"
  ],
@@ -193,12 +196,16 @@
   "ui/js/pages/media.js"
  ],
  "{n} console": [
-  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "{n} consoles": [
-  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
+ ],
+ "{n} disque": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} disques": [
+  "ui/js/pages/emulation.js"
  ],
  "{n} dossier de ROMs": [
   "ui/js/pages/settings.js"
@@ -257,6 +264,12 @@
   "ui/js/accounts-settings.js"
  ],
  "{n} jeux trouvés": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} joueur": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} joueurs": [
   "ui/js/pages/emulation.js"
  ],
  "{n} manette connectée": [
@@ -348,9 +361,6 @@
  ],
  "{name} retiré des favoris": [
   "ui/js/pages/game.js"
- ],
- "{name} s’installera au premier jeu": [
-  "ui/js/pages/emulation.js"
  ],
  "{name} s’installera tout seul au premier jeu. Vous pouvez aussi l’installer maintenant.": [
   "ui/js/pages/emulation.js"
@@ -499,7 +509,10 @@
  "<span class=\"label-long\">Accès rapide</span>": [
   "ui/js/nav.js"
  ],
- "<span class=\"label-long\">Consoles</span>": [
+ "<span class=\"label-long\">Console</span>": [
+  "ui/js/pages/emulation.js"
+ ],
+ "<span class=\"label-long\">Lettre</span>": [
   "ui/js/pages/emulation.js"
  ],
  "<span class=\"label-long\">Lettres</span>": [
@@ -681,13 +694,11 @@
   "ui/js/pages/add.js"
  ],
  "Ajouter aux favoris": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Ajouter comme jeux": [
   "ui/js/pages/add.js"
- ],
- "Ajouter des jeux": [
-  "ui/js/pages/emulation.js"
  ],
  "Ajouter la sélection": [
   "ui/js/pages/add.js"
@@ -821,6 +832,9 @@
  ],
  "Après l’activation de la passerelle, fermez puis rouvrez Playnite. Ajoutez les connecteurs souhaités dans ses extensions. Les connecteurs chargés apparaissent ici après la première synchronisation.": [
   "ui/js/accounts-settings.js"
+ ],
+ "Arcade": [
+  "ui/js/pages/emulation.js"
  ],
  "Archive illisible": [
   "host/lib/emu-store.js"
@@ -1017,7 +1031,6 @@
   "ui/js/pages/settings.js"
  ],
  "Avancé": [
-  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "Avec Boost": [
@@ -1508,14 +1521,15 @@
  "Console": [
   "ui/js/pages/game.js"
  ],
+ "Console de salon": [
+  "ui/js/pages/emulation.js"
+ ],
  "Console portable": [
+  "ui/js/pages/emulation.js",
   "ui/js/personalization-settings.js"
  ],
  "Console rétro": [
   "ui/js/personalization-settings.js"
- ],
- "Consoles": [
-  "ui/js/pages/emulation.js"
  ],
  "Consoles portables et PC portables · jamais pendant un jeu": [
   "ui/js/pages/settings.js"
@@ -1667,6 +1681,7 @@
   "ui/js/pages/settings.js"
  ],
  "Développeur": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Diagnostic du curseur": [
@@ -1686,6 +1701,9 @@
  ],
  "Données": [
   "ui/js/pages/settings.js"
+ ],
+ "Dossier": [
+  "ui/js/pages/emulation.js"
  ],
  "Dossier des jeux": [
   "ui/js/pages/emulation.js"
@@ -1762,6 +1780,7 @@
   "ui/js/personalization-settings.js"
  ],
  "Éditeur": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "ÉÈÊÀÂÇÎÔÙÛ": [
@@ -1802,6 +1821,7 @@
   "host/lib/update.js"
  ],
  "Émulateur": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Émulateur inconnu": [
@@ -1812,9 +1832,6 @@
   "ui/js/pages/game.js"
  ],
  "Émulateur non reconnu": [
-  "ui/js/pages/emulation.js"
- ],
- "Émulateurs": [
   "ui/js/pages/emulation.js"
  ],
  "Émulateurs installés par KaneMode": [
@@ -1916,6 +1933,9 @@
  "Essai, achat ou récupération de votre licence dans l’application officielle": [
   "ui/js/dolby-settings.js"
  ],
+ "Étagère": [
+  "ui/js/pages/emulation.js"
+ ],
  "État": [
   "ui/index.html",
   "ui/js/pages/game.js"
@@ -1941,6 +1961,7 @@
   "ui/js/widget.js"
  ],
  "Favori": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Favoris": [
@@ -1975,6 +1996,9 @@
  ],
  "Feutré": [
   "ui/js/personalization-settings.js"
+ ],
+ "Fiche complète": [
+  "ui/js/pages/emulation.js"
  ],
  "Fiche de compte invalide": [
   "host/lib/accounts.js"
@@ -2058,6 +2082,9 @@
  "Game Bar": [
   "ui/js/pages/settings.js"
  ],
+ "Gérer": [
+  "ui/js/pages/emulation.js"
+ ],
  "Gérer l’émulation": [
   "ui/js/pages/settings.js"
  ],
@@ -2140,6 +2167,7 @@
  ],
  "HTTP {a}": [
   "host/lib/deals.js",
+  "host/lib/emu-meta.js",
   "host/lib/gpudrivers.js"
  ],
  "Humidité": [
@@ -2159,9 +2187,6 @@
  ],
  "Il manque : {a}": [
   "host/server.js"
- ],
- "Il manque : {what}": [
-  "ui/js/pages/emulation.js"
  ],
  "Il manque un fichier pour {system}": [
   "ui/js/pages/game.js"
@@ -2356,7 +2381,8 @@
   "ui/js/pages/game.js"
  ],
  "Jamais joué": [
-  "ui/js/core.js"
+  "ui/js/core.js",
+  "ui/js/pages/emulation.js"
  ],
  "Jamais vérifié": [
   "ui/js/pages/settings.js"
@@ -2386,6 +2412,7 @@
  ],
  "Jeu": [
   "ui/js/pages/add.js",
+  "ui/js/pages/emulation.js",
   "ui/js/personalization-settings.js",
   "ui/js/widget.js"
  ],
@@ -2438,6 +2465,7 @@
   "ui/js/pages/settings.js"
  ],
  "Jouer": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
  ],
  "Jouez": [
@@ -2676,6 +2704,9 @@
  "Limite réglée": [
   "ui/js/qam.js"
  ],
+ "Lire la suite": [
+  "ui/js/pages/emulation.js"
+ ],
  "Logiciel {a} absent · ouvre la page d’assistance officielle": [
   "ui/js/pages/settings.js"
  ],
@@ -2748,9 +2779,6 @@
  ],
  "Masquer les indications au repos": [
   "ui/js/personalization-settings.js"
- ],
- "Masquer les vides": [
-  "ui/js/pages/emulation.js"
  ],
  "Masqués": [
   "ui/js/pages/library.js"
@@ -3160,7 +3188,6 @@
  ],
  "Ouvrir": [
   "ui/js/pages/add.js",
-  "ui/js/pages/emulation.js",
   "ui/js/pages/home.js",
   "ui/js/pages/library.js",
   "ui/js/widget.js"
@@ -3186,9 +3213,6 @@
  ],
  "Ouvrir les réglages du mode Xbox": [
   "ui/js/pages/settings.js"
- ],
- "Ouvrir son dossier": [
-  "ui/js/pages/emulation.js"
  ],
  "Ouvrir Windows Update": [
   "ui/js/pages/settings.js"
@@ -3243,6 +3267,9 @@
  ],
  "Pas de carte Wi-Fi sur ce PC": [
   "ui/js/statusbar.js"
+ ],
+ "Pas de description trouvée pour ce jeu.": [
+  "ui/js/pages/emulation.js"
  ],
  "Pas de GPU AMD": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -3390,9 +3417,6 @@
  ],
  "Préférer les visuels officiels Steam": [
   "ui/js/pages/settings.js"
- ],
- "Prêt": [
-  "ui/js/pages/emulation.js"
  ],
  "Prime Video": [
   "ui/js/pages/add.js"
@@ -3569,9 +3593,6 @@
  "Récemment joués <small>tapez pour rechercher</small>": [
   "ui/js/pages/search.js"
  ],
- "Récents": [
-  "ui/js/pages/emulation.js"
- ],
  "Recharge KaneMode sans quitter": [
   "ui/js/pages/settings.js"
  ],
@@ -3649,11 +3670,17 @@
  "redémarrez pour terminer": [
   "ui/js/pages/settings.js"
  ],
+ "Réduire": [
+  "ui/js/pages/emulation.js"
+ ],
  "Réduire les animations": [
   "ui/js/pages/settings.js"
  ],
  "Referme la fenêtre qui propose d’installer Armoury Crate quand on appuie sur ces boutons": [
   "ui/js/pages/settings.js"
+ ],
+ "Région": [
+  "ui/js/pages/emulation.js"
  ],
  "Réglage avancé": [
   "ui/js/qam.js"
@@ -3812,6 +3839,9 @@
   "ui/js/pages/search.js",
   "ui/js/pages/settings.js"
  ],
+ "Retour à l’étagère": [
+  "ui/js/pages/emulation.js"
+ ],
  "Retour au bureau Windows": [
   "ui/index.html"
  ],
@@ -3821,6 +3851,9 @@
  "Rétro": [
   "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
+ ],
+ "RÉTRO": [
+  "ui/js/pages/emulation.js"
  ],
  "Rétro grave": [
   "ui/js/personalization-settings.js"
@@ -3901,6 +3934,7 @@
  "Sélectionner": [
   "ui/js/main.js",
   "ui/js/nav.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/media.js",
   "ui/js/pages/search.js",
@@ -3991,6 +4025,9 @@
  ],
  "Sorties à venir": [
   "ui/js/pages/settings.js"
+ ],
+ "Source : Wikipédia": [
+  "ui/js/pages/emulation.js"
  ],
  "Source d’alimentation indisponible": [
   "host/lib/power-profiles.js",
@@ -4286,9 +4323,6 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
- "un dossier par jeu": [
-  "ui/js/pages/emulation.js"
- ],
  "Un émulateur installé par vous et indiqué ici passe avant celui de KaneMode.": [
   "ui/js/pages/emulation.js"
  ],
@@ -4406,9 +4440,6 @@
  "version du {day}": [
   "ui/js/pages/settings.js"
  ],
- "vide": [
-  "ui/js/pages/emulation.js"
- ],
  "Vidéo de démarrage enregistrée": [
   "ui/js/pages/settings.js"
  ],
@@ -4429,6 +4460,7 @@
  ],
  "Visuels": [
   "ui/js/pages/artpicker.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)": [

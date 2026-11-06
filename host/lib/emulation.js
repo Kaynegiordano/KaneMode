@@ -166,7 +166,10 @@ const cleanName = file => path.basename(file, path.extname(file))
   .replace(/\s*[[(][^\])]*[\])]/g, '').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
 const regionOf = file => { const m = /\((USA|Europe|Japan|World|France|Germany|Spain|Italy|Korea|En[^)]*|Fr[^)]*)\)/i.exec(file); return m ? m[1] : null; };
 
-function scanSystemDir(sys, dir, out, depth = 0) {
+// Consoles dont l'émulateur choisi lit une liste .m3u de disques
+const M3U_SYSTEMS = ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'];
+
+function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
   const files = entries.filter(e => e.isFile()).map(e => e.name);
@@ -182,32 +185,69 @@ function scanSystemDir(sys, dir, out, depth = 0) {
       try { for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/"([^"]+)"|\s(\S+\.(?:bin|raw|img))/gi)) hidden.add(path.basename(m[1] || m[2]).toLowerCase()); } catch { /* ignoré */ }
     }
   }
+  // Même jeu en deux formats (« Sonic.zip » et « Sonic.sms ») : le format natif, premier de exts
+  const games = new Map();
   for (const f of files) {
     const ext = path.extname(f).slice(1).toLowerCase();
     if (!sys.exts.includes(ext) || hidden.has(f.toLowerCase())) continue;
     if (ext === 'bin' && [...lower].some(x => x.endsWith('.cue'))) continue;
+    const base = path.basename(f, path.extname(f)).toLowerCase();
+    const prev = games.get(base);
+    if (!prev || sys.exts.indexOf(ext) < sys.exts.indexOf(path.extname(prev).slice(1).toLowerCase())) games.set(base, f);
+  }
+  // Disques d'un même jeu sans .m3u : une seule entrée, une liste .m3u écrite par KaneMode pour
+  // changer de disque en jeu (consoles dont l'émulateur la lit), sinon le disque 1
+  const DISC = /\s*\((?:disc|disque|cd)\s*(\d+)(?:\s*of\s*\d+)?\)/i;
+  const discs = new Map();
+  for (const f of games.values()) {
+    const m = DISC.exec(f);
+    if (!m) continue;
+    const k = f.replace(DISC, '').toLowerCase();
+    if (!discs.has(k)) discs.set(k, []);
+    discs.get(k).push({ f, n: +m[1] });
+  }
+  for (const set of discs.values()) {
+    if (set.length < 2) continue;
+    set.sort((a, b) => a.n - b.n);
+    for (const d of set.slice(1)) games.delete(path.basename(d.f, path.extname(d.f)).toLowerCase());
+    const first = set[0].f;
+    const title = first.replace(DISC, '');
+    if (M3U_SYSTEMS.includes(sys.id) && m3uDir) {
+      try {
+        fs.mkdirSync(m3uDir, { recursive: true });
+        const list = path.join(m3uDir, path.basename(title, path.extname(title)) + '.m3u');
+        fs.writeFileSync(list, set.map(d => path.join(dir, d.f)).join('\r\n') + '\r\n');
+        games.set(path.basename(first, path.extname(first)).toLowerCase(), { list, title, discs: set.length });
+      } catch { /* le disque 1 reste jouable */ }
+    }
+  }
+  for (const f of games.values()) {
+    if (typeof f === 'object') {
+      out.push({ sys, path: f.list, name: cleanName(f.title), region: regionOf(f.title), size: 0, discs: f.discs, romFile: path.join(dir, f.title) });
+      continue;
+    }
     const full = path.join(dir, f);
     let size = 0; try { size = fs.statSync(full).size; } catch { /* ignoré */ }
-    out.push({ sys, path: full, name: cleanName(f), region: regionOf(f), size });
+    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size });
   }
   for (const e of entries) {
     if (!e.isDirectory() || /^(media|images|videos|manuals|downloaded_media|\.)/i.test(e.name)) continue;
     const sub = path.join(dir, e.name);
     if (sys.dirGames && isFile(path.join(sub, sys.dirGames))) {
       out.push({ sys, path: path.join(sub, sys.dirGames), name: cleanName(e.name), region: regionOf(e.name), size: 0 });
-    } else if (depth < 2) scanSystemDir(sys, sub, out, depth + 1);
+    } else if (depth < 2) scanSystemDir(sys, sub, out, depth + 1, m3uDir);
   }
 }
 
-function scanRoms(roots, emulators, prefs) {
+function scanRoms(roots, emulators, prefs, { m3uDir = null } = {}) {
   const found = [];
   for (const root of roots) {
     if (!isDir(root)) continue;
     const own = SYSTEM_BY_FOLDER.get(path.basename(root).toLowerCase());
-    if (own) { scanSystemDir(own, root, found); continue; }
+    if (own) { scanSystemDir(own, root, found, 0, m3uDir); continue; }
     for (const e of fs.readdirSync(root, { withFileTypes: true })) {
       const sys = e.isDirectory() && SYSTEM_BY_FOLDER.get(e.name.toLowerCase());
-      if (sys) scanSystemDir(sys, path.join(root, e.name), found);
+      if (sys) scanSystemDir(sys, path.join(root, e.name), found, 0, m3uDir);
     }
   }
   return found.map(r => {
@@ -215,7 +255,7 @@ function scanRoms(roots, emulators, prefs) {
     const id = 'rom:' + crypto.createHash('sha1').update(r.path.toLowerCase()).digest('hex').slice(0, 12);
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
-      romPath: r.path, installed: !!how, installDir: path.dirname(r.path), sizeOnDisk: r.size, lastPlayed: 0,
+      romPath: r.path, discs: r.discs || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0,
       emulator: how ? how.emulator : null, emulatorId: how ? how.emulatorId : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
     };
   });

@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.13.2 : étagère de l'émulation (étape 2, début)
+
+- Demande : interface « dans ce genre » qu'une capture fournie par l'utilisateur (étagère de boîtes PS2 en 3D, fiche à droite) ; l'ancienne grille était jugée « immonde ».
+- `ui/js/pages/emulation.js` réécrit : mode `shelf` (consoles qui ont des jeux, « Tout » s'il y en a plusieurs) et mode `manage` (bouton « Gérer » : dossier, BIOS, émulateurs, dossiers en plus ; B revient à l'étagère). Étagère : nœuds `.sx-box` gardés dans `this.nodes`, placés par `layout()` (de face au centre, 2 inclinés de chaque côté avec pivot sur le bord proche, puis tranches) ; hauteur commune, boîtes en largeur limitées à un tiers de l'étagère ; format réel lu sur la jaquette chargée. **Pas de requestAnimationFrame** (arrêté quand la page est masquée : rien ne s'affichait). Manette : `button()` (←/→ sur l'étagère, ↓ vers « Jouer », B revient à l'étagère, LB/RB console, LT/RT lettre, X favori) ; souris (clic, molette) et doigt (glissement).
+- `host/lib/emu-meta.js` : images libretro-thumbnails (`thumbnails.libretro.com/<console>/Named_Boxarts|Named_Snaps|Named_Titles|Named_Logos/<nom>.png`, liste des noms en cache 30 jours dans `data/emu-cache`), choisies par `bestMatch()` (nom exact, sinon même clé sans étiquettes, région voulue, jamais bêta/proto/hack) ; `resolveArt()` les essaie pour une ROM avant SteamGridDB (portrait = boîte, hero = capture, header = écran-titre, logo). Fiche : metadat de libretro-database (developer, publisher, genre, releaseyear, maxusers, par nom No-Intro), description par Wikipédia FR puis EN (recherche, page du jeu pas de la série ni d'une liste, résumé REST). Route `GET /api/emu/game?id=`.
+- `emulation.js` : même jeu en deux formats → le premier de `exts` (le .sms avant le .zip) ; disques « (Disc N) » sans .m3u → une entrée, liste .m3u écrite dans `data/emu-m3u` pour psx, saturn, segacd, dreamcast, pcengine (PS2 : disque 1).
+- Vérifié dans le navigateur avec de faux jeux PS2, Super Nintendo et Mega Drive aux vrais noms (jaquettes, captures, descriptions trouvées). Pas encore fait : réglages par jeu et par console (format, filtre CRT, émulateur), visuels propres à une console, manettes des autres émulateurs.
+
 ## Version 4.13.1 : monde Émulation (étape 1)
 
 - 4.13.0 jamais publiée : un 2e installateur de même version ne remplace pas le paquet installé (Windows le garde), d'où 4.13.1 pour l'essai de l'utilisateur. Les consoles à cartouche lancées par RetroArch acceptent .zip et .7z.

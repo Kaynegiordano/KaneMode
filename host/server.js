@@ -12,6 +12,7 @@ const sgdb = require('./lib/sgdb');
 const emu = require('./lib/emulation');
 const emuStoreLib = require('./lib/emu-store');
 const emuSetup = require('./lib/emu-setup');
+const emuMetaLib = require('./lib/emu-meta');
 const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
@@ -292,7 +293,7 @@ function publicEntry(g, st, cfg) {
   const art = {};
   for (const k of ART_KINDS) {
     const local = str(artOv[k]) || str(g.art && g.art[k]);
-    if (local || (steamId && k !== 'icon') || (sgdbOn && !g.demo && !noSgdb(g))) {
+    if (local || (steamId && k !== 'icon') || (sgdbOn && !g.demo && !noSgdb(g)) || (g.source === 'rom' && !g.demo && k !== 'icon')) {
       art[k] = `/art/${encodeURIComponent(g.id)}/${k}` + (artOv[k] ? `?v=${artOv._v || 1}` : local ? `?local=${fileRevision(local)}` : '?r=' + ((st.artRev || {})[g.id] || 1) + (k === 'portrait' && cfg.sgdbStyle ? '&style=' + encodeURIComponent(cfg.sgdbStyle) : ''));
     }
   }
@@ -671,6 +672,8 @@ async function resolveArt(e, kind) {
   const local = str(e.art && e.art[kind]);
   if (local && isFile(local)) return local;
   if ((e.demo && e.source === 'rom') || noSgdb(e)) return null;
+  // Jeu rétro : images de libretro (nom No-Intro / Redump), SteamGridDB à défaut
+  if (e.source === 'rom') { const f = await emuMeta.art(e, kind); if (f) return f; }
   const cfg = config();
   const steamId = e.steamAppId || (meta[e.id] || {}).steamId;
   const sgdbOn = cfg.sgdbAuto;
@@ -811,6 +814,7 @@ const accounts = accountsLib.create(DATA, { run, root: ROOT,
 // émulateurs installés par KaneMode. Hors d'AppData : rien n'est perdu si KaneMode est désinstallé.
 const emuHome = () => str(config().emuHome) || path.join(os.homedir(), 'KaneMode Émulation');
 const emuDirs = () => { const h = emuHome(); return { home: h, games: path.join(h, 'Jeux'), bios: path.join(h, 'BIOS'), saves: path.join(h, 'Sauvegardes') }; };
+const emuMeta = emuMetaLib.create({ cacheDir: path.join(DATA, 'emu-cache'), artDir: ARTCACHE });
 const emuStore = emuStoreLib.create({
   home: emuHome,
   isAlly: async () => { try { return /^rog-ally/.test(((await device.info()) || {}).handheld?.id || ''); } catch { return false; } },
@@ -875,7 +879,7 @@ function scanEmulation() {
   const found = emu.detectEmulators(cfg.emulatorPaths, extra);
   const emulators = { ...found };
   for (const [id, m] of Object.entries(emuStore.emulators())) if (!found[id] || found[id].source !== 'manual') emulators[id] = m;
-  const roms = emu.scanRoms([d.games, ...cfg.romRoots], emulators, cfg.emulatorPrefs);
+  const roms = emu.scanRoms([d.games, ...cfg.romRoots], emulators, cfg.emulatorPrefs, { m3uDir: path.join(DATA, 'emu-m3u') });
   // Pas encore d'émulateur : celui que KaneMode installera au premier lancement
   for (const r of roms) {
     if (r.launch) continue;
@@ -1152,6 +1156,12 @@ const routes = {
     });
   },
   'GET /api/emu/jobs': (req, res) => json(res, 200, { jobs: emuStore.jobs() }),
+  // Fiche d'un jeu rétro : développeur, éditeur, genre, année, joueurs, description
+  'GET /api/emu/game': async (req, res, q) => {
+    const e = findEntry(q.get('id') || '');
+    if (!e || e.source !== 'rom') return json(res, 404, { error: 'Jeu inconnu' });
+    json(res, 200, { meta: await emuMeta.meta(e).catch(() => null) });
+  },
   'POST /api/emu/install': async (req, res) => {
     const b = await readBody(req);
     const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).filter(id => emuStore.CATALOG[id]);
