@@ -155,3 +155,11 @@ test('BIOS rangé dans un .zip : décompressé une fois, reconnu à sa taille', 
   assert.equal(setup.biosStatus(bios, 'psx').ok, true);
   assert.equal(setup.unpackBios(bios), 0);
 });
+
+test('Fichier .sbi cherché seulement pour un disque PlayStation européen', () => {
+  const { PAL } = require('../host/lib/emu-sbi');
+  assert.ok(PAL.test('Wip3out (Europe) (En,Fr,De,Es,It)'));
+  assert.ok(PAL.test('Medievil (France)'));
+  assert.ok(!PAL.test('Crash Bandicoot (USA)'));
+  assert.ok(!PAL.test('Tekken 3 (Japan)'));
+});

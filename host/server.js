@@ -814,6 +814,7 @@ const accounts = accountsLib.create(DATA, { run, root: ROOT,
 // émulateurs installés par KaneMode. Hors d'AppData : rien n'est perdu si KaneMode est désinstallé.
 const emuHome = () => str(config().emuHome) || path.join(os.homedir(), 'KaneMode Émulation');
 const emuDirs = () => { const h = emuHome(); return { home: h, games: path.join(h, 'Jeux'), bios: path.join(h, 'BIOS'), saves: path.join(h, 'Sauvegardes') }; };
+const emuSbi = require('./lib/emu-sbi').create({ cacheFile: path.join(DATA, 'emu-cache', 'sbi-misses.json') });
 const emuArchive = require('./lib/emu-archive').create({ cacheDir: () => path.join(emuHome(), 'Cache') });
 const emuMeta = emuMetaLib.create({ cacheDir: path.join(DATA, 'emu-cache'), artDir: ARTCACHE });
 const emuStore = emuStoreLib.create({
@@ -865,14 +866,17 @@ function retroarchLook(raDir, gameId, set) {
  * à donner à l'interface) ou { launch } (commande, avec le fichier décompressé à la place de l'archive).
  */
 async function prepareRom(e) {
-  let launch = e.launch;
+  let launch = e.launch, gameFile = e.romPath;
   if (e.archive === 'extract') {
     const sys = emu.SYSTEMS.find(s => s.id === e.system);
     const opts = { m3u: ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'].includes(e.system) };
     const file = sys && emuArchive.ready(e.romPath, sys.exts, opts);
     if (!file) return { blocked: { ok: false, needsExtract: { id: e.id, name: e.name } } };
     launch = { ...launch, args: launch.args.split(e.romPath).join(file) };
+    gameFile = file;
   }
+  // Jeu PlayStation européen protégé (LibCrypt) : son .sbi est récupéré chez Redump s'il manque
+  if (e.system === 'psx') await emuSbi.ensure(gameFile).catch(() => 0);
   const id = e.emulatorId;
   const m = id && emuStore.installed(id);
   if (!m) return { launch }; // émulateur installé par l'utilisateur : réglages laissés tels quels

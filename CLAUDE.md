@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.13.5 : fichiers .sbi des jeux PlayStation protégés
+
+- Bug signalé : Wip3out (Europe) se décompressait mais ne démarrait pas. Journal DuckStation (activé par `[Logging] LogToFile = true` dans son settings.ini, laissé en place) : « SBI file missing but required for SCES-01909 » ; en `-batch`, DuckStation quitte sans rien dire.
+- `host/lib/emu-sbi.js` : pour un disque PAL (`PAL` : Europe, France, Germany…), `prepareRom()` cherche le .sbi chez Redump : `redump.org/discs/system/psx/quicksearch/<mots-séparés-par-des-tirets>/` (des espaces ou des + donnent une page d'erreur), puis `HEAD /disc/<n>/sbi/` dont le `Content-Disposition` doit être exactement `<nom du disque>.sbi`, téléchargé à côté du .cue/.chd (aussi dans le cache de décompression, et pour chaque disque d'un .m3u). Absence gardée 30 jours (`data/emu-cache/sbi-misses.json`). Vérifié : Wip3out démarre (« Loaded 32 replacement sectors from SBI », BIOS SCPH-7502 PAL).
+
 ## Version 4.13.4 : détection des jeux fiable, BIOS en archive
 
 - Bug signalé : jeux Mega Drive et PlayStation ajoutés « invisibles ». Cause : `fs.watch` avait raté l'ajout et rien ne relançait la recherche (ni au démarrage, ni à l'ouverture d'Émulation, `roms.json` réutilisé). Correctif : `emuGamesSig()` (empreinte chemin|taille|date de `Jeux` et des `romRoots`, 3 niveaux) gardée dans `roms.json.sig` ; `checkEmuGames()` au démarrage (3 s), à chaque `GET /api/emu/world` et toutes les 30 s ; la surveillance est réarmée au passage. Vérifié sur le vrai dossier de l'utilisateur (trouvé au démarrage) et sur un dossier non surveillé (trouvé par le contrôle).
