@@ -318,14 +318,27 @@ test('Manette XInput (ROG Ally, Xbox) posée dans Eden, Lichii, Azahar, RPCS3, C
 test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précision basse et FSR ; carte dédiée en mode TV ; jeux .nup', () => {
   const dir = tmp();
   const qt = () => fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8');
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1080, tier: 'low', quality: 'auto' });
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1080, tier: 'low', gpu: 'AMD Radeon(TM) Graphics', quality: 'auto' });
   assert.match(qt(), /^gpu_accuracy=0$/m);
   assert.match(qt(), /^use_docked_mode=0$/m);
   assert.match(qt(), /^resolution_setup=3$/m);
   assert.match(qt(), /^scaling_filter=6$/m);
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1440, tier: 'high', quality: 'auto' });
+  assert.match(qt(), /^nvidia_dlss=false$/m);
+  // Profil Lichii du tuto, posé une fois
+  for (const l of ['cpu_accuracy=2', 'use_custom_cpu_ticks=true', 'cpu_ticks=16000', 'fast_cpu_time=0', 'fast_gpu_time=1',
+    'language_index=2', 'region_index=2', 'speed_limit=100', 'slow_speed_limit=50', 'turbo_speed_limit=200', 'backend=1',
+    'use_vsync=1', 'fsr_sharpening_slider=72', 'anti_aliasing=2', 'gpu_fence_behavior=1', 'nvdec_emulation=2',
+    'frame_pacing_mode=2', 'sync_memory_operations=true', 'async_presentation=true', 'use_asynchronous_shaders=true',
+    'gpu_unswizzle_texture_size=3', 'gpu_unswizzle_stream_size=4', 'gpu_unswizzle_chunk_size=4', 'dyna_state=2'])
+    assert.match(qt(), new RegExp(`^${l}$`, 'm'), l);
+  // Un réglage changé ensuite dans Lichii reste
+  fs.writeFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), qt().replace(/^anti_aliasing=2$/m, 'anti_aliasing=1'));
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1440, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', quality: 'auto' });
+  assert.match(qt(), /^anti_aliasing=1$/m);
   assert.match(qt(), /^use_docked_mode=1$/m);
   assert.match(qt(), /^resolution_setup=5$/m);
+  assert.match(qt(), /^scaling_filter=1$/m);
+  assert.match(qt(), /^nvidia_dlss=true$/m);
   setup.prepare('eden', dir, { bios: dir, saves: dir, screenH: 2160, tier: 'high', quality: 'auto' });
   assert.match(qt(), /^resolution_setup=6$/m);
   const root = tmp();

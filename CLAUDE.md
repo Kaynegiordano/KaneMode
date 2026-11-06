@@ -4,6 +4,17 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.21.0 : profil Lichii (tuto vidéo) posé une fois, adapté à la machine
+
+- Demande : appliquer par défaut à Lichii la configuration d’un tuto YouTube (RTX 4060 portable). Correspondances lues dans les sources de Lichii (branche nx2 : `settings.h`, `settings_enums.h`, `shared_translation.cpp`).
+  - Horloges : `fast_cpu_time=0` (CPU Normal), `fast_gpu_time=1` (GPU Boost) ; langue/région : `language_index=2` (French), `region_index=2` (Europe) ; vitesse 100/50/200.
+  - CPU : `cpu_accuracy=2` (Unsafe), `use_custom_cpu_ticks=true`, `cpu_ticks=16000`, `cpuopt_unsafe_*` cochés.
+  - Rendu : `backend=1` (Vulkan), `use_vsync=1` (Mailbox), `fsr_sharpening_slider=72` (« RCAS Sharpness »), `anti_aliasing=2` (SMAA), `fullscreen_mode=0`, `post_shader_enabled`.
+  - Avancé : `gpu_accuracy=0` (« Fast »), `gpu_fence_behavior=1` (Immediate), `nvdec_emulation=2`, `accelerate_astc=1`, `frame_pacing_mode=2` (60 FPS), `sync_memory_operations`, caches de pipelines. « Les deux avant-dernières cases » = `use_reactive_flushing` et `barrier_feedback_loops` (ordre des widgets = ordre de déclaration ; `enable_compute_pipelines` masqué, `use_optimized_vertex_buffers` sans libellé donc absent).
+  - Extensions : `async_presentation`, `use_asynchronous_shaders`, GPU Unswizzle 3/4/4 (256 Mo, 64 Mo, 512 ; `gpu_unswizzle_enabled` non coché, le tuto n’en parle pas), `dyna_state=2`, `sample_shading_fraction=0`, `vertex_input_dynamic_state`.
+- `emu-setup.js` : `lichiiProfile()` écrit une fois (repère `user/config/kanemode-profile.txt` = `tuto-1` ; changer `LICHII_PROFILE` pour le reposer). À chaque lancement, `lichiiVideo(c)` : carte dédiée = mode TV, `scaling_filter=1` (bilinéaire), `nvidia_dlss` si `emuDisplay.gpu` est une GeForce RTX ; puce intégrée = portable, 1x, FSR, `nvidia_dlss=false` (FSR 3.1 à la place du DLSS des jeux). `switchVideo` ne sert plus qu’à Eden. Sections fusionnées (profil + vidéo partagent Renderer/System).
+- Vérifié : profil appliqué à la config de ce PC (`frame_gen` réglé par l’utilisateur gardé), Lichii ouvert puis fermé poliment garde toutes les valeurs ; 77 tests. Non vérifié : un jeu lancé avec, et sur l’Ally.
+
 ## Version 4.20.0 : quitter un jeu complètement (Select + Start maintenus 3 s)
 
 - Demande : pouvoir quitter « complètement », sans le « retour à la partie » de Select + Start ; précisé : la reprise au relancement (sauvegarde d'état automatique de RetroArch, seul émulateur réglé pour reprendre tout seul ; DuckStation/PCSX2 sans `-resume` repartent du début).

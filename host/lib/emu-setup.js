@@ -227,19 +227,18 @@ const SETUP = {
 };
 
 // Eden et Lichii (même base, mêmes clés) : plein écran, pas de question en quittant, shaders compilés sans à-coups
-// Image selon la machine (valeurs des énumérations d'Eden et de Lichii : résolution 3 = 1x, 5 = 1,5x,
-// 6 = 2x ; filtre 6 = FSR ; anticrénelage 0 = aucun, 1 = FXAA ; mode 0 = portable, 1 = TV).
+// Eden, image selon la machine (valeurs des énumérations : résolution 3 = 1x, 5 = 1,5x, 6 = 2x ;
+// filtre 6 = FSR ; anticrénelage 0 = aucun, 1 = FXAA ; mode 0 = portable, 1 = TV).
 // Puce intégrée (ROG Ally…) : mode portable (moins de pixels à calculer), précision GPU basse,
 // FSR pour agrandir à l'écran. Carte dédiée : mode TV, résolution d'après l'écran (1080p de la console TV).
-function switchVideo(c, variant) {
+function switchVideo(c) {
   const low = c.tier !== 'high';
   const native = c.quality === 'native';
   const h = c.screenH || 1080;
-  const res = native || low ? 3 : h >= 2000 ? (variant === 'lichii' ? 5 : 6) : h > 1100 ? 5 : 3;
+  const res = native || low ? 3 : h >= 2000 ? 6 : h > 1100 ? 5 : 3;
   return {
     Renderer: qt({
       resolution_setup: res, scaling_filter: 6, anti_aliasing: low ? 0 : 1,
-      // Eden : Low/Medium/High (0-2), Lichii : Low/High (0-1)
       gpu_accuracy: low ? 0 : 1,
       use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true',
     }),
@@ -247,15 +246,65 @@ function switchVideo(c, variant) {
   };
 }
 
+// Lichii : réglages conseillés (tuto vidéo, RTX 4060 portable), valeurs des énumérations de Lichii.
+// Posés une fois (fichier repère) : ce que le joueur change ensuite dans Lichii reste.
+// Horloges CPU normale / GPU boost, français (Europe), vitesse 100 % (lent 50 %, turbo 200 %),
+// CPU « Unsafe » + 16000 ticks, Vulkan, Mailbox, RCAS 72 %, SMAA, plein écran sans bordure,
+// mode GPU rapide, barrières « Immediate », décodage vidéo GPU, ASTC GPU, 60 FPS, caches de pipelines,
+// présentation et shaders asynchrones, GPU Unswizzle 256 Mo / 64 Mo / 512, état dynamique étendu 2.
+const LICHII_PROFILE = 'tuto-1';
+function lichiiProfile() {
+  return {
+    Core: qt({ use_multi_core: 'true', use_speed_limit: 'true', speed_limit: 100, slow_speed_limit: 50, turbo_speed_limit: 200 }),
+    Cpu: qt({
+      cpu_accuracy: 2, use_custom_cpu_ticks: 'true', cpu_ticks: 16000,
+      cpuopt_unsafe_unfuse_fma: 'true', cpuopt_unsafe_reduce_fp_error: 'true', cpuopt_unsafe_ignore_standard_fpcr: 'true',
+      cpuopt_unsafe_inaccurate_nan: 'true', cpuopt_unsafe_fastmem_check: 'true', cpuopt_unsafe_ignore_global_monitor: 'true',
+    }),
+    Renderer: qt({
+      backend: 1, use_vsync: 1, fsr_sharpening_slider: 72, aspect_ratio: 0, anti_aliasing: 2,
+      post_shader_enabled: 'true', fullscreen_mode: 0,
+      gpu_accuracy: 0, dma_accuracy: 0, gpu_fence_behavior: 1, vram_usage_mode: 0, nvdec_emulation: 2,
+      max_anisotropy: 0, accelerate_astc: 1, frame_pacing_mode: 2, sync_memory_operations: 'true',
+      use_disk_shader_cache: 'true', use_vulkan_driver_pipeline_cache: 'true',
+      use_reactive_flushing: 'true', barrier_feedback_loops: 'true',
+      async_presentation: 'true', use_asynchronous_shaders: 'true',
+      gpu_unswizzle_texture_size: 3, gpu_unswizzle_stream_size: 4, gpu_unswizzle_chunk_size: 4,
+      dyna_state: 2, sample_shading_fraction: 0, vertex_input_dynamic_state: 'true',
+    }),
+    System: qt({ fast_cpu_time: 0, fast_gpu_time: 1, language_index: 2, region_index: 2 }),
+  };
+}
+
+// Lichii, selon la machine, à chaque lancement : mode TV, filtre bilinéaire (le tuto) et DLSS NVIDIA à la
+// place du DLSS des jeux sur carte dédiée ; sur puce intégrée (ROG Ally) mode portable, 1x et FSR pour
+// agrandir à l'écran, l'upscaler des jeux restant AMD FSR 3.1 (le DLSS NVIDIA demande une GeForce RTX).
+function lichiiVideo(c) {
+  const low = c.tier !== 'high';
+  const native = c.quality === 'native';
+  const h = c.screenH || 1080;
+  const rtx = /nvidia.*rtx|rtx.*nvidia|geforce rtx/i.test(c.gpu || '');
+  return {
+    Renderer: qt({ resolution_setup: native || low ? 3 : h > 1100 ? 5 : 3, scaling_filter: low ? 6 : 1, nvidia_dlss: rtx ? 'true' : 'false' }),
+    System: qt({ use_docked_mode: low ? 0 : 1 }),
+  };
+}
+
 function switchConfig(dir, c = {}, variant = 'eden') {
   const file = path.join(dir, 'user', 'config', 'qt-config.ini');
   const pad = pads.yuzuPad(file, c.pads);
-  mergeIni(file, {
-    ...(pad || {}),
-    UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }),
-    Miscellaneous: qt({ first_launch: 'false' }),
-    ...switchVideo(c, variant),
-  }, { sep: '=' });
+  const mark = path.join(dir, 'user', 'config', 'kanemode-profile.txt');
+  const fresh = variant === 'lichii' && read(mark).trim() !== LICHII_PROFILE;
+  const sections = [
+    pad || {},
+    { UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }), Miscellaneous: qt({ first_launch: 'false' }) },
+    fresh ? lichiiProfile() : {},
+    variant === 'lichii' ? lichiiVideo(c) : switchVideo(c),
+  ];
+  const all = {};
+  for (const s of sections) for (const [k, v] of Object.entries(s)) all[k] = { ...(all[k] || {}), ...v };
+  mergeIni(file, all, { sep: '=' });
+  if (fresh) fs.writeFileSync(mark, LICHII_PROFILE + '\n');
 }
 
 /** Prépare l'émulateur avant un lancement ; une erreur n'empêche jamais de jouer. */
