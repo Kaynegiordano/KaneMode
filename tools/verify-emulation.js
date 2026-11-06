@@ -259,3 +259,58 @@ test('BIOS Mega-CD : celui de la région du jeu, reconnu sous un autre nom', () 
   assert.ok(fs.existsSync(path.join(dir, 'bios_CD_E.bin')));
   assert.equal(setup.biosStatus(dir, 'segacd', { region: 'USA' }).ok, false, 'un jeu américain veut bios_CD_U.bin');
 });
+
+test('Manette XInput (ROG Ally, Xbox) posée dans Eden, Lichii, Azahar, RPCS3, Cemu et melonDS, sans écraser un réglage fait à la main', () => {
+  const pads = require('../host/lib/emu-pads');
+  // Identifiant vérifié contre SDL3 (SDL_GetJoystickGUID, octets 2-3 effacés comme Eden) sur une manette Xbox 360 virtuelle
+  const pad = { user: 0, vid: 0x045e, pid: 0x028e, ver: 0x0114, sub: 1 };
+  assert.equal(pads.sdlGuid(pad), '030000005e0400008e02000014017801');
+  const dir = tmp();
+  const qt = path.join(dir, 'user', 'config', 'qt-config.ini');
+  const ini = () => fs.readFileSync(qt, 'utf8');
+  // Eden : touches au clavier par défaut → manette
+  fs.mkdirSync(path.dirname(qt), { recursive: true });
+  fs.writeFileSync(qt, '[Controls]\r\nplayer_0_button_a\\default=false\r\nplayer_0_button_a="engine:keyboard,code:67,toggle:0"\r\n');
+  setup.prepare('eden', dir, { bios: dir, saves: dir, pads: [pad] });
+  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:030000005e0400008e02000014017801,button:1"'));
+  assert.ok(ini().includes('player_0_button_zl="engine:sdl,port:0,guid:030000005e0400008e02000014017801,axis:2,threshold:0.5,invert:+"'));
+  assert.ok(ini().includes('player_0_button_dup="engine:sdl,port:0,guid:030000005e0400008e02000014017801,hat:0,direction:up"'));
+  assert.equal((ini().match(/^player_0_button_a=/gm) || []).length, 1, 'une seule ligne par touche');
+  // Autre manette ensuite (identifiant posé par KaneMode) : suivie ; réglage à la main : gardé
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, pads: [{ ...pad, vid: 0x0b05, pid: 0x1b4c, ver: 0x0100 }] });
+  assert.ok(ini().includes('guid:03000000050b00004c1b000000017801,button:1'));
+  fs.writeFileSync(qt, ini().replace(/player_0_button_a=.*/, 'player_0_button_a="engine:sdl,port:0,guid:aaaa,button:3"'));
+  setup.prepare('eden', dir, { bios: dir, saves: dir, pads: [pad] });
+  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:aaaa,button:3"'));
+  // Sans manette : rien n'est changé
+  const az = tmp();
+  setup.prepare('azahar', az, { bios: az, saves: az, pads: [] });
+  assert.ok(!fs.readFileSync(path.join(az, 'user', 'config', 'qt-config.ini'), 'utf8').includes('profiles'));
+  setup.prepare('azahar', az, { bios: az, saves: az, pads: [pad] });
+  const azi = fs.readFileSync(path.join(az, 'user', 'config', 'qt-config.ini'), 'utf8');
+  assert.ok(azi.includes(String.raw`profiles\1\button_a="engine:sdl,api:controller,maptype:all,guid:0,port:0,button:1"`));
+  assert.ok(azi.includes(String.raw`profiles\size=1`));
+  // RPCS3 : gestionnaire XInput à la place du clavier
+  const rp = tmp();
+  setup.prepare('rpcs3', rp, { bios: rp, saves: rp, pads: [pad] });
+  const yml = fs.readFileSync(path.join(rp, 'config', 'input_configs', 'global', 'Default.yml'), 'utf8');
+  assert.match(yml, /Handler: XInput/);
+  assert.match(yml, /Device: "XInput Pad #1"/);
+  assert.match(yml, /Cross: "A"/);
+  // Cemu : GamePad Wii U sur la manette XInput n° 0
+  const ce = tmp();
+  setup.prepare('cemu', ce, { bios: ce, saves: ce, pads: [pad] });
+  const xml = fs.readFileSync(path.join(ce, 'portable', 'controllerProfiles', 'controller0.xml'), 'utf8');
+  assert.match(xml, /<api>XInput<\/api>\s*<uuid>0<\/uuid>/);
+  assert.match(xml, /<mapping>1<\/mapping>\s*<button>13<\/button>/);
+  // melonDS : dossier portable, joystick n° 0
+  const md = tmp();
+  setup.prepare('melonds', md, { bios: md, saves: md, pads: [pad] });
+  const toml = fs.readFileSync(path.join(md, 'portable', 'melonDS.toml'), 'utf8');
+  assert.match(toml, /\[Instance0\.Joystick\][\s\S]*A = 1/);
+  assert.match(toml, /Up = 257/);
+  // RetroArch : pilote xinput (profil « XInput Controller » pour toute manette XInput)
+  const ra = tmp();
+  setup.prepare('retroarch', ra, { bios: ra, saves: ra });
+  assert.match(fs.readFileSync(path.join(ra, 'retroarch.cfg'), 'utf8'), /input_joypad_driver = "xinput"/);
+});

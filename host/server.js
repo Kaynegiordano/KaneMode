@@ -936,11 +936,23 @@ async function prepareRom(e, { fresh = false } = {}) {
     }
   }
   const set = emuEffective(e.system, e.id);
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', ...emuDisplay });
+  const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', pads: padList, ...emuDisplay });
   if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
   return { launch };
 }
 const emuAutoUpdate = { at: 0 };
+// Manettes XInput branchées (host/xinput.ps1), relues au plus toutes les 15 s : les émulateurs qui
+// ne prennent pas la manette tout seuls la reçoivent avant le lancement (emu-pads.js)
+const PAD_EMUS = ['eden', 'lichii', 'azahar', 'rpcs3', 'cemu', 'melonds'];
+const padCache = { at: 0, list: [] };
+async function xinputPads() {
+  if (Date.now() - padCache.at < 15e3) return padCache.list;
+  let list = [];
+  try { const r = await runPs('xinput.ps1'); list = JSON.parse(r.out || '[]'); } catch { list = []; }
+  Object.assign(padCache, { at: Date.now(), list: Array.isArray(list) ? list : [list] });
+  return padCache.list;
+}
 // Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
 let emuWatch = null, emuWatchTimer = null;
 function watchEmuGames() {

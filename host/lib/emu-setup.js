@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const pads = require('./emu-pads');
 
 const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 
@@ -99,7 +100,9 @@ const SETUP = {
   retroarch(dir, c) {
     mergeCfg(path.join(dir, 'retroarch.cfg'), {
       video_fullscreen: 'true', video_windowed_fullscreen: 'true', pause_nonactive: 'false',
-      input_autodetect_enable: 'true', input_joypad_driver: 'sdl2',
+      // Pilote xinput (celui de RetroArch sous Windows) : toute manette XInput (ROG Ally, Xbox) a son
+      // profil « XInput Controller » ; les autres passent par DirectInput
+      input_autodetect_enable: 'true', input_joypad_driver: 'xinput',
       // Combinaisons indépendantes de la numérotation des boutons : Select + Start quitte, L3 + R3 ouvre le menu
       input_quit_gamepad_combo: '4', input_menu_toggle_gamepad_combo: '2', quit_press_twice: 'false', confirm_quit: 'false',
       system_directory: c.bios, savefile_directory: mkdir(path.join(c.saves, 'RetroArch', 'saves')),
@@ -202,18 +205,31 @@ const SETUP = {
     });
   },
   azahar(dir, c) {
-    mergeIni(path.join(dir, 'user', 'config', 'qt-config.ini'), {
+    const file = path.join(dir, 'user', 'config', 'qt-config.ini');
+    mergeIni(file, {
       Renderer: qt({ resolution_factor: upscale(c, 240, 3, 6) }),
       UI: qt({ fullscreen: 'true', confirmClose: 'false' }),
+      ...(pads.azaharPad(file, c.pads) || {}),
     }, { sep: '=' });
   },
-  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir); },
-  lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir); },
+  eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir, c); },
+  lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c); },
+  rpcs3(dir, c) { pads.rpcs3Pad(dir, c.pads); },
+  cemu(dir, c) { pads.cemuPad(dir, c.pads); },
+  // melonDS : réglages à côté de l'exécutable (dossier portable), manette n° 0
+  melonds(dir, c) {
+    const file = path.join(mkdir(path.join(dir, 'portable')), 'melonDS.toml');
+    const v = pads.melonPad(file, c.pads);
+    if (v) mergeIni(file, v);
+  },
 };
 
 // Eden et Lichii (même base, mêmes clés) : plein écran, pas de question en quittant, shaders compilés sans à-coups
-function switchConfig(dir) {
-  mergeIni(path.join(dir, 'user', 'config', 'qt-config.ini'), {
+function switchConfig(dir, c = {}) {
+  const file = path.join(dir, 'user', 'config', 'qt-config.ini');
+  const pad = pads.yuzuPad(file, c.pads);
+  mergeIni(file, {
+    ...(pad || {}),
     UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }),
     Miscellaneous: qt({ first_launch: 'false' }),
     Renderer: qt({ use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true' }),
