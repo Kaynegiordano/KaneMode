@@ -163,3 +163,21 @@ test('Fichier .sbi cherché seulement pour un disque PlayStation européen', () 
   assert.ok(!PAL.test('Crash Bandicoot (USA)'));
   assert.ok(!PAL.test('Tekken 3 (Japan)'));
 });
+
+test('Jeu Switch décompressé (base/exefs/main) reconnu, son .iso en double masqué, noms de release nettoyés', () => {
+  const root = tmp();
+  const game = path.join(root, 'Nintendo Switch 2', 'Donkey Kong Bananza (dump-458752) (2)', 'base', 'exefs');
+  fs.mkdirSync(game, { recursive: true });
+  fs.writeFileSync(path.join(game, 'main'), 'x');
+  fs.writeFileSync(path.join(root, 'Nintendo Switch 2', 'Donkey Kong Bananza (dump-458752).iso'), 'x');
+  fs.mkdirSync(path.join(root, 'Nintendo Switch'));
+  fs.writeFileSync(path.join(root, 'Nintendo Switch', 'FINAL.FANTASY.RESONANCE_(v1.0.1)_(EU)_SuperXCI-NX.xci'), 'x');
+  fs.writeFileSync(path.join(root, 'Nintendo Switch', 'Zelda Totk (Europe).iso'), 'x');
+  const roms = emu.scanRoms([root], {}, {});
+  const s2 = roms.filter(r => r.system === 'switch2');
+  assert.equal(s2.length, 1);
+  assert.equal(s2[0].name, 'Donkey Kong Bananza');
+  assert.match(s2[0].romPath, /base[\\/]exefs[\\/]main$/);
+  const s1 = roms.filter(r => r.system === 'switch').map(r => [r.name, r.archive]);
+  assert.deepEqual(s1.sort(), [['Final Fantasy Resonance', null], ['Zelda Totk', 'mount']]);
+});

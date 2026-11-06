@@ -1567,5 +1567,8 @@
  "Vider": "Clear",
  "Vider le cache": "Clear the cache",
  "Vider le cache ?": "Clear the cache?",
- "Vos archives restent dans le dossier des jeux : elles seront décompressées de nouveau au prochain lancement.": "Your archives stay in the games folder: they’ll be extracted again on the next launch."
+ "Vos archives restent dans le dossier des jeux : elles seront décompressées de nouveau au prochain lancement.": "Your archives stay in the games folder: they’ll be extracted again on the next launch.",
+ "Montage de l’image impossible : {a}": "Couldn’t mount the image: {a}",
+ "Pas de jeu reconnu dans {a}": "No game recognised in {a}",
+ "Windows n’a pas monté l’image": "Windows didn’t mount the image"
 }

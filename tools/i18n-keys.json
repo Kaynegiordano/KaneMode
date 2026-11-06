@@ -3054,6 +3054,9 @@
  "Moniteur ouvert : épinglez-le pour le garder sur le jeu": [
   "ui/js/widget.js"
  ],
+ "Montage de l’image impossible : {a}": [
+  "host/server.js"
+ ],
  "Mot de passe de {ssid}": [
   "ui/js/statusbar.js"
  ],
@@ -3362,6 +3365,9 @@
  ],
  "Pas de HDR automatique tant qu’OBS est ouvert : couleurs justes à l’enregistrement": [
   "ui/js/pages/settings.js"
+ ],
+ "Pas de jeu reconnu dans {a}": [
+  "host/lib/emu-mount.js"
  ],
  "Pas de pilote AMD Radeon": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -4702,6 +4708,9 @@
  ],
  "Windows n’a pas appliqué ce format. Vérifiez la licence et la configuration dans Dolby Access.": [
   "host/lib/dolby.js"
+ ],
+ "Windows n’a pas monté l’image": [
+  "host/lib/emu-mount.js"
  ],
  "Windows n’a pas répondu à la demande de lancement": [
   "host/lib/launch.js"

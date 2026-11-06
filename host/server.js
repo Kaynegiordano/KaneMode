@@ -814,6 +814,7 @@ const accounts = accountsLib.create(DATA, { run, root: ROOT,
 // émulateurs installés par KaneMode. Hors d'AppData : rien n'est perdu si KaneMode est désinstallé.
 const emuHome = () => str(config().emuHome) || path.join(os.homedir(), 'KaneMode Émulation');
 const emuDirs = () => { const h = emuHome(); return { home: h, games: path.join(h, 'Jeux'), bios: path.join(h, 'BIOS'), saves: path.join(h, 'Sauvegardes') }; };
+const emuMount = require('./lib/emu-mount');
 const emuSbi = require('./lib/emu-sbi').create({ cacheFile: path.join(DATA, 'emu-cache', 'sbi-misses.json') });
 const emuArchive = require('./lib/emu-archive').create({ cacheDir: () => path.join(emuHome(), 'Cache') });
 const emuMeta = emuMetaLib.create({ cacheDir: path.join(DATA, 'emu-cache'), artDir: ARTCACHE });
@@ -874,6 +875,15 @@ async function prepareRom(e) {
     if (!file) return { blocked: { ok: false, needsExtract: { id: e.id, name: e.name } } };
     launch = { ...launch, args: launch.args.split(e.romPath).join(file) };
     gameFile = file;
+  }
+  // Image .iso d'un jeu Switch décompressé : montée comme un lecteur, son exefs/main est lancé
+  if (e.archive === 'mount') {
+    const sys = emu.SYSTEMS.find(s => s.id === e.system);
+    try {
+      const file = await emuMount.gameFile(e.romPath, [].concat(sys.dirGames || []));
+      launch = { ...launch, args: launch.args.split(e.romPath).join(file) };
+      gameFile = file;
+    } catch (err) { return { blocked: { ok: false, error: `Montage de l’image impossible : ${err.message}` } }; }
   }
   // Jeu PlayStation européen protégé (LibCrypt) : son .sbi est récupéré chez Redump s'il manque
   if (e.system === 'psx') await emuSbi.ensure(gameFile).catch(() => 0);

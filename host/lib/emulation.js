@@ -26,8 +26,10 @@ const SYSTEMS = [
   { id: 'gc', name: 'GameCube', maker: 'Nintendo', folders: ['gc', 'gamecube', 'ngc'], exts: ['rvz', 'iso', 'gcm', 'gcz', 'ciso', 'tgc', 'dol', 'elf'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
   { id: 'wii', name: 'Wii', maker: 'Nintendo', folders: ['wii'], exts: ['rvz', 'wbfs', 'iso', 'wia', 'gcz', 'ciso', 'wad', 'dol', 'elf'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
   { id: 'wiiu', name: 'Wii U', maker: 'Nintendo', folders: ['wiiu'], exts: ['wua', 'wux', 'wud', 'wuhb', 'rpx'], emus: ['cemu'] },
-  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso'], emus: ['eden', 'ryujinx', 'citron'] },
-  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['xci', 'nsp', 'nca'], emus: ['eglantine'], experimental: true },
+  // Switch : aussi un jeu décompressé (dossier avec exefs/main et romfs, ou base/…) et l'image .iso
+  // d'un tel dossier, montée par Windows au lancement (mount) plutôt que copiée
+  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['eden', 'ryujinx', 'citron'] },
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['eglantine'], experimental: true },
   { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'pbp', 'ecm', 'iso', 'img', 'bin', 'exe'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
   { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'zso', 'gz', 'mdf', 'nrg', 'img', 'bin', 'elf'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
@@ -52,6 +54,7 @@ const ARCHIVES = ['zip', '7z', 'rar'];
 // les .zip et .7z des cartouches), sinon KaneMode la décompresse au lancement (emu-archive.js)
 const DIRECT = ['nes', 'snes', 'n64', 'gb', 'gbc', 'gba', 'nds', 'megadrive', 'mastersystem', 'gamegear', 'pcengine', 'atari2600'];
 function archiveMode(sys, ext) {
+  if ((sys.mount || []).includes(ext)) return 'mount';
   if (sys.exts.includes(ext)) return 'game';
   if (DIRECT.includes(sys.id) && ext !== 'rar') return 'direct';
   return 'extract';
@@ -174,8 +177,19 @@ function launchFor(sys, rom, emulators, prefs = {}, wantedCore = null) {
 }
 
 // ---------- Scan des ROMs ----------
-const cleanName = file => path.basename(file, path.extname(file))
-  .replace(/\s*[[(][^\])]*[\])]/g, '').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
+// Nom affiché : sans les étiquettes (région, version) ; un nom de « release » (« FINAL.FANTASY_(EU)_SuperXCI-NX »)
+// perd aussi ses points, son groupe et ses majuscules
+function cleanName(file) {
+  let n = path.basename(file, path.extname(file));
+  const release = !/\s/.test(n) && /[._]/.test(n);
+  n = n.replace(/_/g, ' ');
+  if (release) n = n.replace(/\.(?=\S)/g, ' ');
+  n = n.replace(/\s*[[(][^\])]*[\])]/g, '');
+  if (release) n = n.replace(/\s+(Super)?(XCI|XCZ|NSP|NSZ)(-\w+)?$/i, '').replace(/\s+-\s*\w+$/, '');
+  n = n.replace(/\s{2,}/g, ' ').trim();
+  if (release && n === n.toUpperCase()) n = n.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
+  return n || path.basename(file, path.extname(file));
+}
 const regionOf = file => { const m = /\((USA|Europe|Japan|World|France|Germany|Spain|Italy|Korea|En[^)]*|Fr[^)]*)\)/i.exec(file); return m ? m[1] : null; };
 
 // Format préféré quand un jeu est là deux fois : celui de la console, puis l'archive
@@ -185,6 +199,7 @@ const rank = (sys, ext) => (sys.exts.includes(ext) ? sys.exts.indexOf(ext) : 100
 const M3U_SYSTEMS = ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'];
 
 function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
+  const startAt = out.length;
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
   const files = entries.filter(e => e.isFile()).map(e => e.name);
@@ -244,15 +259,20 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
     let size = 0; try { size = fs.statSync(full).size; } catch { /* ignoré */ }
     const ext = path.extname(f).slice(1).toLowerCase();
     const mode = archiveMode(sys, ext);
-    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' ? 'extract' : null });
+    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' || mode === 'mount' ? mode : null });
   }
+  const dirsFrom = out.length;
   for (const e of entries) {
     if (!e.isDirectory() || /^(media|images|videos|manuals|downloaded_media|\.)/i.test(e.name)) continue;
     const sub = path.join(dir, e.name);
-    if (sys.dirGames && isFile(path.join(sub, sys.dirGames))) {
-      out.push({ sys, path: path.join(sub, sys.dirGames), name: cleanName(e.name), region: regionOf(e.name), size: 0 });
+    const inner = [].concat(sys.dirGames || []).find(g => isFile(path.join(sub, g)));
+    if (inner) {
+      out.push({ sys, path: path.join(sub, inner), name: cleanName(e.name), region: regionOf(e.name), size: 0, dirGame: true });
     } else if (depth < 2) scanSystemDir(sys, sub, out, depth + 1, m3uDir);
   }
+  // Même jeu en dossier décompressé et en image (.iso) : le dossier, qui démarre sans montage
+  const folders = new Set(out.slice(dirsFrom).filter(r => r.dirGame && r.sys === sys).map(r => r.name.toLowerCase()));
+  if (folders.size) for (let i = dirsFrom - 1; i >= startAt; i--) if (!out[i].dirGame && folders.has(out[i].name.toLowerCase())) out.splice(i, 1);
 }
 
 /**

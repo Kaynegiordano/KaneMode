@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.13.6 : jeux Switch décompressés et images .iso
+
+- Bug signalé : jeu Switch 2 non reconnu. L'utilisateur a « Donkey Kong Bananza (dump-458752).iso » (19,6 Go, ISO 9660 : `CD001` à 0x8001, lisible par tar) et le même jeu en dossier (`… (2)ase\exefs\main`, `main.npdm`, `romfs`). Eglantine (comme Eden) ne lit pas les .iso, mais charge un jeu décompressé (`deconstructed_rom_directory` : « expected exefs/main, exefs/main.npdm and a romfs folder ») en lui donnant `exefs/main`.
+- `emulation.js` : `dirGames` peut être une liste (switch/switch2 : `exefs/main`, `base/exefs/main`) ; un dossier-jeu masque le fichier du même nom dans le même dossier (le .iso en double). `.iso` Switch → `archive: 'mount'` : `host/lib/emu-mount.js` (`Mount-DiskImage` / `Get-Volume`, déjà monté = réutilisé, `Dismount-DiskImage` disponible) puis `exefs/main` du lecteur ; vérifié : E:ase\exefs\main. `cleanName()` : nom de « release » sans espace → points et _ en espaces, groupe (SuperXCI-NX) retiré, majuscules adoucies.
+- Vérifié : Eglantine lancé avec `-f -g …ase\exefs\main` du dossier de l'utilisateur, encore ouvert après 18 s, rendu en cours (journal `user\log\eden_log.txt`, clés de BIOS\Switch 2 copiées). Jouabilité, manette et performances non vérifiées.
+
 ## Version 4.13.5 : fichiers .sbi des jeux PlayStation protégés
 
 - Bug signalé : Wip3out (Europe) se décompressait mais ne démarrait pas. Journal DuckStation (activé par `[Logging] LogToFile = true` dans son settings.ini, laissé en place) : « SBI file missing but required for SCES-01909 » ; en `-batch`, DuckStation quitte sans rien dire.
