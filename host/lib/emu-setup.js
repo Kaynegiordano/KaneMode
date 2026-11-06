@@ -4,6 +4,9 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
+
+const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 
 const mkdir = d => { fs.mkdirSync(d, { recursive: true }); return d; };
 const read = f => { try { return fs.readFileSync(f, 'utf8').replace(/^﻿/, ''); } catch { return ''; } };
@@ -170,7 +173,8 @@ function prepare(id, dir, ctx) {
 
 // BIOS ou clés indispensables : vérifiés avant le lancement pour un message clair
 const REQUIRES = {
-  psx: { what: 'BIOS PlayStation (scph5501.bin, scph1001.bin…)', test: n => /^scph.*\.bin$|ps1.*\.bin$|psx.*\.bin$/i.test(n) },
+  // BIOS PS1 : fichier de 512 Ko, quel que soit son nom (DuckStation le reconnaît à son contenu)
+  psx: { what: 'BIOS PlayStation (fichier .bin de 512 Ko, scph5501.bin…)', test: (n, f) => /\.bin$/i.test(n) && fs.statSync(f).size === 524288 },
   ps2: { what: 'BIOS PlayStation 2 (fichier de 4 Mo, scph…)', test: (n, f) => /\.(bin|rom0?)$/i.test(n) && fs.statSync(f).size === 4194304 },
   saturn: { what: 'BIOS Saturn (sega_101.bin ou mpr-17933.bin)', test: n => /^(sega_101|mpr-17933|saturn_bios)\.bin$/i.test(n) },
   segacd: { what: 'BIOS Mega-CD (bios_CD_E.bin, bios_CD_U.bin, bios_CD_J.bin)', test: n => /^bios_cd_[euj]\.bin$/i.test(n) },
@@ -178,6 +182,32 @@ const REQUIRES = {
   switch: { what: 'Clés de la Switch (prod.keys) dans BIOS\\Switch', dir: 'Switch', test: n => /^prod\.keys$/i.test(n) },
   switch2: { what: 'Clés de la Switch 2 (prod.keys) dans BIOS\\Switch 2', dir: 'Switch 2', test: n => /^prod\.keys$/i.test(n) },
 };
+
+/**
+ * BIOS rangés dans une archive (.zip, .7z, .rar) au premier niveau du dossier BIOS : décompressés à
+ * côté, une seule fois par archive (nom, taille et date gardés dans .kanemode-bios.json).
+ */
+function unpackBios(bios) {
+  let names;
+  try { names = fs.readdirSync(bios).filter(n => /\.(zip|7z|rar)$/i.test(n)); } catch { return 0; }
+  if (!names.length) return 0;
+  const markFile = path.join(bios, '.kanemode-bios.json');
+  let done = {};
+  try { done = JSON.parse(fs.readFileSync(markFile, 'utf8')); } catch { /* premier passage */ }
+  let count = 0;
+  for (const n of names) {
+    const f = path.join(bios, n);
+    let sig;
+    try { const st = fs.statSync(f); sig = `${st.size}|${Math.floor(st.mtimeMs)}`; } catch { continue; }
+    if (done[n] === sig) continue;
+    try { execFileSync(TAR, ['-xf', f, '-C', bios], { windowsHide: true, stdio: 'ignore', timeout: 60000 }); count++; }
+    catch { /* archive abîmée : nouvel essai si elle change */ }
+    done[n] = sig;
+  }
+  try { fs.writeFileSync(markFile, JSON.stringify(done)); } catch { /* dossier en lecture seule */ }
+  if (count) console.log(`Émulation : ${count} BIOS décompressé(s) dans ${bios}`);
+  return count;
+}
 
 function biosStatus(bios, sysId) {
   const r = REQUIRES[sysId];
@@ -188,4 +218,4 @@ function biosStatus(bios, sysId) {
   return { ok, what: r.what };
 }
 
-module.exports = { prepare, biosStatus, mergeIni, mergeCfg, REQUIRES };
+module.exports = { prepare, biosStatus, unpackBios, mergeIni, mergeCfg, REQUIRES };

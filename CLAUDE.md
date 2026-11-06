@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.13.4 : détection des jeux fiable, BIOS en archive
+
+- Bug signalé : jeux Mega Drive et PlayStation ajoutés « invisibles ». Cause : `fs.watch` avait raté l'ajout et rien ne relançait la recherche (ni au démarrage, ni à l'ouverture d'Émulation, `roms.json` réutilisé). Correctif : `emuGamesSig()` (empreinte chemin|taille|date de `Jeux` et des `romRoots`, 3 niveaux) gardée dans `roms.json.sig` ; `checkEmuGames()` au démarrage (3 s), à chaque `GET /api/emu/world` et toutes les 30 s ; la surveillance est réarmée au passage. Vérifié sur le vrai dossier de l'utilisateur (trouvé au démarrage) et sur un dossier non surveillé (trouvé par le contrôle).
+- BIOS : `emuSetup.unpackBios()` (appelé par `ensureEmuHome()`) décompresse les .zip/.7z/.rar du premier niveau de `BIOS` à côté, une fois par archive (`.kanemode-bios.json`). BIOS PS1 reconnu à sa taille (512 Ko), plus seulement à son nom (celui de l'utilisateur : « Sony PlayStation SCPH-7502 BIOS v4.1 … .zip »).
+
 ## Version 4.13.3 : archives partout, réglages par jeu et par console
 
 - Demande : « la prise en charge de tous les jeux… même en .zip ». `emulation.js` : `exts` = formats du jeu seulement (élargis : ccd/mds/img pour PS1, mdf/nrg/zso pour PS2, wia/tgc pour GC/Wii, nro/nso Switch…) ; `.zip/.7z/.rar` acceptés partout (`ARCHIVES`), `archiveMode()` : « game » (arcade, Neo Geo), « direct » (cartouches lancées par RetroArch, sauf .rar), sinon `archive: 'extract'`. Doublon : `rank()` (format de la console avant l'archive). L'ancienne règle « un .cue dans le dossier masque tous les .bin » est retirée (les .bin d'un .cue sont masqués par son contenu).

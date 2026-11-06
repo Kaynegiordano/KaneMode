@@ -145,3 +145,13 @@ test('Jeu décompressé : le .cue avant ses .bin, plusieurs disques dans une lis
   assert.match(list, /Jeu\.m3u$/);
   assert.deepEqual(fs.readFileSync(list, 'utf8').trim().split(/\r?\n/), ['Jeu (Disc 1).chd', 'Jeu (Disc 2).chd']);
 });
+
+test('BIOS rangé dans un .zip : décompressé une fois, reconnu à sa taille', () => {
+  const bios = tmp(), src = tmp();
+  fs.writeFileSync(path.join(src, 'Sony PlayStation SCPH-7502 BIOS v4.1 (EU).bin'), Buffer.alloc(524288));
+  require('child_process').execFileSync(path.join(process.env.SystemRoot, 'System32', 'tar.exe'), ['-a', '-cf', path.join(bios, 'bios.zip'), '-C', src, '.']);
+  assert.equal(setup.biosStatus(bios, 'psx').ok, false);
+  assert.equal(setup.unpackBios(bios), 1);
+  assert.equal(setup.biosStatus(bios, 'psx').ok, true);
+  assert.equal(setup.unpackBios(bios), 0);
+});

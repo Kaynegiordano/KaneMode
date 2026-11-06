@@ -826,6 +826,7 @@ function ensureEmuHome() {
     for (const s of emu.SYSTEMS) fs.mkdirSync(path.join(d.games, s.name), { recursive: true });
     for (const b of ['Switch', 'Switch 2']) fs.mkdirSync(path.join(d.bios, b), { recursive: true });
     fs.mkdirSync(d.saves, { recursive: true });
+    emuSetup.unpackBios(d.bios);
     const readme = path.join(d.games, 'LISEZ-MOI.txt');
     const lines = ['Déposez vos jeux dans le dossier de leur console : ils apparaissent tout seuls dans KaneMode.', '',
       ...emu.SYSTEMS.map(s => `${s.name.padEnd(24)} ${s.exts.length ? '.' + s.exts.join(' .') : 'un dossier par jeu'}`), '',
@@ -906,6 +907,32 @@ function watchEmuGames() {
     emuWatch = { dir, w };
   } catch (e) { console.error('Émulation : surveillance du dossier', e.message); }
 }
+// Empreinte des dossiers de jeux (noms, tailles, dates, trois niveaux) : la surveillance peut rater
+// un changement (KaneMode fermé, mise à jour, erreur du système de fichiers), l'empreinte non
+function emuGamesSig() {
+  const parts = [];
+  const walk = (dir, depth) => {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (depth < 3) walk(p, depth + 1); continue; }
+      if (/^LISEZ-MOI\.txt$/i.test(e.name)) continue;
+      try { const st = fs.statSync(p); parts.push(`${p}|${st.size}|${Math.floor(st.mtimeMs)}`); } catch { /* fichier en cours de copie */ }
+    }
+  };
+  for (const r of [emuDirs().games, ...config().romRoots]) walk(r, 0);
+  return crypto.createHash('sha1').update(parts.sort().join('\n')).digest('hex');
+}
+/** Recherche les jeux si les dossiers ont changé depuis la dernière recherche. */
+function checkEmuGames(reason) {
+  watchEmuGames();
+  const sig = emuGamesSig();
+  if ((readJson(FILES.roms, {}) || {}).sig === sig) return false;
+  console.log(`Émulation : jeux ajoutés ou retirés (${reason})`);
+  scanEmulation();
+  return true;
+}
 function scanEmulation() {
   const cfg = config();
   const d = ensureEmuHome();
@@ -929,7 +956,7 @@ function scanEmulation() {
     const id = sys && sys.emus.find(e => emuStore.CATALOG[e]);
     if (id) { r.installEmu = id; r.installed = true; r.emulator = emuStore.CATALOG[id].name; }
   }
-  const data = { generated: new Date().toISOString(), emulators, roms };
+  const data = { generated: new Date().toISOString(), sig: emuGamesSig(), emulators, roms };
   writeJson(FILES.roms, data);
   version++;
   return data;
@@ -1178,7 +1205,7 @@ const routes = {
   // Monde Émulation : consoles et leurs jeux, émulateurs gérés, dossiers
   'GET /api/emu/world': async (req, res, q) => {
     const d = ensureEmuHome();
-    watchEmuGames();
+    checkEmuGames('ouverture du monde Émulation');
     const data = readJson(FILES.roms, null) || scanEmulation();
     const counts = {};
     for (const r of data.roms || []) counts[r.system] = (counts[r.system] || 0) + 1;
@@ -2005,6 +2032,9 @@ function watchStores() {
 // Premier lancement (PC neuf) : la bibliothèque n'existe pas encore, on la construit tout de suite
 ensureEmuHome();
 watchEmuGames();
+// Jeux ajoutés pendant que KaneMode était fermé, puis contrôle léger toutes les 30 s
+setTimeout(() => { try { if (isFile(FILES.library)) checkEmuGames('démarrage'); } catch (e) { console.error('Émulation :', e.message); } }, 3000);
+setInterval(() => { try { checkEmuGames('contrôle du dossier'); } catch (e) { console.error('Émulation :', e.message); } }, 30e3).unref();
 if (!isFile(FILES.library)) {
   console.log('Premier lancement : analyse de la bibliothèque');
   runPs('scan.ps1', ['-DataDir', DATA]).then(() => { scanEmulation(); version++; watchStores(); });
