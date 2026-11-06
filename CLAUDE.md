@@ -4,7 +4,9 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
-## Version 4.13.0 : monde Émulation (étape 1)
+## Version 4.13.1 : monde Émulation (étape 1)
+
+- 4.13.0 jamais publiée : un 2e installateur de même version ne remplace pas le paquet installé (Windows le garde), d'où 4.13.1 pour l'essai de l'utilisateur. Les consoles à cartouche lancées par RetroArch acceptent .zip et .7z.
 
 - Dossier de l'utilisateur `%USERPROFILE%\KaneMode Émulation` (réglage `emuHome` possible), hors d'AppData pour survivre à une désinstallation : `Jeux\<nom de la console>` (31 dossiers créés par `ensureEmuHome()`, `LISEZ-MOI.txt`), `BIOS` (plat, sauf `BIOS\Switch` et `BIOS\Switch 2` pour prod.keys/title.keys et `Firmware\*.nca`), `Sauvegardes`, `Émulateurs\<id>` (portables, réglages dedans). `emulation.js` reconnaît le nom de la console comme nom de dossier ; `Jeux` est toujours scanné en plus de `romRoots`. `fs.watch` récursif sur `Jeux` → `scanEmulation()` après 2,5 s.
 - `host/lib/emu-store.js` : catalogue de 16 émulateurs et leur source officielle (GitHub `releases/latest`, Eglantine `pre` avec tags `v*` puis `daily-*`, Vita3K tag `continuous`, Eden via l'API Forgejo de git.eden-emu.dev avec la version `rog-ally-clang-pgo` sur ROG Ally, Dolphin `dolphin-emu.org/update/latest/beta/`, RetroArch `buildbot.libretro.com/stable/<v>/windows/x86_64/RetroArch.7z`, cœurs `…/nightly/windows/x86_64/latest/<cœur>_libretro.dll.zip`). Extraction par `System32\tar.exe` (lit .7z et .zip) ; un code d'erreur est ignoré si des fichiers sont sortis (zip de Cemu à entrée sans nom), sinon `Expand-Archive`. Mise à jour = même dossier, copie par-dessus (réglages gardés). `kanemode.json` = version installée ; versions publiées en cache 6 h. Toutes les sources vérifiées le 06/11/2026 et les 16 installés sur ce PC.
