@@ -130,8 +130,30 @@ definePage('emulation', {
     api.get('/api/emu/world').then(d => { this.data = { ...d, emulators: this.withLatest(d.emulators) }; if (this.el.classList.contains('active')) this.draw(p.focus || this.focusedKey()); })
       .catch(e => toast(e.message, { error: true }));
     if (this.data) this.draw(p.focus);
+    if (!this.updateAsked) { this.updateAsked = true; this.autoUpdate(); }
+  },
+  /** Arrivée dans Émulation : les émulateurs installés se mettent à jour en arrière-plan. */
+  async autoUpdate() {
+    let r;
+    try { r = await api.post('/api/emu/autoupdate'); } catch { return; }
+    const list = (r && r.updating) || [];
+    if (!list.length) return;
+    const names = list.map(e => e.name).join(', ');
+    toast(t('Mise à jour en arrière-plan : {names}', { names }));
+    const ids = list.map(e => e.id);
+    const poll = setInterval(async () => {
+      const jobs = await api.get('/api/emu/jobs').then(x => x.jobs).catch(() => null);
+      if (!jobs || ids.some(id => jobs.some(j => j.id === id && j.busy))) return;
+      clearInterval(poll);
+      const failed = list.filter(e => jobs.some(j => j.id === e.id && j.phase === 'error'));
+      if (failed.length) toast(t('Mise à jour impossible : {names}', { names: failed.map(e => e.name).join(', ') }), { error: true });
+      else toast(t('{names} à jour', { names }));
+      lib.load({ background: true });
+      if (this.el.classList.contains('active') && this.mode === 'manage') this.reload(this.focusedKey());
+    }, 2000);
   },
   leave() {
+    this.updateAsked = false;
     document.body.classList.remove('emu-world');
     document.body.style.removeProperty('--emu');
     clearInterval(this.poll); this.poll = null;

@@ -900,6 +900,9 @@ function retroarchLook(raDir, gameId, set, fresh = false) {
 async function prepareRom(e, { fresh = false } = {}) {
   let launch = e.launch, gameFile = e.romPath;
   const id = e.emulatorId;
+  // Émulateur en cours de mise à jour (arrivée dans Émulation) : le jeu attend la nouvelle version
+  const updating = id && emuStore.pending(id);
+  if (updating) await updating.catch(() => {});
   const m = id && emuStore.installed(id);
   const d = emuDirs();
   // BIOS d'abord : pas de décompression (parfois longue) pour un jeu qui ne pourrait pas démarrer
@@ -937,6 +940,7 @@ async function prepareRom(e, { fresh = false } = {}) {
   if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
   return { launch };
 }
+const emuAutoUpdate = { at: 0 };
 // Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
 let emuWatch = null, emuWatchTimer = null;
 function watchEmuGames() {
@@ -1304,6 +1308,27 @@ const routes = {
     writeJson(FILES.config, c);
     scanEmulation();
     json(res, 200, { ok: true, values: cur });
+  },
+  // Arrivée dans le monde Émulation : les émulateurs installés qui ont une nouvelle version se
+  // mettent à jour en arrière-plan (sauf ceux qui sont ouverts), au plus toutes les 10 minutes
+  'POST /api/emu/autoupdate': async (req, res) => {
+    if (Date.now() - emuAutoUpdate.at < 10 * 60e3) return json(res, 200, { ok: true, updating: [], skipped: 'recent' });
+    emuAutoUpdate.at = Date.now();
+    let list = [];
+    try { list = await emuStore.list({ check: true }); } catch { /* hors ligne */ }
+    const todo = [];
+    for (const e of list.filter(x => x.update)) {
+      const m = emuStore.installed(e.id);
+      if (m && await processOpen(path.basename(m.exe, '.exe'))) continue;
+      todo.push(e);
+    }
+    (async () => {
+      for (const e of todo) {
+        try { await emuStore.install(e.id); scanEmulation(); console.log(`Émulation : ${e.name} mis à jour (${e.version} → ${e.latest})`); }
+        catch { /* erreur gardée dans la tâche */ }
+      }
+    })();
+    json(res, 200, { ok: true, updating: todo.map(e => ({ id: e.id, name: e.name, from: e.version, to: e.latest })) });
   },
   'POST /api/emu/cache/clear': (req, res) => json(res, 200, { ok: true, freed: emuArchive.clear() }),
   // Fiche d'un jeu rétro : développeur, éditeur, genre, année, joueurs, description

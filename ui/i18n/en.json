@@ -1635,5 +1635,8 @@
  "Reprend là où vous vous étiez arrêté": "Picks up where you left off",
  "Sans reprendre la dernière partie": "Without resuming the last session",
  "SteamGridDB, image du disque, récupérer à nouveau": "SteamGridDB, image from disk, fetch again",
- "Tous les visuels": "All artwork"
+ "Tous les visuels": "All artwork",
+ "{names} à jour": "{names} up to date",
+ "Mise à jour en arrière-plan : {names}": "Updating in the background: {names}",
+ "Mise à jour impossible : {names}": "Update failed: {names}"
 }

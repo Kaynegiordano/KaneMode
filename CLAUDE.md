@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.17.0 : Lichii pour la Switch 2, émulateurs mis à jour à l'arrivée dans Émulation
+
+- Demande de l'utilisateur : remplacer Eglantine par Lichii (github.com/zortos293/Lichii, GPL-3.0, ex-« zortos293/Eglantine » renommé, builds quotidiennes en préversion `build-NN`, `lichii-windows-x86_64.zip` ; la variante `-pgo` n'est pas dans toutes les builds). Même base Eden/Eglantine : `lichii.exe -f -g`, dossier portable `user/`, mêmes clés Qt (`switchConfig` inchangé), journal toujours `user\log\eden_log.txt`. Puis : « ne pas hésiter à faire les mises à jour à l'arrivée dans Émulation ».
+- `emu-store.js` : catalogue `lichii` (`from: 'eglantine'` : à la première installation, `Émulateurs\eglantine\user` est copié dans `lichii\user` ; l'ancien dossier eglantine reste sur le disque) ; versions gardées 1 h (6 h avant) ; `pending(id)` = installation en cours. `emulation.js` / `emu-setup.js` : `eglantine` → `lichii` (switch2).
+- `POST /api/emu/autoupdate` (au plus toutes les 10 min, `emuAutoUpdate.at`) : `list({ check })`, émulateurs ouverts ignorés (`processOpen`), installations à la suite en arrière-plan. Appelé par `emulation.js` à chaque arrivée (`updateAsked`, remis à zéro dans `leave`), avec un message au début et à la fin. `prepareRom()` attend `emuStore.pending(id)`.
+- Vérifié : Lichii build-88 installé par l'hôte (dossier user d'Eglantine repris, clés comprises) ; Donkey Kong Bananza lancé par l'hôte, Lichii ouvert 30 s (« NPDM uses the Switch 2 ACID layout », assertions memory_manager), fermé ; mise à jour testée en faisant passer kanemode.json pour build-87 → build-88 réinstallé, user/ gardé. Non vérifié : rendu à l'écran, Ally.
+
 ## Version 4.16.0 : Émulation pensée pour la ROG Ally, archives Mega Drive lues, Mega-CD
 
 - Retours utilisateur (ROG Ally X) : Mega Drive « écran noir puis rien » pour Sonic & Knuckles et Sonic CD (Sonic 2 marche) ; en-tête (Émulation, Ajouter des jeux, Gérer) et bannière du jeu mal pensés pour l'Ally ; petit écran → plus de lisibilité, page du jeu avec personnalisation et réglages « comme KaneMode ».

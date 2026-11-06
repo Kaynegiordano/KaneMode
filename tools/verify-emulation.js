@@ -65,7 +65,7 @@ test('BIOS PS2 de 4 Mo et clés de la Switch 2 copiées dans l\'émulateur', () 
   fs.writeFileSync(path.join(bios, 'Switch 2', 'prod.keys'), 'k');
   assert.equal(setup.biosStatus(bios, 'switch2').ok, true);
   const dir = tmp();
-  setup.prepare('eglantine', dir, { bios, saves: dir });
+  setup.prepare('lichii', dir, { bios, saves: dir });
   assert.ok(fs.existsSync(path.join(dir, 'user', 'keys', 'prod.keys')));
   setup.prepare('pcsx2', dir, { bios, saves: dir });
   assert.match(fs.readFileSync(path.join(dir, 'inis', 'PCSX2.ini'), 'utf8'), /BIOS = scph39001\.bin/);
@@ -200,7 +200,7 @@ test('Image adaptée à l’écran : résolution interne selon l’écran et la 
   setup.prepare('retroarch', dir, { bios: 'C:\B', saves: dir, system: 'n64', screenH: 1080, tier: 'low' });
   assert.match(fs.readFileSync(path.join(dir, 'retroarch.cfg'), 'utf8'), /video_font_enable = "false"/);
   assert.match(fs.readFileSync(path.join(dir, 'config', 'Mupen64Plus-Next', 'Mupen64Plus-Next.opt'), 'utf8'), /1440x1080/);
-  setup.prepare('eglantine', dir, { bios: dir, saves: dir });
+  setup.prepare('lichii', dir, { bios: dir, saves: dir });
   const qt = ini('user/config/qt-config.ini');
   assert.ok(qt.includes("confirmStop" + String.fromCharCode(92) + "default=false"));
   assert.match(qt, /use_asynchronous_shaders=true/);

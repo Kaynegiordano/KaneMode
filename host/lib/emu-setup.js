@@ -92,7 +92,7 @@ function upscale(c, base, capLow, capHigh) {
   const cap = c.tier === 'high' ? capHigh : capLow;
   return Math.max(1, Math.min(cap, Math.round((c.screenH || 1080) / base)));
 }
-// Qt (Eden, Eglantine, Azahar) : une valeur choisie s'écrit avec « \default=false »
+// Qt (Eden, Lichii, Azahar) : une valeur choisie s'écrit avec « \default=false »
 const qt = values => Object.fromEntries(Object.entries(values).flatMap(([k, v]) => [[`${k}\\default`, 'false'], [k, v]]));
 
 const SETUP = {
@@ -208,10 +208,10 @@ const SETUP = {
     }, { sep: '=' });
   },
   eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir); },
-  eglantine(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir); },
+  lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir); },
 };
 
-// Eden et Eglantine : plein écran, pas de question en quittant, shaders compilés sans à-coups
+// Eden et Lichii (même base, mêmes clés) : plein écran, pas de question en quittant, shaders compilés sans à-coups
 function switchConfig(dir) {
   mergeIni(path.join(dir, 'user', 'config', 'qt-config.ini'), {
     UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }),

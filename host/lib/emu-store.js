@@ -25,7 +25,8 @@ const CATALOG = {
   cemu: { name: 'Cemu', source: { type: 'github', repo: 'cemu-project/Cemu', asset: /windows-x64\.zip$/i }, exe: /^Cemu\.exe$/i, portable: ['portable/'], size: 15 },
   rpcs3: { name: 'RPCS3', source: { type: 'github', repo: 'RPCS3/rpcs3-binaries-win', asset: /_win64_msvc\.7z$/i }, exe: /^rpcs3\.exe$/i, size: 35 },
   eden: { name: 'Eden', source: { type: 'forgejo', api: 'https://git.eden-emu.dev/api/v1/repos/eden-emu/eden', asset: /-amd64-msvc-standard\.zip$/i, ally: /-rog-ally-clang-pgo\.zip$/i }, exe: /^eden\.exe$/i, portable: ['user/'], size: 40 },
-  eglantine: { name: 'Eglantine', source: { type: 'github', repo: 'Djihads80/Eglantine', pre: true, tags: [/^v\d/, /^daily-/], asset: /^eglantine-windows-x86_64\.zip$/i }, exe: /^(eglantine|eden)\.exe$/i, portable: ['user/'], size: 110, experimental: true },
+  // Switch 2 : Lichii (suite d'Eglantine, une version par jour) ; from : reprend le dossier user/ d'Eglantine
+  lichii: { name: 'Lichii', source: { type: 'github', repo: 'zortos293/Lichii', pre: true, tags: [/^build-\d+$/], asset: /^lichii-windows-x86_64\.zip$/i }, exe: /^lichii\.exe$/i, portable: ['user/'], from: 'eglantine', size: 116, experimental: true },
   xemu: { name: 'xemu', source: { type: 'github', repo: 'xemu-project/xemu', asset: /^xemu-win-x86_64-release\.zip$/i }, exe: /^xemu\.exe$/i, size: 20 },
   xenia: { name: 'Xenia Canary', source: { type: 'github', repo: 'xenia-canary/xenia-canary-releases', asset: /^xenia_canary_windows.*\.zip$/i }, exe: /^xenia_canary\.exe$/i, portable: ['portable.txt'], size: 20 },
   flycast: { name: 'Flycast', source: { type: 'github', repo: 'flyinghead/flycast', asset: /^flycast-win64-.*\.zip$/i }, exe: /^flycast\.exe$/i, size: 15 },
@@ -157,7 +158,7 @@ function create({ home, isAlly = async () => false }) {
 
   async function latestCached(id) {
     const hit = latestCache.get(id);
-    if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.v;
+    if (hit && Date.now() - hit.at < 3600e3) return hit.v;
     const v = await latest(id, { ally: await isAlly() });
     latestCache.set(id, { at: Date.now(), v });
     return v;
@@ -190,6 +191,12 @@ function create({ home, isAlly = async () => false }) {
         fs.mkdirSync(dest, { recursive: true });
         try { fs.cpSync(path.dirname(exeTmp), dest, { recursive: true, force: true }); }
         catch (e) { throw new Error(e.code === 'EBUSY' || e.code === 'EPERM' ? `${c.name} est encore ouvert : fermez-le puis réessayez` : e.message); }
+        // Remplaçant d'un ancien émulateur : ses clés, réglages et sauvegardes (user/) le suivent
+        if (c.from && !fs.existsSync(path.join(dest, 'user')) && fs.existsSync(path.join(dirOf(c.from), 'user'))) {
+          job.phase = 'extract';
+          fs.cpSync(path.join(dirOf(c.from), 'user'), path.join(dest, 'user'), { recursive: true });
+          console.log(`Émulation : dossier user de ${c.from} repris par ${c.name}`);
+        }
         for (const p of c.portable || []) {
           const target = path.join(dest, p);
           if (p.endsWith('/')) fs.mkdirSync(target, { recursive: true });
@@ -261,7 +268,10 @@ function create({ home, isAlly = async () => false }) {
 
   const jobList = () => [...jobs.values()].map(({ promise, ...j }) => ({ ...j, busy: !!promise }));
 
-  return { CATALOG, installed, emulators, install, ensureCore, list, jobs: jobList, dirOf, root };
+  /** Installation ou mise à jour en cours de cet émulateur (promesse), sinon null. */
+  const pending = id => (jobs.get(id) && jobs.get(id).promise) || null;
+
+  return { CATALOG, installed, emulators, install, ensureCore, list, jobs: jobList, dirOf, root, pending };
 }
 
 module.exports = { create, CATALOG, latest };

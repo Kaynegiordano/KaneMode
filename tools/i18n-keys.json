@@ -377,6 +377,9 @@
  "{name} supprimé": [
   "ui/js/pages/game.js"
  ],
+ "{names} à jour": [
+  "ui/js/pages/emulation.js"
+ ],
  "{ok} : simulé dans le prototype (aucune action réelle)": [
   "ui/js/main.js"
  ],
@@ -2953,6 +2956,12 @@
  ],
  "Mise à jour disponible": [
   "ui/index.html"
+ ],
+ "Mise à jour en arrière-plan : {names}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Mise à jour impossible : {names}": [
+  "ui/js/pages/emulation.js"
  ],
  "Mise à jour pas encore téléchargée": [
   "host/server.js"
