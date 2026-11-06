@@ -74,3 +74,13 @@ test('BIOS PS2 de 4 Mo et clés de la Switch 2 copiées dans l\'émulateur', () 
 test('Chaque console a un émulateur que KaneMode sait installer', () => {
   for (const s of emu.SYSTEMS) assert.ok(s.emus.some(e => store.CATALOG[e]), s.id);
 });
+
+test('Un jeu Master System en .zip est reconnu', () => {
+  const root = tmp();
+  fs.mkdirSync(path.join(root, 'Master System'));
+  fs.writeFileSync(path.join(root, 'Master System', 'Sonic The Hedgehog (USA, Europe).zip'), 'x');
+  const roms = emu.scanRoms([root], {}, {});
+  assert.equal(roms.length, 1);
+  assert.equal(roms[0].system, 'mastersystem');
+  assert.equal(roms[0].name, 'Sonic The Hedgehog');
+});

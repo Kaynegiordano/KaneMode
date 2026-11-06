@@ -822,12 +822,14 @@ function ensureEmuHome() {
     for (const b of ['Switch', 'Switch 2']) fs.mkdirSync(path.join(d.bios, b), { recursive: true });
     fs.mkdirSync(d.saves, { recursive: true });
     const readme = path.join(d.games, 'LISEZ-MOI.txt');
-    if (!isFile(readme)) {
-      const lines = ['Déposez vos jeux dans le dossier de leur console : ils apparaissent tout seuls dans KaneMode.', '',
-        ...emu.SYSTEMS.map(s => `${s.name.padEnd(24)} ${s.exts.length ? '.' + s.exts.join(' .') : 'un dossier par jeu'}`), '',
-        'Les BIOS et les clés de console vont dans le dossier BIOS, à côté de ce dossier.'];
-      fs.writeFileSync(readme, '﻿' + lines.join('\r\n'));
-    }
+    const lines = ['Déposez vos jeux dans le dossier de leur console : ils apparaissent tout seuls dans KaneMode.', '',
+      ...emu.SYSTEMS.map(s => `${s.name.padEnd(24)} ${s.exts.length ? '.' + s.exts.join(' .') : 'un dossier par jeu'}`), '',
+      'Les BIOS et les clés de console vont dans le dossier BIOS, à côté de ce dossier.'];
+    // Réécrit quand la liste des formats change (nouvelle version de KaneMode)
+    const text = '﻿' + lines.join('\r\n');
+    let old = '';
+    try { old = fs.readFileSync(readme, 'utf8'); } catch { /* pas encore écrit */ }
+    if (old !== text) fs.writeFileSync(readme, text);
   } catch (e) { console.error('Émulation : dossier', d.home, e.message); }
   return d;
 }
