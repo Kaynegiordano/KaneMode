@@ -1619,5 +1619,21 @@
  "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b>": "To return to KaneMode: hold <b>Select + Start</b> or <b>Esc</b>",
  "Qualité de l’image": "Image quality",
  "Retour aux jeux": "Back to games",
- "Voir les jeux": "See the games"
+ "Voir les jeux": "See the games",
+ "<span class=\"label-long\">Onglet</span>": "<span class=\"label-long\">Tab</span>",
+ "Collections, retirer de la bibliothèque": "Collections, remove from library",
+ "Émulateurs, BIOS, dossiers": "Emulators, BIOS, folders",
+ "Fichier": "File",
+ "Genre": "Genre",
+ "Infos": "Info",
+ "Installé au premier lancement": "Installed on first launch",
+ "Joué {d}": "Played {d}",
+ "Options": "Options",
+ "Ouvrir le dossier des jeux": "Open the games folder",
+ "Recommencer du début": "Start over",
+ "Réglages de toute la console": "Settings for the whole console",
+ "Reprend là où vous vous étiez arrêté": "Picks up where you left off",
+ "Sans reprendre la dernière partie": "Without resuming the last session",
+ "SteamGridDB, image du disque, récupérer à nouveau": "SteamGridDB, image from disk, fetch again",
+ "Tous les visuels": "All artwork"
 }

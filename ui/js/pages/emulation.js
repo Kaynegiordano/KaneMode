@@ -1,6 +1,7 @@
-// Monde Émulation, style KaneMode : une grande bannière qui suit la tuile choisie, des rangées
-// (Reprendre, Consoles, Favoris, Ajoutés récemment) puis, dans une console, la grille de ses jaquettes.
-// La fiche et les réglages glissent par-dessus. « Gérer » : dossier de jeux, BIOS, émulateurs.
+// Monde Émulation, style KaneMode, pensé aussi pour les petits écrans (ROG Ally) : des rangées de
+// grandes jaquettes (Reprendre, Consoles, Favoris, Ajoutés récemment, Options) sans bandeau qui
+// mange l'écran ; dans une console, la grille de ses jeux. A ouvre la page du jeu : Jouer, Réglages,
+// Visuels (jaquette, logo, fond), Infos. « Gérer » : dossier de jeux, BIOS, émulateurs.
 import { t, tn, locale } from '../i18n.js';
 import { el, esc, icon, api, lib, toast, busy, sfx, store, favs, fmt } from '../core.js';
 import { definePage, nav, focusIn, setFocus, glyph, renderHints, go, openLayer, closeLayer, topLayer } from '../nav.js';
@@ -30,7 +31,7 @@ const brandOf = id => BRAND[id] || t('RÉTRO');
 
 const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.glyph = k; return s; };
 const pct = j => (j.total ? Math.min(99, Math.round(j.received / j.total * 100)) : 0);
-const firstLetter = g => (g.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z]/i) || ['#'])[0].toUpperCase();
+const firstLetter = g => (g.name.normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z]/i) || ['#'])[0].toUpperCase();
 
 /** Texte d'avancement d'une installation (écran de lancement, liste des émulateurs). */
 export function jobText(j) {
@@ -85,28 +86,25 @@ const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar'];
 const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
-// Année de sortie (première sortie, Japon compris)
-const YEAR = {
-  nes: 1983, snes: 1990, n64: 1996, gb: 1989, gbc: 1998, gba: 2001, nds: 2004, n3ds: 2011, gc: 2001, wii: 2006, wiiu: 2012, switch: 2017, switch2: 2025,
-  psx: 1994, ps2: 2000, ps3: 2006, ps4: 2013, psvita: 2011, psp: 2004, megadrive: 1988, mastersystem: 1985, gamegear: 1990, segacd: 1991, saturn: 1994,
-  dreamcast: 1998, pcengine: 1987, neogeo: 1990, atari2600: 1977, xbox: 2001, xbox360: 2005,
-};
-const kindOf = id => (HANDHELD.includes(id) ? t('Console portable') : ['arcade', 'neogeo'].includes(id) ? t('Arcade') : t('Console de salon'));
 const lastPlayedFirst = (a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0);
 const hasArt = g => !!(g.art && g.art.portrait);
 const heroOf = g => g && g.art && (g.art.hero || g.art.header);
 // Consoles « virtuelles » : tous les jeux, favoris
 const VIRTUAL = { all: () => t('Tous les jeux'), fav: () => t('Favoris') };
+// Onglets de la page d'un jeu (LB / RB)
+const TABS = () => [['play', t('Jouer'), 'i-play'], ['settings', t('Réglages'), 'i-gear'], ['art', t('Visuels'), 'i-image'], ['info', t('Infos'), 'i-info']];
+// Visuels qu'on peut changer depuis la page du jeu (écran Visuels de KaneMode)
+const ART_KINDS = () => [['portrait', t('Jaquette')], ['logo', t('Logo')], ['hero', t('Fond')], ['header', t('Bannière')]];
 
 /** Jaquette d'un jeu, ou boîte dessinée à ses couleurs si elle manque ou ne se charge pas. */
-function cover(g) {
+function cover(g, { lazy = true } = {}) {
   const box = el('div', 'kw-cover');
   box.style.setProperty('--g', LOOK[g.system] || '#7c9eff');
   const gen = () => el('div', 'kw-gen', `<small>${esc(brandOf(g.system))}</small><b>${esc(g.name)}</b>`);
   if (hasArt(g)) {
     const img = new Image();
     img.alt = '';
-    img.loading = 'lazy';
+    if (lazy) img.loading = 'lazy';
     img.decoding = 'async';
     img.onerror = () => { img.replaceWith(gen()); box.style.removeProperty('--img'); };
     img.src = g.art.portrait;
@@ -116,18 +114,20 @@ function cover(g) {
   } else box.append(gen());
   return box;
 }
+const playedText = g => { if (!g.lastPlayed) return t('Jamais joué'); const d = fmt.played(g.lastPlayed); return t('Joué {d}', { d: locale.startsWith('fr') ? d.toLowerCase() : d }); };
 
 definePage('emulation', {
   libBound: true,
   title: () => t('Émulation'),
   initialFocus() {
     if (this.mode === 'manage') return this.roms().length ? 'back-shelf' : 'open-games';
-    return this.lastKey || (this.mode === 'console' ? 'filter:all' : 'manage');
+    if (this.mode === 'game') return 'g-play';
+    return this.lastKey || (this.mode === 'console' ? 'filter:all' : 'tool:add');
   },
   render(p = {}) {
     document.body.classList.add('emu-world');
     if (!this.data) this.el.innerHTML = t('<div class="loading"><i class="spinner big"></i>Ouverture du monde Émulation…</div>');
-    api.get('/api/emu/world').then(d => { this.data = { ...d, emulators: this.withLatest(d.emulators) }; if (this.el.classList.contains('active')) this.draw(p.focus); })
+    api.get('/api/emu/world').then(d => { this.data = { ...d, emulators: this.withLatest(d.emulators) }; if (this.el.classList.contains('active')) this.draw(p.focus || this.focusedKey()); })
       .catch(e => toast(e.message, { error: true }));
     if (this.data) this.draw(p.focus);
   },
@@ -135,10 +135,10 @@ definePage('emulation', {
     document.body.classList.remove('emu-world');
     document.body.style.removeProperty('--emu');
     clearInterval(this.poll); this.poll = null;
-    clearTimeout(this.heroTimer);
   },
 
   roms() { return lib.visible().filter(g => g.source === 'rom'); },
+  gameById(id) { return id ? this.roms().find(g => g.id === id) || null : null; },
   /** Consoles qui ont des jeux, dans l'ordre de la liste des consoles. */
   systems() {
     const counts = {};
@@ -157,9 +157,11 @@ definePage('emulation', {
 
   draw(focusKey) {
     const has = this.roms().length;
-    this.mode = this.manage || !has ? 'manage' : this.view === 'console' ? 'console' : 'hub';
+    this.mode = this.manage || !has ? 'manage' : this.view === 'game' && this.gameById(this.gid) ? 'game' : this.view === 'console' ? 'console' : 'hub';
+    if (this.view === 'game' && this.mode !== 'game') this.view = this.from || 'hub';
     this.el.classList.toggle('kw-mode', this.mode !== 'manage');
     if (this.mode === 'manage') this.drawManage(focusKey);
+    else if (this.mode === 'game') this.drawGame(focusKey);
     else {
       if (this.mode === 'hub') this.drawHub(); else this.drawConsole();
       this.focusTile(focusKey);
@@ -174,42 +176,14 @@ definePage('emulation', {
     if (f) { setFocus(f, { sound: false, scroll: 'instant' }); f.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   },
 
-  // ---------------------------------------------------------------- en-tête, bannière, tuiles
-  head(title, sub, back) {
-    const h = el('div', 'kw-head');
-    if (back) h.append(nav(el('div', 'kw-chip back', `${icon('i-grid')}<span>${t('Consoles')}</span>`), () => this.toHub(), 'to-hub'));
-    h.append(el('div', 'kw-title', `<b>${esc(title)}</b><small>${esc(sub)}</small>`));
-    if (back) {
-      // Consoles voisines (LB / RB), cliquables
-      const list = this.consoleOrder();
-      const i = list.indexOf(this.sys);
-      if (list.length > 1 && i >= 0) {
-        const near = el('div', 'kw-near');
-        const go = (id, k) => { const b = el('div', 'kw-nb', `${k === 'lb' ? shoulder('lb').outerHTML : ''}<span>${esc(this.sysInfo(id).name)}</span>${k === 'rb' ? shoulder('rb').outerHTML : ''}`); b.addEventListener('click', () => this.openConsole(id)); return b; };
-        near.append(go(list[(i - 1 + list.length) % list.length], 'lb'), go(list[(i + 1) % list.length], 'rb'));
-        h.append(near);
-      }
-    }
-    const tools = el('div', 'kw-tools');
-    if (back && !VIRTUAL[this.sys]) tools.append(nav(el('div', 'kw-chip', `${icon('i-palette')}<span>${t('Réglages')}</span>`), () => this.openSettings('system', this.sys), 'sys-settings'));
-    if (!back) tools.append(nav(el('div', 'kw-chip', `${icon('i-folder')}<span>${t('Ajouter des jeux')}</span>`), () => this.open({ what: 'games' }), 'add-games'));
-    if (!back) tools.append(nav(el('div', 'kw-chip', `${icon('i-gear')}<span>${t('Gérer')}</span>`), () => this.openManage(), 'manage'));
-    h.append(tools);
-    return h;
-  },
-  hero() {
-    const h = el('div', 'kw-hero', '<div class="kw-bg a"></div><div class="kw-bg b"></div><div class="kw-shade"></div><div class="kw-hero-in"></div>');
-    this.heroEl = h;
-    this.heroBg = null;
-    return h;
-  },
-  gameTile(g, prefix) {
+  // ---------------------------------------------------------------- tuiles et rangées
+  gameTile(g, prefix, sub) {
     const tile = el('div', 'kw-tile game' + (favs.has(g.id) ? ' fav' : ''));
     tile.dataset.gid = g.id;
     tile.style.setProperty('--c', LOOK[g.system] || '#7c9eff');
     tile.append(cover(g));
-    tile.insertAdjacentHTML('beforeend', `<div class="kw-name">${esc(g.name)}</div>`);
-    return nav(tile, () => { this.sel = g; this.play(); }, prefix + g.id);
+    tile.insertAdjacentHTML('beforeend', `<div class="kw-name">${esc(g.name)}</div>${sub ? `<div class="kw-sub">${esc(sub)}</div>` : ''}`);
+    return nav(tile, () => this.openGame(g), prefix + g.id);
   },
   sysTile(s) {
     const tile = el('div', 'kw-tile sys' + (VIRTUAL[s.id] ? ' virtual' : ''));
@@ -221,6 +195,10 @@ definePage('emulation', {
     tile.append(el('div', 'kw-sysbg'), fan);
     tile.insertAdjacentHTML('beforeend', `<div class="kw-sysname"><small>${esc(VIRTUAL[s.id] ? t('Toutes les consoles') : s.maker || '')}</small><b>${esc(VIRTUAL[s.id] ? VIRTUAL[s.id]() : brandOf(s.id))}</b><i>${tn(s.count, '{n} jeu', '{n} jeux')}</i></div>`);
     return nav(tile, () => this.openConsole(s.id), 'c:' + s.id);
+  },
+  toolTile(ic, title, sub, fn, key) {
+    const tile = el('div', 'kw-tile tool', `<i>${icon(ic)}</i><b>${esc(title)}</b><small>${esc(sub)}</small>`);
+    return nav(tile, fn, key);
   },
   row(key, title, tiles) {
     const sec = el('section', 'kw-sec');
@@ -238,17 +216,20 @@ definePage('emulation', {
     const roms = this.roms();
     const systems = this.systems();
     const root = el('div', 'kw hub');
-    root.append(this.head(t('Émulation'), `${tn(roms.length, '{n} jeu', '{n} jeux')} · ${tn(systems.length, '{n} console', '{n} consoles')}`));
-    root.append(this.hero());
     const body = el('div', 'kw-body');
     const recent = roms.filter(g => g.lastPlayed).sort(lastPlayedFirst).slice(0, 12);
-    if (recent.length) body.append(this.row('recent', t('Reprendre'), recent.map(g => this.gameTile(g, 'r:'))));
+    if (recent.length) body.append(this.row('recent', t('Reprendre'), recent.map(g => this.gameTile(g, 'r:', playedText(g)))));
     const cards = [...(systems.length > 1 ? [this.sysInfo('all')] : []), ...systems].map(s => this.sysTile(s));
     body.append(this.row('sys', t('Consoles'), cards));
     const fav = roms.filter(g => favs.has(g.id)).sort((a, b) => a.name.localeCompare(b.name, locale));
-    if (fav.length) body.append(this.row('fav', t('Favoris'), fav.map(g => this.gameTile(g, 'f:'))));
+    if (fav.length) body.append(this.row('fav', t('Favoris'), fav.map(g => this.gameTile(g, 'f:', brandOf(g.system)))));
     const fresh = roms.filter(g => g.added).sort((a, b) => b.added - a.added).slice(0, 12);
-    if (roms.length > 4 && fresh.length) body.append(this.row('new', t('Ajoutés récemment'), fresh.map(g => this.gameTile(g, 'n:'))));
+    if (roms.length > 4 && fresh.length) body.append(this.row('new', t('Ajoutés récemment'), fresh.map(g => this.gameTile(g, 'n:', brandOf(g.system)))));
+    // Ce qui était dans l'en-tête : en dernière rangée, hors du chemin
+    body.append(this.row('tools', t('Options'), [
+      this.toolTile('i-folder', t('Ajouter des jeux'), t('Ouvrir le dossier des jeux'), () => this.open({ what: 'games' }), 'tool:add'),
+      this.toolTile('i-gear', t('Gérer'), t('Émulateurs, BIOS, dossiers'), () => this.openManage(), 'tool:manage'),
+    ]));
     root.append(body);
     this.tint(null);
     this.el.replaceChildren(root);
@@ -277,20 +258,25 @@ definePage('emulation', {
     this.pos = this.pos || store.get('emupos', {});
     this.filter = this.filter || 'all';
     const list = this.filter === 'fav' ? all.filter(g => favs.has(g.id)) : this.filter === 'recent' ? all.filter(g => g.lastPlayed).sort(lastPlayedFirst) : all;
-    this.list = list;
     const root = el('div', 'kw console');
     root.style.setProperty('--sys', VIRTUAL[s.id] ? 'var(--accent)' : LOOK[s.id] || 'var(--accent)');
-    root.append(this.head(VIRTUAL[s.id] ? VIRTUAL[s.id]() : s.name, [VIRTUAL[s.id] ? '' : s.maker, tn(all.length, '{n} jeu', '{n} jeux')].filter(Boolean).join(' · '), true));
-    root.append(this.hero());
-    const body = el('div', 'kw-body');
+    // Une seule ligne en haut : console (LB / RB pour changer), filtres, réglages
+    const bar = el('div', 'kw-bar');
+    const many = this.consoleOrder().length > 1;
+    const title = el('div', 'kw-ctitle', `${many ? shoulder('lb').outerHTML : ''}<b>${esc(VIRTUAL[s.id] ? VIRTUAL[s.id]() : s.name)}</b><small>${tn(all.length, '{n} jeu', '{n} jeux')}</small>${many ? shoulder('rb').outerHTML : ''}`);
+    title.querySelectorAll('.shoulder').forEach(x => x.addEventListener('click', () => this.button(x.dataset.glyph)));
+    bar.append(title);
     const chips = el('div', 'kw-filters');
-    for (const [k, l] of [['all', t('Tous')], ['fav', t('Favoris')], ['recent', t('Joués récemment')]]) {
+    for (const [k, l] of [['all', t('Tous')], ['fav', t('Favoris')], ['recent', t('Récents')]]) {
       chips.append(nav(el('div', 'kw-filter' + (this.filter === k ? ' on' : ''), esc(l)), () => { this.filter = k; this.draw('filter:' + k); }, 'filter:' + k));
     }
-    body.append(chips);
+    if (!VIRTUAL[s.id]) chips.append(nav(el('div', 'kw-filter icon', `${icon('i-gear')}<span>${t('Réglages')}</span>`), () => this.openSettings('system', s.id), 'sys-settings'));
+    bar.append(chips);
+    root.append(bar);
+    const body = el('div', 'kw-body');
     const grid = el('div', 'kw-grid');
     if (!list.length) grid.append(el('div', 'kw-empty', this.filter === 'fav' ? t('Pas encore de favori ici : X sur un jeu l’ajoute.') : t('Aucun jeu lancé pour l’instant.')));
-    list.forEach(g => grid.append(this.gameTile(g, 'g:')));
+    list.forEach(g => grid.append(this.gameTile(g, 'g:', VIRTUAL[s.id] ? brandOf(g.system) : null)));
     body.append(grid, el('div', 'kw-letter'));
     root.append(body);
     this.tint(VIRTUAL[s.id] ? null : s);
@@ -315,84 +301,35 @@ definePage('emulation', {
     l.classList.remove('show'); void l.offsetWidth; l.classList.add('show');
   },
 
-  // ---------------------------------------------------------------- tuile choisie : la bannière suit
+  // ---------------------------------------------------------------- tuile choisie : le fond suit
   onFocus(target) {
+    if (this.mode === 'game') { renderHints(); return; }
     if (this.mode === 'manage' || !target || !this.el.contains(target)) return;
     const key = target.dataset.key;
-    if (target.dataset.gid || target.dataset.sys) {
+    if (target.dataset.gid || target.dataset.sys || target.classList.contains('tool')) {
       this.lastKey = key;
       if (target.dataset.gid) {
-        this.sel = this.roms().find(g => g.id === target.dataset.gid) || null;
+        this.sel = this.gameById(target.dataset.gid);
         if (this.mode === 'console' && this.sel) { this.pos[this.sys] = this.sel.id; store.set('emupos', this.pos); }
         this.selSys = null;
-      } else { this.selSys = target.dataset.sys; this.sel = null; }
-      clearTimeout(this.heroTimer);
-      this.heroTimer = setTimeout(() => this.paintHero(), 70);
+        if (heroOf(this.sel)) setBackground(heroOf(this.sel));
+      } else if (target.dataset.sys) {
+        this.selSys = target.dataset.sys; this.sel = null;
+        const games = this.gamesOf(this.selSys);
+        const pic = heroOf(games.filter(g => g.lastPlayed).sort(lastPlayedFirst)[0]) || games.map(heroOf).find(Boolean);
+        if (pic) setBackground(pic);
+      } else { this.sel = null; this.selSys = null; }
       renderHints();
     }
   },
-  current() { return this.sel || null; },
-  play() { const g = this.current(); if (g) launch(g); },
-  setHeroBg(url) {
-    if (!this.heroEl || url === this.heroBg) return;
-    this.heroBg = url;
-    const [a, b] = this.heroEl.querySelectorAll('.kw-bg');
-    const next = a.classList.contains('on') ? b : a, prev = next === a ? b : a;
-    next.style.backgroundImage = url ? `url("${url}")` : 'none';
-    next.classList.add('on'); prev.classList.remove('on');
-    if (url) setBackground(url);
-  },
-  paintHero() {
-    const box = this.heroEl && this.heroEl.querySelector('.kw-hero-in');
-    if (!box || !box.isConnected) return;
-    const keep = box.querySelector('.focused')?.dataset.key;
-    const btn = (cls, ic, text, fn, key, glyphKey) => nav(el('div', 'kw-btn ' + cls, `${icon(ic)}<span>${text}</span>${glyphKey ? shoulder(glyphKey).outerHTML : ''}`), fn, key);
-    const acts = el('div', 'kw-acts');
-    if (this.sel) {
-      const g = this.sel;
-      const m = metaCache.get(g.id);
-      if (!m) this.loadMeta(g);
-      this.setHeroBg(heroOf(g));
-      this.heroEl.style.setProperty('--c', LOOK[g.system] || 'var(--accent)');
-      const bits = [brandOf(g.system)];
-      if (m?.year) bits.push(m.year);
-      if (m?.genre) bits.push(m.genre);
-      if (m?.players > 1) bits.push(tn(m.players, '{n} joueur', '{n} joueurs'));
-      const played = g.lastPlayed ? t('Dernière partie : {d}', { d: fmt.played(g.lastPlayed) }) + (g.playtime ? ' · ' + fmt.playtime(g.playtime) : '') : t('Jamais joué');
-      const logo = g.art && g.art.logo;
-      box.innerHTML = `<div class="kw-logo">${logo ? `<img src="${logo}" alt="${esc(g.name)}">` : ''}<h1${logo ? ' hidden' : ''}>${favs.has(g.id) ? '<i class="kw-star">★</i>' : ''}${esc(g.name)}</h1></div>
-        <p class="kw-meta">${bits.map(b => esc(String(b))).join('<i>·</i>')}</p><p class="kw-played">${esc(played)}</p>
-        ${m?.description ? `<p class="kw-desc">${esc(m.description)}</p>` : ''}`;
-      const img = box.querySelector('.kw-logo img');
-      // Logo illisible ou absent : le nom en texte
-      if (img) img.onerror = () => { img.remove(); box.querySelector('.kw-logo h1').hidden = false; };
-      acts.append(btn('primary', 'i-play', t('Jouer'), () => this.play(), 'h-play', 'a'));
-      acts.append(btn('', 'i-info', t('Fiche'), () => this.openSheet(), 'h-sheet', 'y'));
-      acts.append(btn(favs.has(g.id) ? 'on' : '', 'i-star', favs.has(g.id) ? t('Favori') : t('Ajouter aux favoris'), () => this.toggleFav(), 'h-fav', 'x'));
-    } else if (this.selSys) {
-      const s = this.sysInfo(this.selSys);
-      const games = this.gamesOf(s.id);
-      const last = games.filter(g => g.lastPlayed).sort(lastPlayedFirst)[0];
-      this.setHeroBg(heroOf(last) || games.map(heroOf).find(Boolean) || null);
-      this.heroEl.style.setProperty('--c', VIRTUAL[s.id] ? 'var(--accent)' : LOOK[s.id] || 'var(--accent)');
-      const minutes = games.reduce((n, g) => n + (g.playtime || 0), 0);
-      const bits = VIRTUAL[s.id] ? [tn(this.systems().length, '{n} console', '{n} consoles')] : [s.maker, YEAR[s.id], kindOf(s.id)];
-      box.innerHTML = `<div class="kw-logo"><h1 class="sys">${esc(VIRTUAL[s.id] ? VIRTUAL[s.id]() : s.name)}</h1></div>
-        <p class="kw-meta">${bits.filter(Boolean).map(b => esc(String(b))).join('<i>·</i>')}</p>
-        <p class="kw-played">${esc([tn(games.length, '{n} jeu', '{n} jeux'), minutes ? t('{t} de jeu', { t: fmt.playtime(minutes) }) : '', last ? t('Dernier : {name}', { name: last.name }) : ''].filter(Boolean).join(' · '))}</p>`;
-      acts.append(btn('primary', 'i-library', t('Voir les jeux'), () => this.openConsole(s.id), 'h-enter', 'a'));
-      if (!VIRTUAL[s.id]) acts.append(btn('', 'i-palette', t('Réglages de la console'), () => this.openSettings('system', s.id), 'h-settings', 'y'));
-    } else return;
-    box.append(acts);
-    if (keep) { const f = box.querySelector(`[data-key="${keep}"]`); if (f) setFocus(f, { scroll: false, sound: false }); }
-  },
+  current() { return this.mode === 'game' ? this.gameById(this.gid) : this.sel || null; },
+  play(opts) { const g = this.current(); if (g) launch(g, opts); },
   toggleFav() {
     const g = this.current();
     if (!g) return;
     toggleFav(g);
     this.el.querySelectorAll(`.kw-tile[data-gid="${CSS.escape(g.id)}"]`).forEach(x => x.classList.toggle('fav', favs.has(g.id)));
-    this.paintHero();
-    if (this.sheet && this.sheet.view === 'info') this.drawSheetInfo('s-fav');
+    if (this.mode === 'game') { this.drawGameHead(); if (this.tab === 'play') this.drawTab('g-fav'); }
   },
   async loadMeta(g) {
     if (this.metaLoading === g.id) return;
@@ -402,13 +339,141 @@ definePage('emulation', {
       metaCache.set(g.id, r.meta || {});
     } catch { metaCache.set(g.id, {}); }
     this.metaLoading = null;
-    if (this.sel === g) {
-      this.paintHero();
-      if (this.sheet && this.sheet.view === 'info') this.drawSheetInfo();
+    if (this.mode === 'game' && this.gid === g.id && this.el.classList.contains('active')) {
+      this.drawGameHead();
+      if (this.tab === 'play' || this.tab === 'info') this.drawTab(this.focusedKey());
     }
   },
 
-  // ---------------------------------------------------------------- fiche (glisse par-dessus)
+  // ---------------------------------------------------------------- page d'un jeu
+  /** A sur une jaquette : la page du jeu, « Jouer » déjà choisi (A de nouveau pour lancer). */
+  openGame(g) {
+    if (this.mode !== 'game') this.from = this.mode;
+    this.gid = g.id;
+    this.view = 'game';
+    this.tab = 'play';
+    this.gameDirty = false;
+    this.draw('g-play');
+  },
+  closeGame() {
+    sfx('back');
+    this.view = this.from || 'hub';
+    if (this.gameDirty) { this.gameDirty = false; lib.load({ background: true }); }
+    this.draw(this.lastKey);
+  },
+  drawGame(focusKey) {
+    const g = this.gameById(this.gid);
+    if (!metaCache.has(g.id)) this.loadMeta(g);
+    const root = el('div', 'kw game');
+    root.style.setProperty('--c', LOOK[g.system] || 'var(--accent)');
+    const hero = heroOf(g);
+    const bg = el('div', 'kg-bg');
+    if (hero) bg.style.backgroundImage = `url("${hero}")`;
+    else bg.style.setProperty('--img', hasArt(g) ? `url("${g.art.portrait}")` : 'none');
+    bg.classList.toggle('from-cover', !hero);
+    root.append(bg, el('div', 'kg-shade'));
+    const wrap = el('div', 'kg');
+    const side = el('div', 'kg-side');
+    side.append(cover(g, { lazy: false }));
+    const main = el('div', 'kg-main');
+    main.append(el('div', 'kg-head'));
+    const tabs = el('div', 'kg-tabs');
+    tabs.append(shoulder('lb'));
+    for (const [k, l, ic] of TABS()) tabs.append(nav(el('div', 'kg-tab' + (this.tab === k ? ' on' : ''), `${icon(ic)}<span>${esc(l)}</span>`), () => this.setTab(k), 'tab:' + k));
+    tabs.append(shoulder('rb'));
+    tabs.querySelectorAll('.shoulder').forEach(x => x.addEventListener('click', () => this.button(x.dataset.glyph)));
+    main.append(tabs, el('div', 'kg-panel'));
+    wrap.append(side, main);
+    root.append(wrap);
+    this.el.replaceChildren(root);
+    this.tint(this.data.systems.find(s => s.id === g.system) || null);
+    if (hero) setBackground(hero);
+    this.drawGameHead();
+    this.drawTab(focusKey);
+  },
+  /** Logo (ou nom), console, année, genre, dernière partie. */
+  drawGameHead() {
+    const g = this.gameById(this.gid);
+    const head = this.el.querySelector('.kg-head');
+    if (!g || !head) return;
+    const m = metaCache.get(g.id);
+    const bits = [brandOf(g.system)];
+    if (m?.year) bits.push(m.year);
+    if (m?.genre) bits.push(m.genre);
+    if (m?.players > 1) bits.push(tn(m.players, '{n} joueur', '{n} joueurs'));
+    if (g.discs) bits.push(tn(g.discs, '{n} disque', '{n} disques'));
+    const played = g.lastPlayed ? t('Dernière partie : {d}', { d: fmt.played(g.lastPlayed) }) + (g.playtime ? ' · ' + fmt.playtime(g.playtime) : '') : t('Jamais joué');
+    const logo = g.art && g.art.logo;
+    head.innerHTML = `<div class="kg-logo">${logo ? `<img src="${logo}" alt="${esc(g.name)}">` : ''}<h1${logo ? ' hidden' : ''}>${esc(g.name)}</h1></div>
+      <p class="kg-meta">${favs.has(g.id) ? '<i class="kw-star">★</i>' : ''}${bits.map(b => esc(String(b))).join('<i>·</i>')}</p><p class="kg-played">${esc(played)}</p>`;
+    const img = head.querySelector('.kg-logo img');
+    // Logo illisible ou absent : le nom en texte
+    if (img) img.onerror = () => { img.remove(); head.querySelector('.kg-logo h1').hidden = false; };
+  },
+  setTab(k, focusKey) {
+    if (this.tab === k && !focusKey) { this.focusPanel(); return; }
+    this.tab = k;
+    sfx('move');
+    this.el.querySelectorAll('.kg-tab').forEach(x => x.classList.toggle('on', x.dataset.key === 'tab:' + k));
+    this.drawTab(focusKey);
+  },
+  focusPanel(key) {
+    const panel = this.el.querySelector('.kg-panel');
+    if (panel) { panel.scrollTop = 0; focusIn(panel, key, { scroll: 'instant' }); }
+    renderHints();
+  },
+  /** Contenu de l'onglet choisi. */
+  async drawTab(focusKey) {
+    const g = this.gameById(this.gid);
+    const panel = this.el.querySelector('.kg-panel');
+    if (!g || !panel) return;
+    panel.dataset.tab = this.tab;
+    const m = metaCache.get(g.id);
+    const big = (cls, ic, text, sub, fn, key) => nav(el('div', 'kg-act ' + cls, `${icon(ic)}<div><b>${text}</b>${sub ? `<small>${sub}</small>` : ''}</div>`), fn, key);
+    if (this.tab === 'play') {
+      const acts = el('div', 'kg-acts');
+      acts.append(big('primary', 'i-play', t('Jouer'), g.lastPlayed && g.emulatorId === 'retroarch' ? t('Reprend là où vous vous étiez arrêté') : '', () => this.play(), 'g-play'));
+      // Reprise automatique de RetroArch : on peut aussi repartir de zéro
+      if (g.emulatorId === 'retroarch' && g.lastPlayed) acts.append(big('', 'i-restart', t('Recommencer du début'), t('Sans reprendre la dernière partie'), () => this.play({ fresh: true }), 'g-fresh'));
+      acts.append(big(favs.has(g.id) ? 'on' : '', 'i-star', favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), '', () => this.toggleFav(), 'g-fav'));
+      panel.replaceChildren(acts);
+      const desc = el('div', 'kg-desc' + (m ? '' : ' loading'), m ? (m.description ? `<p>${esc(m.description)}</p>${m.descriptionUrl ? `<small>${t('Source : Wikipédia')}</small>` : ''}` : `<p class="muted">${t('Pas de description trouvée pour ce jeu.')}</p>`) : '<i class="spinner"></i>');
+      // La description se lit en descendant : elle prend le focus pour faire défiler
+      panel.append(nav(desc, () => {}, 'g-desc'));
+    } else if (this.tab === 'settings') {
+      this.gset = { scope: 'game', sysId: g.system, g, box: panel, game: true };
+      await this.drawSettings(this.gset, focusKey, true);
+      if (this.tab !== 'settings') return;
+    } else if (this.tab === 'art') {
+      const grid = el('div', 'kg-arts');
+      const custom = g.customArt || [];
+      for (const [k, l] of ART_KINDS()) {
+        const src = g.art && g.art[k];
+        const tile = el('div', `kg-art ${k}`, `<div class="kg-art-img">${src ? `<img src="${esc(src)}" alt="" onerror="this.remove()">` : ''}<i>${icon('i-image')}</i></div><b>${esc(l)}</b><small>${custom.includes(k) ? t('Personnalisé') : src ? t('Automatique') : t('Aucun')}</small>`);
+        grid.append(nav(tile, () => go('artpicker', { id: g.id, kind: k, direct: true }), 'art:' + k));
+      }
+      panel.replaceChildren(grid, big('', 'i-search', t('Tous les visuels'), t('SteamGridDB, image du disque, récupérer à nouveau'), () => go('artpicker', { id: g.id }), 'art-all'));
+    } else if (this.tab === 'info') {
+      const facts = [[t('Console'), this.sysInfo(g.system)?.name || g.systemName], [t('Développeur'), m?.developer], [t('Éditeur'), m?.publisher], [t('Sortie'), m?.year], [t('Genre'), m?.genre],
+        [t('Région'), g.region], [t('Émulateur'), g.emulator ? g.emulator + (g.core ? ` · ${g.core}` : '') : t('Installé au premier lancement')], [t('Taille'), g.sizeOnDisk ? fmt.size(g.sizeOnDisk) : ''],
+        [t('Temps de jeu'), g.playtime ? fmt.playtime(g.playtime) : '']].filter(([, v]) => v);
+      const tiles = el('div', 'kg-facts', facts.map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(String(v))}</b></div>`).join(''));
+      const file = el('div', 'kg-file', `<small>${t('Fichier')}</small><span>${esc(g.romPath || '')}</span>`);
+      const acts = el('div', 'kg-acts');
+      acts.append(big('', 'i-folder', t('Ouvrir le dossier'), '', () => this.open({ system: g.system }), 'g-folder'),
+        big('', 'i-info', t('Fiche KaneMode'), t('Collections, retirer de la bibliothèque'), () => go('game', { id: g.id }), 'g-sheet'));
+      tiles.style.marginTop = '12px';
+      panel.replaceChildren(acts, tiles, file);
+    }
+    if (this.el.querySelector('.kg-panel') !== panel) return;
+    const want = focusKey && panel.querySelector(`[data-key="${CSS.escape(focusKey)}"]`) ? focusKey : null;
+    const tabFocused = this.el.querySelector('.kg-tab.focused');
+    // Changement d'onglet depuis la barre d'onglets : le focus y reste
+    if (tabFocused && !focusKey) { renderHints(); return; }
+    this.focusPanel(want || undefined);
+  },
+
+  // ---------------------------------------------------------------- réglages (page du jeu, ou volet d'une console)
   sheetEl() {
     if (!this.sheetBox) {
       const s = el('aside', 'layer panel emu-sheet');
@@ -422,23 +487,18 @@ definePage('emulation', {
     }
     return this.sheetBox;
   },
-  /** Ouvre la fiche du jeu (view 'info') ou directement les réglages d'une console. */
-  async openSheet(view = 'info', scope = 'game', sysId = null) {
+  /** Réglages d'une console : un volet qui glisse par-dessus (accueil Y, bouton « Réglages »). */
+  async openSettings(scope, sysId) {
     if (this.sheet) return;
-    const g = this.current();
-    if (view === 'info' && !g) return;
     const box = this.sheetEl();
-    this.sheet = { view, from: view, scope, sysId: sysId || (g && g.system), g };
-    if (view === 'info') this.drawSheetInfo(null, true);
-    else await this.drawSheetSettings(null, true);
+    this.sheet = { scope, sysId, g: null, box };
+    await this.drawSettings(this.sheet, null, true);
     box.scrollTop = 0;
-    box.style.setProperty('--sys', this.sheet.sysId && LOOK[this.sheet.sysId] ? LOOK[this.sheet.sysId] : 'var(--accent)');
+    box.style.setProperty('--sys', LOOK[sysId] || 'var(--accent)');
     const page = this;
     this.sheetLayer = openLayer({
-      el: box, name: 'emu-sheet', scrim: true, focusKey: view === 'info' ? 's-play' : box.querySelector('[data-setting]')?.dataset.key,
-      hints: () => (page.sheet && page.sheet.view === 'settings'
-        ? [[['left', 'right'], t('Changer')], ['b', page.sheet.from === 'info' ? t('Retour') : t('Fermer')]]
-        : [['x', t('Favori')], ['a', t('Choisir')], ['b', t('Fermer')]]),
+      el: box, name: 'emu-sheet', scrim: true, focusKey: box.querySelector('[data-setting]')?.dataset.key,
+      hints: () => [[['left', 'right'], t('Changer')], ['b', t('Fermer')]],
       button: k => page.sheetButton(k),
       onClose: () => {
         const dirty = page.sheet && page.sheet.dirty;
@@ -452,72 +512,24 @@ definePage('emulation', {
   sheetButton(k) {
     const s = this.sheet;
     if (!s) return false;
-    const f = this.sheetBox.querySelector('.focused');
-    if (s.view === 'settings') {
-      if ((k === 'left' || k === 'right') && f && f.dataset.setting) { this.changeSetting(f.dataset.setting, k === 'right' ? 1 : -1); return true; }
-      if (k === 'b' && s.from === 'info') { s.view = 'info'; this.drawSheetInfo('s-settings'); sfx('back'); return true; }
-      if (k === 'y') { this.closeSheet(); return true; }
-      return false;
-    }
-    if (k === 'x') { this.toggleFav(); return true; }
+    const f = s.box.querySelector('.focused');
+    if ((k === 'left' || k === 'right') && f && f.dataset.setting) { this.changeSetting(s, f.dataset.setting, k === 'right' ? 1 : -1); return true; }
     if (k === 'y') { this.closeSheet(); return true; }
     return false;
   },
-  drawSheetInfo(focusKey, opening) {
-    const g = this.sheet.g;
-    const p = this.sheetBox;
-    const m = metaCache.get(g.id);
-    const hero = g.art && (g.art.hero || g.art.header);
-    const chips = [];
-    if (m?.year) chips.push(esc(m.year));
-    if (m?.genre) chips.push(esc(m.genre));
-    if (m?.players) chips.push(esc(tn(m.players, '{n} joueur', '{n} joueurs')));
-    if (g.discs) chips.push(esc(tn(g.discs, '{n} disque', '{n} disques')));
-    const played = g.lastPlayed ? fmt.played(g.lastPlayed) + (g.playtime ? ' · ' + fmt.playtime(g.playtime) : '') : t('Jamais joué');
-    p.innerHTML = `
-      <div class="sxp-head" style="${hero ? `--hero:url('${hero}')` : ''}">
-        <div class="sxp-cover">${g.art && g.art.portrait ? `<img src="${g.art.portrait}" alt="" onerror="this.remove()">` : ''}</div>
-        <div class="sxp-title">
-          <small>${esc(brandOf(g.system))}</small>
-          <h2>${esc(g.name)}</h2>
-          <div class="sxp-chips">${chips.map(c => `<span>${c}</span>`).join('')}${favs.has(g.id) ? '<span class="fav">★</span>' : ''}</div>
-          <p>${esc(played)}</p>
-        </div>
-      </div>
-      <div class="es-acts"></div>
-      <div class="sxp-desc ${m ? '' : 'loading'}">${m ? (m.description ? `<p>${esc(m.description)}</p>${m.descriptionUrl ? `<small class="sxp-src">${t('Source : Wikipédia')}</small>` : ''}` : `<p class="muted">${t('Pas de description trouvée pour ce jeu.')}</p>`) : '<i class="spinner"></i>'}</div>
-      <div class="sxp-shots">${['hero', 'header'].map(k => g.art && g.art[k] ? `<img src="${g.art[k]}" alt="" onerror="this.remove()">` : '').join('')}</div>
-      <div class="sxp-tiles">${[[t('Développeur'), m?.developer], [t('Éditeur'), m?.publisher], [t('Région'), g.region],
-    [t('Émulateur'), g.emulator ? g.emulator + (g.core ? ` · ${g.core}` : '') : '']].filter(([, v]) => v).map(([k, v]) => `<div><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>`;
-    const acts = p.querySelector('.es-acts');
-    const row = (cls, ic, label, fn, key) => acts.append(nav(el('div', 'es-row ' + cls, `${icon(ic)}<span>${label}</span>`), fn, key));
-    row('play', 'i-play', t('Jouer'), () => { this.closeSheet(); this.play(); }, 's-play');
-    row(favs.has(g.id) ? 'on' : '', 'i-star', favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), () => this.toggleFav(), 's-fav');
-    row('', 'i-gear', t('Réglages du jeu'), () => { this.sheet.view = 'settings'; this.sheet.scope = 'game'; this.drawSheetSettings(); }, 's-settings');
-    row('', 'i-image', t('Jaquette et visuels'), () => { this.closeSheet(); go('artpicker', { id: g.id }); }, 's-art');
-    row('', 'i-info', t('Fiche KaneMode'), () => { this.closeSheet(); go('game', { id: g.id }); }, 's-sheet');
-    row('', 'i-folder', t('Ouvrir le dossier'), () => this.open({ system: g.system }), 's-folder');
-    // La description se lit en descendant : elle prend le focus pour faire défiler la fiche
-    nav(p.querySelector('.sxp-desc'), () => {}, 's-desc');
-    if (!opening) {
-      focusIn(p, focusKey || 's-play', { scroll: false });
-      renderHints();
-    }
-  },
 
   /** Réglages du jeu ou de la console : une ligne par réglage, ◀ ▶ pour changer, enregistré tout de suite. */
-  async drawSheetSettings(focusKey, opening) {
-    const s = this.sheet;
-    const g = s.g;
-    const sysId = s.scope === 'system' ? s.sysId : g.system;
+  async drawSettings(ctx, focusKey, opening) {
+    const g = ctx.g;
+    const sysId = ctx.sysId;
     const sys = this.data.systems.find(x => x.id === sysId);
     if (!sys) return;
-    const r = await api.get(`/api/emu/settings?system=${encodeURIComponent(sysId)}&id=${encodeURIComponent(g && s.scope === 'game' ? g.id : '')}`);
-    if (!this.sheet) return;
-    const own = (s.scope === 'game' ? r.game : r.system) || {};
-    const base = s.scope === 'game' ? (r.system || {}) : {};
+    const r = await api.get(`/api/emu/settings?system=${encodeURIComponent(sysId)}&id=${encodeURIComponent(g && ctx.scope === 'game' ? g.id : '')}`);
+    if (ctx.game ? this.gset !== ctx || this.tab !== 'settings' || !ctx.box.isConnected : this.sheet !== ctx) return;
+    const own = (ctx.scope === 'game' ? r.game : r.system) || {};
+    const base = ctx.scope === 'game' ? (r.system || {}) : {};
     const emuName = id => (sys.emus.find(e => e.id === id) || {}).name || id;
-    const defEmu = (s.scope === 'game' && !base.emulator && g.emulatorId) || (sys.emus[0] || {}).id;
+    const defEmu = (ctx.scope === 'game' && !base.emulator && g.emulatorId) || (sys.emus[0] || {}).id;
     const d = r.defaults || {};
     const inherited = { emulator: base.emulator || defEmu, core: base.core || sys.cores[0], filter: base.filter || d.filter || 'none', aspect: base.aspect || d.aspect || 'auto',
       quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off' };
@@ -531,7 +543,7 @@ definePage('emulation', {
       quality: QUALITIES(),
       wide: WIDES(),
     };
-    s.state = { sysId, own, options, inherited };
+    ctx.state = { sysId, own, options, inherited };
     const kinds = [];
     if (sys.emus.length > 1) kinds.push(['emulator', t('Émulateur'), 'i-gamepad']);
     if (emuId === 'retroarch' && sys.cores.length > 1) kinds.push(['core', t('Cœur RetroArch'), 'i-cpu']);
@@ -539,12 +551,11 @@ definePage('emulation', {
     if (QUALITY_EMUS.includes(emuId) || (emuId === 'retroarch' && sysId === 'n64')) kinds.push(['quality', t('Qualité de l’image'), 'i-image']);
     if (WIDE_EMUS.includes(emuId)) kinds.push(['wide', t('Écran large (16:9)'), 'i-desktop']);
     if (ASPECT_EMUS.includes(emuId) && value('wide') !== 'on') kinds.push(['aspect', t('Format de l’image'), 'i-desktop']);
-    const p = this.sheetBox;
-    const auto = s.scope === 'game' ? t('comme la console') : t('par défaut');
-    p.innerHTML = `<div class="es-head"><small>${s.scope === 'game' ? t('Réglages du jeu') : t('Réglages de la console')}</small>
-      <h2>${esc(s.scope === 'game' ? g.name : sys.name)}</h2>
-      <p>${s.scope === 'game' ? t('Pour ce jeu seulement. Ce qui n’est pas changé ici suit les réglages de la console.') : t('Pour tous les jeux de cette console, sauf ceux qui ont leurs propres réglages.')}</p></div>
-      <div class="es-sets"></div>`;
+    const p = ctx.box;
+    const auto = ctx.scope === 'game' ? t('comme la console') : t('par défaut');
+    p.innerHTML = ctx.game ? `<p class="kg-note">${t('Pour ce jeu seulement. Ce qui n’est pas changé ici suit les réglages de la console.')}</p><div class="es-sets"></div>`
+      : `<div class="es-head"><small>${t('Réglages de la console')}</small><h2>${esc(sys.name)}</h2>
+      <p>${t('Pour tous les jeux de cette console, sauf ceux qui ont leurs propres réglages.')}</p></div><div class="es-sets"></div>`;
     const list = p.querySelector('.es-sets');
     if (!kinds.length) list.append(el('div', 'notice', t('{name} se règle tout seul : rien à choisir ici.', { name: esc(emuName(emuId)) })));
     for (const [k, title, ic] of kinds) {
@@ -553,48 +564,45 @@ definePage('emulation', {
       const row = el('div', 'es-set', `${icon(ic)}<div class="txt"><b>${title}</b><small>${own[k] !== undefined ? t('choisi ici') : auto}</small></div>
         <div class="es-val"><i class="prev">◀</i><span>${esc(shown)}</span><i class="next">▶</i></div>`);
       row.dataset.setting = k;
-      row.querySelector('.prev').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(k, -1); });
-      row.querySelector('.next').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(k, 1); });
-      list.append(nav(row, () => this.changeSetting(k, 1), 'set:' + k));
+      row.querySelector('.prev').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(ctx, k, -1); });
+      row.querySelector('.next').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(ctx, k, 1); });
+      list.append(nav(row, () => this.changeSetting(ctx, k, 1), 'set:' + k));
     }
     if (Object.keys(own).length) {
-      list.append(nav(el('div', 'es-row', `${icon('i-refresh')}<span>${s.scope === 'game' ? t('Revenir aux réglages de la console') : t('Revenir aux réglages par défaut')}</span>`), async () => {
-        await this.saveSetting({ emulator: null, core: null, filter: null, aspect: null });
-        await this.drawSheetSettings();
+      list.append(nav(el('div', 'es-row', `${icon('i-refresh')}<span>${ctx.scope === 'game' ? t('Revenir aux réglages de la console') : t('Revenir aux réglages par défaut')}</span>`), async () => {
+        await this.saveSetting(ctx, { emulator: null, core: null, filter: null, aspect: null, quality: null, wide: null });
+        await this.drawSettings(ctx);
       }, 'set-reset'));
     }
-    if (s.from === 'info') list.append(nav(el('div', 'es-row back', `${icon('i-chevron')}<span>${t('Retour à la fiche')}</span>`), () => { s.view = 'info'; this.drawSheetInfo('s-settings'); }, 'set-back'));
+    if (ctx.game) list.append(nav(el('div', 'es-row', `${icon('i-gear')}<span>${t('Réglages de toute la console')}</span>`), () => this.openSettings('system', sysId), 'set-system'));
     if (!opening) {
       const want = focusKey && p.querySelector(`[data-key="${CSS.escape(focusKey)}"]`) ? focusKey : (p.querySelector('[data-setting]') || p.querySelector('[data-nav]'))?.dataset.key;
       focusIn(p, want, { scroll: false });
       renderHints();
     }
   },
-  async saveSetting(values) {
-    const s = this.sheet;
-    await api.post('/api/emu/settings', { scope: s.scope, id: s.scope === 'game' ? s.g.id : s.state.sysId, values });
-    s.dirty = true;
+  async saveSetting(ctx, values) {
+    await api.post('/api/emu/settings', { scope: ctx.scope, id: ctx.scope === 'game' ? ctx.g.id : ctx.state.sysId, values });
+    ctx.dirty = true;
+    if (ctx.game) this.gameDirty = true;
   },
-  async changeSetting(k, dir) {
-    const s = this.sheet;
-    if (!s || !s.state || this.saving) return;
+  async changeSetting(ctx, k, dir) {
+    if (!ctx || !ctx.state || this.saving) return;
     this.saving = true;
     try {
       // « Automatique » montre déjà la valeur héritée : elle n'est pas proposée une seconde fois
-      const opts = [null, ...s.state.options[k].map(o => o[0]).filter(v => v !== s.state.inherited[k])];
-      const cur = s.state.own[k] === undefined ? null : s.state.own[k];
+      const opts = [null, ...ctx.state.options[k].map(o => o[0]).filter(v => v !== ctx.state.inherited[k])];
+      const cur = ctx.state.own[k] === undefined ? null : ctx.state.own[k];
       const i = Math.max(0, opts.indexOf(cur));
       const v = opts[(i + dir + opts.length) % opts.length];
       const values = { [k]: v };
       if (k === 'emulator') values.core = null;
       sfx('move');
-      await this.saveSetting(values);
-      await this.drawSheetSettings('set:' + k);
+      await this.saveSetting(ctx, values);
+      await this.drawSettings(ctx, 'set:' + k);
     } catch (e) { toast(e.message, { error: true }); }
     this.saving = false;
   },
-  /** Réglages d'une console, depuis l'accueil (Y) ou le bouton « Réglages » de la console. */
-  openSettings(scope, sysId) { this.openSheet('settings', scope, sysId); },
 
   tint(s) {
     const all = !s || s.id === 'all';
@@ -770,21 +778,34 @@ definePage('emulation', {
       return false;
     }
     const focused = this.el.querySelector('.focused');
-    const onGame = focused && (focused.dataset.gid || this.el.querySelector('.kw-hero')?.contains(focused)) && this.sel;
+    if (this.mode === 'game') {
+      if (k === 'b') { this.closeGame(); return true; }
+      if (k === 'lb' || k === 'rb') {
+        const ids = TABS().map(x => x[0]);
+        const i = ids.indexOf(this.tab);
+        this.setTab(ids[(i + (k === 'rb' ? 1 : -1) + ids.length) % ids.length], '-');
+        return true;
+      }
+      if (k === 'x') { this.toggleFav(); return true; }
+      if (k === 'y') { this.play(); return true; }
+      if ((k === 'left' || k === 'right') && focused && focused.dataset.setting && this.gset) { this.changeSetting(this.gset, focused.dataset.setting, k === 'right' ? 1 : -1); return true; }
+      // Des onglets, ↓ entre dans l'onglet ; du haut de l'onglet, ↑ remonte aux onglets
+      if (k === 'down' && focused && focused.classList.contains('kg-tab')) { this.focusPanel(); return true; }
+      const panel = this.el.querySelector('.kg-panel');
+      if (k === 'up' && focused && panel && panel.contains(focused)) {
+        const top = focused.getBoundingClientRect().top;
+        const above = [...panel.querySelectorAll('[data-nav]')].some(x => x !== focused && x.getBoundingClientRect().bottom <= top + 2);
+        if (!above) { setFocus(this.el.querySelector('.kg-tab.on')); return true; }
+      }
+      return false;
+    }
+    const onGame = focused && focused.dataset.gid && this.sel;
     if (k === 'x') { if (onGame) this.toggleFav(); return true; }
     if (k === 'y') {
-      if (onGame) this.openSheet();
+      // Y : jouer tout de suite, sans passer par la page du jeu
+      if (onGame) this.play();
       else if (this.selSys && !VIRTUAL[this.selSys]) this.openSettings('system', this.selSys);
       return true;
-    }
-    // Des boutons de la bannière, ↑ mène aux boutons de l'en-tête (Gérer, Réglages, Consoles)
-    if (k === 'up' && focused && this.heroEl && this.heroEl.contains(focused)) {
-      const head = this.el.querySelector(this.mode === 'hub' ? '[data-key="add-games"]' : '[data-key="to-hub"]');
-      if (head) { setFocus(head); return true; }
-    }
-    if (k === 'down' && focused && focused.closest('.kw-head')) {
-      const first = this.heroEl && this.heroEl.querySelector('.kw-btn');
-      if (first) { setFocus(first); return true; }
     }
     if (this.mode === 'hub') return false;
     if (k === 'b') { this.toHub(); return true; }
@@ -799,11 +820,19 @@ definePage('emulation', {
   },
   hints() {
     if (this.mode === 'manage') return [['a', t('Sélectionner')], ['b', t('Retour')]];
+    if (this.mode === 'game') {
+      const f = this.el.querySelector('.focused');
+      const list = [[['lb', 'rb'], t('<span class="label-long">Onglet</span>')]];
+      if (f && f.dataset.setting) list.push([['left', 'right'], t('Changer')]);
+      list.push(['x', t('Favori')], ['y', t('Jouer')], ['a', t('Choisir')], ['b', t('Retour')]);
+      return list;
+    }
     const game = !!this.sel;
     const list = [];
     if (this.mode === 'console') list.push([['lb', 'rb'], t('<span class="label-long">Console</span>')], [['lt', 'rt'], t('<span class="label-long">Lettre</span>')]);
-    if (game) list.push(['x', t('Favori')], ['y', t('Fiche')], ['a', t('Jouer')]);
-    else list.push(['y', t('<span class="label-long">Réglages</span>')], ['a', t('Ouvrir')]);
+    if (game) list.push(['x', t('Favori')], ['y', t('Jouer')], ['a', t('Ouvrir')]);
+    else if (this.selSys && !VIRTUAL[this.selSys]) list.push(['y', t('<span class="label-long">Réglages</span>')], ['a', t('Ouvrir')]);
+    else list.push(['a', t('Ouvrir')]);
     list.push(['b', this.mode === 'console' ? t('Consoles') : t('Retour')]);
     return list;
   },

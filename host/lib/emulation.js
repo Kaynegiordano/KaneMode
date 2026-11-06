@@ -61,6 +61,94 @@ function archiveMode(sys, ext) {
   if (DIRECT.includes(sys.id) && ext !== 'rar') return 'direct';
   return 'extract';
 }
+
+// ---------- Contenu des archives ----------
+// RetroArch ouvre le premier fichier reconnu d'une archive : la puce « Lock-on » de Sonic &
+// Knuckles (.bin) au lieu du jeu (.md), une piste de Sonic CD comme une cartouche… KaneMode
+// regarde donc ce qu'il y a dedans : le bon fichier est nommé à RetroArch (« jeu.zip#jeu.md »),
+// et un jeu CD rangé avec les cartouches part vers sa console (Mega Drive → Mega-CD).
+const DISC_EXTS = ['cue', 'chd', 'iso', 'gdi', 'ccd', 'mds', 'cdi', 'm3u'];
+const CD_OF = { megadrive: 'segacd' };
+const extOf = n => path.extname(n).slice(1).toLowerCase();
+
+/** Fichiers d'un .zip lus dans son répertoire central (rien n'est décompressé), ou null. */
+function zipEntries(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const tailLen = Math.min(size, 65557);
+    const tail = Buffer.alloc(tailLen);
+    fs.readSync(fd, tail, 0, tailLen, size - tailLen);
+    let eocd = -1;
+    for (let i = tailLen - 22; i >= 0; i--) if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) return null;
+    let cdSize = tail.readUInt32LE(eocd + 12), cdOff = tail.readUInt32LE(eocd + 16);
+    // Zip64 (archive de plus de 4 Go) : le vrai répertoire est décrit juste avant
+    if ((cdOff === 0xffffffff || cdSize === 0xffffffff) && eocd >= 20 && tail.readUInt32LE(eocd - 20) === 0x07064b50) {
+      const z = Buffer.alloc(56);
+      fs.readSync(fd, z, 0, 56, Number(tail.readBigUInt64LE(eocd - 12)));
+      if (z.readUInt32LE(0) !== 0x06064b50) return null;
+      cdSize = Number(z.readBigUInt64LE(40)); cdOff = Number(z.readBigUInt64LE(48));
+    }
+    if (cdSize > 32 << 20) return null;
+    const cd = Buffer.alloc(cdSize);
+    fs.readSync(fd, cd, 0, cdSize, cdOff);
+    const out = [];
+    for (let p = 0; p + 46 <= cd.length && cd.readUInt32LE(p) === 0x02014b50;) {
+      const utf8 = cd.readUInt16LE(p + 8) & 0x800;
+      let usize = cd.readUInt32LE(p + 24);
+      const nl = cd.readUInt16LE(p + 28), xl = cd.readUInt16LE(p + 30), cl = cd.readUInt16LE(p + 32);
+      const name = cd.toString(utf8 ? 'utf8' : 'latin1', p + 46, p + 46 + nl);
+      if (usize === 0xffffffff) {
+        for (let x = p + 46 + nl; x + 4 <= p + 46 + nl + xl;) {
+          const id = cd.readUInt16LE(x), len = cd.readUInt16LE(x + 2);
+          if (id === 1 && len >= 8) { usize = Number(cd.readBigUInt64LE(x + 4)); break; }
+          x += 4 + len;
+        }
+      }
+      if (!name.endsWith('/')) out.push({ name, size: usize });
+      p += 46 + nl + xl + cl;
+    }
+    return out;
+  } catch { return null; } finally { if (fd !== undefined) try { fs.closeSync(fd); } catch { /* déjà fermé */ } }
+}
+
+// .7z : listé par le tar de Windows (libarchive), une fois par version du fichier
+const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+const listed = new Map();
+function sevenEntries(file) {
+  let key;
+  try { const st = fs.statSync(file); key = `${file}|${st.size}|${Math.floor(st.mtimeMs)}`; } catch { return null; }
+  if (listed.has(key)) return listed.get(key);
+  let out = null;
+  try {
+    const text = require('child_process').execFileSync(TAR, ['-tvf', file], { windowsHide: true, timeout: 15000, encoding: 'utf8', maxBuffer: 8 << 20 });
+    out = text.split(/\r?\n/).map(l => /^[-d]\S*\s+\d+\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\d+\s+\S+\s+(.+)$/.exec(l)).filter(Boolean)
+      .filter(m => !m[2].endsWith('/')).map(m => ({ name: m[2], size: +m[1] }));
+  } catch { out = null; }
+  listed.set(key, out);
+  return out;
+}
+
+/**
+ * Archive d'une console à cartouches : { sys, extract } pour un jeu CD (sa console, décompressé au
+ * lancement), { inner } quand plusieurs fichiers pourraient être le jeu, sinon null (rien à changer).
+ */
+function inspectArchive(sys, file, ext) {
+  if (!DIRECT.includes(sys.id) || !['zip', '7z'].includes(ext)) return null;
+  const list = ext === 'zip' ? zipEntries(file) : sevenEntries(file);
+  if (!list || !list.length) return null;
+  if (list.some(e => DISC_EXTS.includes(extOf(e.name)))) {
+    const cd = CD_OF[sys.id] && SYSTEMS.find(s => s.id === CD_OF[sys.id]);
+    return { sys: cd || sys, extract: true };
+  }
+  const games = list.filter(e => sys.exts.includes(extOf(e.name)));
+  if (games.length < 2) return null;
+  // Le format propre à la console d'abord (.md avant .bin), puis le plus gros fichier
+  games.sort((a, b) => sys.exts.indexOf(extOf(a.name)) - sys.exts.indexOf(extOf(b.name)) || b.size - a.size);
+  return { inner: games[0].name };
+}
 const SYSTEM_BY_FOLDER = new Map();
 // Le dossier de jeux préparé par KaneMode porte le nom de la console (« Super Nintendo »)
 for (const s of SYSTEMS) for (const f of [...s.folders, s.name.toLowerCase()]) SYSTEM_BY_FOLDER.set(f, s);
@@ -219,9 +307,12 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   }
   // Même jeu en deux formats (« Sonic.zip » et « Sonic.sms ») : le format natif, premier de exts
   const games = new Map();
+  // Jeu CD rangé avec les cartouches (Sonic CD en .cue dans « Mega Drive ») : compté pour sa console
+  const cdSys = CD_OF[sys.id] && SYSTEMS.find(s => s.id === CD_OF[sys.id]);
+  const sysFor = ext => (!sys.exts.includes(ext) && cdSys && cdSys.exts.includes(ext) ? cdSys : sys);
   for (const f of files) {
     const ext = path.extname(f).slice(1).toLowerCase();
-    if ((!sys.exts.includes(ext) && !ARCHIVES.includes(ext)) || hidden.has(f.toLowerCase())) continue;
+    if ((!sysFor(ext).exts.includes(ext) && !ARCHIVES.includes(ext)) || hidden.has(f.toLowerCase())) continue;
     const base = path.basename(f, path.extname(f)).toLowerCase();
     const prev = games.get(base);
     if (!prev || rank(sys, ext) < rank(sys, path.extname(prev).slice(1).toLowerCase())) games.set(base, f);
@@ -260,8 +351,10 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
     const full = path.join(dir, f);
     let size = 0; try { size = fs.statSync(full).size; } catch { /* ignoré */ }
     const ext = path.extname(f).slice(1).toLowerCase();
-    const mode = archiveMode(sys, ext);
-    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' || mode === 'mount' ? mode : null });
+    const look = ARCHIVES.includes(ext) ? inspectArchive(sys, full, ext) : null;
+    const own = (look && look.sys) || sysFor(ext);
+    const mode = look && look.extract ? 'extract' : archiveMode(own, ext);
+    out.push({ sys: own, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' || mode === 'mount' ? mode : null, inner: (look && look.inner) || null });
   }
   const dirsFrom = out.length;
   for (const e of entries) {
@@ -296,6 +389,8 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}
     const id = 'rom:' + crypto.createHash('sha1').update(r.path.toLowerCase()).digest('hex').slice(0, 12);
     const set = { ...((settings.systems || {})[r.sys.id] || {}), ...((settings.games || {})[id] || {}) };
     const how = launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
+    // Archive à plusieurs fichiers : RetroArch reçoit le jeu lui-même (« archive.zip#jeu.md »)
+    if (how && r.inner && how.emulatorId === 'retroarch') how.launch.args = how.launch.args.split(`"${r.path}"`).join(`"${r.path}#${r.inner}"`);
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
       romPath: r.path, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0, added: addedAt(r.romFile || r.path),
@@ -304,4 +399,4 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}
   });
 }
 
-module.exports = { SYSTEMS, EMULATORS, ARCHIVES, detectEmulators, scanRoms, launchFor, archiveMode };
+module.exports = { SYSTEMS, EMULATORS, ARCHIVES, detectEmulators, scanRoms, launchFor, archiveMode, zipEntries, inspectArchive };

@@ -205,3 +205,57 @@ test('Image adaptée à l’écran : résolution interne selon l’écran et la 
   assert.ok(qt.includes("confirmStop" + String.fromCharCode(92) + "default=false"));
   assert.match(qt, /use_asynchronous_shaders=true/);
 });
+
+// Petit .zip « stocké » (sans compression), assez pour lire son répertoire central
+function makeZip(file, entries) {
+  const local = [], central = [];
+  let off = 0;
+  for (const [name, size] of entries) {
+    const n = Buffer.from(name, 'utf8');
+    const h = Buffer.alloc(30); h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(0x800, 6); h.writeUInt32LE(size, 18); h.writeUInt32LE(size, 22); h.writeUInt16LE(n.length, 26);
+    const c = Buffer.alloc(46); c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(0x800, 8); c.writeUInt32LE(size, 20); c.writeUInt32LE(size, 24); c.writeUInt16LE(n.length, 28); c.writeUInt32LE(off, 42);
+    local.push(h, n, Buffer.alloc(size)); central.push(c, n);
+    off += 30 + n.length + size;
+  }
+  const cd = Buffer.concat(central);
+  const e = Buffer.alloc(22); e.writeUInt32LE(0x06054b50, 0); e.writeUInt16LE(entries.length, 8); e.writeUInt16LE(entries.length, 10); e.writeUInt32LE(cd.length, 12); e.writeUInt32LE(off, 16);
+  fs.writeFileSync(file, Buffer.concat([...local, cd, e]));
+}
+
+test('Archive à plusieurs fichiers : le jeu lui-même est donné à RetroArch, un jeu CD part vers sa console', () => {
+  const root = tmp();
+  const md = path.join(root, 'Mega Drive');
+  fs.mkdirSync(md);
+  // Sonic & Knuckles : la puce « Lock-on » (.bin) passe en premier dans l'archive, le jeu est le .md
+  makeZip(path.join(md, 'Sonic & Knuckles (World).zip'), [['Sonic & Knuckles (World) (Lock-on).bin', 64], ['Sonic & Knuckles (World).md', 256]]);
+  makeZip(path.join(md, 'Sonic CD (Europe).zip'), [['Sonic CD (Europe) (Track 01).bin', 512], ['Sonic CD (Europe) (Track 02).bin', 128], ['Sonic CD (Europe).cue', 16]]);
+  makeZip(path.join(md, 'Sonic 2 (World).zip'), [['Sonic 2 (World).md', 128]]);
+  fs.writeFileSync(path.join(md, 'Ecco CD (USA).cue'), 'FILE "Ecco CD (USA).bin" BINARY');
+  fs.writeFileSync(path.join(md, 'Ecco CD (USA).bin'), 'x');
+  const ra = path.join(root, 'ra', 'retroarch.exe');
+  fs.mkdirSync(path.dirname(ra));
+  fs.writeFileSync(ra, '');
+  const roms = emu.scanRoms([root], { retroarch: { path: ra, source: 'kanemode' } }, {});
+  const sk = roms.find(r => r.name === 'Sonic & Knuckles');
+  assert.equal(sk.system, 'megadrive');
+  assert.ok(sk.launch.args.endsWith('Sonic & Knuckles (World).zip#Sonic & Knuckles (World).md"'), sk.launch.args);
+  const cd = roms.find(r => r.name === 'Sonic CD');
+  assert.equal(cd.system, 'segacd');
+  assert.equal(cd.archive, 'extract');
+  const s2 = roms.find(r => r.name === 'Sonic 2');
+  assert.ok(s2.launch.args.endsWith('Sonic 2 (World).zip"'), 'une seule cartouche : rien ne change');
+  const ecco = roms.filter(r => /Ecco/.test(r.name));
+  assert.equal(ecco.length, 1, 'le .cue masque son .bin');
+  assert.equal(ecco[0].system, 'segacd');
+});
+
+test('BIOS Mega-CD : celui de la région du jeu, reconnu sous un autre nom', () => {
+  const dir = tmp();
+  assert.equal(setup.biosStatus(dir, 'segacd', { region: 'Europe' }).ok, false);
+  assert.match(setup.biosStatus(dir, 'segacd', { region: 'Europe' }).what, /bios_CD_E\.bin/);
+  const b = Buffer.alloc(131072); b.write('SEGA MEGA DRIVE', 0x100, 'latin1');
+  fs.writeFileSync(path.join(dir, '[BIOS] Mega-CD 2 (Europe) (v2.00).bin'), b);
+  assert.equal(setup.biosStatus(dir, 'segacd', { region: 'Europe' }).ok, true);
+  assert.ok(fs.existsSync(path.join(dir, 'bios_CD_E.bin')));
+  assert.equal(setup.biosStatus(dir, 'segacd', { region: 'USA' }).ok, false, 'un jeu américain veut bios_CD_U.bin');
+});

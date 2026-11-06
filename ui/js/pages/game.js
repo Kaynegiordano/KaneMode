@@ -127,7 +127,8 @@ native.on(m => {
   }
 });
 
-export async function launch(g) {
+/** opts.fresh : jeu d'émulateur repris du début, sans la sauvegarde automatique. */
+export async function launch(g, opts = {}) {
   if (g.demo) return toast(t('Entrée de démonstration : il n’y a rien à lancer'), { error: true });
   if (!g.installed && g.canInstall === false) return toast(t('Ce connecteur ne propose pas l’installation de ce jeu sur Windows'), { error: true });
   if (launching) return;
@@ -169,14 +170,14 @@ export async function launch(g) {
   let waitForGame = false;
   try {
     native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
-    let r = await api.post('/api/launch', { id: g.id });
+    let r = await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
     // Premier jeu d'une console : son émulateur s'installe ici, puis le jeu démarre
     if (r.needsEmulator) {
       status.textContent = t('Installation de {name}…', { name: r.needsEmulator.name });
       const error = await installEmulator(r.needsEmulator.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
       g = lib.byId(g.id) || g;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     // Jeu dans une archive que l'émulateur ne lit pas : décompressé une fois, puis lancé
@@ -184,7 +185,7 @@ export async function launch(g) {
       status.textContent = t('Décompression de {name}…', { name: g.name });
       const error = await extractGame(g.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     if (r.needsBios) {

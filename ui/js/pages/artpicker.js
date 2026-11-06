@@ -36,8 +36,10 @@ const shoulder = k => { const s = el('span', 'shoulder', glyph(k)); s.dataset.gl
 
 definePage('artpicker', {
   title: () => t('Visuels'),
-  render({ id, kind }) {
+  // direct : ouvert sur un type de visuel depuis une autre page (Émulation), B y ramène tout de suite
+  render({ id, kind, direct }) {
     if (this.forId !== id) { this.forId = id; this.game = undefined; this.items = {}; this.kind = 'portrait'; this.mode = 'overview'; }
+    this.direct = !!(kind && direct);
     if (kind) { this.kind = kind; this.mode = 'browse'; }
     this.g = lib.byId(id);
     api.get('/api/config').then(cfg => { const style = cfg.sgdb.style || ''; if (this.forId !== id || style === this.style) return; this.style = style; this.items = {}; if (this.mode === 'browse') this.draw(); }).catch(() => {});
@@ -45,7 +47,7 @@ definePage('artpicker', {
   },
   leave() { thumbs.disconnect(); },
   back() {
-    if (this.mode !== 'browse') return false;
+    if (this.mode !== 'browse' || this.direct) return false;
     sfx('back');
     this.mode = 'overview';
     thumbs.disconnect();

@@ -1228,75 +1228,38 @@ body.emu-world[data-emu-motif="stripes"] #bg::before { background: repeating-lin
 .emu-bios { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; text-align: left; }
 .emu-bios li { display: flex; align-items: center; gap: 8px; }
 
-/* ---------- Monde Émulation, style KaneMode : bannière qui suit la tuile choisie, rangées, grille */
+/* ---------- Monde Émulation, style KaneMode, lisible sur un petit écran (ROG Ally) : rangées de grandes
+   jaquettes sans bandeau, grille d'une console sous une seule ligne de titre, page du jeu à onglets */
 body.emu-world #bg::before { display: none; }
-body.emu-world #bg::after { background: linear-gradient(180deg, rgba(10, 14, 22, .72), rgba(10, 14, 22, .96) 62%); }
+body.emu-world #bg::after { background: linear-gradient(180deg, rgba(10, 14, 22, .6), rgba(10, 14, 22, .94) 70%); }
 .page.kw-mode { overflow: hidden; padding: 0; }
-.kw { position: absolute; inset: 0; padding: var(--top) 0 calc(var(--bottom) + 6px); display: flex; flex-direction: column; min-height: 0; --c: var(--accent); --sys: var(--accent); }
-.kw-head { flex: none; display: flex; align-items: center; gap: 16px; padding: 16px var(--gutter) 10px; position: relative; z-index: 2; }
-.kw-title { min-width: 0; }
-.kw-title b { display: block; font-size: 24px; font-weight: 800; line-height: 1.1; }
-.kw-title small { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.kw-near { display: flex; gap: 8px; margin-left: 10px; }
-.kw-nb { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; color: rgba(225, 232, 250, .65); background: rgba(255, 255, 255, .05); cursor: pointer; white-space: nowrap; }
-.kw-nb:hover { color: #fff; background: rgba(255, 255, 255, .12); }
-.kw-nb .shoulder { padding: 0; }
-.kw-tools { margin-left: auto; display: flex; gap: 8px; }
-.kw-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 6px; background: rgba(255, 255, 255, .07); border: 1px solid var(--line); font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.kw-chip svg { width: 18px; height: 18px; fill: currentColor; }
-.kw-chip.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--c); }
-@media (max-width: 1100px) { .kw-chip span, .kw-nb span { display: none; } }
-
-/* Bannière : image du jeu (ou de la console) en fondu, logo ou nom, repères, boutons */
-.kw-hero { flex: none; position: relative; margin: 0 var(--gutter); height: clamp(200px, 35vh, 440px); border-radius: 10px; overflow: hidden; background: #141b28; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
-.console .kw-hero { height: clamp(190px, 31vh, 360px); }
-.kw-bg { position: absolute; inset: 0; background: center 30% / cover no-repeat; opacity: 0; transition: opacity .45s ease; image-rendering: pixelated; transform: scale(1.02); }
-.kw-bg.on { opacity: 1; }
-.kw-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12, 16, 26, .96) 0%, rgba(12, 16, 26, .78) 36%, rgba(12, 16, 26, .15) 75%), linear-gradient(0deg, rgba(12, 16, 26, .85), transparent 45%);
-  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--c) 70%, transparent); }
-.kw-hero-in { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(18px, 3vh, 34px) clamp(22px, 3vw, 44px); max-width: min(900px, 70%); }
-.kw-logo img { display: block; max-width: min(460px, 100%); max-height: clamp(70px, 13vh, 150px); object-fit: contain; object-position: left bottom; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, .6)); }
-.kw-logo h1 { margin: 0; font-size: clamp(28px, 3.2vw, 54px); line-height: 1.05; text-shadow: 0 3px 16px rgba(0, 0, 0, .6); overflow-wrap: anywhere; }
-.kw-logo h1.sys { font-weight: 900; letter-spacing: .01em; }
-.kw-logo h1.sys::after { content: ''; display: block; width: 74px; height: 5px; margin-top: 10px; border-radius: 3px; background: var(--c); }
-.kw-star { font-style: normal; color: #ffd34d; margin-right: 12px; }
-.kw-meta { margin: 12px 0 0; font-size: 15px; font-weight: 700; color: color-mix(in srgb, var(--c) 35%, #fff); }
-.kw-meta i, .kw-played i { font-style: normal; margin: 0 8px; opacity: .5; }
-.kw-played { margin: 4px 0 0; font-size: 14px; color: rgba(225, 232, 250, .72); }
-.kw-desc { margin: 10px 0 0; max-width: 720px; font-size: 14px; line-height: 1.5; color: rgba(225, 232, 250, .78); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.kw-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-.kw-btn { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px 0 18px; border-radius: 6px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .14); font-size: 15px; font-weight: 800; cursor: pointer; white-space: nowrap; backdrop-filter: blur(8px); transition: transform .12s, background .12s; }
-.kw-btn svg { width: 18px; height: 18px; fill: currentColor; }
-.kw-btn .shoulder { padding: 0; }
-.kw-btn.primary { padding-left: 24px; background: linear-gradient(90deg, #47bfff, #1a6dff); border-color: transparent; color: #fff; }
-.kw-btn.primary .shoulder { color: #dbeaff; }
-.kw-btn.on svg { fill: #ffd34d; }
-.kw-btn.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--c); transform: scale(1.03); }
-@media (max-height: 760px) { .kw-desc { display: none; } .kw-acts { margin-top: 12px; } .kw-btn { height: 42px; } }
-
-/* Rangées de l'accueil, grille d'une console */
-.kw-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding-bottom: 18px; scroll-padding: 44px 0 24px; }
-.kw-body::-webkit-scrollbar, .kw-row::-webkit-scrollbar { display: none; }
-.kw-sec h3 { margin: 20px var(--gutter) 0; font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #c7d5e0; }
-.kw-row { display: flex; align-items: flex-start; gap: 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 12px var(--gutter) 16px; scroll-padding: 0 var(--gutter); }
+/* --cw : largeur d'une jaquette, tirée de la hauteur de l'écran (≈ 4 rangées visibles à 2 écrans) */
+.kw { position: absolute; inset: 0; padding: var(--top) 0 var(--bottom); display: flex; flex-direction: column; min-height: 0; --c: var(--accent); --sys: var(--accent);
+  --cw: clamp(124px, calc(20 * var(--vh)), 200px); }
+.kw-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding-bottom: 18px; scroll-padding: 48px 0 24px; }
+.kw-body::-webkit-scrollbar, .kw-row::-webkit-scrollbar, .kg-panel::-webkit-scrollbar { display: none; }
+.kw-sec h3 { margin: 14px var(--gutter) 0; font-size: 15px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #c7d5e0; }
+.kw-row { display: flex; align-items: flex-start; gap: 16px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; padding: 10px var(--gutter) 12px; scroll-padding: 0 var(--gutter); }
 .kw-tile { position: relative; flex: none; cursor: pointer; transition: transform .16s ease; }
-.kw-tile.game { width: clamp(118px, 9.4vw, 176px); }
+.kw-tile.game { width: var(--cw); }
 .kw-cover { position: relative; aspect-ratio: 2 / 3; border-radius: 6px; overflow: hidden; background: #1b2433; box-shadow: 0 8px 20px rgba(0, 0, 0, .5); transition: box-shadow .16s ease; }
 .kw-cover::before { content: ''; position: absolute; inset: -20px; background: var(--img, none) center / cover; filter: blur(16px) brightness(.55); }
 .kw-cover img { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; }
 .kw-gen { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 12% 11%;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--g) 82%, #fff 6%), color-mix(in srgb, var(--g) 30%, #07090f)); }
+  background: linear-gradient(160deg, color-mix(in srgb, var(--g) 82%, #fff 6%), color-mix(in srgb, var(--g) 35%, #0b0f18)); }
 .kw-gen small { font-size: 10px; font-weight: 900; letter-spacing: .16em; color: rgba(255, 255, 255, .85); }
-.kw-gen b { font-size: 15px; line-height: 1.15; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-.kw-name { margin-top: 8px; font-size: 13px; font-weight: 600; line-height: 1.25; color: rgba(225, 232, 250, .78); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kw-gen b { font-size: 16px; line-height: 1.15; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, .45); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
+.kw-name { margin-top: 8px; font-size: 15px; font-weight: 700; line-height: 1.25; color: rgba(225, 232, 250, .82); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kw-sub { margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kw-tile.fav .kw-cover::after { content: '\2605'; position: absolute; top: 6px; right: 8px; color: #ffd34d; font-size: 18px; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
-.kw-tile.focused { transform: scale(1.06); z-index: 2; }
+.kw-tile.focused { transform: scale(1.05); z-index: 2; }
 .kw-tile.focused .kw-cover { box-shadow: 0 0 0 3px #fff, 0 0 26px color-mix(in srgb, var(--c) 60%, transparent), 0 14px 34px rgba(0, 0, 0, .7); }
 .kw-tile.focused .kw-name { color: #fff; }
+.kw-tile.focused .kw-sub { color: color-mix(in srgb, var(--c) 30%, #fff); }
 .kw-tile.game:hover .kw-cover { box-shadow: 0 0 0 2px rgba(255, 255, 255, .5), 0 8px 20px rgba(0, 0, 0, .5); }
 
-/* Cartes des consoles : couleur de la console, nom en grand, jaquettes en éventail */
-.kw-tile.sys { width: clamp(250px, 19vw, 340px); aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 20px rgba(0, 0, 0, .5); }
+/* Cartes des consoles : couleur de la console, nom en grand, jaquettes en éventail, aussi hautes qu'une jaquette */
+.kw-tile.sys { height: calc(var(--cw) * 1.5); aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 20px rgba(0, 0, 0, .5); }
 .kw-sysbg { position: absolute; inset: 0; background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--c) 75%, #fff 8%), transparent 60%), linear-gradient(150deg, color-mix(in srgb, var(--c) 70%, #0b0f18), color-mix(in srgb, var(--c) 22%, #07090f)); }
 .kw-tile.sys.virtual .kw-sysbg { background: linear-gradient(135deg, #ff3b5c, #7b68ee 45%, #1a9fff 75%, #1aa64b); }
 .kw-fan { position: absolute; right: 3%; top: 12%; bottom: 12%; width: 46%; }
@@ -1307,61 +1270,119 @@ body.emu-world #bg::after { background: linear-gradient(180deg, rgba(10, 14, 22,
 .kw-fan .kw-cover::before { display: none; }
 .kw-fan .kw-cover img { object-fit: cover; }
 .kw-fan .kw-gen small { font-size: 8px; } .kw-fan .kw-gen b { font-size: 11px; }
-.kw-sysname { position: absolute; left: 16px; bottom: 14px; right: 52%; z-index: 4; text-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
-.kw-sysname small { display: block; font-size: 10px; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; color: rgba(255, 255, 255, .8); }
-.kw-sysname b { display: block; margin-top: 4px; font-size: clamp(18px, 1.5vw, 26px); font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; }
-.kw-sysname i { display: inline-block; margin-top: 8px; padding: 2px 9px; border-radius: 999px; background: rgba(0, 0, 0, .35); font-size: 12px; font-style: normal; font-weight: 800; }
+.kw-sysname { position: absolute; left: 16px; bottom: 14px; right: 50%; z-index: 4; text-shadow: 0 2px 10px rgba(0, 0, 0, .55); }
+.kw-sysname small { display: block; font-size: 11px; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; color: rgba(255, 255, 255, .82); }
+.kw-sysname b { display: block; margin-top: 4px; font-size: clamp(20px, calc(3 * var(--vh)), 28px); font-weight: 900; line-height: 1.05; overflow-wrap: anywhere; }
+.kw-sysname i { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .35); font-size: 13px; font-style: normal; font-weight: 800; }
 .kw-tile.sys.focused { box-shadow: 0 0 0 3px #fff, 0 0 30px color-mix(in srgb, var(--c) 55%, transparent), 0 14px 34px rgba(0, 0, 0, .7); }
 
-.kw-filters { display: flex; gap: 8px; padding: 16px var(--gutter) 2px; }
-.kw-filter { padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 800; color: rgba(225, 232, 250, .7); background: rgba(255, 255, 255, .06); cursor: pointer; }
+/* Rangée « Options » : ce qui était dans l'en-tête (ajouter des jeux, gérer) */
+.kw-tile.tool { width: calc(var(--cw) * 1.6); height: calc(var(--cw) * .8); display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 18px;
+  border-radius: 8px; background: rgba(255, 255, 255, .07); border: 1px solid var(--line); }
+.kw-tile.tool i svg { width: 26px; height: 26px; fill: currentColor; margin-bottom: 4px; }
+.kw-tile.tool b { font-size: 17px; }
+.kw-tile.tool small { font-size: 13px; color: var(--muted); }
+.kw-tile.tool.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--accent); }
+.kw-tile.tool.focused small { color: #4a5160; }
+
+/* Une console : une ligne de titre (LB / RB), filtres et réglages, puis la grille */
+.kw-bar { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 12px var(--gutter) 4px; }
+.kw-ctitle { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.kw-ctitle b { font-size: 24px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kw-ctitle small { font-size: 14px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.kw-ctitle .shoulder { padding: 0; cursor: pointer; }
+.kw-filters { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+.kw-filter { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 800; color: rgba(225, 232, 250, .75); background: rgba(255, 255, 255, .07); cursor: pointer; white-space: nowrap; }
+.kw-filter svg { width: 16px; height: 16px; fill: currentColor; }
 .kw-filter.on { background: color-mix(in srgb, var(--sys) 45%, rgba(255, 255, 255, .1)); color: #fff; }
 .kw-filter.focused { background: #fff; color: #111; }
-.kw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(118px, 9.4vw, 176px), 1fr)); gap: 22px 18px; padding: 14px var(--gutter) 20px; }
+.kw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cw), 1fr)); gap: 18px 16px; padding: 12px var(--gutter) 20px; }
 .kw-grid .kw-tile.game { width: auto; }
-.kw-empty { grid-column: 1 / -1; padding: 30px 0; color: var(--muted); font-size: 15px; }
+.kw-grid .kw-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.5em; }
+.kw-empty { grid-column: 1 / -1; padding: 30px 0; color: var(--muted); font-size: 16px; }
 .kw-letter { position: fixed; left: 50%; top: 55%; transform: translate(-50%, -50%); font: 800 120px/1 'Segoe UI', sans-serif; color: #fff; opacity: 0; pointer-events: none; text-shadow: 0 0 40px var(--sys); z-index: 5; }
 .kw-letter.show { animation: kw-letter .9s ease; }
 @keyframes kw-letter { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.8); } 20% { opacity: .9; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .kw-bg { transition: none; } .kw-tile { transition: none; } }
 
-/* ---------- Fiche du jeu et réglages : panneau qui glisse par-dessus, à droite */
+/* Page d'un jeu : son image en fond, la jaquette à gauche, logo, puis les onglets Jouer, Réglages, Visuels, Infos */
+.kw.game { --sys: var(--c); }
+.kg-bg { position: absolute; inset: 0; background: center 30% / cover no-repeat; image-rendering: pixelated; }
+.kg-bg.from-cover { background: var(--img) center / cover no-repeat; filter: blur(30px) brightness(.55); transform: scale(1.15); image-rendering: auto; }
+.kg-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10, 14, 22, .94) 0%, rgba(10, 14, 22, .84) 48%, rgba(10, 14, 22, .5) 100%), linear-gradient(0deg, rgba(10, 14, 22, .9), transparent 55%); }
+.kg { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(18px, 3vw, 48px); padding: 18px var(--gutter) 12px; }
+.kg-side { align-self: start; width: clamp(150px, calc(52 * var(--vh) * .667), 360px); }
+.kg-side .kw-cover { border-radius: 8px; box-shadow: 0 22px 50px rgba(0, 0, 0, .65); }
+.kg-side .kw-gen b { font-size: 22px; }
+.kg-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.kg-head { flex: none; }
+.kg-logo img { display: block; max-width: min(440px, 100%); max-height: clamp(64px, calc(14 * var(--vh)), 150px); object-fit: contain; object-position: left center; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, .6)); }
+.kg-logo h1 { margin: 0; font-size: clamp(28px, calc(5.4 * var(--vh)), 54px); line-height: 1.05; overflow-wrap: anywhere; text-shadow: 0 3px 16px rgba(0, 0, 0, .6); }
+.kg-meta { margin: 10px 0 0; font-size: 16px; font-weight: 800; color: color-mix(in srgb, var(--c) 35%, #fff); }
+.kg-meta i { font-style: normal; margin: 0 8px; opacity: .5; }
+.kg-meta .kw-star { opacity: 1; margin: 0 10px 0 0; color: #ffd34d; }
+.kg-played { margin: 4px 0 0; font-size: 15px; color: rgba(225, 232, 250, .76); }
+.kg-tabs { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
+.kg-tabs .shoulder { padding: 0; cursor: pointer; }
+.kg-tab { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-size: 15px; font-weight: 800; color: rgba(225, 232, 250, .72); cursor: pointer; white-space: nowrap; }
+.kg-tab svg { width: 16px; height: 16px; fill: currentColor; }
+.kg-tab.on { background: color-mix(in srgb, var(--c) 42%, rgba(255, 255, 255, .08)); color: #fff; }
+.kg-tab.focused { background: #fff; color: #111; }
+.kg-panel { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; padding: 4px 4px 12px; margin: 0 -4px; }
+.kg-acts { display: flex; flex-wrap: wrap; gap: 10px; }
+.kg-act { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 20px; border-radius: 8px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .13); cursor: pointer; backdrop-filter: blur(8px); }
+.kg-act svg { flex: none; width: 20px; height: 20px; fill: currentColor; }
+.kg-act b { display: block; font-size: 17px; font-weight: 800; }
+.kg-act small { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.kg-act.primary { padding: 8px 30px 8px 24px; background: linear-gradient(90deg, #47bfff, #1a6dff); border-color: transparent; color: #fff; }
+.kg-act.primary small { color: #dbeaff; }
+.kg-act.on svg { fill: #ffd34d; }
+.kg-act.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--c); }
+.kg-act.focused small { color: #4a5160; }
+.kg-panel > .kg-act { width: fit-content; min-width: min(320px, 100%); margin-top: 8px; }
+.kg-desc { margin-top: 14px; padding: 10px 12px; border-radius: 10px; max-width: 860px; font-size: 16px; line-height: 1.55; color: #d6dbe6; }
+.kg-desc p { margin: 0; }
+.kg-desc small { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.kg-desc .muted { color: var(--muted); }
+.kg-desc.loading { display: flex; justify-content: center; }
+.kg-desc.focused { background: rgba(255, 255, 255, .05); box-shadow: inset 3px 0 0 var(--c); }
+.kg-note { margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+.kg-panel .es-sets { padding: 0; }
+.kg-panel .es-set { background: rgba(10, 14, 22, .55); }
+.kg-panel .es-set .txt b { font-size: 16px; }
+.kg-panel .es-set .txt small { font-size: 13px; }
+.kg-panel .es-val { font-size: 16px; }
+.kg-panel .es-row { background: rgba(10, 14, 22, .4); }
+.kg-arts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 4px; }
+.kg-art { min-width: 0; padding: 8px; border-radius: 10px; background: rgba(10, 14, 22, .55); border: 1px solid var(--line); cursor: pointer; }
+.kg-art-img { position: relative; height: clamp(96px, calc(22 * var(--vh)), 240px); border-radius: 6px; overflow: hidden; background: rgba(0, 0, 0, .35); display: grid; place-items: center; }
+.kg-art-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.kg-art.hero .kg-art-img img, .kg-art.header .kg-art-img img { object-fit: cover; }
+.kg-art-img i svg { width: 28px; height: 28px; fill: currentColor; opacity: .3; }
+.kg-art b { display: block; margin-top: 8px; font-size: 16px; }
+.kg-art small { font-size: 13px; color: var(--muted); }
+.kg-art.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--c); }
+.kg-art.focused small { color: #4a5160; }
+.kg-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.kg-facts div { min-width: 0; padding: 10px 12px; border-radius: 10px; background: rgba(10, 14, 22, .55); border: 1px solid var(--line); }
+.kg-facts small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.kg-facts b { display: block; margin-top: 3px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kg-file { margin: 0 0 6px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.kg-file small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+/* Écran étroit : la jaquette laisse la place aux onglets */
+@media (max-aspect-ratio: 5/4) { .kg { grid-template-columns: minmax(0, 1fr); } .kg-side { display: none; } .kg-arts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Console portable (effets réduits) : pas de flou derrière chaque jaquette */
+body.lowfx .kw-cover::before { filter: brightness(.45); }
+body.lowfx .kg-act { backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { .kw-tile { transition: none; } }
+
+/* ---------- Réglages d'une console : panneau qui glisse par-dessus, à droite */
 .panel.emu-sheet { right: 0; width: min(clamp(400px, 36vw, 620px), 100vw); transform: translateX(105%); border-left: 1px solid var(--line);
   background: color-mix(in srgb, #0a0e18 94%, transparent); backdrop-filter: blur(24px); --sys: var(--accent); }
 .panel.emu-sheet.open { transform: none; }
-.sxp-head { position: relative; display: flex; gap: 16px; align-items: flex-end; padding: 22px 22px 18px; min-height: 200px; overflow: hidden; flex: none; }
-.sxp-head::before { content: ''; position: absolute; inset: -20px; background: var(--hero, none) center / cover; filter: blur(2px) brightness(.5); transform: scale(1.06); }
-.sxp-head::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 24, .2), rgba(10, 14, 24, .95)); }
-.sxp-head > * { position: relative; z-index: 1; }
-.sxp-cover { flex: none; width: 104px; }
-.sxp-cover img { width: 100%; border-radius: 4px; box-shadow: 0 10px 26px rgba(0, 0, 0, .6); display: block; }
-.sxp-title { min-width: 0; }
-.sxp-title small { font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: rgba(225, 232, 250, .7); }
-.sxp-title h2 { margin: 4px 0 8px; font-size: clamp(20px, 1.8vw, 28px); line-height: 1.15; }
-.sxp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.sxp-chips span { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, .12); }
-.sxp-chips .fav { color: #ffd34d; }
-.sxp-title p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
-.es-acts { display: grid; gap: 4px; padding: 14px 14px 6px; flex: none; }
 .es-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 12px; font-size: 16px; font-weight: 600; color: #d6dbe6; cursor: pointer; transition: background .12s; }
 .es-row svg { flex: none; width: 20px; height: 20px; fill: currentColor; opacity: .85; }
-.es-row.play { justify-content: center; margin-bottom: 6px; padding: 14px; border-radius: 999px; background: #f4f6fb; color: #0c1020; font-size: 17px; font-weight: 800; }
 .es-row.on svg { fill: #ffd34d; opacity: 1; }
 .es-row.focused { background: var(--selected); color: var(--text); box-shadow: inset 0 0 0 2px var(--focus); }
-.es-row.play.focused { background: #fff; color: #111; box-shadow: 0 0 0 3px var(--sys); }
-.sxp-desc { margin: 8px 14px 0; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.6; color: #d6dbe6; flex: none; }
-.sxp-desc p { margin: 0; }
-.sxp-desc .muted { color: var(--muted); }
-.sxp-desc.loading { display: flex; justify-content: center; padding-top: 22px; }
-.sxp-desc.focused { box-shadow: inset 3px 0 0 var(--sys); background: rgba(255, 255, 255, .04); }
-.sxp-src { display: block; margin-top: 6px; font-size: 11px; color: var(--muted); }
-.sxp-shots { display: flex; gap: 8px; padding: 12px 26px 0; flex: none; }
-.sxp-shots:empty { display: none; }
-.sxp-shots img { flex: 1; min-width: 0; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); image-rendering: pixelated; }
-.sxp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 26px 8px; flex: none; }
-.sxp-tiles div { padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); min-width: 0; }
-.sxp-tiles small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.sxp-tiles b { display: block; margin-top: 3px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .es-head { padding: 28px 26px 6px; flex: none; }
 .es-head small { font-size: 11px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--sys) 60%, #fff); }
 .es-head h2 { margin: 6px 0 10px; font-size: 24px; line-height: 1.2; }
@@ -1378,7 +1399,4 @@ body.emu-world #bg::after { background: linear-gradient(180deg, rgba(10, 14, 22,
 .es-set.focused { background: var(--selected); box-shadow: inset 0 0 0 2px var(--focus); }
 .es-set.focused .es-val i { opacity: 1; color: color-mix(in srgb, var(--sys) 60%, #fff); }
 .es-sets .es-row { margin-top: 4px; }
-.sxp-cover:empty { display: none; }
-.sxp-tiles:empty { display: none; }
 .es-sets .notice { margin: 0; }
-.es-row.back svg { transform: rotate(180deg); }

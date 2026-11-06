@@ -879,13 +879,15 @@ const RA_SHADERS = {
   sharp: () => 'pixel-art-scaling/sharp-shimmerless.slangp',
 };
 const RA_ASPECT = { auto: '22', '4:3': '0', '16:9': '1', full: '24' };
-function retroarchLook(raDir, gameId, set) {
+// fresh : « Recommencer du début », la sauvegarde automatique n'est pas rechargée cette fois
+function retroarchLook(raDir, gameId, set, fresh = false) {
   const file = path.join(DATA, 'emu-ra', safeId(gameId) + '.cfg');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const shader = RA_SHADERS[set.filter] && RA_SHADERS[set.filter]();
   emuSetup.mergeCfg(file, {
     video_shader_enable: shader ? 'true' : 'false', video_smooth: set.filter === 'smooth' ? 'true' : 'false',
     video_scale_integer: 'false', aspect_ratio_index: RA_ASPECT[set.aspect] || '22',
+    savestate_auto_load: fresh ? 'false' : 'true',
   });
   return ` --appendconfig "${file}"` + (shader ? ` --set-shader "${path.join(raDir, 'shaders', 'shaders_slang', shader)}"` : '');
 }
@@ -895,8 +897,14 @@ function retroarchLook(raDir, gameId, set) {
  * présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. Renvoie { blocked } (réponse
  * à donner à l'interface) ou { launch } (commande, avec le fichier décompressé à la place de l'archive).
  */
-async function prepareRom(e) {
+async function prepareRom(e, { fresh = false } = {}) {
   let launch = e.launch, gameFile = e.romPath;
+  const id = e.emulatorId;
+  const m = id && emuStore.installed(id);
+  const d = emuDirs();
+  // BIOS d'abord : pas de décompression (parfois longue) pour un jeu qui ne pourrait pas démarrer
+  const need = m && emuSetup.biosStatus(d.bios, e.system, { region: e.region });
+  if (need && !need.ok) return { blocked: { ok: false, needsBios: need.what, error: `Il manque : ${need.what}` } };
   if (e.archive === 'extract') {
     const sys = emu.SYSTEMS.find(s => s.id === e.system);
     const opts = { m3u: ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'].includes(e.system) };
@@ -916,12 +924,7 @@ async function prepareRom(e) {
   }
   // Jeu PlayStation européen protégé (LibCrypt) : son .sbi est récupéré chez Redump s'il manque
   if (e.system === 'psx') await emuSbi.ensure(gameFile).catch(() => 0);
-  const id = e.emulatorId;
-  const m = id && emuStore.installed(id);
   if (!m) return { launch }; // émulateur installé par l'utilisateur : réglages laissés tels quels
-  const d = emuDirs();
-  const need = emuSetup.biosStatus(d.bios, e.system);
-  if (need && !need.ok) return { blocked: { ok: false, needsBios: need.what, error: `Il manque : ${need.what}` } };
   if (id === 'retroarch') {
     const core = (/-L "([^"]+)"/.exec(launch.args || '') || [])[1];
     if (core) {
@@ -931,7 +934,7 @@ async function prepareRom(e) {
   }
   const set = emuEffective(e.system, e.id);
   emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', ...emuDisplay });
-  if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set) };
+  if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
   return { launch };
 }
 // Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
@@ -1498,7 +1501,7 @@ const routes = {
       return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
     }
     if (e.source === 'rom' && !b.dry) {
-      const prep = await prepareRom(e);
+      const prep = await prepareRom(e, { fresh: !!b.fresh });
       if (prep.blocked) return json(res, 200, prep.blocked);
       e = { ...e, launch: prep.launch };
     }

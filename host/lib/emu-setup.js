@@ -266,9 +266,42 @@ function unpackBios(bios) {
   return count;
 }
 
-function biosStatus(bios, sysId) {
+// Mega-CD : un BIOS par région (le jeu européen veut bios_CD_E.bin). Un BIOS de 128 Ko rangé sous
+// un autre nom (« Mega-CD 2 (Europe) v2.00.bin ») est reconnu et copié sous le nom attendu.
+// Essayées dans l'ordre J, U, E : « Mega-CD » se dit en Europe comme au Japon, « Sega CD » aux États-Unis
+const CD_REGION = { E: /europe|\(e\)|\beu\b|\bpal\b|mega-?cd/i, U: /usa|\(u\)|\bus\b|america|sega.?cd/i, J: /japan|\(j\)|\bjp\b/i };
+function megaCdBios(bios) {
+  let names = [];
+  try { names = fs.readdirSync(bios); } catch { return; }
+  for (const n of names) {
+    if (/^bios_cd_[euj]\.bin$/i.test(n) || !/\.(bin|md|smd|gen|rom)$/i.test(n)) continue;
+    const f = path.join(bios, n);
+    let buf;
+    try { if (fs.statSync(f).size !== 131072) continue; buf = fs.readFileSync(f); } catch { continue; }
+    if (!/SEGA/.test(buf.toString('latin1', 0x100, 0x110))) continue;
+    // Région : celle du nom du fichier, sinon celle de l'en-tête (« E », « U » ou « J »)
+    let region = ['J', 'U', 'E'].find(k => CD_REGION[k].test(n));
+    if (!region) { const h = buf.toString('latin1', 0x1f0, 0x1f3).toUpperCase().replace(/[^EUJ]/g, ''); if (h.length === 1) region = h; }
+    if (!region) continue;
+    const target = path.join(bios, `bios_CD_${region}.bin`);
+    if (!fs.existsSync(target)) try { fs.copyFileSync(f, target); console.log(`Émulation : ${n} reconnu comme BIOS Mega-CD (${region})`); } catch { /* lecture seule */ }
+  }
+}
+const CD_NEED = { Europe: 'E', France: 'E', Germany: 'E', Spain: 'E', Italy: 'E', USA: 'U', Japan: 'J' };
+const CD_NAME = { E: 'européen', U: 'américain', J: 'japonais' };
+
+/** game : { region } du jeu, pour les consoles dont le BIOS dépend de la région (Mega-CD). */
+function biosStatus(bios, sysId, game = {}) {
   const r = REQUIRES[sysId];
   if (!r) return null;
+  if (sysId === 'segacd') {
+    megaCdBios(bios);
+    const want = CD_NEED[game.region];
+    if (want) {
+      const ok = fs.existsSync(path.join(bios, `bios_CD_${want}.bin`));
+      return { ok, what: `BIOS Mega-CD ${CD_NAME[want]} (bios_CD_${want}.bin, 128 Ko)` };
+    }
+  }
   const dir = r.dir ? path.join(bios, r.dir) : bios;
   let ok = false;
   try { ok = fs.readdirSync(dir).some(n => { try { return r.test(n, path.join(dir, n)); } catch { return false; } }); } catch { /* dossier absent */ }
