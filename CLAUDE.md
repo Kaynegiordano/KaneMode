@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.14.0 : monde Émulation refait, six thèmes
+
+- Retour utilisateur : interface « basique et inconfortable à naviguer » (trop d'infos d'un coup, navigation pas logique, pas assez « monde »). Choix de l'utilisateur : « Consoles d'abord ». Puis demande de thèmes : PS5, Switch 2, Xbox Series, Steam Big Picture, Rétro (d'après une image : ciel bleu, manettes dessinées, grosses pilules colorées), Moderne.
+- `ui/js/pages/emulation.js` : modes `hub` (carrousel `.hx-card`, `hubLayout()`, cartes voisines assombries par `.hx-dim` et non transparentes), `console` (étagère 3D plein écran + barre `.cx-info` : nom, repères, Jouer/Fiche/Favori ; `drawInfo()` AVANT `layout()` sinon l'étagère est mesurée trop haute), `manage`. Fiche et réglages = couche `#emu-sheet` (`openLayer`, créée à la volée dans body) ; réglages en lignes ◀ ▶ (`changeSetting`, la valeur héritée n'est pas reproposée). `page.back`/B : console → accueil. Sons : `sfx()` force le profil `retro` tant que `body.emu-world`.
+- `ui/js/pages/emu-themes.js` : thèmes autres que Moderne, avec des tuiles `nav()` ordinaires (`data-sys` / `data-gid`, clés `c:` / `g:` / `r:`), `onFocus` de la page → `themedFocus` → `paintDetail` (encart `.th-detail`). Rangée (`.th-strip.row`) pour ps5/switch2, grille pour xbox/steam/retro. `toy(id)` dessine les manettes du thème Rétro (familles flat/pill/tall/wide/dual/pad). Thème dans `store` `emutheme` ; console virtuelle `fav` (favoris). Le contenu thématique s'arrête à `--bottom + 10px` (sinon caché sous la barre d'aide).
+- Test : captures 1920×1080 et 1280×720 par Edge sans fenêtre piloté en CDP (`Emulation.setFocusEmulationEnabled`, sinon `press()` est ignoré), pas de capture du bureau. Non vérifié sur l'Ally.
+
 ## Version 4.13.6 : jeux Switch décompressés et images .iso
 
 - Bug signalé : jeu Switch 2 non reconnu. L'utilisateur a « Donkey Kong Bananza (dump-458752).iso » (19,6 Go, ISO 9660 : `CD001` à 0x8001, lisible par tar) et le même jeu en dossier (`… (2)ase\exefs\main`, `main.npdm`, `romfs`). Eglantine (comme Eden) ne lit pas les .iso, mais charge un jeu décompressé (`deconstructed_rom_directory` : « expected exefs/main, exefs/main.npdm and a romfs folder ») en lui donnant `exefs/main`.

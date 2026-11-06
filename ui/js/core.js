@@ -208,6 +208,8 @@ setTimeout(prepareSounds, 0);
 export function sfx(type, { preview = false, profile = settings.soundTheme, volume = settings.soundVolume } = {}) {
   if (!preview && (!settings.sounds || (type === 'move' && !settings.soundMoves))) return;
   if (!['round', 'retro', 'soft'].includes(profile)) profile = 'round';
+  // Monde Émulation : sons rétro, quel que soit le thème choisi
+  if (!preview && document.body.classList.contains('emu-world')) profile = 'retro';
   volume = Math.max(0, Math.min(100, Number(volume) || 0));
   if (!volume) return;
   if (type === 'move' && !preview) {

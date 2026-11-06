@@ -92,9 +92,6 @@
  "{a} introuvable": [
   "host/syscontrol.ps1"
  ],
- "{a} sur {b}": [
-  "ui/js/pages/emulation.js"
- ],
  "{a}<div>Ajouter un jeu ou une appli</div>": [
   "ui/js/pages/home.js"
  ],
@@ -196,9 +193,13 @@
   "ui/js/pages/media.js"
  ],
  "{n} console": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "{n} consoles": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "{n} disque": [
@@ -245,6 +246,7 @@
  "{n} jeu": [
   "ui/js/accounts-settings.js",
   "ui/js/i18n.js",
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
  ],
@@ -257,6 +259,7 @@
  "{n} jeux": [
   "ui/js/accounts-settings.js",
   "ui/js/i18n.js",
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
  ],
@@ -267,9 +270,11 @@
   "ui/js/pages/emulation.js"
  ],
  "{n} joueur": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "{n} joueurs": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "{n} manette connectée": [
@@ -363,6 +368,9 @@
   "ui/js/pages/game.js"
  ],
  "{name} s’installera tout seul au premier jeu. Vous pouvez aussi l’installer maintenant.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{name} se règle tout seul : rien à choisir ici.": [
   "ui/js/pages/emulation.js"
  ],
  "{name} sera prêt pour vos jeux": [
@@ -513,6 +521,7 @@
   "ui/js/nav.js"
  ],
  "<span class=\"label-long\">Console</span>": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "<span class=\"label-long\">Lettre</span>": [
@@ -523,6 +532,10 @@
  ],
  "<span class=\"label-long\">Onglets</span>": [
   "ui/js/pages/library.js"
+ ],
+ "<span class=\"label-long\">Réglages</span>": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
  ],
  "<span class=\"now-playing\">En cours</span>": [
   "ui/js/pages/game.js"
@@ -691,7 +704,8 @@
   "ui/js/pages/settings.js"
  ],
  "Ajouter": [
-  "ui/js/pages/add.js"
+  "ui/js/pages/add.js",
+  "ui/js/pages/emu-themes.js"
  ],
  "Ajouter à la bibliothèque": [
   "ui/js/pages/add.js"
@@ -702,6 +716,10 @@
  ],
  "Ajouter comme jeux": [
   "ui/js/pages/add.js"
+ ],
+ "Ajouter des jeux": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
  ],
  "Ajouter la sélection": [
   "ui/js/pages/add.js"
@@ -1008,12 +1026,8 @@
  "Aussi réglable dans Apparence": [
   "ui/js/pages/settings.js"
  ],
- "automatique": [
-  "ui/js/pages/emulation.js"
- ],
  "Automatique": [
   "ui/js/pages/add.js",
-  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "Automatique : langue de Windows": [
@@ -1066,6 +1080,9 @@
  ],
  "Bannière": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Bannière du jeu et grille de jaquettes": [
+  "ui/js/pages/emu-themes.js"
  ],
  "Barre des boutons": [
   "ui/js/pages/settings.js"
@@ -1220,6 +1237,9 @@
  "Carrés": [
   "ui/js/pages/settings.js"
  ],
+ "Carrousel de consoles et étagère de boîtes en 3D": [
+  "ui/js/pages/emu-themes.js"
+ ],
  "Carte introuvable dans le sélecteur de NVIDIA": [
   "host/lib/gpudrivers.js"
  ],
@@ -1247,6 +1267,12 @@
  "Cet appareil": [
   "ui/js/pages/settings.js"
  ],
+ "Change l’apparence des consoles et des jeux. La manette fonctionne de la même façon partout.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Changer": [
+  "ui/js/pages/emulation.js"
+ ],
  "Changer le format spatial": [
   "ui/js/dolby-settings.js"
  ],
@@ -1268,9 +1294,13 @@
  "Chercher le jeu sur SteamGridDB": [
   "ui/js/pages/artpicker.js"
  ],
+ "choisi ici": [
+  "ui/js/pages/emulation.js"
+ ],
  "Choisir": [
   "ui/js/main.js",
-  "ui/js/pages/artpicker.js"
+  "ui/js/pages/artpicker.js",
+  "ui/js/pages/emulation.js"
  ],
  "Choisir : {toLowerCase}": [
   "ui/js/pages/add.js",
@@ -1387,9 +1417,6 @@
  ],
  "Cocher": [
   "ui/js/pages/add.js"
- ],
- "Cœur : {v}": [
-  "ui/js/pages/emulation.js"
  ],
  "Cœur {a} : {b}": [
   "host/server.js"
@@ -1566,6 +1593,10 @@
  "Console rétro": [
   "ui/js/personalization-settings.js"
  ],
+ "Consoles": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
+ ],
  "Consoles portables et PC portables · jamais pendant un jeu": [
   "ui/js/pages/settings.js"
  ],
@@ -1587,6 +1618,9 @@
  ],
  "Couleur, fond, coins, jaquettes et police en un choix": [
   "ui/js/pages/settings.js"
+ ],
+ "Couleurs vives et manettes dessinées": [
+  "ui/js/pages/emu-themes.js"
  ],
  "coupé": [
   "ui/js/widget.js"
@@ -1743,9 +1777,6 @@
  "Données": [
   "ui/js/pages/settings.js"
  ],
- "Dossier": [
-  "ui/js/pages/emulation.js"
- ],
  "Dossier des jeux": [
   "ui/js/pages/emulation.js"
  ],
@@ -1871,9 +1902,6 @@
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
- "Émulateur : {v}": [
-  "ui/js/pages/emulation.js"
- ],
  "Émulateur inconnu": [
   "host/lib/emu-store.js",
   "host/server.js"
@@ -1890,10 +1918,14 @@
  "Émulation": [
   "ui/index.html",
   "ui/js/core.js",
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js",
   "ui/js/pages/library.js",
   "ui/js/pages/settings.js"
+ ],
+ "ÉMULATION": [
+  "ui/js/pages/emulation.js"
  ],
  "Émulation <small>{length} jeux · {size} consoles</small>": [
   "ui/js/pages/home.js"
@@ -1943,6 +1975,10 @@
  ],
  "Entrées suspendues pendant la veille ou le verrouillage.": [
   "ui/js/pages/settings.js"
+ ],
+ "Entrer": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
  ],
  "Epic": [
   "ui/js/deals.js"
@@ -2011,10 +2047,12 @@
   "ui/js/widget.js"
  ],
  "Favori": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Favoris": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/home.js",
   "ui/js/pages/library.js"
  ],
@@ -2047,11 +2085,15 @@
  "Feutré": [
   "ui/js/personalization-settings.js"
  ],
- "Fiche complète": [
+ "Fiche": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "Fiche de compte invalide": [
   "host/lib/accounts.js"
+ ],
+ "Fiche KaneMode": [
+  "ui/js/pages/emulation.js"
  ],
  "Fichier de lancement introuvable : ": [
   "host/lib/launch.js"
@@ -2061,9 +2103,6 @@
  ],
  "Fichiers locaux": [
   "ui/js/pages/game.js"
- ],
- "Filtre : {v}": [
-  "ui/js/pages/emulation.js"
  ],
  "Filtre d’image": [
   "ui/js/pages/emulation.js"
@@ -2116,9 +2155,6 @@
  "Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.": [
   "ui/js/pages/game.js"
  ],
- "Format : {v}": [
-  "ui/js/pages/emulation.js"
- ],
  "Format de l’image": [
   "ui/js/pages/emulation.js"
  ],
@@ -2145,6 +2181,7 @@
   "ui/js/pages/settings.js"
  ],
  "Gérer": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "Gérer l’émulation": [
@@ -2444,6 +2481,7 @@
  ],
  "Jamais joué": [
   "ui/js/core.js",
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "Jamais vérifié": [
@@ -2455,6 +2493,9 @@
  "Jaquette": [
   "ui/js/pages/add.js",
   "ui/js/pages/artpicker.js"
+ ],
+ "Jaquette et visuels": [
+  "ui/js/pages/emulation.js"
  ],
  "Jaquette floue": [
   "ui/js/pages/settings.js"
@@ -2474,7 +2515,6 @@
  ],
  "Jeu": [
   "ui/js/pages/add.js",
-  "ui/js/pages/emulation.js",
   "ui/js/personalization-settings.js",
   "ui/js/widget.js"
  ],
@@ -2533,6 +2573,7 @@
   "ui/js/pages/settings.js"
  ],
  "Jouer": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
  ],
@@ -2778,9 +2819,6 @@
  "Limite réglée": [
   "ui/js/qam.js"
  ],
- "Lire la suite": [
-  "ui/js/pages/emulation.js"
- ],
  "Lissé": [
   "ui/js/pages/emulation.js"
  ],
@@ -2881,6 +2919,9 @@
  ],
  "Menu principal et accès rapide": [
   "ui/js/pages/settings.js"
+ ],
+ "Mes jeux": [
+  "ui/js/pages/emu-themes.js"
  ],
  "Metacritic": [
   "ui/js/pages/game.js"
@@ -3027,6 +3068,9 @@
  "Modèle ASUS non reconnu": [
   "host/lib/oem.js"
  ],
+ "Moderne": [
+  "ui/js/pages/emu-themes.js"
+ ],
  "Modifications enregistrées": [
   "ui/js/pages/add.js"
  ],
@@ -3056,6 +3100,9 @@
  ],
  "Montage de l’image impossible : {a}": [
   "host/server.js"
+ ],
+ "Mosaïque de tuiles, accent vert": [
+  "ui/js/pages/emu-themes.js"
  ],
  "Mot de passe de {ssid}": [
   "ui/js/statusbar.js"
@@ -3287,6 +3334,10 @@
  "Ouvrir la page de téléchargement": [
   "ui/js/pages/settings.js"
  ],
+ "Ouvrir le dossier": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
+ ],
  "Ouvrir le dossier BIOS": [
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
@@ -3314,6 +3365,9 @@
  ],
  "Paquet introuvable pour cette version": [
   "host/lib/update.js"
+ ],
+ "par défaut": [
+  "ui/js/pages/emulation.js"
  ],
  "Paramètres": [
   "ui/index.html",
@@ -3489,7 +3543,7 @@
  "Position actuelle": [
   "ui/js/statusbar.js"
  ],
- "Pour ce jeu seulement. Ce qui n’est pas choisi ici suit les réglages de la console.": [
+ "Pour ce jeu seulement. Ce qui n’est pas changé ici suit les réglages de la console.": [
   "ui/js/pages/emulation.js"
  ],
  "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
@@ -3688,6 +3742,9 @@
  "Récemment joués <small>tapez pour rechercher</small>": [
   "ui/js/pages/search.js"
  ],
+ "Récents": [
+  "ui/js/pages/emu-themes.js"
+ ],
  "Recharge KaneMode sans quitter": [
   "ui/js/pages/settings.js"
  ],
@@ -3765,9 +3822,6 @@
  "redémarrez pour terminer": [
   "ui/js/pages/settings.js"
  ],
- "Réduire": [
-  "ui/js/pages/emulation.js"
- ],
  "Réduire les animations": [
   "ui/js/pages/settings.js"
  ],
@@ -3780,14 +3834,12 @@
  "Réglage avancé": [
   "ui/js/qam.js"
  ],
- "Réglage enregistré": [
+ "Réglages": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js"
  ],
  "Réglages {a} indisponibles": [
   "host/lib/gpuctl.js"
- ],
- "Réglages {name}": [
-  "ui/js/pages/emulation.js"
  ],
  "Réglages 3D AMD indisponibles": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -3801,7 +3853,7 @@
  "Réglages d’énergie": [
   "ui/js/statusbar.js"
  ],
- "Réglages de {name}": [
+ "Réglages de la console": [
   "ui/js/pages/emulation.js"
  ],
  "Réglages détaillés": [
@@ -3841,6 +3893,8 @@
   "host/lib/accounts.js"
  ],
  "Reprendre": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/home.js"
  ],
  "Reprendre le jeu en cours ou retrouver votre dernière partie": [
@@ -3912,6 +3966,7 @@
   "ui/js/pages/game.js"
  ],
  "Retirer des favoris": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Retirer la clé": [
@@ -3939,6 +3994,7 @@
   "ui/js/nav.js",
   "ui/js/pages/add.js",
   "ui/js/pages/artpicker.js",
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/library.js",
@@ -3949,6 +4005,9 @@
  "Retour à l’étagère": [
   "ui/js/pages/emulation.js"
  ],
+ "Retour à la fiche": [
+  "ui/js/pages/emulation.js"
+ ],
  "Retour au bureau Windows": [
   "ui/index.html"
  ],
@@ -3956,6 +4015,7 @@
   "ui/js/pages/settings.js"
  ],
  "Rétro": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
@@ -4077,6 +4137,9 @@
  ],
  "Sobre": [
   "ui/js/personalization-settings.js"
+ ],
+ "Sombre et épuré, grandes vignettes carrées": [
+  "ui/js/pages/emu-themes.js"
  ],
  "Son": [
   "ui/js/pages/settings.js",
@@ -4211,6 +4274,18 @@
  "Style préféré des jaquettes": [
   "ui/js/pages/settings.js"
  ],
+ "Style PS5": [
+  "ui/js/pages/emu-themes.js"
+ ],
+ "Style Steam Big Picture": [
+  "ui/js/pages/emu-themes.js"
+ ],
+ "Style Switch 2": [
+  "ui/js/pages/emu-themes.js"
+ ],
+ "Style Xbox Series": [
+  "ui/js/pages/emu-themes.js"
+ ],
  "Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées": [
   "ui/js/personalization-settings.js"
  ],
@@ -4329,7 +4404,12 @@
   "ui/js/pages/settings.js"
  ],
  "Thème": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
+ ],
+ "Thème du monde Émulation": [
+  "ui/js/pages/emulation.js"
  ],
  "Timbre": [
   "ui/js/personalization-settings.js"
@@ -4347,6 +4427,13 @@
   "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
  ],
+ "Tous les jeux": [
+  "ui/js/pages/emu-themes.js",
+  "ui/js/pages/emulation.js"
+ ],
+ "TOUS LES JEUX": [
+  "ui/js/pages/emulation.js"
+ ],
  "Tous les jeux renvoyés par les connecteurs, installés ou non · aucune sélection limitée aux jeux déjà joués": [
   "ui/js/accounts-settings.js"
  ],
@@ -4357,10 +4444,14 @@
   "ui/js/pages/home.js"
  ],
  "Tout": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/library.js",
   "ui/js/pages/media.js",
   "ui/js/widget.js"
+ ],
+ "TOUT": [
+  "ui/js/pages/emulation.js"
  ],
  "Tout désélectionner": [
   "ui/js/pages/media.js"
@@ -4384,6 +4475,7 @@
   "ui/js/pages/add.js"
  ],
  "Toutes les consoles": [
+  "ui/js/pages/emu-themes.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/library.js"
  ],
@@ -4436,6 +4528,9 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
+ "Un dossier par console est déjà prêt : déposez-y vos jeux, même en .zip": [
+  "ui/js/pages/emulation.js"
+ ],
  "Un émulateur installé par vous et indiqué ici passe avant celui de KaneMode.": [
   "ui/js/pages/emulation.js"
  ],
@@ -4462,6 +4557,9 @@
  ],
  "Une notification signale une nouvelle version": [
   "ui/js/pages/settings.js"
+ ],
+ "Une rangée de vignettes, le jeu en grand derrière": [
+  "ui/js/pages/emu-themes.js"
  ],
  "Uni": [
   "ui/js/pages/settings.js"
@@ -4582,7 +4680,6 @@
  ],
  "Visuels": [
   "ui/js/pages/artpicker.js",
-  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)": [
