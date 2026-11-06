@@ -336,3 +336,14 @@ test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précisio
   assert.equal(roms[0].name, 'The Legend of Zelda Ocarina of Time');
   assert.equal(roms[0].system, 'switch2');
 });
+
+test('Quitter complètement : RetroArch ne quitte plus dès Select + Start, la reprise automatique du jeu est effaçable', () => {
+  const ra = tmp();
+  setup.prepare('retroarch', ra, { bios: ra, saves: ra });
+  const cfg = fs.readFileSync(path.join(ra, 'retroarch.cfg'), 'utf8');
+  assert.match(cfg, /input_quit_gamepad_combo = "3"/, 'secours : L1 + R1 + Select + Start');
+  assert.match(cfg, /input_exit_emulator = "nul"/, 'Échap : KaneMode');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.match(src, /'POST \/api\/emu\/forget-resume'/);
+  assert.ok(src.includes('.state') && src.includes('forgetResume(e)'));
+});

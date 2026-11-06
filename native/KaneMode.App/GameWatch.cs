@@ -123,12 +123,13 @@ public partial class MainWindow
     /// fermer (l'émulateur enregistre la partie), puis il est arrêté s'il tourne encore 4 s plus tard.
     /// Le suivi du jeu voit sa fin et ramène KaneMode devant.
     /// </summary>
-    private void QuitEmulatedGame(string how)
+    private void QuitEmulatedGame(string how, bool full = false)
     {
         var s = _game;
         if (s == null || !s.Id.StartsWith("rom:", StringComparison.Ordinal)) return;
-        Log.Write($"Quitter le jeu ({how}) : {s.Id}");
-        Post(new { type = "game-quitting", id = s.Id });
+        Log.Write($"Quitter le jeu ({how}{(full ? ", partie oubliée" : "")}) : {s.Id}");
+        // full : l'interface fait oublier la reprise automatique une fois le jeu fermé (game-ended)
+        Post(new { type = "game-quitting", id = s.Id, full });
         StopGame(s.Id, s.Dir, force: false);
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
         timer.Tick += (_, _) =>

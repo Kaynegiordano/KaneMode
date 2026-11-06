@@ -942,6 +942,33 @@ async function prepareRom(e, { fresh = false } = {}) {
   return { launch };
 }
 const emuAutoUpdate = { at: 0 };
+/** Supprime les sauvegardes d'état automatiques (« .state.auto ») d'un jeu RetroArch ; renvoie leur nombre. */
+function forgetResume(e) {
+  const names = new Set();
+  const base = f => path.basename(f, path.extname(f)).toLowerCase();
+  if (e.romPath) names.add(base(e.romPath));
+  const inner = /#([^"]+)"/.exec((e.launch && e.launch.args) || '');
+  if (inner) names.add(base(inner[1]));
+  // Jeu décompressé : le fichier donné à RetroArch (.cue, .m3u…)
+  const sys = emu.SYSTEMS.find(s => s.id === e.system);
+  if (e.archive === 'extract' && sys) { const f = emuArchive.ready(e.romPath, sys.exts, { m3u: true }); if (f) names.add(base(f)); }
+  if (e.discs && e.romPath) names.add(base(e.romPath));
+  const dir = path.join(emuDirs().saves, 'RetroArch', 'states');
+  let removed = 0;
+  const walk = d => {
+    let list = [];
+    try { list = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const x of list) {
+      const p = path.join(d, x.name);
+      if (x.isDirectory()) { walk(p); continue; }
+      const m = /^(.*)\.state\.auto(\.png)?$/i.exec(x.name);
+      if (m && names.has(m[1].toLowerCase())) { try { fs.unlinkSync(p); removed++; } catch { /* encore ouvert */ } }
+    }
+  };
+  walk(dir);
+  console.log(`Émulation : reprise de ${e.name} oubliée (${removed} fichier(s))`);
+  return removed;
+}
 // Manettes XInput branchées (host/xinput.ps1), relues au plus toutes les 15 s : les émulateurs qui
 // ne prennent pas la manette tout seuls la reçoivent avant le lancement (emu-pads.js)
 const PAD_EMUS = ['eden', 'lichii', 'azahar', 'rpcs3', 'cemu', 'melonds'];
@@ -1602,6 +1629,14 @@ const routes = {
     json(res, 200, { ok: true });
   },
   // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
+  // Jeu quitté « complètement » (Select + Start maintenus 3 s) : la reprise automatique de RetroArch
+  // est effacée, le jeu repart du début au prochain lancement (ses propres sauvegardes restent)
+  'POST /api/emu/forget-resume': async (req, res) => {
+    const b = await readBody(req);
+    const e = findEntry(String(b.id || ''));
+    if (!e || e.source !== 'rom') return json(res, 404, { ok: false, error: 'Jeu inconnu' });
+    json(res, 200, { ok: true, removed: forgetResume(e) });
+  },
   'POST /api/launch/ended': async (req, res) => {
     const b = await readBody(req);
     recentLaunch.delete(String(b.id || ''));

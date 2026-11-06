@@ -24,6 +24,10 @@ public sealed class XInputPads : IDisposable
     private static extern int XInputGetState(int index, out State state);
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int key);
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Vibration { public ushort Left, Right; }
+    [DllImport("xinput1_4.dll")]
+    private static extern int XInputSetState(int index, ref Vibration vibration);
 
     /// <summary>Qui a la main, vu de KaneMode (lu hors du fil de l'interface).</summary>
     public enum Focus
@@ -48,12 +52,17 @@ public sealed class XInputPads : IDisposable
     public event Action? Knock;
     /// <summary>
     /// Jeu d'émulateur en cours : Select + Start maintenus (ou Échap maintenu) le ferment et ramènent
-    /// à KaneMode, quel que soit l'émulateur. Lu même quand le jeu a la main.
+    /// à KaneMode, quel que soit l'émulateur. Lu même quand le jeu a la main. 1 s (petite vibration)
+    /// puis relâcher : la partie est gardée ; 3 s (longue vibration) : fermé « complètement », la reprise
+    /// automatique est oubliée (le jeu repart du début la prochaine fois).
     /// </summary>
     public volatile bool QuitArmed;
-    public event Action<string>? QuitRequested;
+    /// <summary>(comment, complètement)</summary>
+    public event Action<string, bool>? QuitRequested;
     private long _quitPadSince, _quitKeySince;
-    private bool _quitFired;
+    private bool _quitFired, _quitReady;
+    private int _quitSlot = -1;
+    private const int QUIT_MS = 900, QUIT_FULL_MS = 3000;
     /// <summary>Mode souris activé ou désactivé.</summary>
     public event Action<bool>? MouseModeChanged;
     public event Action<string>? MouseDiagnosticChanged;
@@ -163,6 +172,8 @@ public sealed class XInputPads : IDisposable
             bool ours = focus == Focus.Ours || focus == Focus.Orphan;
             string now = "[]";
             bool quitWatch = QuitArmed && !ours;
+            // Plus de jeu suivi (fermé par l'émulateur pendant l'appui…) : rien ne reste armé pour le suivant
+            if (!quitWatch && (_quitReady || _quitFired || _quitPadSince != 0 || _quitKeySince != 0)) { _quitReady = _quitFired = false; _quitPadSince = _quitKeySince = 0; _quitSlot = -1; }
             if (ours || _mouse || focus == Focus.Other || focus == Focus.Desktop || quitWatch)
             {
                 try
@@ -260,19 +271,45 @@ public sealed class XInputPads : IDisposable
 
     private static string Axis(short v) => (Math.Round(v / 32767.0, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>Select + Start maintenus 1 s sur une manette, ou Échap maintenu 1 s : fermer le jeu (une fois par appui).</summary>
+    /// <summary>
+    /// Select + Start (ou Échap) maintenus : 1 s → prêt (petite vibration), fermé au relâchement en
+    /// gardant la partie ; 3 s → fermé tout de suite, partie oubliée (longue vibration). Une fois par appui.
+    /// </summary>
     private void CheckQuit(long t)
     {
         bool pad = false;
+        int slot = -1;
         for (int i = 0; i < SLOTS; i++)
-            if (_connected[i] && (_state[i].Pad.Buttons & (BACK | START)) == (BACK | START)) { pad = true; break; }
+            if (_connected[i] && (_state[i].Pad.Buttons & (BACK | START)) == (BACK | START)) { pad = true; slot = i; break; }
         bool key = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
         _quitPadSince = pad ? (_quitPadSince == 0 ? t : _quitPadSince) : 0;
         _quitKeySince = key ? (_quitKeySince == 0 ? t : _quitKeySince) : 0;
-        if (!pad && !key) { _quitFired = false; return; }
+        if (!pad && !key)
+        {
+            // Relâché après 1 s : fermer en gardant la partie
+            if (_quitReady && !_quitFired) QuitRequested?.Invoke(_quitSlot >= 0 ? "Select + Start" : "Échap", false);
+            _quitFired = false; _quitReady = false; _quitSlot = -1;
+            return;
+        }
         if (_quitFired) return;
-        if (pad && t - _quitPadSince >= 900) { _quitFired = true; QuitRequested?.Invoke("Select + Start"); }
-        else if (key && t - _quitKeySince >= 1000) { _quitFired = true; QuitRequested?.Invoke("Échap"); }
+        long held = pad ? t - _quitPadSince : t - _quitKeySince;
+        int ready = pad ? QUIT_MS : 1000;
+        if (!_quitReady && held >= ready) { _quitReady = true; _quitSlot = slot; Rumble(slot, 120, 0.45); }
+        if (held >= QUIT_FULL_MS)
+        {
+            _quitFired = true;
+            Rumble(slot, 450, 1.0);
+            QuitRequested?.Invoke(pad ? "Select + Start (3 s)" : "Échap (3 s)", true);
+        }
+    }
+
+    /// <summary>Courte vibration d'une manette XInput (les autres : rien), pour sentir l'étape franchie.</summary>
+    private static void Rumble(int slot, int ms, double strength)
+    {
+        if (slot < 0 || slot >= 4) return;
+        var on = new Vibration { Left = (ushort)(65535 * strength), Right = (ushort)(65535 * strength) };
+        try { XInputSetState(slot, ref on); } catch { return; }
+        System.Threading.Tasks.Task.Delay(ms).ContinueWith(_ => { var off = new Vibration(); try { XInputSetState(slot, ref off); } catch { } });
     }
 
     /// <summary>Start maintenu 1 s sur une manette : bascule le mode souris (une fois par appui).</summary>
@@ -281,6 +318,8 @@ public sealed class XInputPads : IDisposable
         for (int i = 0; i < SLOTS; i++)
         {
             bool down = _connected[i] && (_state[i].Pad.Buttons & START) != 0;
+            // Select + Start (sortie d'un jeu) : pas de mode souris, même si Start reste appuyé ensuite
+            if (down && (_state[i].Pad.Buttons & BACK) != 0) { _startSince[i] = 0; _startUsed[i] = true; continue; }
             if (!down) { _startSince[i] = 0; _startUsed[i] = false; continue; }
             if (_startSince[i] == 0) _startSince[i] = t;
             if (_startUsed[i] || t - _startSince[i] < HOLD_MS) continue;

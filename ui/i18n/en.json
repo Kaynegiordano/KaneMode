@@ -1638,5 +1638,7 @@
  "Tous les visuels": "All artwork",
  "{names} à jour": "{names} up to date",
  "Mise à jour en arrière-plan : {names}": "Updating in the background: {names}",
- "Mise à jour impossible : {names}": "Update failed: {names}"
+ "Mise à jour impossible : {names}": "Update failed: {names}",
+ "{name} repartira du début la prochaine fois": "{name} will start from the beginning next time",
+ "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 1 seconde. 3 secondes : quitter complètement, le jeu repartira du début.": "To return to KaneMode, hold <b>Select + Start</b> or <b>Esc</b> for 1 second. Hold 3 seconds to quit completely: the game will start from the beginning."
 }

@@ -86,13 +86,23 @@ export async function stopGame(g) {
   }, 8000);
 }
 
+// Jeux quittés « complètement » (Select + Start maintenus 3 s) : leur reprise automatique est
+// effacée une fois le jeu fermé (RetroArch l'écrit en quittant)
+const forgetOnEnd = new Set();
 native.on(m => {
   if (m.type === 'game-state') setRunning(m.id, m.running);
   else if (m.type === 'game-started') setRunning(m.id, true);
+  else if (m.type === 'game-quitting' && m.full) forgetOnEnd.add(m.id);
   else if (m.type === 'game-ended') {
     // Jeu fermé (vu par l'app native, qui revient ici) : il peut être relancé tout de suite
     clearTimeout(stopTimer);
     setRunning(m.id, false);
+    if (forgetOnEnd.delete(m.id)) {
+      const g = lib.byId(m.id);
+      setTimeout(() => api.post('/api/emu/forget-resume', { id: m.id })
+        .then(() => toast(t('{name} repartira du début la prochaine fois', { name: g ? g.name : '' })))
+        .catch(() => {}), 1200);
+    }
     api.post('/api/launch/ended', { id: m.id }).catch(() => {});
     lib.load({ background: true }).catch(() => {});
   } else if (m.type === 'game-stop' && m.force && m.failed) {
@@ -154,7 +164,7 @@ export async function launch(g, opts = {}) {
   }
   const status = $('#launch-status');
   // Jeu d'émulateur : la façon de revenir ici est dite avant que le jeu ne prenne l'écran
-  $('#launch-hint').innerHTML = g.source === 'rom' ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b>') : '';
+  $('#launch-hint').innerHTML = g.source === 'rom' ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 1 seconde. 3 secondes : quitter complètement, le jeu repartira du début.') : '';
   status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
     : !g.installed ? t('Ouverture de {store} pour installer {name}…', { store: sourceOf(g.source).label, name: g.name })
     : g.emulator ? t('Lancement de {name} avec {emulator}…', { name: g.name, emulator: g.emulator }) : t('Lancement de {name}…', { name: g.name });

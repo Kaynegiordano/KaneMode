@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.20.0 : quitter un jeu complètement (Select + Start maintenus 3 s)
+
+- Demande : pouvoir quitter « complètement », sans le « retour à la partie » de Select + Start ; précisé : la reprise au relancement (sauvegarde d'état automatique de RetroArch, seul émulateur réglé pour reprendre tout seul ; DuckStation/PCSX2 sans `-resume` repartent du début).
+- Natif `XInputPads.CheckQuit` : Select + Start (ou Échap) 0,9 s / 1 s → prêt (vibration courte, `XInputSetState`), fermeture AU RELÂCHEMENT partie gardée ; 3 s → fermeture tout de suite, `QuitRequested(how, full: true)` (vibration longue). État remis à zéro quand plus aucun jeu n'est suivi (sinon un « prêt » restait pour le jeu suivant). `CheckHold` ignore Start quand Select est aussi appuyé (pas de mode souris après une sortie). `QuitEmulatedGame(how, full)` → `game-quitting { full }`.
+- RetroArch : `input_quit_gamepad_combo = 3` (secours L1 + R1 + Select + Start ; avant : 4 = Select + Start, il quittait dès l'appui et KaneMode ne pouvait pas mesurer l'appui), `input_exit_emulator = nul` (Échap géré par KaneMode). Vérifié : fermé par sa fenêtre (`CloseMainWindow`), RetroArch écrit bien son `.state.auto`.
+- UI `game.js` : `forgetOnEnd` ; à `game-ended`, `POST /api/emu/forget-resume` (`forgetResume(e)` dans server.js : supprime `<nom>.state.auto(.png)` dans Sauvegardes\RetroArch\states\**, noms tirés de romPath, de `#fichier` et du fichier décompressé). Vérifié sur Sonic 2 (2 fichiers retirés, le Sonic Master System gardé, reprise de l'utilisateur remise ensuite). Non vérifié : appui réel et vibrations dans l'app installée / sur l'Ally.
+
 ## Version 4.19.0 : jeux Switch 2 .nup, Eden et Lichii réglés selon la machine
 
 - Signalé : dans « Nintendo Switch 2 », « Pokopia (v2.0.1a) (DUMP) » et « The Legend of Zelda Ocarina of Time [0400486024dec000][v131072].nup » (24 Go, signature `NUP\x01`) non reconnus ; « optimiser les réglages pour la ROG Ally X ». Pokopia : dossier copié par FTP (`.listing`), `base\` et `updates\` encore VIDES (rien à reconnaître). .nup = conteneur propre à Lichii (`src/core/loader/nup.cpp`, `file_sys/nup_container`) → ajouté en tête des `exts` de switch2.

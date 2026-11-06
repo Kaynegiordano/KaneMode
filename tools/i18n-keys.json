@@ -350,6 +350,9 @@
  "{name} prêt en arrière-plan": [
   "ui/js/pages/settings.js"
  ],
+ "{name} repartira du début la prochaine fois": [
+  "ui/js/pages/game.js"
+ ],
  "{name} restauré dans la bibliothèque": [
   "ui/js/pages/game.js"
  ],
@@ -3557,7 +3560,7 @@
  "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
   "ui/js/pages/settings.js"
  ],
- "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b>": [
+ "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 1 seconde. 3 secondes : quitter complètement, le jeu repartira du début.": [
   "ui/js/pages/game.js"
  ],
  "Pour tous les jeux de cette console, sauf ceux qui ont leurs propres réglages.": [
