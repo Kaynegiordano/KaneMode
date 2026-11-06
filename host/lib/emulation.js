@@ -18,23 +18,26 @@ const SYSTEMS = [
   { id: 'n64', name: 'Nintendo 64', maker: 'Nintendo', folders: ['n64'], exts: ['n64', 'z64', 'v64'], emus: ['retroarch', 'project64', 'ares'], cores: ['mupen64plus_next', 'parallel_n64'] },
   { id: 'gb', name: 'Game Boy', maker: 'Nintendo', folders: ['gb', 'gameboy'], exts: ['gb'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
   { id: 'gbc', name: 'Game Boy Color', maker: 'Nintendo', folders: ['gbc', 'gameboycolor'], exts: ['gbc'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
-  { id: 'gba', name: 'Game Boy Advance', maker: 'Nintendo', folders: ['gba', 'gameboyadvance'], exts: ['gba'], emus: ['mgba', 'retroarch'], cores: ['mgba', 'vba_next'] },
-  { id: 'nds', name: 'Nintendo DS', maker: 'Nintendo', folders: ['nds', 'ds'], exts: ['nds'], emus: ['melonds', 'retroarch'], cores: ['melonds', 'desmume'] },
-  { id: 'n3ds', name: 'Nintendo 3DS', maker: 'Nintendo', folders: ['n3ds', '3ds'], exts: ['3ds', 'cci', 'cxi', 'app'], emus: ['azahar', 'lime3ds', 'citra'] },
+  { id: 'gba', name: 'Game Boy Advance', maker: 'Nintendo', folders: ['gba', 'gameboyadvance'], exts: ['gba'], emus: ['retroarch', 'mgba'], cores: ['mgba', 'vba_next'] },
+  { id: 'nds', name: 'Nintendo DS', maker: 'Nintendo', folders: ['nds', 'ds'], exts: ['nds'], emus: ['retroarch', 'melonds'], cores: ['melondsds', 'melonds', 'desmume'] },
+  { id: 'n3ds', name: 'Nintendo 3DS', maker: 'Nintendo', folders: ['n3ds', '3ds'], exts: ['3ds', 'cci', 'cxi', 'app', 'zcci', 'zcxi'], emus: ['azahar', 'lime3ds', 'citra'] },
   { id: 'gc', name: 'GameCube', maker: 'Nintendo', folders: ['gc', 'gamecube', 'ngc'], exts: ['iso', 'gcm', 'rvz', 'gcz', 'ciso'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
   { id: 'wii', name: 'Wii', maker: 'Nintendo', folders: ['wii'], exts: ['wbfs', 'iso', 'rvz', 'gcz', 'wad'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
   { id: 'wiiu', name: 'Wii U', maker: 'Nintendo', folders: ['wiiu'], exts: ['wua', 'wux', 'wud', 'rpx'], emus: ['cemu'] },
-  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['nsp', 'xci', 'nca'], emus: ['ryujinx', 'eden', 'citron'] },
+  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['nsp', 'xci', 'nca'], emus: ['eden', 'ryujinx', 'citron'] },
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nsp', 'xci', 'nca'], emus: ['eglantine'], experimental: true },
   { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'pbp', 'ecm', 'iso', 'bin'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
   { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'gz', 'bin'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
+  { id: 'ps4', name: 'PlayStation 4', maker: 'Sony', folders: ['ps4', 'playstation4'], exts: [], dirGames: 'eboot.bin', emus: ['shadps4'], experimental: true },
+  { id: 'psvita', name: 'PlayStation Vita', maker: 'Sony', folders: ['psvita', 'vita'], exts: ['vpk'], emus: ['vita3k'], experimental: true },
   { id: 'psp', name: 'PlayStation Portable', maker: 'Sony', folders: ['psp'], exts: ['iso', 'cso', 'pbp', 'chd'], emus: ['ppsspp', 'retroarch'], cores: ['ppsspp'] },
   { id: 'megadrive', name: 'Mega Drive', maker: 'Sega', folders: ['megadrive', 'genesis', 'md'], exts: ['md', 'gen', 'smd', 'bin'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
   { id: 'mastersystem', name: 'Master System', maker: 'Sega', folders: ['mastersystem', 'sms'], exts: ['sms'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
   { id: 'gamegear', name: 'Game Gear', maker: 'Sega', folders: ['gamegear', 'gg'], exts: ['gg'], emus: ['retroarch'], cores: ['genesis_plus_gx'] },
   { id: 'segacd', name: 'Mega-CD', maker: 'Sega', folders: ['segacd', 'megacd'], exts: ['chd', 'cue', 'iso'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
   { id: 'saturn', name: 'Saturn', maker: 'Sega', folders: ['saturn'], exts: ['chd', 'cue', 'm3u'], emus: ['retroarch'], cores: ['mednafen_saturn', 'yabasanshiro'] },
-  { id: 'dreamcast', name: 'Dreamcast', maker: 'Sega', folders: ['dreamcast', 'dc'], exts: ['chd', 'gdi', 'cdi', 'm3u'], emus: ['flycast', 'retroarch'], cores: ['flycast'] },
+  { id: 'dreamcast', name: 'Dreamcast', maker: 'Sega', folders: ['dreamcast', 'dc'], exts: ['chd', 'gdi', 'cdi', 'm3u'], emus: ['retroarch', 'flycast'], cores: ['flycast'] },
   { id: 'pcengine', name: 'PC Engine', maker: 'NEC', folders: ['pcengine', 'tg16', 'pce'], exts: ['pce', 'chd', 'cue'], emus: ['retroarch'], cores: ['mednafen_pce_fast', 'mednafen_pce'] },
   { id: 'neogeo', name: 'Neo Geo', maker: 'SNK', folders: ['neogeo'], exts: ['zip', '7z'], emus: ['retroarch'], cores: ['fbneo'] },
   { id: 'arcade', name: 'Arcade', maker: 'Arcade', folders: ['arcade', 'mame', 'fbneo', 'fba'], exts: ['zip', '7z'], emus: ['retroarch'], cores: ['fbneo', 'mame'] },
@@ -43,7 +46,8 @@ const SYSTEMS = [
   { id: 'xbox360', name: 'Xbox 360', maker: 'Microsoft', folders: ['xbox360', 'x360'], exts: ['iso', 'xex', 'zar'], emus: ['xenia'] },
 ];
 const SYSTEM_BY_FOLDER = new Map();
-for (const s of SYSTEMS) for (const f of s.folders) SYSTEM_BY_FOLDER.set(f, s);
+// Le dossier de jeux préparé par KaneMode porte le nom de la console (« Super Nintendo »)
+for (const s of SYSTEMS) for (const f of [...s.folders, s.name.toLowerCase()]) SYSTEM_BY_FOLDER.set(f, s);
 
 // ---------- Émulateurs ----------
 // exes : exécutables reconnus ; dirs : noms de dossiers d'installation probables ; args : {rom}, {core}
@@ -71,6 +75,9 @@ const EMULATORS = [
   { id: 'flycast', name: 'Flycast', exes: ['flycast.exe'], dirs: ['Flycast', 'flycast'], args: '"{rom}"' },
   { id: 'xemu', name: 'xemu', exes: ['xemu.exe'], dirs: ['xemu'], args: '-full-screen -dvd_path "{rom}"' },
   { id: 'xenia', name: 'Xenia', exes: ['xenia_canary.exe', 'xenia.exe'], dirs: ['Xenia', 'xenia', 'xenia_canary'], args: '--fullscreen=true "{rom}"' },
+  { id: 'eglantine', name: 'Eglantine', exes: ['eglantine.exe'], dirs: ['Eglantine', 'eglantine'], args: '-f -g "{rom}"' },
+  { id: 'shadps4', name: 'shadPS4', exes: ['shadPS4.exe'], dirs: ['shadPS4', 'shadps4'], args: '--fullscreen true --game "{rom}"' },
+  { id: 'vita3k', name: 'Vita3K', exes: ['Vita3K.exe'], dirs: ['Vita3K', 'vita3k'], args: '-F "{rom}"' },
 ];
 const EMU_BY_ID = new Map(EMULATORS.map(e => [e.id, e]));
 
@@ -141,7 +148,12 @@ function launchFor(sys, rom, emulators, prefs = {}) {
     if (!found) continue;
     const def = EMU_BY_ID.get(id);
     let core = null;
-    if (id === 'retroarch') { core = retroarchCore(found.path, sys); if (!core) continue; }
+    if (id === 'retroarch') {
+      core = retroarchCore(found.path, sys);
+      // RetroArch installé par KaneMode : le cœur manquant est téléchargé au lancement
+      if (!core && found.source === 'kanemode' && (sys.cores || []).length) core = path.join(path.dirname(found.path), 'cores', `${sys.cores[0]}_libretro.dll`);
+      if (!core) continue;
+    }
     const args = def.args.replace('{rom}', rom).replace('{core}', core || '');
     return { emulator: def.name, emulatorId: id, core: core ? path.basename(core, '_libretro.dll') : null, launch: { kind: 'exe', target: found.path, args, cwd: path.dirname(found.path) } };
   }
@@ -203,7 +215,7 @@ function scanRoms(roots, emulators, prefs) {
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
       romPath: r.path, installed: !!how, installDir: path.dirname(r.path), sizeOnDisk: r.size, lastPlayed: 0,
-      emulator: how ? how.emulator : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
+      emulator: how ? how.emulator : null, emulatorId: how ? how.emulatorId : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
     };
   });
 }

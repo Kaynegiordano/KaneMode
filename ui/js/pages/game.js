@@ -5,6 +5,7 @@ import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, n
 import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh, suspendNavigation, resumeNavigation } from '../nav.js';
 import { art, badges } from '../cards.js';
 import { dialog, confirmDialog, openKeyboard } from '../widgets.js';
+import { installEmulator } from './emulation.js';
 
 // ---------- Fond d'écran dynamique ----------
 const layers = $$('.bg-layer');
@@ -166,7 +167,28 @@ export async function launch(g) {
   let waitForGame = false;
   try {
     native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
-    const r = await api.post('/api/launch', { id: g.id });
+    let r = await api.post('/api/launch', { id: g.id });
+    // Premier jeu d'une console : son émulateur s'installe ici, puis le jeu démarre
+    if (r.needsEmulator) {
+      status.textContent = t('Installation de {name}…', { name: r.needsEmulator.name });
+      const error = await installEmulator(r.needsEmulator.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
+      if (!launching || launching.layer !== layer) return;
+      g = lib.byId(g.id) || g;
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id });
+      if (r.ok) native.send('foreground', { id: g.id });
+    }
+    if (r.needsBios) {
+      native.send('external-cancel');
+      launching = null;
+      if (topLayer() === layer) closeLayer(layer);
+      const c = await dialog({
+        title: t('Il manque un fichier pour {system}', { system: g.systemName || g.name }),
+        text: t('{what}. Il vient de votre propre console : déposez-le dans le dossier BIOS, puis relancez le jeu.', { what: esc(r.needsBios) }),
+        buttons: [{ label: t('Ouvrir le dossier BIOS'), value: 'open', icon: 'i-folder', primary: true }, { label: t('Fermer'), value: null }],
+      });
+      if (c === 'open') api.post('/api/emu/open', { what: 'bios' }).catch(() => {});
+      return;
+    }
     if (r.ok && r.already && !g.installed) {
       status.textContent = t('Suivez l’installation dans {store}', { store: sourceOf(g.source).label });
     } else if (r.already || r.running) {

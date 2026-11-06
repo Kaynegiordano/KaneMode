@@ -65,6 +65,24 @@
  " octets": [
   "ui/js/core.js"
  ],
+ "« Super Nintendo », « PlayStation 2 »… un dossier par console est déjà prêt": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{a} : aucune version publiée": [
+  "host/lib/emu-store.js"
+ ],
+ "{a} : exécutable introuvable dans l'archive": [
+  "host/lib/emu-store.js"
+ ],
+ "{a} : HTTP {b}": [
+  "host/lib/emu-store.js"
+ ],
+ "{a} : pas de fichier Windows dans la version {b}": [
+  "host/lib/emu-store.js"
+ ],
+ "{a} : réponse illisible": [
+  "host/lib/emu-store.js"
+ ],
  "{a} · installé : {b}": [
   "host/server.js"
  ],
@@ -73,9 +91,6 @@
  ],
  "{a} introuvable": [
   "host/syscontrol.ps1"
- ],
- "{a} KaneMode les cherche dans Program Files, AppData, Scoop, <code>C:\\Emulators</code>, <code>D:\\Emulation</code>, RetroBat… Si un émulateur portable n’est pas détecté, indiquez son exécutable. Pour RetroArch, les cœurs doivent être installés (Menu principal → Charger un cœur → Télécharger).": [
-  "ui/js/pages/emulation.js"
  ],
  "{a}<div>Ajouter un jeu ou une appli</div>": [
   "ui/js/pages/home.js"
@@ -178,9 +193,11 @@
   "ui/js/pages/media.js"
  ],
  "{n} console": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "{n} consoles": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "{n} dossier de ROMs": [
@@ -203,29 +220,20 @@
  "{n} éléments ajoutés à la bibliothèque": [
   "ui/js/pages/add.js"
  ],
- "{n} émulateur": [
-  "ui/js/pages/emulation.js"
- ],
  "{n} émulateur détecté": [
   "ui/js/pages/settings.js"
  ],
- "{n} émulateur trouvé.": [
-  "ui/js/pages/emulation.js"
- ],
- "{n} émulateurs": [
-  "ui/js/pages/emulation.js"
- ],
  "{n} émulateurs détectés": [
   "ui/js/pages/settings.js"
- ],
- "{n} émulateurs trouvés.": [
-  "ui/js/pages/emulation.js"
  ],
  "{n} gratuit": [
   "ui/js/deals.js"
  ],
  "{n} gratuits": [
   "ui/js/deals.js"
+ ],
+ "{n} installations lancées": [
+  "ui/js/pages/emulation.js"
  ],
  "{n} jeu": [
   "ui/js/accounts-settings.js",
@@ -249,12 +257,6 @@
   "ui/js/accounts-settings.js"
  ],
  "{n} jeux trouvés": [
-  "ui/js/pages/emulation.js"
- ],
- "{n} jouable": [
-  "ui/js/pages/emulation.js"
- ],
- "{n} jouables": [
   "ui/js/pages/emulation.js"
  ],
  "{n} manette connectée": [
@@ -302,13 +304,10 @@
  "{n} ROM": [
   "ui/js/pages/settings.js"
  ],
- "{n} ROM trouvée": [
-  "ui/js/pages/emulation.js"
- ],
  "{n} ROMs": [
   "ui/js/pages/settings.js"
  ],
- "{n} ROMs trouvées": [
+ "{name} : {error}": [
   "ui/js/pages/emulation.js"
  ],
  "{name} ajouté à la bibliothèque": [
@@ -320,11 +319,11 @@
  "{name} est déjà lancé": [
   "ui/js/pages/game.js"
  ],
+ "{name} est prêt": [
+  "ui/js/pages/emulation.js"
+ ],
  "{name} garde le mode en cours": [
   "ui/js/pages/game.js"
- ],
- "{name} mis à jour": [
-  "ui/js/pages/emulation.js"
  ],
  "{name} n’est pas installé sur ce PC": [
   "ui/js/pages/game.js"
@@ -350,8 +349,17 @@
  "{name} retiré des favoris": [
   "ui/js/pages/game.js"
  ],
+ "{name} s’installera au premier jeu": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{name} s’installera tout seul au premier jeu. Vous pouvez aussi l’installer maintenant.": [
+  "ui/js/pages/emulation.js"
+ ],
  "{name} sera prêt pour vos jeux": [
   "ui/js/pages/settings.js"
+ ],
+ "{name} sera utilisé": [
+  "ui/js/pages/emulation.js"
  ],
  "{name} suit le réglage général": [
   "ui/js/pages/game.js"
@@ -361,9 +369,6 @@
  ],
  "{ok} : simulé dans le prototype (aucune action réelle)": [
   "ui/js/main.js"
- ],
- "{p} ajouté : {jeux}": [
-  "ui/js/pages/emulation.js"
  ],
  "{refresh} Hz": [
   "ui/js/widget.js"
@@ -383,11 +388,11 @@
  "{trim} ({cores} cœurs)": [
   "ui/js/pages/settings.js"
  ],
+ "{what}. Il vient de votre propre console : déposez-le dans le dossier BIOS, puis relancez le jeu.": [
+  "ui/js/pages/game.js"
+ ],
  "↗ Envoyé": [
   "ui/js/widget.js"
- ],
- "<b>{a}</b><small>dossier « {b} » · .{join}{c}</small>": [
-  "ui/js/pages/emulation.js"
  ],
  "<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Il faut le <b>complément PC hôte</b> sur le PC qui diffuse : il s’installe ci-dessous quand KaneMode est aussi sur ce PC.": [
   "ui/js/pages/settings.js"
@@ -416,11 +421,11 @@
  "<div class=\"loading\"><i class=\"spinner big\"></i>Chargement des visuels…</div>": [
   "ui/js/pages/artpicker.js"
  ],
+ "<div class=\"loading\"><i class=\"spinner big\"></i>Ouverture du monde Émulation…</div>": [
+  "ui/js/pages/emulation.js"
+ ],
  "<div class=\"loading\"><i class=\"spinner big\"></i>Recherche des captures…</div>": [
   "ui/js/pages/media.js"
- ],
- "<div class=\"loading\"><i class=\"spinner big\"></i>Recherche des émulateurs…</div>": [
-  "ui/js/pages/emulation.js"
  ],
  "<div class=\"mon-cell\"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>": [
   "ui/js/monitor.js"
@@ -445,9 +450,6 @@
  ],
  "<h1>Bibliothèque vide</h1><p>Aucun jeu détecté. Ajoutez-en un, ou activez la bibliothèque de démonstration dans les Paramètres.</p>": [
   "ui/js/pages/home.js"
- ],
- "<h1>Émulation</h1><p>Vos ROMs apparaissent dans la bibliothèque (onglet Émulation) avec leurs jaquettes SteamGridDB, et se lancent directement dans le bon émulateur.</p>": [
-  "ui/js/pages/emulation.js"
  ],
  "<h1>Médias</h1><p>Vos captures d’écran et vidéos de jeu, rassemblées depuis Steam (F12), la Xbox Game Bar (Win + Alt + Impr. écran) et les captures Windows.</p>": [
   "ui/js/pages/media.js"
@@ -496,6 +498,9 @@
  ],
  "<span class=\"label-long\">Accès rapide</span>": [
   "ui/js/nav.js"
+ ],
+ "<span class=\"label-long\">Consoles</span>": [
+  "ui/js/pages/emulation.js"
  ],
  "<span class=\"label-long\">Lettres</span>": [
   "ui/js/pages/library.js"
@@ -565,6 +570,9 @@
  ],
  "À côté de l’icône, sur les consoles et PC portables": [
   "ui/js/pages/settings.js"
+ ],
+ "à jour": [
+  "ui/js/pages/emulation.js"
  ],
  "À jour · dernière version {a}": [
   "ui/js/pages/settings.js"
@@ -678,10 +686,13 @@
  "Ajouter comme jeux": [
   "ui/js/pages/add.js"
  ],
+ "Ajouter des jeux": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ajouter la sélection": [
   "ui/js/pages/add.js"
  ],
- "Ajouter un dossier de ROMs…": [
+ "Ajouter un dossier de jeux…": [
   "ui/js/pages/emulation.js"
  ],
  "Ajouter un jeu ou une appli": [
@@ -689,6 +700,9 @@
  ],
  "Ajouter une épingle": [
   "ui/js/personalization-settings.js"
+ ],
+ "Ajoutez vos jeux, KaneMode s’occupe du reste": [
+  "ui/js/pages/emulation.js"
  ],
  "Ajouts perso": [
   "ui/js/core.js",
@@ -808,6 +822,12 @@
  "Après l’activation de la passerelle, fermez puis rouvrez Playnite. Ajoutez les connecteurs souhaités dans ses extensions. Les connecteurs chargés apparaissent ici après la première synchronisation.": [
   "ui/js/accounts-settings.js"
  ],
+ "Archive illisible": [
+  "host/lib/emu-store.js"
+ ],
+ "Archive illisible : ": [
+  "host/lib/emu-store.js"
+ ],
  "Arguments": [
   "ui/js/pages/add.js"
  ],
@@ -847,6 +867,9 @@
  ],
  "Au lancement de KaneMode · n’importe quel bouton la passe": [
   "ui/js/pages/settings.js"
+ ],
+ "Au premier jeu d’une console, KaneMode installe son émulateur et le règle : écran, manette, sauvegardes": [
+  "ui/js/pages/emulation.js"
  ],
  "Aucun": [
   "ui/js/pages/add.js",
@@ -987,10 +1010,14 @@
  "autre réglage": [
   "ui/js/widget.js"
  ],
+ "Autres dossiers de jeux": [
+  "ui/js/pages/emulation.js"
+ ],
  "Autres pilotes (Windows Update)": [
   "ui/js/pages/settings.js"
  ],
  "Avancé": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "Avec Boost": [
@@ -1052,6 +1079,12 @@
  ],
  "Bientôt": [
   "ui/js/deals.js"
+ ],
+ "BIOS": [
+  "ui/js/pages/emulation.js"
+ ],
+ "BIOS et clés": [
+  "ui/js/pages/emulation.js"
  ],
  "BIOS et pilotes publiés par {a} pour cette console": [
   "ui/js/pages/settings.js"
@@ -1167,6 +1200,9 @@
  "Ce PC ne propose pas de veille (voir les options d’alimentation).": [
   "ui/js/pages/settings.js"
  ],
+ "Certaines consoles ont besoin d’un fichier venant de votre propre console. Déposez-le dans le dossier BIOS : KaneMode le donne à l’émulateur.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ces boutons fonctionnent partout, même en jeu, tant que KaneMode est ouvert. <b>Vue des tâches</b> montre les fenêtres ouvertes, comme un appui long sur la touche Xbox. <b>Accès rapide</b> et <b>Menu</b> s’ouvrent par-dessus le jeu, et le refermer y ramène. <b>KaneMode</b> revient à l’accueil.": [
   "ui/js/pages/settings.js"
  ],
@@ -1181,6 +1217,9 @@
  ],
  "Chaque écran associé retrouve son profil automatiquement": [
   "ui/js/personalization-settings.js"
+ ],
+ "Chaque émulateur vient de son site officiel et s’installe au premier jeu de sa console. Ses réglages et vos sauvegardes restent dans {dir}.": [
+  "ui/js/pages/emulation.js"
  ],
  "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>.": [
   "ui/js/pages/settings.js"
@@ -1217,7 +1256,7 @@
  "Choisir un dossier avec la manette": [
   "ui/js/pages/emulation.js"
  ],
- "Choisir un dossier de ROMs": [
+ "Choisir un dossier de jeux": [
   "ui/js/pages/emulation.js"
  ],
  "Choisir un programme": [
@@ -1310,6 +1349,12 @@
  ],
  "Cocher": [
   "ui/js/pages/add.js"
+ ],
+ "Cœur {a} : {b}": [
+  "host/server.js"
+ ],
+ "Cœur {a} introuvable dans l'archive": [
+  "host/lib/emu-store.js"
  ],
  "Coins": [
   "ui/js/pages/settings.js"
@@ -1469,11 +1514,11 @@
  "Console rétro": [
   "ui/js/personalization-settings.js"
  ],
+ "Consoles": [
+  "ui/js/pages/emulation.js"
+ ],
  "Consoles portables et PC portables · jamais pendant un jeu": [
   "ui/js/pages/settings.js"
- ],
- "Consoles prises en charge": [
-  "ui/js/pages/emulation.js"
  ],
  "Consommation": [
   "ui/js/hud.js",
@@ -1533,6 +1578,9 @@
  "Délai avant masquage": [
   "ui/js/personalization-settings.js"
  ],
+ "Délai dépassé": [
+  "host/lib/emu-store.js"
+ ],
  "Démarrage": [
   "ui/js/pages/settings.js"
  ],
@@ -1564,7 +1612,7 @@
  "Déplacement, validation, retour et notification au volume choisi": [
   "ui/js/personalization-settings.js"
  ],
- "Dernier scan : {toLocaleString}": [
+ "Déposez chaque jeu dans le dossier de sa console": [
   "ui/js/pages/emulation.js"
  ],
  "Dernière importation": [
@@ -1578,6 +1626,9 @@
  ],
  "Dernière partie": [
   "ui/js/pages/home.js"
+ ],
+ "Dernière recherche : {d}": [
+  "ui/js/pages/emulation.js"
  ],
  "Dernière session": [
   "ui/js/pages/game.js",
@@ -1615,9 +1666,6 @@
  "Détecte les jeux de toutes les boutiques et les ROMs{a}": [
   "ui/js/pages/settings.js"
  ],
- "Détection automatique": [
-  "ui/js/pages/emulation.js"
- ],
  "Développeur": [
   "ui/js/pages/game.js"
  ],
@@ -1633,8 +1681,14 @@
  "Dolby nécessite une licence valide et une sortie compatible": [
   "ui/js/dolby-settings.js"
  ],
+ "Dolphin : pas de version Windows": [
+  "host/lib/emu-store.js"
+ ],
  "Données": [
   "ui/js/pages/settings.js"
+ ],
+ "Dossier des jeux": [
+  "ui/js/pages/emulation.js"
  ],
  "Dossier inaccessible": [
   "host/server.js",
@@ -1643,13 +1697,13 @@
  "Dossier introuvable": [
   "host/lib/launch.js"
  ],
+ "Dossier ouvert dans l’Explorateur": [
+  "ui/js/pages/emulation.js"
+ ],
  "Dossier parent": [
   "ui/js/pages/add.js"
  ],
  "Dossier retiré": [
-  "ui/js/pages/emulation.js"
- ],
- "Dossiers de ROMs": [
   "ui/js/pages/emulation.js"
  ],
  "Dossiers de ROMs, émulateurs, consoles prises en charge": [
@@ -1750,13 +1804,20 @@
  "Émulateur": [
   "ui/js/pages/game.js"
  ],
+ "Émulateur inconnu": [
+  "host/lib/emu-store.js",
+  "host/server.js"
+ ],
  "ÉMULATEUR MANQUANT": [
   "ui/js/pages/game.js"
  ],
- "Émulateur non détecté.": [
+ "Émulateur non reconnu": [
   "ui/js/pages/emulation.js"
  ],
  "Émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Émulateurs installés par KaneMode": [
   "ui/js/pages/emulation.js"
  ],
  "Émulation": [
@@ -1869,7 +1930,10 @@
  "Ethernet · Internet": [
   "ui/js/statusbar.js"
  ],
- "Exécutable de {name}": [
+ "Exécutable de l’émulateur": [
+  "ui/js/pages/emulation.js"
+ ],
+ "expérimental": [
   "ui/js/pages/emulation.js"
  ],
  "Faible latence": [
@@ -2093,6 +2157,15 @@
  "Il faut un nom et un programme ou une adresse": [
   "ui/js/pages/add.js"
  ],
+ "Il manque : {a}": [
+  "host/server.js"
+ ],
+ "Il manque : {what}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Il manque un fichier pour {system}": [
+  "ui/js/pages/game.js"
+ ],
  "Il y a {diff} jours": [
   "ui/js/core.js"
  ],
@@ -2162,7 +2235,7 @@
  "IndieGala, itch.io, Prime Gaming… (GamerPower)": [
   "ui/js/pages/settings.js"
  ],
- "Indiquer l’exécutable…": [
+ "Indiquer un émulateur…": [
   "ui/js/pages/emulation.js"
  ],
  "Installateur KaneMode-Setup sur GitHub": [
@@ -2171,6 +2244,10 @@
  "Installation annulée": [
   "host/lib/hostscale.js",
   "ui/js/pages/settings.js"
+ ],
+ "Installation de {name}…": [
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js"
  ],
  "Installation de la mise à jour…": [
   "ui/js/pages/settings.js"
@@ -2190,6 +2267,9 @@
  ],
  "INSTALLATION INDISPONIBLE": [
   "ui/js/pages/game.js"
+ ],
+ "Installation lancée": [
+  "ui/js/pages/emulation.js"
  ],
  "Installation lancée · acceptez la demande de Windows": [
   "ui/js/pages/settings.js"
@@ -2248,6 +2328,9 @@
  "Installer les pilotes ?": [
   "ui/js/pages/settings.js"
  ],
+ "Installer maintenant": [
+  "ui/js/pages/emulation.js"
+ ],
  "Installés": [
   "ui/js/pages/library.js"
  ],
@@ -2274,9 +2357,6 @@
  ],
  "Jamais joué": [
   "ui/js/core.js"
- ],
- "Jamais scanné": [
-  "ui/js/pages/emulation.js"
  ],
  "Jamais vérifié": [
   "ui/js/pages/settings.js"
@@ -2359,6 +2439,9 @@
  ],
  "Jouer": [
   "ui/js/pages/home.js"
+ ],
+ "Jouez": [
+  "ui/js/pages/emulation.js"
  ],
  "Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran": [
   "ui/js/pages/settings.js"
@@ -2504,6 +2587,9 @@
  ],
  "Le pilote NVIDIA a refusé : {a} ({b})": [
   "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Le serveur ne répond plus": [
+  "host/lib/emu-store.js"
  ],
  "Lecteurs vidéo": [
   "ui/js/pages/settings.js"
@@ -2662,6 +2748,9 @@
  ],
  "Masquer les indications au repos": [
   "ui/js/personalization-settings.js"
+ ],
+ "Masquer les vides": [
+  "ui/js/pages/emulation.js"
  ],
  "Masqués": [
   "ui/js/pages/library.js"
@@ -2949,11 +3038,11 @@
   "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js"
  ],
+ "Non installé · environ {size} Mo": [
+  "ui/js/pages/emulation.js"
+ ],
  "Non installés": [
   "ui/js/pages/library.js"
- ],
- "Non trouvé": [
-  "ui/js/pages/emulation.js"
  ],
  "Notifications": [
   "ui/index.html",
@@ -3066,8 +3155,12 @@
   "ui/js/dolby-settings.js",
   "ui/js/pages/settings.js"
  ],
+ "Ouvrez le dossier des jeux": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ouvrir": [
   "ui/js/pages/add.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/home.js",
   "ui/js/pages/library.js",
   "ui/js/widget.js"
@@ -3084,11 +3177,18 @@
  "Ouvrir la page de téléchargement": [
   "ui/js/pages/settings.js"
  ],
+ "Ouvrir le dossier BIOS": [
+  "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js"
+ ],
  "Ouvrir le streaming": [
   "ui/js/pages/settings.js"
  ],
  "Ouvrir les réglages du mode Xbox": [
   "ui/js/pages/settings.js"
+ ],
+ "Ouvrir son dossier": [
+  "ui/js/pages/emulation.js"
  ],
  "Ouvrir Windows Update": [
   "ui/js/pages/settings.js"
@@ -3291,6 +3391,9 @@
  "Préférer les visuels officiels Steam": [
   "ui/js/pages/settings.js"
  ],
+ "Prêt": [
+  "ui/js/pages/emulation.js"
+ ],
  "Prime Video": [
   "ui/js/pages/add.js"
  ],
@@ -3454,9 +3557,6 @@
  "Ranger ce jeu dans une collection": [
   "ui/js/pages/game.js"
  ],
- "Rangez vos jeux dans un sous-dossier par console, comme dans EmulationStation-DE ou RetroBat : <code>D:\\ROMs\\snes</code>, <code>D:\\ROMs\\psx</code>, <code>D:\\ROMs\\gc</code>… Vous pouvez aussi choisir directement un dossier de console.": [
-  "ui/js/pages/emulation.js"
- ],
  "Rapides": [
   "ui/js/personalization-settings.js"
  ],
@@ -3469,14 +3569,23 @@
  "Récemment joués <small>tapez pour rechercher</small>": [
   "ui/js/pages/search.js"
  ],
+ "Récents": [
+  "ui/js/pages/emulation.js"
+ ],
  "Recharge KaneMode sans quitter": [
   "ui/js/pages/settings.js"
+ ],
+ "Recherche de la dernière version de {name}…": [
+  "ui/js/pages/emulation.js"
  ],
  "Recherche des applications installées…": [
   "ui/js/pages/add.js"
  ],
  "Recherche des applications installées… (quelques secondes la première fois)": [
   "ui/js/pages/add.js"
+ ],
+ "Recherche des jeux…": [
+  "ui/js/pages/emulation.js"
  ],
  "Recherche des mises à jour…": [
   "ui/js/pages/settings.js"
@@ -3505,6 +3614,9 @@
  ],
  "Rechercher des mises à jour de pilotes": [
   "ui/js/pages/settings.js"
+ ],
+ "Rechercher les jeux maintenant": [
+  "ui/js/pages/emulation.js"
  ],
  "Rechercher un jeu à épingler": [
   "ui/js/personalization-settings.js"
@@ -3582,6 +3694,9 @@
  "Réinitialiser le profil {name}": [
   "ui/js/personalization-settings.js"
  ],
+ "Réinstaller ou mettre à jour": [
+  "ui/js/pages/emulation.js"
+ ],
  "Rejoue l’animation et le son choisis": [
   "ui/js/pages/settings.js"
  ],
@@ -3649,10 +3764,11 @@
   "ui/js/pages/settings.js"
  ],
  "Retirer": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
  ],
- "Retirer ce dossier": [
+ "Retirer ce dossier ?": [
   "ui/js/pages/emulation.js"
  ],
  "Retirer de l’accueil": [
@@ -3703,6 +3819,7 @@
   "ui/js/pages/settings.js"
  ],
  "Rétro": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "Rétro grave": [
@@ -3763,12 +3880,6 @@
  "Sans variantes : {list}": [
   "ui/js/pages/settings.js"
  ],
- "Scan des ROMs…": [
-  "ui/js/pages/emulation.js"
- ],
- "Scanner les ROMs et les émulateurs": [
-  "ui/js/pages/emulation.js"
- ],
  "Secteur": [
   "ui/js/qam.js"
  ],
@@ -3790,7 +3901,6 @@
  "Sélectionner": [
   "ui/js/main.js",
   "ui/js/nav.js",
-  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/media.js",
   "ui/js/pages/search.js",
@@ -3830,6 +3940,9 @@
  ],
  "Son de démarrage enregistré": [
   "ui/js/pages/settings.js"
+ ],
+ "Son exécutable, par exemple retroarch.exe": [
+  "ui/js/pages/emulation.js"
  ],
  "Son KaneMode": [
   "ui/js/pages/settings.js"
@@ -4022,6 +4135,9 @@
  "Taille des jaquettes": [
   "ui/js/pages/settings.js"
  ],
+ "Téléchargement de {name}… {p} %": [
+  "ui/js/pages/emulation.js"
+ ],
  "Téléchargement de la version {a}… {pct} %": [
   "ui/js/pages/settings.js"
  ],
@@ -4033,6 +4149,9 @@
  ],
  "Téléchargement impossible ({a})": [
   "host/lib/update.js"
+ ],
+ "Téléchargement refusé (HTTP {a})": [
+  "host/lib/emu-store.js"
  ],
  "Télécharger la version {a}": [
   "ui/js/pages/settings.js"
@@ -4088,6 +4207,7 @@
   "ui/js/pages/home.js"
  ],
  "Tout": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/library.js",
   "ui/js/pages/media.js",
   "ui/js/widget.js"
@@ -4101,6 +4221,9 @@
  "Tout est à jour": [
   "ui/js/statusbar.js"
  ],
+ "Tout mettre à jour": [
+  "ui/js/pages/emulation.js"
+ ],
  "Tout sélectionner": [
   "ui/js/pages/media.js"
  ],
@@ -4111,6 +4234,7 @@
   "ui/js/pages/add.js"
  ],
  "Toutes les consoles": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/library.js"
  ],
  "Toutes les versions, notes de version et manuels": [
@@ -4161,6 +4285,12 @@
  "Un autre programme (Armoury Crate SE ?) remet sans cesse son propre profil : désactivez ses profils par jeu. KaneMode reprend la main dès que vous choisissez un mode.": [
   "ui/js/qam.js",
   "ui/js/widget.js"
+ ],
+ "un dossier par jeu": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Un émulateur installé par vous et indiqué ici passe avant celui de KaneMode.": [
+  "ui/js/pages/emulation.js"
  ],
  "Un fichier .mp3, .wav, .ogg ou .m4a, idéalement de 2 à 5 secondes · le logo apparaît pile sur le pic du son": [
   "ui/js/pages/settings.js"
@@ -4261,6 +4391,12 @@
  "Version {a} disponible": [
   "ui/js/pages/settings.js"
  ],
+ "Version {v}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Version {v} · version {latest} disponible": [
+  "ui/js/pages/emulation.js"
+ ],
  "Version de développement : mettez à jour avec l’installateur de la page GitHub": [
   "host/server.js"
  ],
@@ -4269,6 +4405,9 @@
  ],
  "version du {day}": [
   "ui/js/pages/settings.js"
+ ],
+ "vide": [
+  "ui/js/pages/emulation.js"
  ],
  "Vidéo de démarrage enregistrée": [
   "ui/js/pages/settings.js"
@@ -4332,11 +4471,17 @@
  "Vos jeux et collections préférés": [
   "ui/js/pages/home.js"
  ],
+ "Vos propres émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
  "Vos ROMs, par dernière partie": [
   "ui/js/pages/home.js"
  ],
  "Votre bibliothèque": [
   "ui/js/personalization-settings.js"
+ ],
+ "Vous avez déjà une collection rangée ailleurs (EmulationStation-DE, RetroBat…) ? Ajoutez son dossier : un sous-dossier par console, comme <code>D:\\ROMs\\snes</code>.": [
+  "ui/js/pages/emulation.js"
  ],
  "Vous pouvez garder uniquement les validations et notifications": [
   "ui/js/personalization-settings.js"

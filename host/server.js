@@ -10,6 +10,8 @@ const { spawn, execFile } = require('child_process');
 const steam = require('./lib/steam');
 const sgdb = require('./lib/sgdb');
 const emu = require('./lib/emulation');
+const emuStoreLib = require('./lib/emu-store');
+const emuSetup = require('./lib/emu-setup');
 const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
@@ -270,6 +272,7 @@ const noSgdb = e => e.source === 'kaneplay';
 // le remettre devant ou l'arrêter (émulation : le dossier de l'émulateur)
 function trackDir(g) {
   if (g.demo || g.source === 'kaneplay' || g.streamHost) return null;
+  if (g.source === 'rom') return g.launch && str(g.launch.target) ? path.dirname(g.launch.target) : null;
   if (str(g.installDir)) return g.installDir;
   const l = g.launch;
   return l && l.kind === 'exe' && /\.exe$/i.test(str(l.target)) ? path.dirname(l.target) : null;
@@ -302,7 +305,7 @@ function publicEntry(g, st, cfg) {
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
-    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null,
+    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
     art,
@@ -804,11 +807,80 @@ const accounts = accountsLib.create(DATA, { run, root: ROOT,
 });
 
 // ---------------------------------------------------------------- émulation
+// Dossier d'émulation de l'utilisateur : Jeux (un dossier par console), BIOS, Sauvegardes et les
+// émulateurs installés par KaneMode. Hors d'AppData : rien n'est perdu si KaneMode est désinstallé.
+const emuHome = () => str(config().emuHome) || path.join(os.homedir(), 'KaneMode Émulation');
+const emuDirs = () => { const h = emuHome(); return { home: h, games: path.join(h, 'Jeux'), bios: path.join(h, 'BIOS'), saves: path.join(h, 'Sauvegardes') }; };
+const emuStore = emuStoreLib.create({
+  home: emuHome,
+  isAlly: async () => { try { return /^rog-ally/.test(((await device.info()) || {}).handheld?.id || ''); } catch { return false; } },
+});
+function ensureEmuHome() {
+  const d = emuDirs();
+  try {
+    for (const s of emu.SYSTEMS) fs.mkdirSync(path.join(d.games, s.name), { recursive: true });
+    for (const b of ['Switch', 'Switch 2']) fs.mkdirSync(path.join(d.bios, b), { recursive: true });
+    fs.mkdirSync(d.saves, { recursive: true });
+    const readme = path.join(d.games, 'LISEZ-MOI.txt');
+    if (!isFile(readme)) {
+      const lines = ['Déposez vos jeux dans le dossier de leur console : ils apparaissent tout seuls dans KaneMode.', '',
+        ...emu.SYSTEMS.map(s => `${s.name.padEnd(24)} ${s.exts.length ? '.' + s.exts.join(' .') : 'un dossier par jeu'}`), '',
+        'Les BIOS et les clés de console vont dans le dossier BIOS, à côté de ce dossier.'];
+      fs.writeFileSync(readme, '﻿' + lines.join('\r\n'));
+    }
+  } catch (e) { console.error('Émulation : dossier', d.home, e.message); }
+  return d;
+}
+/** Avant un lancement : BIOS présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. */
+async function prepareRom(e) {
+  const id = e.emulatorId;
+  const m = id && emuStore.installed(id);
+  if (!m) return null; // émulateur installé par l'utilisateur : laissé tel quel
+  const d = emuDirs();
+  const need = emuSetup.biosStatus(d.bios, e.system);
+  if (need && !need.ok) return { ok: false, needsBios: need.what, error: `Il manque : ${need.what}` };
+  if (id === 'retroarch') {
+    const core = (/-L "([^"]+)"/.exec(e.launch.args || '') || [])[1];
+    if (core) {
+      try { await emuStore.ensureCore(core); }
+      catch (err) { return { ok: false, error: `Cœur ${path.basename(core, '_libretro.dll')} : ${err.message}` }; }
+    }
+  }
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system });
+  return null;
+}
+// Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
+let emuWatch = null, emuWatchTimer = null;
+function watchEmuGames() {
+  const dir = emuDirs().games;
+  if (emuWatch && emuWatch.dir === dir) return;
+  emuWatch?.w.close(); emuWatch = null;
+  try {
+    const w = fs.watch(dir, { recursive: true }, (ev, f) => {
+      if (/LISEZ-MOI/i.test(String(f || ''))) return;
+      clearTimeout(emuWatchTimer);
+      emuWatchTimer = setTimeout(() => { console.log('Émulation : dossier de jeux modifié'); scanEmulation(); }, 2500);
+    });
+    w.on('error', () => { w.close(); emuWatch = null; });
+    emuWatch = { dir, w };
+  } catch (e) { console.error('Émulation : surveillance du dossier', e.message); }
+}
 function scanEmulation() {
   const cfg = config();
+  const d = ensureEmuHome();
   const extra = cfg.romRoots.flatMap(r => [path.dirname(r), path.join(path.dirname(r), 'emulators'), path.join(path.dirname(r), 'Emulators')]);
-  const emulators = emu.detectEmulators(cfg.emulatorPaths, extra);
-  const roms = emu.scanRoms(cfg.romRoots, emulators, cfg.emulatorPrefs);
+  // Choisis à la main > installés par KaneMode > trouvés sur le PC
+  const found = emu.detectEmulators(cfg.emulatorPaths, extra);
+  const emulators = { ...found };
+  for (const [id, m] of Object.entries(emuStore.emulators())) if (!found[id] || found[id].source !== 'manual') emulators[id] = m;
+  const roms = emu.scanRoms([d.games, ...cfg.romRoots], emulators, cfg.emulatorPrefs);
+  // Pas encore d'émulateur : celui que KaneMode installera au premier lancement
+  for (const r of roms) {
+    if (r.launch) continue;
+    const sys = emu.SYSTEMS.find(s => s.id === r.system);
+    const id = sys && sys.emus.find(e => emuStore.CATALOG[e]);
+    if (id) { r.installEmu = id; r.installed = true; r.emulator = emuStore.CATALOG[id].name; }
+  }
   const data = { generated: new Date().toISOString(), emulators, roms };
   writeJson(FILES.roms, data);
   version++;
@@ -1055,6 +1127,45 @@ const routes = {
       })),
     });
   },
+  // Monde Émulation : consoles et leurs jeux, émulateurs gérés, dossiers
+  'GET /api/emu/world': async (req, res, q) => {
+    const d = ensureEmuHome();
+    watchEmuGames();
+    const data = readJson(FILES.roms, null) || scanEmulation();
+    const counts = {};
+    for (const r of data.roms || []) counts[r.system] = (counts[r.system] || 0) + 1;
+    const emulators = await emuStore.list({ check: q.get('check') === '1' });
+    json(res, 200, {
+      dirs: d, romRoots: config().romRoots, scanned: data.generated,
+      systems: emu.SYSTEMS.map(s => {
+        const managed = s.emus.find(e => emuStore.CATALOG[e]) || null;
+        const own = Object.entries(data.emulators || {}).find(([id]) => s.emus.includes(id));
+        return {
+          id: s.id, name: s.name, maker: s.maker, folder: path.join(d.games, s.name), exts: s.exts, count: counts[s.id] || 0,
+          experimental: !!s.experimental, emulator: managed, emulatorName: managed ? emuStore.CATALOG[managed].name : null,
+          ready: !!own, bios: emuSetup.biosStatus(d.bios, s.id),
+        };
+      }),
+      emulators, jobs: emuStore.jobs(),
+    });
+  },
+  'GET /api/emu/jobs': (req, res) => json(res, 200, { jobs: emuStore.jobs() }),
+  'POST /api/emu/install': async (req, res) => {
+    const b = await readBody(req);
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).filter(id => emuStore.CATALOG[id]);
+    if (!ids.length) return json(res, 400, { error: 'Émulateur inconnu' });
+    // Un à la fois (téléchargements lourds), la bibliothèque est refaite après chacun
+    (async () => { for (const id of ids) { try { await emuStore.install(id); scanEmulation(); } catch { /* erreur gardée dans la tâche */ } } })();
+    json(res, 200, { ok: true });
+  },
+  'POST /api/emu/open': async (req, res) => {
+    const b = await readBody(req);
+    const d = ensureEmuHome();
+    const sys = emu.SYSTEMS.find(s => s.id === b.system);
+    const dir = sys ? path.join(d.games, sys.name) : b.what === 'bios' ? d.bios : b.what === 'saves' ? d.saves : b.what === 'home' ? d.home : d.games;
+    spawn('explorer.exe', [dir], { detached: true, stdio: 'ignore' }).unref();
+    json(res, 200, { ok: true, dir });
+  },
   'POST /api/roms/scan': (req, res) => {
     const r = scanEmulation();
     json(res, 200, { ok: true, count: r.roms.length, playable: r.roms.filter(x => x.installed).length, emulators: Object.keys(r.emulators).length });
@@ -1221,7 +1332,16 @@ const routes = {
     const e = findEntry(id);
     if (!e) return json(res, 404, { ok: false, error: 'Entrée inconnue' });
     if (e.demo) return json(res, 200, { ok: false, demo: true, error: 'Entrée de démonstration' });
-    if (e.source === 'rom' && !e.launch) return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
+    if (e.source === 'rom' && !e.launch) {
+      // Premier jeu de cette console : l'interface installe l'émulateur puis relance
+      const c = e.installEmu && emuStore.CATALOG[e.installEmu];
+      if (c) return json(res, 200, { ok: false, needsEmulator: { id: e.installEmu, name: c.name, size: c.size } });
+      return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
+    }
+    if (e.source === 'rom' && !b.dry) {
+      const blocked = await prepareRom(e);
+      if (blocked) return json(res, 200, blocked);
+    }
     if (!b.dry && e.installed !== false && !id.startsWith('launcher:')) {
       const last = recentLaunch.get(id);
       if (last && Date.now() - last < LAUNCH_GUARD) {
@@ -1793,6 +1913,8 @@ function watchStores() {
 }
 
 // Premier lancement (PC neuf) : la bibliothèque n'existe pas encore, on la construit tout de suite
+ensureEmuHome();
+watchEmuGames();
 if (!isFile(FILES.library)) {
   console.log('Premier lancement : analyse de la bibliothèque');
   runPs('scan.ps1', ['-DataDir', DATA]).then(() => { scanEmulation(); version++; watchStores(); });
