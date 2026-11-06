@@ -76,6 +76,10 @@ function switchFiles(dir, src) {
   }
 }
 
+// Format de l'image choisi dans KaneMode (réglage du jeu ou de la console), noms de chaque émulateur
+const DUCK_ASPECT = { auto: 'Auto (Game Native)', '4:3': '4:3', '16:9': '16:9', full: 'Stretch To Fill' };
+const PCSX2_ASPECT = { auto: 'Auto 4:3/3:2', '4:3': '4:3', '16:9': '16:9', full: 'Stretch' };
+
 const SETUP = {
   retroarch(dir, c) {
     mergeCfg(path.join(dir, 'retroarch.cfg'), {
@@ -93,6 +97,7 @@ const SETUP = {
     mergeIni(path.join(dir, 'settings.ini'), {
       Main: { SettingsVersion: 3, SetupWizardIncomplete: 'false', StartFullscreen: 'true', ConfirmPowerOff: 'false', PauseOnFocusLoss: 'false', SaveStateOnExit: 'true', InhibitScreensaver: 'true' },
       BIOS: { SearchDirectory: c.bios },
+      Display: { AspectRatio: DUCK_ASPECT[c.aspect] || DUCK_ASPECT.auto },
       InputSources: { SDL: 'true', XInput: 'false' },
       Pad1: { Type: 'AnalogController', ...PS_PAD, Analog: SDL('Guide') },
       Hotkeys: { PowerOff: QUIT_CHORD },
@@ -105,6 +110,7 @@ const SETUP = {
       Folders: { Bios: c.bios, MemoryCards: mkdir(path.join(c.saves, 'PCSX2', 'memcards')), Savestates: mkdir(path.join(c.saves, 'PCSX2', 'sstates')) },
       ...(bios ? { Filenames: { BIOS: bios } } : {}),
       EmuCore: { EnableFastBoot: 'true', SaveStateOnShutdown: 'true' },
+      'EmuCore/GS': { AspectRatio: PCSX2_ASPECT[c.aspect] || PCSX2_ASPECT.auto },
       InputSources: { SDL: 'true', XInput: 'false' },
       Pad1: { Type: 'DualShock2', ...PS_PAD, Analog: SDL('Guide') },
       Hotkeys: { ShutdownVM: QUIT_CHORD, OpenPauseMenu: SDL('Guide') },

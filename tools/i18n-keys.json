@@ -386,6 +386,9 @@
  "{size} · empreinte SHA-256 vérifiée": [
   "ui/js/pages/settings.js"
  ],
+ "{size} libérés": [
+  "ui/js/pages/emulation.js"
+ ],
  "{size} sur {size2}": [
   "ui/js/pages/settings.js"
  ],
@@ -842,6 +845,12 @@
  "Archive illisible : ": [
   "host/lib/emu-store.js"
  ],
+ "Archive illisible ou abîmée": [
+  "host/lib/emu-archive.js"
+ ],
+ "Archive introuvable": [
+  "host/lib/emu-archive.js"
+ ],
  "Arguments": [
   "ui/js/pages/add.js"
  ],
@@ -892,6 +901,9 @@
  "Aucun (mode en cours)": [
   "ui/js/pages/game.js"
  ],
+ "Aucun (pixels d’origine)": [
+  "ui/js/pages/emulation.js"
+ ],
  "Aucun écran HDR pour l’instant. Ces réglages servent dès qu’une TV ou un écran HDR est branché.": [
   "ui/js/pages/settings.js"
  ],
@@ -906,6 +918,9 @@
  ],
  "Aucun jeu correspondant sur SteamGridDB.": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Aucun jeu reconnu dans {a}": [
+  "host/lib/emu-archive.js"
  ],
  "Aucun programme (.exe, .lnk, .bat, .url) dans ce dossier.": [
   "ui/js/pages/add.js"
@@ -993,8 +1008,12 @@
  "Aussi réglable dans Apparence": [
   "ui/js/pages/settings.js"
  ],
+ "automatique": [
+  "ui/js/pages/emulation.js"
+ ],
  "Automatique": [
   "ui/js/pages/add.js",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/settings.js"
  ],
  "Automatique : langue de Windows": [
@@ -1002,6 +1021,9 @@
  ],
  "Automatique : selon la manette utilisée": [
   "ui/js/pages/settings.js"
+ ],
+ "Automatique (format du jeu)": [
+  "ui/js/pages/emulation.js"
  ],
  "Automatique (langue de Windows)": [
   "ui/js/pages/settings.js"
@@ -1207,6 +1229,9 @@
  "Ce format spatial est indisponible sur cette sortie": [
   "host/lib/dolby.js"
  ],
+ "Ce jeu n’a pas besoin d’être décompressé": [
+  "host/server.js"
+ ],
  "Ce jeu ne peut pas être retiré de la bibliothèque": [
   "host/lib/library-removal.js"
  ],
@@ -1363,11 +1388,17 @@
  "Cocher": [
   "ui/js/pages/add.js"
  ],
+ "Cœur : {v}": [
+  "ui/js/pages/emulation.js"
+ ],
  "Cœur {a} : {b}": [
   "host/server.js"
  ],
  "Cœur {a} introuvable dans l'archive": [
   "host/lib/emu-store.js"
+ ],
+ "Cœur RetroArch": [
+  "ui/js/pages/emulation.js"
  ],
  "Coins": [
   "ui/js/pages/settings.js"
@@ -1408,6 +1439,9 @@
  ],
  "Comme applis": [
   "ui/js/pages/add.js"
+ ],
+ "comme la console": [
+  "ui/js/pages/emulation.js"
  ],
  "Comme sur SteamOS, <b>Mettre en veille</b> agit tout de suite, sans confirmation. Réglez le <b>bouton d’alimentation</b> de la console sur « Veille » dans les options d’alimentation de Windows pour retrouver le même geste.": [
   "ui/js/pages/settings.js"
@@ -1519,6 +1553,7 @@
   "ui/js/widget.js"
  ],
  "Console": [
+  "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
  "Console de salon": [
@@ -1576,6 +1611,12 @@
  ],
  "Déclarée à Windows comme application de jeu : elle peut devenir l’application d’accueil du mode Xbox.": [
   "ui/js/pages/settings.js"
+ ],
+ "Décompression de {name}…": [
+  "ui/js/pages/game.js"
+ ],
+ "Décompression de {name}… {p} %": [
+  "ui/js/pages/emulation.js"
  ],
  "Déconnecter": [
   "ui/js/statusbar.js"
@@ -1779,6 +1820,12 @@
  "Écran actuel": [
   "ui/js/personalization-settings.js"
  ],
+ "Écran CRT (télé d’époque)": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Écran LCD (portables)": [
+  "ui/js/pages/emulation.js"
+ ],
  "Éditeur": [
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
@@ -1823,6 +1870,9 @@
  "Émulateur": [
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
+ ],
+ "Émulateur : {v}": [
+  "ui/js/pages/emulation.js"
  ],
  "Émulateur inconnu": [
   "host/lib/emu-store.js",
@@ -2012,6 +2062,12 @@
  "Fichiers locaux": [
   "ui/js/pages/game.js"
  ],
+ "Filtre : {v}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Filtre d’image": [
+  "ui/js/pages/emulation.js"
+ ],
  "Filtre de netteté": [
   "ui/js/widget.js"
  ],
@@ -2059,6 +2115,12 @@
  ],
  "Forcer la fermeture arrête tous ses processus immédiatement. Ce qui n’a pas été sauvegardé est perdu.": [
   "ui/js/pages/game.js"
+ ],
+ "Format : {v}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Format de l’image": [
+  "ui/js/pages/emulation.js"
  ],
  "Format spatial inconnu": [
   "host/lib/dolby.js"
@@ -2422,6 +2484,9 @@
  "Jeu ou compte inconnu": [
   "host/lib/accounts.js"
  ],
+ "Jeu ou console inconnu": [
+  "host/server.js"
+ ],
  "Jeu, musique, cinéma et profils personnalisés dans Dolby Access": [
   "ui/js/dolby-settings.js"
  ],
@@ -2433,6 +2498,9 @@
  ],
  "Jeux de vos PC": [
   "ui/js/streamcover.js"
+ ],
+ "Jeux décompressés": [
+  "ui/js/pages/emulation.js"
  ],
  "Jeux et collections affichés dans l’ordre de votre choix": [
   "ui/js/personalization-settings.js"
@@ -2646,6 +2714,9 @@
  "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
+ "Les jeux rangés dans une archive (.zip, .7z, .rar) que leur émulateur ne sait pas ouvrir sont décompressés au premier lancement, puis gardés pour les suivants. Les plus anciens partent tout seuls au-delà de 40 Go.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Les menus, dialogues et réglages restent visibles": [
   "ui/js/personalization-settings.js"
  ],
@@ -2672,6 +2743,9 @@
  ],
  "Lieu invalide": [
   "host/server.js"
+ ],
+ "Lignes de balayage": [
+  "ui/js/pages/emulation.js"
  ],
  "Limite CPU": [
   "ui/js/widget.js"
@@ -2705,6 +2779,9 @@
   "ui/js/qam.js"
  ],
  "Lire la suite": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Lissé": [
   "ui/js/pages/emulation.js"
  ],
  "Logiciel {a} absent · ouvre la page d’assistance officielle": [
@@ -3004,6 +3081,9 @@
  ],
  "Néon": [
   "ui/js/pages/settings.js"
+ ],
+ "Net, taille entière": [
+  "ui/js/pages/emulation.js"
  ],
  "Netflix": [
   "ui/js/pages/add.js"
@@ -3385,6 +3465,9 @@
  "Playnite est introuvable": [
   "host/lib/accounts.js"
  ],
+ "Plein écran (étiré)": [
+  "ui/js/pages/emulation.js"
+ ],
  "Pleine charge": [
   "ui/js/widget.js"
  ],
@@ -3400,8 +3483,14 @@
  "Position actuelle": [
   "ui/js/statusbar.js"
  ],
+ "Pour ce jeu seulement. Ce qui n’est pas choisi ici suit les réglages de la console.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
   "ui/js/pages/settings.js"
+ ],
+ "Pour tous les jeux de cette console, sauf ceux qui ont leurs propres réglages.": [
+  "ui/js/pages/emulation.js"
  ],
  "Pour un grand écran vu de loin, ou l’écran d’une console portable": [
   "ui/js/pages/settings.js"
@@ -3685,8 +3774,14 @@
  "Réglage avancé": [
   "ui/js/qam.js"
  ],
+ "Réglage enregistré": [
+  "ui/js/pages/emulation.js"
+ ],
  "Réglages {a} indisponibles": [
   "host/lib/gpuctl.js"
+ ],
+ "Réglages {name}": [
+  "ui/js/pages/emulation.js"
  ],
  "Réglages 3D AMD indisponibles": [
   "native/KaneMode.Amd/Amd.cpp"
@@ -3700,8 +3795,14 @@
  "Réglages d’énergie": [
   "ui/js/statusbar.js"
  ],
+ "Réglages de {name}": [
+  "ui/js/pages/emulation.js"
+ ],
  "Réglages détaillés": [
   "ui/js/qam.js"
+ ],
+ "Réglages du jeu": [
+  "ui/js/pages/emulation.js"
  ],
  "Réglages rapides": [
   "ui/js/qam.js"
@@ -3857,6 +3958,12 @@
  ],
  "Rétro grave": [
   "ui/js/personalization-settings.js"
+ ],
+ "Revenir aux réglages de la console": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Revenir aux réglages par défaut": [
+  "ui/js/pages/emulation.js"
  ],
  "Revient à l’accès public, sans clé": [
   "ui/js/pages/settings.js"
@@ -4452,6 +4559,15 @@
  "Vidéos": [
   "ui/js/pages/media.js"
  ],
+ "Vider": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Vider le cache": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Vider le cache ?": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ville pour la météo": [
   "ui/js/statusbar.js"
  ],
@@ -4496,6 +4612,9 @@
  ],
  "Volume, luminosité, Wi-Fi, Bluetooth, mode nuit": [
   "ui/js/qam.js"
+ ],
+ "Vos archives restent dans le dossier des jeux : elles seront décompressées de nouveau au prochain lancement.": [
+  "ui/js/pages/emulation.js"
  ],
  "Vos dernières parties": [
   "ui/js/pages/home.js"

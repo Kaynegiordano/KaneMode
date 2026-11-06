@@ -62,7 +62,26 @@ export async function installEmulator(id, onText = () => {}) {
   }
 }
 
+/** Décompresse un jeu rangé dans une archive ; renvoie une erreur ou null une fois prêt. */
+export async function extractGame(id, onText = () => {}) {
+  await api.post('/api/emu/extract', { id });
+  for (;;) {
+    await new Promise(r => setTimeout(r, 500));
+    const { jobs } = await api.get('/api/emu/jobs');
+    const j = jobs.find(x => x.id === 'extract:' + id);
+    if (j && j.phase === 'error') return j.error;
+    if (!j || (j.phase === 'done' && !j.busy)) return null;
+    onText(t('Décompression de {name}… {p} %', { name: j.name, p: pct(j) }));
+  }
+}
+
 const metaCache = new Map();
+
+// Réglages proposés (jeu ou console) ; filtre seulement avec RetroArch, format aussi avec DuckStation et PCSX2
+const FILTERS = () => [['none', t('Aucun (pixels d’origine)')], ['crt', t('Écran CRT (télé d’époque)')], ['scanlines', t('Lignes de balayage')], ['lcd', t('Écran LCD (portables)')], ['smooth', t('Lissé')], ['sharp', t('Net, taille entière')]];
+const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'], ['16:9', '16:9'], ['full', t('Plein écran (étiré)')]];
+const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
+const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
 definePage('emulation', {
   libBound: true,
@@ -131,6 +150,7 @@ definePage('emulation', {
     }
     pills.append(strip, shoulder('rb'));
     const tools = el('div', 'sx-tools');
+    if (sys.id !== 'all') tools.append(nav(el('div', 'chip-btn', `${icon('i-palette')}${t('Console')}`), () => this.settings('system'), 'sys-settings'));
     tools.append(nav(el('div', 'chip-btn', `${icon('i-gear')}${t('Gérer')}`), () => { this.manage = true; this.draw(); }, 'manage'));
     top.append(pills, tools);
 
@@ -348,6 +368,7 @@ definePage('emulation', {
     btn('i-star', favs.has(g.id) ? t('Favori') : t('Ajouter aux favoris'), () => { toggleFav(g); this.drawPanel(); }, 'fav', favs.has(g.id));
     btn('i-image', t('Visuels'), () => go('artpicker', { id: g.id }), 'art');
     btn('i-info', t('Fiche complète'), () => go('game', { id: g.id }), 'sheet');
+    btn('i-gear', t('Réglages du jeu'), () => this.settings('game'), 'settings');
     btn('i-folder', t('Dossier'), () => this.open({ system: g.system }), 'folder');
     acts.append(grid);
     if (focusedKey) { const f = p.querySelector(`[data-key="${focusedKey}"]`); if (f) setFocus(f, { scroll: false, sound: false }); }
@@ -359,6 +380,56 @@ definePage('emulation', {
       metaCache.set(g.id, r.meta || {});
     } catch { metaCache.set(g.id, {}); }
     if (this.current() === g && this.mode === 'shelf') this.drawPanel();
+  },
+
+  /** Réglages du jeu choisi ou de toute la console : émulateur, cœur, filtre, format. */
+  async settings(scope) {
+    const g = this.current();
+    const sysId = scope === 'system' ? this.sys : g && g.system;
+    const sys = this.data.systems.find(s => s.id === sysId);
+    if (!sys) return;
+    for (;;) {
+      const r = await api.get(`/api/emu/settings?system=${encodeURIComponent(sysId)}&id=${encodeURIComponent(g ? g.id : '')}`);
+      const own = scope === 'game' ? r.game : r.system;
+      const base = scope === 'game' ? r.system : {};
+      const eff = { ...base, ...own };
+      const emuId = eff.emulator || (scope === 'game' && g.emulatorId) || (sys.emus[0] || {}).id;
+      const emuName = id => (sys.emus.find(e => e.id === id) || {}).name || id;
+      const auto = scope === 'game' ? t('comme la console') : t('automatique');
+      const tag = k => (own[k] !== undefined ? '' : ` (${auto})`);
+      const buttons = [];
+      if (sys.emus.length > 1) buttons.push({ label: t('Émulateur : {v}', { v: emuName(emuId) }) + tag('emulator'), value: 'emulator', icon: 'i-gamepad' });
+      if (emuId === 'retroarch' && sys.cores.length > 1) buttons.push({ label: t('Cœur : {v}', { v: eff.core || sys.cores[0] }) + tag('core'), value: 'core', icon: 'i-cpu' });
+      if (emuId === 'retroarch') buttons.push({ label: t('Filtre : {v}', { v: label(FILTERS(), eff.filter || 'none') }) + tag('filter'), value: 'filter', icon: 'i-palette' });
+      if (ASPECT_EMUS.includes(emuId)) buttons.push({ label: t('Format : {v}', { v: label(ASPECTS(), eff.aspect || 'auto') }) + tag('aspect'), value: 'aspect', icon: 'i-desktop' });
+      if (Object.keys(own).length) buttons.push({ label: scope === 'game' ? t('Revenir aux réglages de la console') : t('Revenir aux réglages par défaut'), value: 'reset', icon: 'i-refresh' });
+      buttons.push({ label: t('Fermer'), value: null });
+      const what = await dialog({
+        title: scope === 'game' ? t('Réglages de {name}', { name: g.name }) : t('Réglages {name}', { name: sys.name }),
+        text: scope === 'game' ? t('Pour ce jeu seulement. Ce qui n’est pas choisi ici suit les réglages de la console.') : t('Pour tous les jeux de cette console, sauf ceux qui ont leurs propres réglages.'),
+        buttons,
+      });
+      if (!what) break;
+      let values;
+      if (what === 'reset') values = { emulator: null, core: null, filter: null, aspect: null };
+      else {
+        const options = what === 'emulator' ? sys.emus.map(e => [e.id, e.name]) : what === 'core' ? sys.cores.map(c => [c, c]) : what === 'filter' ? FILTERS() : ASPECTS();
+        const pick = await dialog({
+          title: { emulator: t('Émulateur'), core: t('Cœur RetroArch'), filter: t('Filtre d’image'), aspect: t('Format de l’image') }[what],
+          buttons: [{ label: t('Automatique') + (scope === 'game' ? ` (${t('comme la console')})` : ''), value: '__auto' },
+            ...options.map(([v, l]) => ({ label: l, value: v, primary: eff[what] === v }))],
+        });
+        if (!pick) continue;
+        values = { [what]: pick === '__auto' ? null : pick };
+        if (what === 'emulator') values.core = null;
+      }
+      await api.post('/api/emu/settings', { scope, id: scope === 'game' ? g.id : sysId, values });
+      await lib.load({ background: true });
+      const d = await api.get('/api/emu/world');
+      this.data = { ...d, emulators: this.withLatest(d.emulators) };
+      toast(t('Réglage enregistré'));
+    }
+    this.draw(scope === 'game' ? 'settings' : 'sys-settings');
   },
 
   tint(s) {
@@ -390,6 +461,18 @@ definePage('emulation', {
         <div class="emu-step"><b>3</b><div><strong>${t('Jouez')}</strong><small>${t('Au premier jeu d’une console, KaneMode installe son émulateur et le règle : écran, manette, sauvegardes')}</small></div></div>`));
     }
     page.append(this.emulatorsSection(), this.advancedSection());
+    if (d.cacheBytes) {
+      const c = el('div', 'emu-panel settings');
+      c.append(el('h2', '', `${icon('i-drive')}${t('Jeux décompressés')}`));
+      c.append(el('div', 'notice', t('Les jeux rangés dans une archive (.zip, .7z, .rar) que leur émulateur ne sait pas ouvrir sont décompressés au premier lancement, puis gardés pour les suivants. Les plus anciens partent tout seuls au-delà de 40 Go.')));
+      c.append(nav(el('div', 'set-row nav', `${icon('i-trash')}<div class="txt"><b>${t('Vider le cache')}</b><small>${esc(fmt.size(d.cacheBytes))}</small></div><span></span>`), async () => {
+        if (!(await confirmDialog(t('Vider le cache ?'), t('Vos archives restent dans le dossier des jeux : elles seront décompressées de nouveau au prochain lancement.'), t('Vider'), true))) return;
+        const r = await api.post('/api/emu/cache/clear');
+        toast(t('{size} libérés', { size: fmt.size(r.freed) }));
+        await this.reload('cache');
+      }, 'cache'));
+      page.append(c);
+    }
     this.el.replaceChildren(page);
     focusIn(this.el, focusKey || (roms.length ? 'back-shelf' : 'open-games'));
     if (!this.checked) { this.checked = true; this.checkUpdates(); }

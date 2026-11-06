@@ -11,41 +11,51 @@ const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return fal
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 
 // ---------- Consoles ----------
-// folders : noms de dossiers reconnus ; cores : cœurs RetroArch par ordre de préférence
-// .zip et .7z des consoles à cartouche : RetroArch ouvre lui-même ces archives
+// folders : noms de dossiers reconnus ; exts : formats du jeu lui-même, par ordre de préférence
+// (un .cue passe avant ses .bin) ; cores : cœurs RetroArch par ordre de préférence.
+// Les archives .zip, .7z et .rar sont acceptées partout (voir archiveMode)
 const SYSTEMS = [
-  { id: 'nes', name: 'Nintendo NES', maker: 'Nintendo', folders: ['nes', 'famicom', 'fds'], exts: ['nes', 'fds', 'unf', 'unif', 'zip', '7z'], emus: ['mesen', 'retroarch'], cores: ['mesen', 'nestopia', 'fceumm'] },
-  { id: 'snes', name: 'Super Nintendo', maker: 'Nintendo', folders: ['snes', 'sfc', 'superfamicom', 'snesna'], exts: ['sfc', 'smc', 'fig', 'swc', 'bs', 'zip', '7z'], emus: ['retroarch', 'snes9x', 'bsnes'], cores: ['snes9x', 'bsnes', 'mesen-s'] },
-  { id: 'n64', name: 'Nintendo 64', maker: 'Nintendo', folders: ['n64'], exts: ['n64', 'z64', 'v64', 'zip', '7z'], emus: ['retroarch', 'project64', 'ares'], cores: ['mupen64plus_next', 'parallel_n64'] },
-  { id: 'gb', name: 'Game Boy', maker: 'Nintendo', folders: ['gb', 'gameboy'], exts: ['gb', 'zip', '7z'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
-  { id: 'gbc', name: 'Game Boy Color', maker: 'Nintendo', folders: ['gbc', 'gameboycolor'], exts: ['gbc', 'zip', '7z'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
-  { id: 'gba', name: 'Game Boy Advance', maker: 'Nintendo', folders: ['gba', 'gameboyadvance'], exts: ['gba', 'zip', '7z'], emus: ['retroarch', 'mgba'], cores: ['mgba', 'vba_next'] },
-  { id: 'nds', name: 'Nintendo DS', maker: 'Nintendo', folders: ['nds', 'ds'], exts: ['nds', 'zip', '7z'], emus: ['retroarch', 'melonds'], cores: ['melondsds', 'melonds', 'desmume'] },
-  { id: 'n3ds', name: 'Nintendo 3DS', maker: 'Nintendo', folders: ['n3ds', '3ds'], exts: ['3ds', 'cci', 'cxi', 'app', 'zcci', 'zcxi'], emus: ['azahar', 'lime3ds', 'citra'] },
-  { id: 'gc', name: 'GameCube', maker: 'Nintendo', folders: ['gc', 'gamecube', 'ngc'], exts: ['iso', 'gcm', 'rvz', 'gcz', 'ciso'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
-  { id: 'wii', name: 'Wii', maker: 'Nintendo', folders: ['wii'], exts: ['wbfs', 'iso', 'rvz', 'gcz', 'wad'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
-  { id: 'wiiu', name: 'Wii U', maker: 'Nintendo', folders: ['wiiu'], exts: ['wua', 'wux', 'wud', 'rpx'], emus: ['cemu'] },
-  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['nsp', 'xci', 'nca'], emus: ['eden', 'ryujinx', 'citron'] },
-  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nsp', 'xci', 'nca'], emus: ['eglantine'], experimental: true },
-  { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'pbp', 'ecm', 'iso', 'bin'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
-  { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'gz', 'bin'], emus: ['pcsx2'] },
+  { id: 'nes', name: 'Nintendo NES', maker: 'Nintendo', folders: ['nes', 'famicom', 'fds'], exts: ['nes', 'fds', 'unf', 'unif'], emus: ['mesen', 'retroarch'], cores: ['mesen', 'nestopia', 'fceumm'] },
+  { id: 'snes', name: 'Super Nintendo', maker: 'Nintendo', folders: ['snes', 'sfc', 'superfamicom', 'snesna'], exts: ['sfc', 'smc', 'fig', 'swc', 'bs', 'st'], emus: ['retroarch', 'snes9x', 'bsnes'], cores: ['snes9x', 'bsnes', 'mesen-s'] },
+  { id: 'n64', name: 'Nintendo 64', maker: 'Nintendo', folders: ['n64'], exts: ['z64', 'n64', 'v64', 'ndd'], emus: ['retroarch', 'project64', 'ares'], cores: ['mupen64plus_next', 'parallel_n64'] },
+  { id: 'gb', name: 'Game Boy', maker: 'Nintendo', folders: ['gb', 'gameboy'], exts: ['gb', 'sgb', 'dmg'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
+  { id: 'gbc', name: 'Game Boy Color', maker: 'Nintendo', folders: ['gbc', 'gameboycolor'], exts: ['gbc', 'gb'], emus: ['retroarch', 'mgba'], cores: ['gambatte', 'sameboy', 'mgba'] },
+  { id: 'gba', name: 'Game Boy Advance', maker: 'Nintendo', folders: ['gba', 'gameboyadvance'], exts: ['gba', 'agb'], emus: ['retroarch', 'mgba'], cores: ['mgba', 'vba_next'] },
+  { id: 'nds', name: 'Nintendo DS', maker: 'Nintendo', folders: ['nds', 'ds'], exts: ['nds', 'srl', 'dsi'], emus: ['retroarch', 'melonds'], cores: ['melondsds', 'melonds', 'desmume'] },
+  { id: 'n3ds', name: 'Nintendo 3DS', maker: 'Nintendo', folders: ['n3ds', '3ds'], exts: ['3ds', 'cci', 'cxi', 'zcci', 'zcxi', 'app', '3dsx', 'elf'], emus: ['azahar', 'lime3ds', 'citra'] },
+  { id: 'gc', name: 'GameCube', maker: 'Nintendo', folders: ['gc', 'gamecube', 'ngc'], exts: ['rvz', 'iso', 'gcm', 'gcz', 'ciso', 'tgc', 'dol', 'elf'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
+  { id: 'wii', name: 'Wii', maker: 'Nintendo', folders: ['wii'], exts: ['rvz', 'wbfs', 'iso', 'wia', 'gcz', 'ciso', 'wad', 'dol', 'elf'], emus: ['dolphin', 'retroarch'], cores: ['dolphin'] },
+  { id: 'wiiu', name: 'Wii U', maker: 'Nintendo', folders: ['wiiu'], exts: ['wua', 'wux', 'wud', 'wuhb', 'rpx'], emus: ['cemu'] },
+  { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso'], emus: ['eden', 'ryujinx', 'citron'] },
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['xci', 'nsp', 'nca'], emus: ['eglantine'], experimental: true },
+  { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'pbp', 'ecm', 'iso', 'img', 'bin', 'exe'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
+  { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'zso', 'gz', 'mdf', 'nrg', 'img', 'bin', 'elf'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
   { id: 'ps4', name: 'PlayStation 4', maker: 'Sony', folders: ['ps4', 'playstation4'], exts: [], dirGames: 'eboot.bin', emus: ['shadps4'], experimental: true },
   { id: 'psvita', name: 'PlayStation Vita', maker: 'Sony', folders: ['psvita', 'vita'], exts: ['vpk'], emus: ['vita3k'], experimental: true },
-  { id: 'psp', name: 'PlayStation Portable', maker: 'Sony', folders: ['psp'], exts: ['iso', 'cso', 'pbp', 'chd'], emus: ['ppsspp', 'retroarch'], cores: ['ppsspp'] },
-  { id: 'megadrive', name: 'Mega Drive', maker: 'Sega', folders: ['megadrive', 'genesis', 'md'], exts: ['md', 'gen', 'smd', 'bin', 'zip', '7z'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
-  { id: 'mastersystem', name: 'Master System', maker: 'Sega', folders: ['mastersystem', 'sms'], exts: ['sms', 'zip', '7z'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
-  { id: 'gamegear', name: 'Game Gear', maker: 'Sega', folders: ['gamegear', 'gg'], exts: ['gg', 'zip', '7z'], emus: ['retroarch'], cores: ['genesis_plus_gx'] },
-  { id: 'segacd', name: 'Mega-CD', maker: 'Sega', folders: ['segacd', 'megacd'], exts: ['chd', 'cue', 'iso'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
-  { id: 'saturn', name: 'Saturn', maker: 'Sega', folders: ['saturn'], exts: ['chd', 'cue', 'm3u'], emus: ['retroarch'], cores: ['mednafen_saturn', 'yabasanshiro'] },
-  { id: 'dreamcast', name: 'Dreamcast', maker: 'Sega', folders: ['dreamcast', 'dc'], exts: ['chd', 'gdi', 'cdi', 'm3u'], emus: ['retroarch', 'flycast'], cores: ['flycast'] },
-  { id: 'pcengine', name: 'PC Engine', maker: 'NEC', folders: ['pcengine', 'tg16', 'pce'], exts: ['pce', 'chd', 'cue', 'zip', '7z'], emus: ['retroarch'], cores: ['mednafen_pce_fast', 'mednafen_pce'] },
+  { id: 'psp', name: 'PlayStation Portable', maker: 'Sony', folders: ['psp'], exts: ['iso', 'cso', 'zso', 'pbp', 'chd', 'elf', 'prx'], emus: ['ppsspp', 'retroarch'], cores: ['ppsspp'] },
+  { id: 'megadrive', name: 'Mega Drive', maker: 'Sega', folders: ['megadrive', 'genesis', 'md'], exts: ['md', 'gen', 'smd', 'bin', '68k', 'sgd'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
+  { id: 'mastersystem', name: 'Master System', maker: 'Sega', folders: ['mastersystem', 'sms'], exts: ['sms', 'sg', 'bin'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
+  { id: 'gamegear', name: 'Game Gear', maker: 'Sega', folders: ['gamegear', 'gg'], exts: ['gg', 'bin'], emus: ['retroarch'], cores: ['genesis_plus_gx'] },
+  { id: 'segacd', name: 'Mega-CD', maker: 'Sega', folders: ['segacd', 'megacd'], exts: ['m3u', 'chd', 'cue', 'iso'], emus: ['retroarch'], cores: ['genesis_plus_gx', 'picodrive'] },
+  { id: 'saturn', name: 'Saturn', maker: 'Sega', folders: ['saturn'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'iso'], emus: ['retroarch'], cores: ['mednafen_saturn', 'yabasanshiro'] },
+  { id: 'dreamcast', name: 'Dreamcast', maker: 'Sega', folders: ['dreamcast', 'dc'], exts: ['m3u', 'chd', 'gdi', 'cdi', 'cue'], emus: ['retroarch', 'flycast'], cores: ['flycast'] },
+  { id: 'pcengine', name: 'PC Engine', maker: 'NEC', folders: ['pcengine', 'tg16', 'pce'], exts: ['pce', 'sgx', 'm3u', 'chd', 'cue', 'ccd'], emus: ['retroarch'], cores: ['mednafen_pce_fast', 'mednafen_pce'] },
   { id: 'neogeo', name: 'Neo Geo', maker: 'SNK', folders: ['neogeo'], exts: ['zip', '7z'], emus: ['retroarch'], cores: ['fbneo'] },
   { id: 'arcade', name: 'Arcade', maker: 'Arcade', folders: ['arcade', 'mame', 'fbneo', 'fba'], exts: ['zip', '7z'], emus: ['retroarch'], cores: ['fbneo', 'mame'] },
-  { id: 'atari2600', name: 'Atari 2600', maker: 'Atari', folders: ['atari2600', 'a2600'], exts: ['a26', 'bin', 'zip', '7z'], emus: ['retroarch'], cores: ['stella', 'stella2014'] },
+  { id: 'atari2600', name: 'Atari 2600', maker: 'Atari', folders: ['atari2600', 'a2600'], exts: ['a26', 'bin'], emus: ['retroarch'], cores: ['stella', 'stella2014'] },
   { id: 'xbox', name: 'Xbox', maker: 'Microsoft', folders: ['xbox'], exts: ['iso', 'xiso'], emus: ['xemu'] },
   { id: 'xbox360', name: 'Xbox 360', maker: 'Microsoft', folders: ['xbox360', 'x360'], exts: ['iso', 'xex', 'zar'], emus: ['xenia'] },
 ];
+const ARCHIVES = ['zip', '7z', 'rar'];
+// Archive d'un jeu : « game » (l'archive est le jeu : arcade), « direct » (RetroArch ouvre lui-même
+// les .zip et .7z des cartouches), sinon KaneMode la décompresse au lancement (emu-archive.js)
+const DIRECT = ['nes', 'snes', 'n64', 'gb', 'gbc', 'gba', 'nds', 'megadrive', 'mastersystem', 'gamegear', 'pcengine', 'atari2600'];
+function archiveMode(sys, ext) {
+  if (sys.exts.includes(ext)) return 'game';
+  if (DIRECT.includes(sys.id) && ext !== 'rar') return 'direct';
+  return 'extract';
+}
 const SYSTEM_BY_FOLDER = new Map();
 // Le dossier de jeux préparé par KaneMode porte le nom de la console (« Super Nintendo »)
 for (const s of SYSTEMS) for (const f of [...s.folders, s.name.toLowerCase()]) SYSTEM_BY_FOLDER.set(f, s);
@@ -132,9 +142,9 @@ function detectEmulators(configured = {}, extraRoots = []) {
 }
 
 /** Cœur RetroArch disponible pour une console. */
-function retroarchCore(exe, sys) {
+function retroarchCore(exe, sys, wanted) {
   const dir = path.join(path.dirname(exe), 'cores');
-  for (const c of sys.cores || []) {
+  for (const c of wanted ? [wanted] : sys.cores || []) {
     const f = path.join(dir, `${c}_libretro.dll`);
     if (isFile(f)) return f;
   }
@@ -142,7 +152,8 @@ function retroarchCore(exe, sys) {
 }
 
 /** Choisit l'émulateur et construit la ligne de commande pour une ROM. */
-function launchFor(sys, rom, emulators, prefs = {}) {
+/** Choisit l'émulateur (et le cœur RetroArch voulu, s'il y en a un) et construit la commande. */
+function launchFor(sys, rom, emulators, prefs = {}, wantedCore = null) {
   const order = prefs[sys.id] ? [prefs[sys.id], ...sys.emus] : sys.emus;
   for (const id of order) {
     const found = emulators[id];
@@ -150,9 +161,10 @@ function launchFor(sys, rom, emulators, prefs = {}) {
     const def = EMU_BY_ID.get(id);
     let core = null;
     if (id === 'retroarch') {
-      core = retroarchCore(found.path, sys);
+      const want = wantedCore && (sys.cores || []).includes(wantedCore) ? wantedCore : null;
+      core = retroarchCore(found.path, sys, want) || (want ? null : retroarchCore(found.path, sys));
       // RetroArch installé par KaneMode : le cœur manquant est téléchargé au lancement
-      if (!core && found.source === 'kanemode' && (sys.cores || []).length) core = path.join(path.dirname(found.path), 'cores', `${sys.cores[0]}_libretro.dll`);
+      if (!core && found.source === 'kanemode' && (sys.cores || []).length) core = path.join(path.dirname(found.path), 'cores', `${want || sys.cores[0]}_libretro.dll`);
       if (!core) continue;
     }
     const args = def.args.replace('{rom}', rom).replace('{core}', core || '');
@@ -165,6 +177,9 @@ function launchFor(sys, rom, emulators, prefs = {}) {
 const cleanName = file => path.basename(file, path.extname(file))
   .replace(/\s*[[(][^\])]*[\])]/g, '').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
 const regionOf = file => { const m = /\((USA|Europe|Japan|World|France|Germany|Spain|Italy|Korea|En[^)]*|Fr[^)]*)\)/i.exec(file); return m ? m[1] : null; };
+
+// Format préféré quand un jeu est là deux fois : celui de la console, puis l'archive
+const rank = (sys, ext) => (sys.exts.includes(ext) ? sys.exts.indexOf(ext) : 100 + ARCHIVES.indexOf(ext));
 
 // Consoles dont l'émulateur choisi lit une liste .m3u de disques
 const M3U_SYSTEMS = ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'];
@@ -189,11 +204,10 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   const games = new Map();
   for (const f of files) {
     const ext = path.extname(f).slice(1).toLowerCase();
-    if (!sys.exts.includes(ext) || hidden.has(f.toLowerCase())) continue;
-    if (ext === 'bin' && [...lower].some(x => x.endsWith('.cue'))) continue;
+    if ((!sys.exts.includes(ext) && !ARCHIVES.includes(ext)) || hidden.has(f.toLowerCase())) continue;
     const base = path.basename(f, path.extname(f)).toLowerCase();
     const prev = games.get(base);
-    if (!prev || sys.exts.indexOf(ext) < sys.exts.indexOf(path.extname(prev).slice(1).toLowerCase())) games.set(base, f);
+    if (!prev || rank(sys, ext) < rank(sys, path.extname(prev).slice(1).toLowerCase())) games.set(base, f);
   }
   // Disques d'un même jeu sans .m3u : une seule entrée, une liste .m3u écrite par KaneMode pour
   // changer de disque en jeu (consoles dont l'émulateur la lit), sinon le disque 1
@@ -228,7 +242,9 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
     }
     const full = path.join(dir, f);
     let size = 0; try { size = fs.statSync(full).size; } catch { /* ignoré */ }
-    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size });
+    const ext = path.extname(f).slice(1).toLowerCase();
+    const mode = archiveMode(sys, ext);
+    out.push({ sys, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' ? 'extract' : null });
   }
   for (const e of entries) {
     if (!e.isDirectory() || /^(media|images|videos|manuals|downloaded_media|\.)/i.test(e.name)) continue;
@@ -239,7 +255,11 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   }
 }
 
-function scanRoms(roots, emulators, prefs, { m3uDir = null } = {}) {
+/**
+ * settings : réglages choisis par console et par jeu ({ systems: { snes: {…} }, games: { 'rom:…': {…} } }),
+ * le jeu l'emporte ; emulator et core changent la commande de lancement.
+ */
+function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}) {
   const found = [];
   for (const root of roots) {
     if (!isDir(root)) continue;
@@ -251,14 +271,15 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null } = {}) {
     }
   }
   return found.map(r => {
-    const how = launchFor(r.sys, r.path, emulators, prefs);
     const id = 'rom:' + crypto.createHash('sha1').update(r.path.toLowerCase()).digest('hex').slice(0, 12);
+    const set = { ...((settings.systems || {})[r.sys.id] || {}), ...((settings.games || {})[id] || {}) };
+    const how = launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
-      romPath: r.path, discs: r.discs || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0,
+      romPath: r.path, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0,
       emulator: how ? how.emulator : null, emulatorId: how ? how.emulatorId : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
     };
   });
 }
 
-module.exports = { SYSTEMS, EMULATORS, detectEmulators, scanRoms, launchFor };
+module.exports = { SYSTEMS, EMULATORS, ARCHIVES, detectEmulators, scanRoms, launchFor, archiveMode };

@@ -1330,3 +1330,4 @@ body.emu-world[data-emu-motif="stripes"] #bg::before { background: repeating-lin
 .sxp-btn.on { color: #ffd34d; }
 .sxp-btn.focused { background: #fff; color: #111; }
 @media (max-width: 900px) { .sx { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; } .sx-panel { grid-column: 1; grid-row: 3; max-height: 42vh; } }
+.sxp-grid > :last-child:nth-child(odd) { grid-column: span 2; }

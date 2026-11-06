@@ -306,7 +306,7 @@ function publicEntry(g, st, cfg) {
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
-    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null,
+    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
     art,
@@ -814,6 +814,7 @@ const accounts = accountsLib.create(DATA, { run, root: ROOT,
 // émulateurs installés par KaneMode. Hors d'AppData : rien n'est perdu si KaneMode est désinstallé.
 const emuHome = () => str(config().emuHome) || path.join(os.homedir(), 'KaneMode Émulation');
 const emuDirs = () => { const h = emuHome(); return { home: h, games: path.join(h, 'Jeux'), bios: path.join(h, 'BIOS'), saves: path.join(h, 'Sauvegardes') }; };
+const emuArchive = require('./lib/emu-archive').create({ cacheDir: () => path.join(emuHome(), 'Cache') });
 const emuMeta = emuMetaLib.create({ cacheDir: path.join(DATA, 'emu-cache'), artDir: ARTCACHE });
 const emuStore = emuStoreLib.create({
   home: emuHome,
@@ -838,22 +839,56 @@ function ensureEmuHome() {
   return d;
 }
 /** Avant un lancement : BIOS présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. */
+// Réglages de l'émulation choisis par l'utilisateur : par console, puis par jeu (le jeu l'emporte)
+const EMU_SETTING_KEYS = { emulator: v => typeof v === 'string' && /^[\w-]+$/.test(v), core: v => typeof v === 'string' && /^[\w-]+$/.test(v),
+  filter: v => ['none', 'crt', 'scanlines', 'lcd', 'smooth', 'sharp'].includes(v), aspect: v => ['auto', '4:3', '16:9', 'full'].includes(v) };
+const emuSettings = () => ({ systems: {}, games: {}, ...(config().emuSettings || {}) });
+const emuEffective = (sys, id) => { const s = emuSettings(); return { ...(s.systems[sys] || {}), ...(s.games[id] || {}) }; };
+// Filtres et formats de RetroArch (préréglages slang livrés avec RetroArch, pilote Direct3D 11)
+const RA_SHADERS = { crt: 'crt/crt-geom.slangp', scanlines: 'scanlines/res-independent-scanlines.slangp', lcd: 'handheld/lcd-grid-v2.slangp' };
+const RA_ASPECT = { auto: '22', '4:3': '0', '16:9': '1', full: '24' };
+function retroarchLook(raDir, gameId, set) {
+  const file = path.join(DATA, 'emu-ra', safeId(gameId) + '.cfg');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const shader = RA_SHADERS[set.filter];
+  emuSetup.mergeCfg(file, {
+    video_shader_enable: shader ? 'true' : 'false', video_smooth: set.filter === 'smooth' ? 'true' : 'false',
+    video_scale_integer: set.filter === 'sharp' ? 'true' : 'false', aspect_ratio_index: RA_ASPECT[set.aspect] || '22',
+  });
+  return ` --appendconfig "${file}"` + (shader ? ` --set-shader "${path.join(raDir, 'shaders', 'shaders_slang', shader)}"` : '');
+}
+
+/**
+ * Avant un lancement : jeu décompressé s'il est dans une archive que l'émulateur ne lit pas, BIOS
+ * présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. Renvoie { blocked } (réponse
+ * à donner à l'interface) ou { launch } (commande, avec le fichier décompressé à la place de l'archive).
+ */
 async function prepareRom(e) {
+  let launch = e.launch;
+  if (e.archive === 'extract') {
+    const sys = emu.SYSTEMS.find(s => s.id === e.system);
+    const opts = { m3u: ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'].includes(e.system) };
+    const file = sys && emuArchive.ready(e.romPath, sys.exts, opts);
+    if (!file) return { blocked: { ok: false, needsExtract: { id: e.id, name: e.name } } };
+    launch = { ...launch, args: launch.args.split(e.romPath).join(file) };
+  }
   const id = e.emulatorId;
   const m = id && emuStore.installed(id);
-  if (!m) return null; // émulateur installé par l'utilisateur : laissé tel quel
+  if (!m) return { launch }; // émulateur installé par l'utilisateur : réglages laissés tels quels
   const d = emuDirs();
   const need = emuSetup.biosStatus(d.bios, e.system);
-  if (need && !need.ok) return { ok: false, needsBios: need.what, error: `Il manque : ${need.what}` };
+  if (need && !need.ok) return { blocked: { ok: false, needsBios: need.what, error: `Il manque : ${need.what}` } };
   if (id === 'retroarch') {
-    const core = (/-L "([^"]+)"/.exec(e.launch.args || '') || [])[1];
+    const core = (/-L "([^"]+)"/.exec(launch.args || '') || [])[1];
     if (core) {
       try { await emuStore.ensureCore(core); }
-      catch (err) { return { ok: false, error: `Cœur ${path.basename(core, '_libretro.dll')} : ${err.message}` }; }
+      catch (err) { return { blocked: { ok: false, error: `Cœur ${path.basename(core, '_libretro.dll')} : ${err.message}` } }; }
     }
   }
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system });
-  return null;
+  const set = emuEffective(e.system, e.id);
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto' });
+  if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set) };
+  return { launch };
 }
 // Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
 let emuWatch = null, emuWatchTimer = null;
@@ -879,9 +914,16 @@ function scanEmulation() {
   const found = emu.detectEmulators(cfg.emulatorPaths, extra);
   const emulators = { ...found };
   for (const [id, m] of Object.entries(emuStore.emulators())) if (!found[id] || found[id].source !== 'manual') emulators[id] = m;
-  const roms = emu.scanRoms([d.games, ...cfg.romRoots], emulators, cfg.emulatorPrefs, { m3uDir: path.join(DATA, 'emu-m3u') });
+  const settings = emuSettings();
+  const roms = emu.scanRoms([d.games, ...cfg.romRoots], emulators, cfg.emulatorPrefs, { m3uDir: path.join(DATA, 'emu-m3u'), settings });
   // Pas encore d'émulateur : celui que KaneMode installera au premier lancement
   for (const r of roms) {
+    // Émulateur choisi par l'utilisateur, pas encore installé : KaneMode l'installera au lancement
+    const want = emuEffective(r.system, r.id).emulator;
+    if (want && r.emulatorId !== want && emuStore.CATALOG[want] && !emulators[want]) {
+      Object.assign(r, { launch: null, emulatorId: null, core: null, installEmu: want, installed: true, emulator: emuStore.CATALOG[want].name });
+      continue;
+    }
     if (r.launch) continue;
     const sys = emu.SYSTEMS.find(s => s.id === r.system);
     const id = sys && sys.emus.find(e => emuStore.CATALOG[e]);
@@ -1150,12 +1192,47 @@ const routes = {
           id: s.id, name: s.name, maker: s.maker, folder: path.join(d.games, s.name), exts: s.exts, count: counts[s.id] || 0,
           experimental: !!s.experimental, emulator: managed, emulatorName: managed ? emuStore.CATALOG[managed].name : null,
           ready: !!own, bios: emuSetup.biosStatus(d.bios, s.id),
+          emus: s.emus.filter(e => emuStore.CATALOG[e] || (data.emulators || {})[e]).map(e => ({ id: e, name: (emuStore.CATALOG[e] || emu.EMULATORS.find(x => x.id === e)).name })),
+          cores: s.cores || [], settings: emuSettings().systems[s.id] || {},
         };
       }),
-      emulators, jobs: emuStore.jobs(),
+      emulators, jobs: emuStore.jobs(), cacheBytes: emuArchive.usage(),
     });
   },
-  'GET /api/emu/jobs': (req, res) => json(res, 200, { jobs: emuStore.jobs() }),
+  'GET /api/emu/jobs': (req, res) => json(res, 200, { jobs: [...emuStore.jobs(), ...emuArchive.jobs()] }),
+  // Jeu dans une archive : décompressé dans le cache, l'interface suit /api/emu/jobs puis relance
+  'POST /api/emu/extract': async (req, res) => {
+    const b = await readBody(req);
+    const e = findEntry(String(b.id || ''));
+    if (!e || e.archive !== 'extract') return json(res, 400, { error: 'Ce jeu n’a pas besoin d’être décompressé' });
+    const sys = emu.SYSTEMS.find(s => s.id === e.system);
+    emuArchive.extract(e.id, e.name, e.romPath, sys.exts, { m3u: ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'].includes(e.system) }).catch(() => { /* erreur gardée dans la tâche */ });
+    json(res, 200, { ok: true });
+  },
+  // Réglages d'un jeu ou d'une console ; une valeur null revient au réglage de la console / par défaut
+  'GET /api/emu/settings': (req, res, q) => {
+    const s = emuSettings();
+    json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {} });
+  },
+  'POST /api/emu/settings': async (req, res) => {
+    const b = await readBody(req);
+    const scope = b.scope === 'system' ? 'systems' : 'games';
+    const key = String(b.id || '');
+    if (!key || (scope === 'systems' && !emu.SYSTEMS.some(s => s.id === key)) || (scope === 'games' && !findEntry(key))) return json(res, 400, { error: 'Jeu ou console inconnu' });
+    const c = readJson(FILES.config, {});
+    const all = c.emuSettings = { systems: {}, games: {}, ...(c.emuSettings || {}) };
+    const cur = { ...(all[scope][key] || {}) };
+    for (const [k, v] of Object.entries(b.values || {})) {
+      if (!EMU_SETTING_KEYS[k]) continue;
+      if (v === null || v === undefined || v === '') delete cur[k];
+      else if (EMU_SETTING_KEYS[k](v)) cur[k] = v;
+    }
+    if (Object.keys(cur).length) all[scope][key] = cur; else delete all[scope][key];
+    writeJson(FILES.config, c);
+    scanEmulation();
+    json(res, 200, { ok: true, values: cur });
+  },
+  'POST /api/emu/cache/clear': (req, res) => json(res, 200, { ok: true, freed: emuArchive.clear() }),
   // Fiche d'un jeu rétro : développeur, éditeur, genre, année, joueurs, description
   'GET /api/emu/game': async (req, res, q) => {
     const e = findEntry(q.get('id') || '');
@@ -1341,7 +1418,7 @@ const routes = {
   'POST /api/launch': async (req, res) => {
     const b = await readBody(req);
     const id = String(b.id || '');
-    const e = findEntry(id);
+    let e = findEntry(id);
     if (!e) return json(res, 404, { ok: false, error: 'Entrée inconnue' });
     if (e.demo) return json(res, 200, { ok: false, demo: true, error: 'Entrée de démonstration' });
     if (e.source === 'rom' && !e.launch) {
@@ -1351,8 +1428,9 @@ const routes = {
       return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
     }
     if (e.source === 'rom' && !b.dry) {
-      const blocked = await prepareRom(e);
-      if (blocked) return json(res, 200, blocked);
+      const prep = await prepareRom(e);
+      if (prep.blocked) return json(res, 200, prep.blocked);
+      e = { ...e, launch: prep.launch };
     }
     if (!b.dry && e.installed !== false && !id.startsWith('launcher:')) {
       const last = recentLaunch.get(id);

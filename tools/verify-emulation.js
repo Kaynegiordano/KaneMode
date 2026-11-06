@@ -116,3 +116,32 @@ test('Jaquette libretro : même jeu, région voulue, jamais une bêta', () => {
   assert.equal(bestMatch('Ratchet & Clank (Europe)', ['Ratchet _ Clank (Europe)']), 'Ratchet _ Clank (Europe)');
   assert.equal(bestMatch('Inconnu (Europe)', names), null);
 });
+
+test('Archives partout : RetroArch ouvre les .zip de cartouche, KaneMode décompresse le reste', () => {
+  const root = tmp();
+  for (const [dir, file] of [['PlayStation', 'Crash (Europe).zip'], ['PlayStation 2', 'Okami (Europe).7z'], ['Super Nintendo', 'F-Zero (Europe).zip'], ['Super Nintendo', 'Pilotwings (Europe).rar'], ['Arcade', 'sf2.zip']]) {
+    fs.mkdirSync(path.join(root, dir), { recursive: true });
+    fs.writeFileSync(path.join(root, dir, file), 'x');
+  }
+  const roms = emu.scanRoms([root], {}, {});
+  const by = n => roms.find(r => r.name === n);
+  assert.equal(by('Crash').archive, 'extract');
+  assert.equal(by('Okami').archive, 'extract');
+  assert.equal(by('F-Zero').archive, null);
+  assert.equal(by('Pilotwings').archive, 'extract');
+  assert.equal(by('sf2').archive, null);
+});
+
+test('Jeu décompressé : le .cue avant ses .bin, plusieurs disques dans une liste', () => {
+  const { pick } = require('../host/lib/emu-archive');
+  const exts = emu.SYSTEMS.find(s => s.id === 'psx').exts;
+  const one = tmp();
+  fs.writeFileSync(path.join(one, 'Jeu.bin'), Buffer.alloc(10));
+  fs.writeFileSync(path.join(one, 'Jeu.cue'), 'FILE "Jeu.bin" BINARY');
+  assert.equal(path.basename(pick(one, exts)), 'Jeu.cue');
+  const two = tmp();
+  for (const n of [2, 1]) fs.writeFileSync(path.join(two, `Jeu (Disc ${n}).chd`), 'x');
+  const list = pick(two, exts, { m3u: true });
+  assert.match(list, /Jeu\.m3u$/);
+  assert.deepEqual(fs.readFileSync(list, 'utf8').trim().split(/\r?\n/), ['Jeu (Disc 1).chd', 'Jeu (Disc 2).chd']);
+});

@@ -5,7 +5,7 @@ import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, n
 import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh, suspendNavigation, resumeNavigation } from '../nav.js';
 import { art, badges } from '../cards.js';
 import { dialog, confirmDialog, openKeyboard } from '../widgets.js';
-import { installEmulator } from './emulation.js';
+import { installEmulator, extractGame } from './emulation.js';
 
 // ---------- Fond d'écran dynamique ----------
 const layers = $$('.bg-layer');
@@ -174,6 +174,14 @@ export async function launch(g) {
       const error = await installEmulator(r.needsEmulator.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
       g = lib.byId(g.id) || g;
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id });
+      if (r.ok) native.send('foreground', { id: g.id });
+    }
+    // Jeu dans une archive que l'émulateur ne lit pas : décompressé une fois, puis lancé
+    if (r.needsExtract) {
+      status.textContent = t('Décompression de {name}…', { name: g.name });
+      const error = await extractGame(g.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
+      if (!launching || launching.layer !== layer) return;
       r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id });
       if (r.ok) native.send('foreground', { id: g.id });
     }
