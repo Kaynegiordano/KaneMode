@@ -32,7 +32,7 @@ const SYSTEMS = [
   // d'un tel dossier, montée par Windows au lancement (mount) plutôt que copiée
   { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['eden', 'ryujinx', 'citron'] },
   // .nup : conteneur de jeu de Lichii (compressé), ouvert tel quel
-  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nup', 'xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii', 'edenns2', 'lichiimod'], experimental: true },
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nup', 'xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii', 'eglantine', 'lichiimod'], experimental: true },
   { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'pbp', 'ecm', 'iso', 'img', 'bin', 'exe'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
   { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'zso', 'gz', 'mdf', 'nrg', 'img', 'bin', 'elf'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
@@ -181,9 +181,8 @@ const EMULATORS = [
   { id: 'xemu', name: 'xemu', exes: ['xemu.exe'], dirs: ['xemu'], args: '-full-screen -dvd_path "{rom}"' },
   { id: 'xenia', name: 'Xenia', exes: ['xenia_canary.exe', 'xenia.exe'], dirs: ['Xenia', 'xenia', 'xenia_canary'], args: '--fullscreen=true "{rom}"' },
   { id: 'lichii', name: 'Lichii', exes: ['lichii.exe'], dirs: ['Lichii', 'lichii'], args: '-f -g "{rom}"' },
-  // Eden-NS2 (Switch 2) : même exécutable que l'Eden de la Switch, installé par KaneMode seulement
-  { id: 'edenns2', name: 'Eden-NS2', exes: ['eden.exe'], dirs: [], args: '-f -g "{rom}"' },
   // Version modifiée de Lichii installée par KaneMode depuis un .zip (jamais trouvée ailleurs)
+  { id: 'eglantine', name: 'Eglantine', exes: ['eglantine.exe'], dirs: ['Eglantine', 'eglantine'], args: '-f -g "{rom}"' },
   { id: 'lichiimod', name: 'Lichii (version modifiée)', exes: ['lichii.exe'], dirs: [], args: '-f -g "{rom}"' },
   { id: 'shadps4', name: 'shadPS4', exes: ['shadPS4.exe'], dirs: ['shadPS4', 'shadps4'], args: '--fullscreen true --game "{rom}"' },
   { id: 'vita3k', name: 'Vita3K', exes: ['Vita3K.exe'], dirs: ['Vita3K', 'vita3k'], args: '-F "{rom}"' },

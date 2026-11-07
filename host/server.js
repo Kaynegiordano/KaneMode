@@ -848,8 +848,28 @@ const emuStore = emuStoreLib.create({
   home: emuHome,
   isAlly: async () => { try { return /^rog-ally/.test(((await device.info()) || {}).handheld?.id || ''); } catch { return false; } },
 });
+// Émulateurs retirés de KaneMode (Eden-NS2 en 4.25) : leur dossier est effacé s'il a été installé par
+// KaneMode et ne garde ni sauvegarde ni lien (Eden-NS2 rangeait ses sauvegardes et mods chez Lichii)
+const RETIRED_EMUS = ['edenns2'];
+function retireEmulators(home) {
+  for (const id of RETIRED_EMUS) {
+    const dir = path.join(home, 'Émulateurs', id);
+    if (!isFile(path.join(dir, 'kanemode.json'))) continue;
+    const keep = (function walk(p) {
+      for (const it of fs.readdirSync(p, { withFileTypes: true })) {
+        const f = path.join(p, it.name);
+        if (it.isSymbolicLink() || (it.isDirectory() ? walk(f) : /[\\/]nand[\\/]user[\\/]save[\\/]/i.test(f))) return true;
+      }
+      return false;
+    })(dir);
+    if (keep) { console.log(`Émulation : ${id} retiré, dossier gardé (sauvegardes ou liens dedans)`); continue; }
+    fs.rmSync(dir, { recursive: true, force: true });
+    console.log(`Émulation : ${id} retiré, dossier effacé`);
+  }
+}
 function ensureEmuHome() {
   const d = emuDirs();
+  try { retireEmulators(d.home); } catch (e) { console.error('Émulation : émulateurs retirés :', e.message); }
   try {
     for (const s of emu.SYSTEMS) fs.mkdirSync(path.join(d.games, s.name), { recursive: true });
     for (const b of ['Switch', 'Switch 2']) fs.mkdirSync(path.join(d.bios, b), { recursive: true });
@@ -872,14 +892,30 @@ function ensureEmuHome() {
 const EMU_SETTING_KEYS = { emulator: v => typeof v === 'string' && /^[\w-]+$/.test(v), core: v => typeof v === 'string' && /^[\w-]+$/.test(v),
   filter: v => ['none', 'crt', 'scanlines', 'lcd', 'smooth', 'sharp'].includes(v), aspect: v => ['auto', '4:3', '16:9', 'full'].includes(v),
   quality: v => ['auto', 'native'].includes(v), wide: v => ['on', 'off'].includes(v),
-  // Jeux Switch et Switch 2 : réglages de KaneMode (auto), Preset IA, ou rien d'imposé (manual)
-  preset: v => ['auto', 'ia', 'manual'].includes(v) };
+  // Jeux Switch et Switch 2 : réglages d'origine de l'émulateur (origin), de KaneMode (auto) ou Preset IA
+  preset: v => ['origin', 'auto', 'ia'].includes(v) };
 const emuSettings = () => ({ systems: {}, games: {}, ...(config().emuSettings || {}) });
 // Réglages par défaut d'une console : écran d'époque pour les consoles de salon 2D, écran LCD pour
 // les portables, image agrandie à la taille de l'écran, écran large quand il est sans défaut (PS2)
 const CRT_SYSTEMS = ['nes', 'snes', 'megadrive', 'mastersystem', 'pcengine', 'neogeo', 'arcade', 'atari2600', 'segacd'];
 const LCD_SYSTEMS = ['gb', 'gbc', 'gba', 'gamegear'];
-const emuDefaults = sys => ({ filter: CRT_SYSTEMS.includes(sys) ? 'crt' : LCD_SYSTEMS.includes(sys) ? 'lcd' : 'none', aspect: 'auto', quality: 'auto', wide: sys === 'ps2' ? 'on' : 'off', preset: 'auto' });
+const emuDefaults = sys => ({ filter: CRT_SYSTEMS.includes(sys) ? 'crt' : LCD_SYSTEMS.includes(sys) ? 'lcd' : 'none', aspect: 'auto', quality: 'auto', wide: sys === 'ps2' ? 'on' : 'off', preset: 'origin' });
+// 4.25 : réglages d'origine des émulateurs Switch et Switch 2 pour tous les jeux (les préréglages
+// choisis avant sont oubliés une fois) ; Eden-NS2 retiré : ses jeux reviennent à l'émulateur de la console
+(function migrateEmu425() {
+  const c = readJson(FILES.config, null);
+  if (!c || c.emuMigrated >= 425) return;
+  for (const scope of ['systems', 'games']) {
+    const all = (c.emuSettings || {})[scope] || {};
+    for (const [k, v] of Object.entries(all)) {
+      delete v.preset;
+      if (v.emulator === 'edenns2') delete v.emulator;
+      if (!Object.keys(v).length) delete all[k];
+    }
+  }
+  c.emuMigrated = 425;
+  writeJson(FILES.config, c);
+})();
 const emuEffective = (sys, id) => { const s = emuSettings(); return { ...emuDefaults(sys), ...(s.systems[sys] || {}), ...(s.games[id] || {}) }; };
 // Écran et carte graphique : la résolution interne des émulateurs 3D en dépend (relevé au démarrage)
 const emuDisplay = { screenH: 1080, tier: 'low' };
@@ -1043,7 +1079,7 @@ function forgetResume(e, { backup = false } = {}) {
 }
 // Manettes XInput branchées (host/xinput.ps1), relues au plus toutes les 15 s : les émulateurs qui
 // ne prennent pas la manette tout seuls la reçoivent avant le lancement (emu-pads.js)
-const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'edenns2', 'azahar', 'rpcs3', 'cemu', 'melonds'];
+const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'eglantine', 'azahar', 'rpcs3', 'cemu', 'melonds'];
 // Consoles dont l'émulateur peut s'ouvrir seul depuis la page d'un jeu (bouton « Ouvrir … seul »)
 const EMU_ONLY_SYSTEMS = ['switch', 'switch2'];
 const padCache = { at: 0, list: [] };
@@ -1407,7 +1443,7 @@ const routes = {
     // Jeu Switch : ce que le Preset IA choisit sur cette machine, pour l'afficher
     const e = q.get('id') ? findEntry(q.get('id')) : null;
     const ia = e && e.source === 'rom' && EMU_ONLY_SYSTEMS.includes(e.system)
-      ? emuPresets.iaPreset({ variant: e.system === 'switch' ? 'eden' : e.emulatorId === 'edenns2' ? 'edenns2' : 'lichii', titleId: emuMods.titleIdOf(e.romPath), ...emuDisplay }) : null;
+      ? emuPresets.iaPreset({ variant: e.system === 'switch' ? 'eden' : 'lichii', titleId: emuMods.titleIdOf(e.romPath), ...emuDisplay }) : null;
     json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {}, defaults: emuDefaults(q.get('system')), ia: ia && { summary: ia.summary, game: ia.game } });
   },
   'POST /api/emu/settings': async (req, res) => {

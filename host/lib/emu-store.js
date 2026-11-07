@@ -27,10 +27,9 @@ const CATALOG = {
   eden: { name: 'Eden', source: { type: 'forgejo', api: 'https://git.eden-emu.dev/api/v1/repos/eden-emu/eden', asset: /-amd64-msvc-standard\.zip$/i, ally: /-rog-ally-clang-pgo\.zip$/i }, exe: /^eden\.exe$/i, portable: ['user/'], size: 40 },
   // Switch 2 : Lichii (suite d'Eglantine, une version par jour) ; from : reprend le dossier user/ d'Eglantine
   lichii: { name: 'Lichii', source: { type: 'github', repo: 'zortos293/Lichii', pre: true, tags: [/^build-\d+$/], asset: /^lichii-windows-x86_64\.zip$/i }, exe: /^lichii\.exe$/i, portable: ['user/'], from: 'eglantine', size: 116, experimental: true },
-  // Eden-NS2 : Eden adapté à la Switch 2, le plus efficace sur Donkey Kong Bananza (dépôt sans version
-  // publiée : dernière compilation GitHub Actions, voir latest). Son propre dossier user ; ses dossiers
-  // nand/sdmc/load pointent vers ceux de Lichii (sauvegardes et mods partagés, emu-setup.js).
-  edenns2: { name: 'Eden-NS2', source: { type: 'actions', repo: '0x2593/Eden-NS2', workflow: 'release-builds.yml', artifact: 'Eden-NS2-windows-x86_64', asset: /windows-x86_64\.zip$/i }, exe: /^eden\.exe$/i, portable: ['user/'], size: 92, experimental: true },
+  // Eglantine, de nouveau proposé en 4.25 (choisi jeu par jeu) : version du jour (daily-AAAAMMJJ),
+  // sinon la dernière vX. Son dossier user garde les sauvegardes et les mods (Lichii y pointe aussi).
+  eglantine: { name: 'Eglantine', source: { type: 'github', repo: 'Djihads80/Eglantine', pre: true, tags: [/^daily-\d{8}$/, /^v\d/], asset: /^eglantine-windows-x86_64\.zip$/i }, exe: /^eglantine\.exe$/i, portable: ['user/'], size: 116, experimental: true },
   // Version modifiée de Lichii (Lichii-Frizti…) donnée par l'utilisateur en .zip : l'exécutable seul,
   // posé sur une copie de Lichii, dont elle partage le dossier user (clés, sauvegardes, mods).
   // Choisie jeu par jeu (Réglages → Émulateur), jamais mise à jour toute seule.
@@ -116,21 +115,6 @@ async function latest(id, { ally = false } = {}) {
   const c = CATALOG[id];
   const s = c.source;
   if (s.type === 'local') throw new Error(`${c.name} : installée depuis une archive, pas de mise à jour en ligne`);
-  // Projet sans version publiée : la dernière compilation réussie de GitHub Actions. Une vraie version
-  // (tag poussé) passe avant si elle existe. L'artefact se télécharge sans compte par nightly.link.
-  if (s.type === 'actions') {
-    const rels = await get(`https://api.github.com/repos/${s.repo}/releases?per_page=10`, { json: true }).catch(() => []);
-    const rel = (rels || []).find(r => !r.draft && r.assets.some(a => s.asset.test(a.name)));
-    if (rel) { const a = rel.assets.find(x => s.asset.test(x.name)); return { version: rel.tag_name, url: a.browser_download_url, name: a.name, size: a.size }; }
-    const runs = await get(`https://api.github.com/repos/${s.repo}/actions/workflows/${s.workflow}/runs?status=success&per_page=10`, { json: true });
-    for (const run of runs.workflow_runs || []) {
-      const arts = await get(`https://api.github.com/repos/${s.repo}/actions/runs/${run.id}/artifacts`, { json: true });
-      const a = (arts.artifacts || []).find(x => x.name === s.artifact && !x.expired);
-      if (!a) continue;
-      return { version: `${run.created_at.slice(0, 10)} ${run.head_sha.slice(0, 7)}`, url: `https://nightly.link/${s.repo}/actions/runs/${run.id}/${s.artifact}.zip`, name: `${s.artifact}.zip`, size: a.size_in_bytes };
-    }
-    throw new Error(`${c.name} : aucune compilation Windows disponible`);
-  }
   if (s.type === 'retroarch') {
     const r = await get('https://api.github.com/repos/libretro/RetroArch/releases/latest', { json: true });
     const v = String(r.tag_name).replace(/^v/, '');
@@ -209,16 +193,7 @@ function create({ home, isAlly = async () => false }) {
         job.phase = 'extract';
         const unpacked = path.join(tmp, 'x');
         await extract(archive, unpacked);
-        let exeTmp = findExe(unpacked, c.exe);
-        // Artefact GitHub Actions : l'archive du projet est elle-même dans un zip
-        if (!exeTmp) {
-          const inner = fs.readdirSync(unpacked).filter(n => /\.(zip|7z)$/i.test(n));
-          if (inner.length === 1) {
-            const deeper = path.join(tmp, 'y');
-            await extract(path.join(unpacked, inner[0]), deeper);
-            exeTmp = findExe(deeper, c.exe);
-          }
-        }
+        const exeTmp = findExe(unpacked, c.exe);
         if (!exeTmp) throw new Error(`${c.name} : exécutable introuvable dans l'archive`);
         // Contenu de l'archive (dossier de l'exécutable) copié sur l'installation existante
         const dest = dirOf(id);

@@ -203,7 +203,7 @@ test('Image adaptée à l’écran : résolution interne selon l’écran et la 
   setup.prepare('lichii', dir, { bios: dir, saves: dir });
   const qt = ini('user/config/qt-config.ini');
   assert.ok(qt.includes("confirmStop" + String.fromCharCode(92) + "default=false"));
-  assert.match(qt, /use_asynchronous_shaders=true/);
+  assert.doesNotMatch(qt, /use_asynchronous_shaders=/, 'D’origine par défaut : rien d’imposé');
 });
 
 // Petit .zip « stocké » (sans compression), assez pour lire son répertoire central
@@ -315,31 +315,31 @@ test('Manette XInput (ROG Ally, Xbox) posée dans Eden, Lichii, Azahar, RPCS3, C
   assert.match(fs.readFileSync(path.join(ra, 'retroarch.cfg'), 'utf8'), /input_joypad_driver = "xinput"/);
 });
 
-test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précision basse et FSR ; carte dédiée en mode TV ; jeux .nup', () => {
+test('Switch et Switch 2 en « Automatique » : ROG Ally en mode portable, précision basse et FSR ; carte dédiée en mode TV ; jeux .nup', () => {
   const dir = tmp();
   const qt = () => fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8');
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1080, tier: 'low', gpu: 'AMD Radeon(TM) Graphics', quality: 'auto' });
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1080, tier: 'low', gpu: 'AMD Radeon(TM) Graphics', quality: 'auto', preset: 'auto' });
   assert.match(qt(), /^gpu_accuracy=0$/m);
   assert.match(qt(), /^use_docked_mode=0$/m);
   assert.match(qt(), /^resolution_setup=3$/m);
   assert.match(qt(), /^scaling_filter=6$/m);
   assert.match(qt(), /^nvidia_dlss=false$/m);
-  // Profil Lichii du tuto, posé une fois
+  // Réglages du tuto vidéo (Lichii)
   for (const l of ['cpu_accuracy=2', 'use_custom_cpu_ticks=true', 'cpu_ticks=16000', 'fast_cpu_time=0', 'fast_gpu_time=1',
     'language_index=2', 'region_index=2', 'speed_limit=100', 'slow_speed_limit=50', 'turbo_speed_limit=200', 'backend=1',
     'use_vsync=1', 'fsr_sharpening_slider=72', 'anti_aliasing=2', 'gpu_fence_behavior=1', 'nvdec_emulation=2',
     'frame_pacing_mode=2', 'sync_memory_operations=true', 'async_presentation=true', 'use_asynchronous_shaders=true',
     'gpu_unswizzle_texture_size=3', 'gpu_unswizzle_stream_size=4', 'gpu_unswizzle_chunk_size=4', 'dyna_state=2'])
     assert.match(qt(), new RegExp(`^${l}$`, 'm'), l);
-  // Un réglage changé ensuite dans Lichii reste
+  // Réécrits à chaque lancement en « Automatique »
   fs.writeFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), qt().replace(/^anti_aliasing=2$/m, 'anti_aliasing=1'));
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1440, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', quality: 'auto' });
-  assert.match(qt(), /^anti_aliasing=1$/m);
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, screenH: 1440, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', quality: 'auto', preset: 'auto' });
+  assert.match(qt(), /^anti_aliasing=2$/m);
   assert.match(qt(), /^use_docked_mode=1$/m);
   assert.match(qt(), /^resolution_setup=5$/m);
   assert.match(qt(), /^scaling_filter=1$/m);
   assert.match(qt(), /^nvidia_dlss=true$/m);
-  setup.prepare('eden', dir, { bios: dir, saves: dir, screenH: 2160, tier: 'high', quality: 'auto' });
+  setup.prepare('eden', dir, { bios: dir, saves: dir, screenH: 2160, tier: 'high', quality: 'auto', preset: 'auto' });
   assert.match(qt(), /^resolution_setup=6$/m);
   const root = tmp();
   fs.mkdirSync(path.join(root, 'Nintendo Switch 2'));
@@ -452,7 +452,7 @@ test('Lichii modifié (.zip) : copie de Lichii + exécutable de l’archive, dos
   assert.equal(row.local, true);
   assert.ok(!row.update && !row.checkError, 'pas de recherche de mise à jour');
   const sys = emu.SYSTEMS.find(x => x.id === 'switch2');
-  assert.deepEqual(sys.emus, ['lichii', 'edenns2', 'lichiimod']);
+  assert.deepEqual(sys.emus, ['lichii', 'eglantine', 'lichiimod']);
 });
 
 test('Visuels Switch : le bon jeu sur le site de Nintendo (même nom, même console) et adresses d’images limitées à son CDN', () => {
@@ -490,7 +490,7 @@ test('Switch et Switch 2 : l’émulateur s’ouvre seul (mêmes réglages, sans
   assert.equal(game.split('emuOnly: !!opts.emuOnly').length - 1, 3);
 });
 
-test('Preset IA Switch / Switch 2 : selon la machine et le jeu ; Manuel ne touche pas à l’image', () => {
+test('Preset IA Switch / Switch 2 : selon la machine et le jeu', () => {
   const { iaPreset } = require('../host/lib/emu-presets');
   // Donkey Kong Bananza : vitesse liée aux images → 30 i/s partout ; Accurate sur la RTX, 0,5x + FSR sur l'Ally
   const dkPc = iaPreset({ variant: 'lichii', tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440, titleId: '040074A01BF12000' });
@@ -511,47 +511,77 @@ test('Preset IA Switch / Switch 2 : selon la machine et le jeu ; Manuel ne touch
   const eden = iaPreset({ variant: 'eden', tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440 });
   assert.equal(eden.sections.Renderer.resolution_setup, 6);
   assert.equal(eden.sections.Renderer.max_anisotropy, 5);
-  // Écrit dans la config de Lichii au lancement ; Manuel laisse ce qui est réglé dans l'émulateur
+  // Écrit dans la config de Lichii au lancement
   const dir = tmp();
   const qt = () => fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8');
   setup.prepare('lichii', dir, { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440, preset: 'ia', titleId: '040074A01BF12000' });
   assert.match(qt(), /^frame_pacing_mode=1$/m);
   assert.match(qt(), /^frame_gen=false$/m);
-  fs.writeFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), qt().replace(/^resolution_setup=3$/m, 'resolution_setup=7'));
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440, preset: 'manual' });
-  assert.match(qt(), /^resolution_setup=7$/m, 'Manuel : réglage de l’utilisateur gardé');
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440 });
-  assert.match(qt(), /^resolution_setup=5$/m, 'Automatique : réglage de KaneMode');
 });
 
-test('Eden-NS2 (Switch 2) : dernière compilation GitHub Actions, profil conseillé, sauvegardes et mods de Lichii partagés', () => {
-  const c = store.CATALOG.edenns2;
-  assert.equal(c.source.type, 'actions');
-  assert.equal(c.source.repo, '0x2593/Eden-NS2');
-  assert.ok(c.exe.test('eden.exe'));
-  assert.deepEqual(emu.SYSTEMS.find(x => x.id === 'switch2').emus, ['lichii', 'edenns2', 'lichiimod']);
-  const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'lib', 'emu-store.js'), 'utf8');
-  assert.match(src, /https:\/\/nightly\.link\/\$\{s\.repo\}\/actions\/runs\/\$\{run\.id\}\/\$\{s\.artifact\}\.zip/);
-  assert.match(src, /l'archive du projet est elle-même dans un zip/);
-  // Dossiers de données de Lichii (réglés ailleurs, ici vers eglantine) repris une fois
-  const root = tmp();
-  const lichii = path.join(root, 'lichii'), ns2 = path.join(root, 'edenns2');
-  fs.mkdirSync(path.join(lichii, 'user', 'config'), { recursive: true });
-  fs.writeFileSync(path.join(lichii, 'user', 'config', 'qt-config.ini'), ['[Data%20Storage]', 'nand_directory\default=false', 'nand_directory=C:/x/eglantine/user/nand', 'load_directory\default=false', 'load_directory=C:/x/eglantine/user/load', ''].join('\n'));
-  fs.mkdirSync(path.join(lichii, 'user', 'sdmc'), { recursive: true });
-  setup.prepare('edenns2', ns2, { bios: root, saves: root, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440 });
-  const qt = () => fs.readFileSync(path.join(ns2, 'user', 'config', 'qt-config.ini'), 'utf8');
-  assert.match(qt(), /^nand_directory=C:\/x\/eglantine\/user\/nand$/m);
-  assert.match(qt(), /^load_directory=C:\/x\/eglantine\/user\/load$/m);
-  assert.match(qt(), /^sdmc_directory=.*lichii\/user\/sdmc$/m);
-  assert.match(qt(), /^memory_layout_mode=4$/m);
-  // Posé une fois : un dossier changé ensuite dans Eden-NS2 reste
-  fs.writeFileSync(path.join(ns2, 'user', 'config', 'qt-config.ini'), qt().replace(/^nand_directory=.*$/m, 'nand_directory=D:/autre'));
-  setup.prepare('edenns2', ns2, { bios: root, saves: root, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440 });
-  assert.match(qt(), /^nand_directory=D:\/autre$/m);
-  // Preset IA : pas de mention du DLSS (réglage propre à Lichii)
-  const { iaPreset } = require('../host/lib/emu-presets');
-  const p = iaPreset({ variant: 'edenns2', tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', titleId: '040074A01BF12000' });
-  assert.equal(p.sections.Renderer.frame_pacing_mode, 1);
-  assert.ok(!p.summary.join(' ').includes('DLSS'));
+test('Switch et Switch 2 « D’origine » (par défaut) : réglages d’image et de performance de l’émulateur ; mods, dossiers et manette gardés', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.ok(src.includes("wide: sys === 'ps2' ? 'on' : 'off', preset: 'origin' });"));
+  const ui = fs.readFileSync(path.join(__dirname, '..', 'ui', 'js', 'pages', 'emulation.js'), 'utf8');
+  assert.ok(ui.includes("preset: base.preset || d.preset || 'origin' }"));
+  const dir = tmp();
+  const conf = path.join(dir, 'user', 'config');
+  const file = path.join(conf, 'qt-config.ini');
+  const qt = () => fs.readFileSync(file, 'utf8');
+  const machine = { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440, titleId: '040074A01BF12000' };
+  // Config réglée par une version d'avant (tuto, Preset IA, repère des versions 4.21 à 4.24), avec mods et dossiers
+  setup.prepare('lichii', dir, { ...machine, preset: 'ia' });
+  setup.prepare('lichii', dir, { ...machine, preset: 'auto' });
+  fs.writeFileSync(file, qt() + ['[Data%20Storage]', 'load_directory\default=false', 'load_directory=C:/x/eglantine/user/load',
+    '[DisabledAddOns]', '1\title_id=1', '[Controls]', 'player_0_button_a="engine:sdl,port:0,button:0"', ''].join('\r\n'));
+  fs.rmSync(path.join(conf, 'kanemode-preset.txt'));
+  fs.writeFileSync(path.join(conf, 'kanemode-profile.txt'), 'tuto-1\n');
+  setup.prepare('lichii', dir, machine);
+  for (const k of ['cpu_accuracy', 'cpu_ticks', 'resolution_setup', 'frame_pacing_mode', 'anti_aliasing', 'nvidia_dlss', 'use_docked_mode', 'fast_gpu_time', 'language_index'])
+    assert.ok(!qt().split(/\r?\n/).some(l => l.startsWith(k + '=') || l.startsWith(k + '\default=')), k);
+  assert.ok(qt().includes('load_directory=C:/x/eglantine/user/load'), 'dossier des mods gardé');
+  assert.ok(qt().includes('1\title_id=1'), 'liste des mods gardée');
+  assert.match(qt(), /^player_0_button_a=/m, 'manette gardée');
+  assert.match(qt(), /^fullscreen=true$/m);
+  assert.ok(fs.readFileSync(file + '.avant-origine.bak', 'utf8').includes('cpu_accuracy=2'), 'copie de la config d’avant');
+  assert.ok(!fs.existsSync(path.join(conf, 'kanemode-profile.txt')));
+  // Ensuite, ce qui est réglé dans l'émulateur reste
+  fs.writeFileSync(file, qt().replace('[Renderer]', '[Renderer]\r\nresolution_setup\default=false\r\nresolution_setup=7'));
+  setup.prepare('lichii', dir, machine);
+  assert.match(qt(), /^resolution_setup=7$/m, 'réglage de l’utilisateur gardé');
+  // Retour à « D'origine » après « Automatique » : effacé de nouveau ; la copie d'avant ne change pas
+  setup.prepare('lichii', dir, { ...machine, preset: 'auto' });
+  assert.match(qt(), /^resolution_setup=5$/m);
+  setup.prepare('lichii', dir, { ...machine, preset: 'manual' });
+  assert.doesNotMatch(qt(), /^resolution_setup=/m, 'ancienne valeur « manual » = D’origine');
+  assert.ok(fs.readFileSync(file + '.avant-origine.bak', 'utf8').includes('cpu_accuracy=2'));
+});
+
+test('Eden-NS2 retiré (image figée sur Donkey Kong) : plus proposé, choix des jeux oubliés, dossier effacé sauf sauvegardes ou liens', () => {
+  assert.equal(store.CATALOG.edenns2, undefined);
+  assert.deepEqual(emu.SYSTEMS.find(x => x.id === 'switch2').emus, ['lichii', 'eglantine', 'lichiimod']);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.ok(src.includes("const RETIRED_EMUS = ['edenns2'];"));
+  assert.ok(src.includes("if (v.emulator === 'edenns2') delete v.emulator;"));
+  assert.ok(src.includes(String.raw`if (it.isSymbolicLink() || (it.isDirectory() ? walk(f) : /[\\/]nand[\\/]user[\\/]save[\\/]/i.test(f))) return true;`));
+  assert.ok(!fs.readFileSync(path.join(__dirname, '..', 'host', 'lib', 'emu-store.js'), 'utf8').includes('nightly.link'));
+});
+
+test('Eglantine (Switch 2) : version du jour d’abord, mêmes réglages que Lichii, D’origine par défaut', () => {
+  const c = store.CATALOG.eglantine;
+  assert.equal(c.source.repo, 'Djihads80/Eglantine');
+  assert.ok(c.source.pre);
+  assert.ok(c.source.tags[0].test('daily-20261107') && !c.source.tags[0].test('branch-fix-oot-blackscreen-17ac56ed'));
+  assert.ok(c.source.tags[1].test('v0.1.0-rc1'));
+  assert.ok(c.source.asset.test('eglantine-windows-x86_64.zip') && !c.source.asset.test('eglantine-windows-x86_64-pgo.zip'));
+  assert.ok(c.exe.test('eglantine.exe'));
+  const dir = tmp();
+  const qt = () => fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8');
+  const machine = { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440 };
+  setup.prepare('eglantine', dir, machine);
+  assert.match(qt(), /^fullscreen=true$/m);
+  assert.doesNotMatch(qt(), /^resolution_setup=/m, 'D’origine : rien d’imposé');
+  setup.prepare('eglantine', dir, { ...machine, preset: 'auto' });
+  assert.match(qt(), /^nvidia_dlss=true$/m);
+  assert.match(qt(), /^cpu_ticks=16000$/m);
 });

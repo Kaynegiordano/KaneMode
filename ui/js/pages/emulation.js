@@ -80,12 +80,12 @@ const metaCache = new Map();
 const FILTERS = () => [['none', t('Aucun (pixels d’origine)')], ['crt', t('Écran CRT (télé d’époque)')], ['scanlines', t('Lignes de balayage')], ['lcd', t('Écran LCD (portables)')], ['smooth', t('Lissé')], ['sharp', t('Net, sans scintillement')]];
 const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'], ['16:9', '16:9'], ['full', t('Plein écran (étiré)')]];
 const QUALITIES = () => [['auto', t('Adaptée à l’écran')], ['native', t('D’origine (plus léger)')]];
-// Switch, Switch 2 : qui règle l'émulateur avant le lancement
-const PRESETS = () => [['auto', t('Automatique (KaneMode)')], ['ia', t('Preset IA')], ['manual', t('Manuel (rien d’imposé)')]];
-const PRESET_EMUS = ['eden', 'lichii', 'lichiimod', 'edenns2'];
+// Switch, Switch 2 : qui règle l'émulateur avant le lancement (par défaut, l'émulateur lui-même)
+const PRESETS = () => [['origin', t('D’origine (émulateur)')], ['auto', t('Automatique (KaneMode)')], ['ia', t('Preset IA')]];
+const PRESET_EMUS = ['eden', 'lichii', 'lichiimod', 'eglantine'];
 const WIDES = () => [['on', t('Oui')], ['off', t('Non')]];
 const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
-const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii', 'lichiimod', 'edenns2'];
+const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii', 'lichiimod', 'eglantine'];
 const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
@@ -622,7 +622,7 @@ definePage('emulation', {
     const defEmu = (ctx.scope === 'game' && !base.emulator && g.emulatorId) || (sys.emus[0] || {}).id;
     const d = r.defaults || {};
     const inherited = { emulator: base.emulator || defEmu, core: base.core || sys.cores[0], filter: base.filter || d.filter || 'none', aspect: base.aspect || d.aspect || 'auto',
-      quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off', preset: base.preset || d.preset || 'auto' };
+      quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off', preset: base.preset || d.preset || 'origin' };
     const value = k => (own[k] !== undefined ? own[k] : inherited[k]);
     const emuId = value('emulator');
     const options = {
@@ -640,7 +640,7 @@ definePage('emulation', {
     if (emuId === 'retroarch' && sys.cores.length > 1) kinds.push(['core', t('Cœur RetroArch'), 'i-cpu']);
     if (emuId === 'retroarch') kinds.push(['filter', t('Filtre d’image'), 'i-palette']);
     if (PRESET_EMUS.includes(emuId)) kinds.push(['preset', t('Préréglage'), 'i-cpu']);
-    // Qualité : seulement quand KaneMode règle lui-même l'image (le Preset IA la choisit, Manuel n'y touche pas)
+    // Qualité : seulement quand KaneMode règle lui-même l'image (le Preset IA la choisit, D'origine n'y touche pas)
     if ((QUALITY_EMUS.includes(emuId) && (!PRESET_EMUS.includes(emuId) || value('preset') === 'auto')) || (emuId === 'retroarch' && sysId === 'n64')) kinds.push(['quality', t('Qualité de l’image'), 'i-image']);
     if (WIDE_EMUS.includes(emuId)) kinds.push(['wide', t('Écran large (16:9)'), 'i-desktop']);
     if (ASPECT_EMUS.includes(emuId) && value('wide') !== 'on') kinds.push(['aspect', t('Format de l’image'), 'i-desktop']);
@@ -664,8 +664,8 @@ definePage('emulation', {
       if (k === 'preset') {
         const why = v === 'ia' && r.ia ? r.ia.summary.map(x => `<span>${esc(x)}</span>`).join('')
           : v === 'ia' ? esc(t('Réglages choisis pour cette machine (PC à carte dédiée ou ROG Ally X) et, pour les jeux connus, pour le jeu.'))
-            : v === 'manual' ? esc(t('KaneMode ne touche plus à l’image ni aux performances : ce que vous réglez dans l’émulateur (Ouvrir … seul) reste.'))
-              : esc(t('Réglages de KaneMode selon la machine, réappliqués à chaque lancement.'));
+            : v === 'auto' ? esc(t('Réglages de KaneMode selon la machine, réappliqués à chaque lancement.'))
+              : esc(t('Les réglages d’image et de performance de l’émulateur, sans rien d’imposé par KaneMode. Ce que vous changez dans l’émulateur (Ouvrir … seul) reste. Les mods restent actifs.'));
         list.append(el('p', 'kg-note es-why', why));
       }
     }

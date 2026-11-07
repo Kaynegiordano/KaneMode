@@ -219,8 +219,8 @@ const SETUP = {
   lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'lichii'); },
   // Version modifiée (Lichii-Frizti…) : dossier user partagé avec Lichii (jonction), mêmes réglages
   lichiimod(dir, c) { SETUP.lichii(dir, c); },
-  // Eden-NS2 : clés de la Switch 2, mêmes énumérations que Lichii ; sauvegardes et mods de Lichii
-  edenns2(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'edenns2'); },
+  // Eglantine (Switch 2) : mêmes noms et valeurs de réglages que Lichii (sources nx2 comparées)
+  eglantine(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'lichii'); },
   rpcs3(dir, c) { pads.rpcs3Pad(dir, c.pads); },
   cemu(dir, c) { pads.cemuPad(dir, c.pads); },
   // melonDS : réglages à côté de l'exécutable (dossier portable), manette n° 0
@@ -251,13 +251,12 @@ function switchVideo(c) {
   };
 }
 
-// Lichii : réglages conseillés (tuto vidéo, RTX 4060 portable), valeurs des énumérations de Lichii.
-// Posés une fois (fichier repère) : ce que le joueur change ensuite dans Lichii reste.
+// Lichii en « Automatique » : réglages conseillés (tuto vidéo, RTX 4060 portable), valeurs des
+// énumérations de Lichii, écrits à chaque lancement avec lichiiVideo.
 // Horloges CPU normale / GPU boost, français (Europe), vitesse 100 % (lent 50 %, turbo 200 %),
 // CPU « Unsafe » + 16000 ticks, Vulkan, Mailbox, RCAS 72 %, SMAA, plein écran sans bordure,
 // mode GPU rapide, barrières « Immediate », décodage vidéo GPU, ASTC GPU, 60 FPS, caches de pipelines,
 // présentation et shaders asynchrones, GPU Unswizzle 256 Mo / 64 Mo / 512, état dynamique étendu 2.
-const LICHII_PROFILE = 'tuto-1';
 function lichiiProfile() {
   return {
     Core: qt({ use_multi_core: 'true', use_speed_limit: 'true', speed_limit: 100, slow_speed_limit: 50, turbo_speed_limit: 200 }),
@@ -281,30 +280,6 @@ function lichiiProfile() {
   };
 }
 
-// Eden-NS2 : réglages conseillés par son README (Vulkan, mémoire de 12 Go, processeur multicœur),
-// français (Europe), shaders asynchrones et caches ; posés une fois. Ses dossiers de données (nand :
-// sauvegardes et profils, sdmc, load : mods) pointent vers ceux de Lichii : la partie et les mods
-// suivent d'un émulateur à l'autre (Donkey Kong commencé dans Lichii continue dans Eden-NS2).
-const ENS2_PROFILE = 'ens2-1';
-function edenNs2Profile(dir) {
-  const lichiiDir = path.join(path.dirname(dir), 'lichii');
-  const lichiiCfg = read(path.join(lichiiDir, 'user', 'config', 'qt-config.ini'));
-  const storage = {};
-  for (const k of ['nand_directory', 'sdmc_directory', 'load_directory']) {
-    const v = (pads.iniValue(lichiiCfg, 'Data%20Storage', k) || '').trim();
-    const own = path.join(lichiiDir, 'user', k.replace('_directory', ''));
-    const target = v && path.isAbsolute(v) ? v : fs.existsSync(own) ? own.split(path.sep).join('/') : null;
-    if (target) storage[k] = target;
-  }
-  return {
-    Core: qt({ use_multi_core: 'true', memory_layout_mode: 4 }),
-    Renderer: qt({ backend: 1, use_vsync: 1, use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true', use_vulkan_driver_pipeline_cache: 'true', accelerate_astc: 1, nvdec_emulation: 2 }),
-    System: qt({ language_index: 2, region_index: 2 }),
-    ...(Object.keys(storage).length ? { 'Data%20Storage': qt(storage) } : {}),
-  };
-}
-const PROFILES = { lichii: { mark: LICHII_PROFILE, make: () => lichiiProfile() }, edenns2: { mark: ENS2_PROFILE, make: dir => edenNs2Profile(dir) } };
-
 // Lichii, selon la machine, à chaque lancement : mode TV, filtre bilinéaire (le tuto) et DLSS NVIDIA à la
 // place du DLSS des jeux sur carte dédiée ; sur puce intégrée (ROG Ally) mode portable, 1x et FSR pour
 // agrandir à l'écran, l'upscaler des jeux restant AMD FSR 3.1 (le DLSS NVIDIA demande une GeForce RTX).
@@ -319,26 +294,53 @@ function lichiiVideo(c) {
   };
 }
 
+// Préréglage des jeux Switch et Switch 2 (réglage « preset » du jeu ou de la console) :
+//   - « origin » (par défaut) : réglages d'origine de l'émulateur. KaneMode n'écrit que ce qu'il lui
+//     faut (plein écran, manette, clés) ; ce qui est changé dans l'émulateur (« Ouvrir … seul ») reste ;
+//   - « auto » : réglages de KaneMode selon la machine (pour Lichii, ceux du tuto vidéo en plus) ;
+//   - « ia » : Preset IA (emu-presets.js).
+// En passant à « origin » (depuis « auto » ou « ia », ou la première fois avec une config réglée par
+// une version d'avant 4.25), les réglages d'image et de performance sont effacés : l'émulateur reprend
+// ses valeurs d'origine. La config d'avant est copiée une fois (qt-config.ini.avant-origine.bak).
+// Les mods (dossier load, liste [DisabledAddOns]), les dossiers de données ([Data%20Storage]) et la
+// manette ([Controls]) ne bougent pas.
+const ORIGIN_SECTIONS = ['Core', 'Cpu', 'Renderer'];
+const ORIGIN_SYSTEM = ['use_docked_mode', 'fast_cpu_time', 'fast_gpu_time', 'language_index', 'region_index'];
+function originReset(file) {
+  const text = read(file);
+  if (!text) return;
+  const backup = file + '.avant-origine.bak';
+  if (!fs.existsSync(backup)) fs.writeFileSync(backup, text);
+  let section = null;
+  const kept = text.split(/\r?\n/).filter(l => {
+    const m = /^\s*\[(.*)\]\s*$/.exec(l);
+    if (m) { section = m[1]; return true; }
+    const key = l.split('=')[0].trim().replace(/\\default$/, '');
+    return !key || !(ORIGIN_SECTIONS.includes(section) || (section === 'System' && ORIGIN_SYSTEM.includes(key)));
+  });
+  fs.writeFileSync(file, kept.join('\r\n'));
+}
+
 function switchConfig(dir, c = {}, variant = 'eden') {
-  const file = path.join(dir, 'user', 'config', 'qt-config.ini');
+  const conf = path.join(dir, 'user', 'config');
+  const file = path.join(conf, 'qt-config.ini');
+  const mode = ['auto', 'ia'].includes(c.preset) ? c.preset : 'origin';
+  const mark = path.join(conf, 'kanemode-preset.txt');
+  if (mode === 'origin' && read(mark).trim() !== 'origin') {
+    originReset(file);
+    fs.rmSync(path.join(conf, 'kanemode-profile.txt'), { force: true }); // repère des versions 4.21 à 4.24
+  }
   const pad = pads.yuzuPad(file, c.pads);
-  const mark = path.join(dir, 'user', 'config', 'kanemode-profile.txt');
-  const profile = PROFILES[variant];
-  const fresh = !!profile && read(mark).trim() !== profile.mark;
   const sections = [
     pad || {},
     { UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }), Miscellaneous: qt({ first_launch: 'false' }) },
-    fresh ? profile.make(dir) : {},
-    // Préréglage du jeu : « auto » (réglages de KaneMode selon la machine), « ia » (emu-presets.js),
-    // « manual » (rien d'imposé : ce qui est réglé dans l'émulateur reste)
-    c.preset === 'manual' ? {}
-      : c.preset === 'ia' ? Object.fromEntries(Object.entries(iaPreset({ ...c, variant }).sections).map(([k, v]) => [k, qt(v)]))
-        : variant === 'eden' ? switchVideo(c) : lichiiVideo(c),
+    ...(mode === 'ia' ? [Object.fromEntries(Object.entries(iaPreset({ ...c, variant }).sections).map(([k, v]) => [k, qt(v)]))]
+      : mode === 'auto' ? (variant === 'eden' ? [switchVideo(c)] : [lichiiProfile(), lichiiVideo(c)]) : []),
   ];
   const all = {};
   for (const s of sections) for (const [k, v] of Object.entries(s)) all[k] = { ...(all[k] || {}), ...v };
   mergeIni(file, all, { sep: '=' });
-  if (fresh) fs.writeFileSync(mark, profile.mark + '\n');
+  fs.writeFileSync(mark, mode + '\n');
 }
 
 /** Prépare l'émulateur avant un lancement ; une erreur n'empêche jamais de jouer. */

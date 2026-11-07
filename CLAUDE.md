@@ -4,6 +4,25 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.25.0 : réglages d’origine (Switch, Switch 2), Eglantine de retour, Eden-NS2 retiré
+
+- **Préréglage `origin`, nouveau défaut** (`emuDefaults`, interface `PRESETS`) : valeurs `origin` / `auto` / `ia` ; l’ancienne valeur `manual` vaut `origin` :
+  - `switchConfig` n’écrit alors que la manette, `[UI]` (plein écran…) et `first_launch` ;
+  - repère `user/config/kanemode-preset.txt` (dernier mode appliqué) : en passant à `origin` (première fois, ou après `auto` / `ia`), `originReset` efface toutes les clés de `[Core]`, `[Cpu]`, `[Renderer]` et, dans `[System]`, `use_docked_mode`, `fast_cpu_time`, `fast_gpu_time`, `language_index`, `region_index` : l’émulateur reprend ses valeurs d’origine. Copie unique `qt-config.ini.avant-origine.bak`. Le repère `kanemode-profile.txt` des versions 4.21 à 4.24 est supprimé ;
+  - jamais touchés : `[Controls]`, `[Data%20Storage]` (sauvegardes et mods de Lichii dans `eglantine\user`), `[DisabledAddOns]`, configs par jeu `custom/` ;
+  - `auto` : Eden = `switchVideo` ; Lichii, Lichii modifié et Eglantine = profil du tuto (`lichiiProfile`, plus posé une seule fois) et `lichiiVideo`, réécrits à chaque lancement ;
+  - migration unique `migrateEmu425` (`config.emuMigrated = 425`) : tous les `preset` des consoles et des jeux sont oubliés.
+- **Eglantine de retour** (`Djihads80/Eglantine`, choisi jeu par jeu) :
+  - versions `daily-AAAAMMJJ` d’abord, sinon `v…`, fichier `eglantine-windows-x86_64.zip` (pas la version `-pgo`) ;
+  - mêmes énumérations et clés que Lichii (sources `nx2` de `settings_enums.h` / `settings.h` comparées) : `switchConfig(dir, c, 'lichii')` ;
+  - son dossier `user` est celui où pointent les dossiers de Lichii.
+- **Eden-NS2 retiré** :
+  - catalogue, `EMULATORS`, `PAD_EMUS` et préréglages ; source `type: 'actions'` (nightly.link) et second zip supprimés ;
+  - `migrateEmu425` oublie `emulator: 'edenns2'` : les jeux reviennent à l’émulateur de la console ;
+  - `retireEmulators` (`RETIRED_EMUS`, appelé par `ensureEmuHome`) efface `Émulateurs\edenns2` s’il a été installé par KaneMode et ne contient ni lien ni `nand\user\save` ;
+  - cause de l’écran figé sur Donkey Kong : sa seule compilation (31 oct., b643743) précède le correctif « blue screen in Ingot Isle » (9c85f48 : opcode de compute shader refusé, liaisons de tampons partiellement vides). Le journal montrait `Native compute shader rejected: unsupported native opcode` et `Native graphics draw failed; refusing submission completion`.
+- Vérifié sur le PC : configs de Lichii, Eden et Eglantine remises à l’origine, sans clé non par défaut dans `[Core]`, `[Cpu]`, `[Renderer]` et `[System]` ; dossiers de sauvegardes et mods, liste `[DisabledAddOns]` et manette gardés. Non essayé en jeu ni sur l’Ally.
+
 ## Version 4.24.0 : Eden-NS2, émulateur ouvert seul, Preset IA (Switch, Switch 2)
 
 - **Eden-NS2** (`edenns2`, dépôt 0x2593/Eden-NS2, fork d’Eden pour la Switch 2) :

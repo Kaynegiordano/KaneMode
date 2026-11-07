@@ -68,9 +68,6 @@
  "« Super Nintendo », « PlayStation 2 »… un dossier par console est déjà prêt": [
   "ui/js/pages/emulation.js"
  ],
- "{a} : aucune compilation Windows disponible": [
-  "host/lib/emu-store.js"
- ],
  "{a} : aucune version publiée": [
   "host/lib/emu-store.js"
  ],
@@ -1654,6 +1651,9 @@
  "Ctrl + Alt + S sur le jeu en cours": [
   "ui/js/widget.js"
  ],
+ "D’origine (émulateur)": [
+  "ui/js/pages/emulation.js"
+ ],
  "D’origine (plus léger)": [
   "ui/js/pages/emulation.js"
  ],
@@ -2643,9 +2643,6 @@
  "KaneMode ne répond pas": [
   "ui/js/core.js"
  ],
- "KaneMode ne touche plus à l’image ni aux performances : ce que vous réglez dans l’émulateur (Ouvrir … seul) reste.": [
-  "ui/js/pages/emulation.js"
- ],
  "KaneMode se ferme, s’installe et se relance tout seul (environ 30 secondes)": [
   "ui/js/pages/settings.js"
  ],
@@ -2814,6 +2811,9 @@
  "Les réglages d’accessibilité restent prioritaires": [
   "ui/js/personalization-settings.js"
  ],
+ "Les réglages d’image et de performance de l’émulateur, sans rien d’imposé par KaneMode. Ce que vous changez dans l’émulateur (Ouvrir … seul) reste. Les mods restent actifs.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Les vendeurs de clés comme Instant Gaming ne sont pas des bibliothèques de jeux : après activation, leurs jeux sont importés depuis Steam, Epic, Ubisoft ou la boutique indiquée sur la clé.": [
   "ui/js/accounts-settings.js"
  ],
@@ -2933,9 +2933,6 @@
  ],
  "Manettes reconnectées": [
   "ui/js/main.js"
- ],
- "Manuel (rien d’imposé)": [
-  "ui/js/pages/emulation.js"
  ],
  "Masqué (visible dans l’onglet « Masqués »)": [
   "ui/js/pages/game.js"

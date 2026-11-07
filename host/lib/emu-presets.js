@@ -38,8 +38,8 @@ const PACE = { 0: 'cadence auto', 1: '30 i/s', 2: '60 i/s' };
  */
 function iaPreset(ctx = {}) {
   const low = ctx.tier !== 'high';
-  // DLSS NVIDIA à la place de celui des jeux : propre à Lichii (Eden-NS2 n'a pas ce réglage)
-  const rtx = /geforce rtx|nvidia.*rtx/i.test(ctx.gpu || '') && ctx.variant !== 'edenns2';
+  // DLSS NVIDIA à la place de celui des jeux (Lichii)
+  const rtx = /geforce rtx|nvidia.*rtx/i.test(ctx.gpu || '');
   const summary = [];
   if (ctx.variant === 'eden') {
     // Switch 1 : la RTX garde de la marge → image calculée en 2x puis réduite à l'écran (plus nette que
@@ -66,7 +66,7 @@ function iaPreset(ctx = {}) {
     accelerate_astc: 1, nvdec_emulation: 2, use_reactive_flushing: 'true', async_presentation: 'true',
   };
   summary.push(low
-    ? `ROG Ally X : mode portable, ${RES[g.res]}${g.res < 3 ? ' agrandi par FSR' : ''}, sans anticrénelage, VRAM prudente${ctx.variant === 'edenns2' ? '' : ', upscaler des jeux AMD FSR 3.1'}`
+    ? `ROG Ally X : mode portable, ${RES[g.res]}${g.res < 3 ? ' agrandi par FSR' : ''}, sans anticrénelage, VRAM prudente, upscaler des jeux AMD FSR 3.1`
     : `Carte dédiée : mode TV, ${RES[g.res]}, SMAA, VRAM généreuse${rtx ? ', DLSS NVIDIA à la place du DLSS des jeux' : ''}`);
   summary.push(`Précision GPU ${g.accuracy ? 'Accurate' : 'Fast'}, ${PACE[g.pacing]}, génération d’images coupée (vraies images, moins de latence)`);
   if (game) summary.push(`${game.name} : ${game.why}`);
