@@ -82,7 +82,7 @@ const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'
 const QUALITIES = () => [['auto', t('Adaptée à l’écran')], ['native', t('D’origine (plus léger)')]];
 const WIDES = () => [['on', t('Oui')], ['off', t('Non')]];
 const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
-const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii'];
+const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii', 'lichiimod'];
 const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
@@ -92,7 +92,9 @@ const heroOf = g => g && g.art && (g.art.hero || g.art.header);
 // Consoles « virtuelles » : tous les jeux, favoris
 const VIRTUAL = { all: () => t('Tous les jeux'), fav: () => t('Favoris') };
 // Onglets de la page d'un jeu (LB / RB)
-const TABS = () => [['play', t('Jouer'), 'i-play'], ['settings', t('Réglages'), 'i-gear'], ['art', t('Visuels'), 'i-image'], ['info', t('Infos'), 'i-info']];
+// Jeux Switch et Switch 2 : un onglet « Mods » (correctifs 60 FPS, résolution… rangés dans user\load)
+const hasMods = g => !!g && (g.system === 'switch' || g.system === 'switch2');
+const TABS = g => [['play', t('Jouer'), 'i-play'], ['settings', t('Réglages'), 'i-gear'], ...(hasMods(g) ? [['mods', t('Mods'), 'i-collection']] : []), ['art', t('Visuels'), 'i-image'], ['info', t('Infos'), 'i-info']];
 // Visuels qu'on peut changer depuis la page du jeu (écran Visuels de KaneMode)
 const ART_KINDS = () => [['portrait', t('Jaquette')], ['logo', t('Logo')], ['hero', t('Fond')], ['header', t('Bannière')]];
 
@@ -239,14 +241,20 @@ definePage('emulation', {
     const systems = this.systems();
     const root = el('div', 'kw hub');
     const body = el('div', 'kw-body');
-    const recent = roms.filter(g => g.lastPlayed).sort(lastPlayedFirst).slice(0, 12);
-    if (recent.length) body.append(this.row('recent', t('Reprendre'), recent.map(g => this.gameTile(g, 'r:', playedText(g)))));
+    // Ordre voulu : les consoles d'abord, puis la bibliothèque, « Reprendre » en dernier
     const cards = [...(systems.length > 1 ? [this.sysInfo('all')] : []), ...systems].map(s => this.sysTile(s));
     body.append(this.row('sys', t('Consoles'), cards));
+    const LIB_MAX = 60;
+    const all = [...roms].sort((a, b) => a.name.localeCompare(b.name, locale));
+    const libTiles = all.slice(0, LIB_MAX).map(g => this.gameTile(g, 'l:', brandOf(g.system)));
+    if (all.length > LIB_MAX) libTiles.push(this.toolTile('i-grid', t('Tout voir'), tn(all.length, '{n} jeu', '{n} jeux'), () => this.openConsole('all'), 'tool:all'));
+    body.append(this.row('lib', t('Bibliothèque'), libTiles));
     const fav = roms.filter(g => favs.has(g.id)).sort((a, b) => a.name.localeCompare(b.name, locale));
     if (fav.length) body.append(this.row('fav', t('Favoris'), fav.map(g => this.gameTile(g, 'f:', brandOf(g.system)))));
     const fresh = roms.filter(g => g.added).sort((a, b) => b.added - a.added).slice(0, 12);
     if (roms.length > 4 && fresh.length) body.append(this.row('new', t('Ajoutés récemment'), fresh.map(g => this.gameTile(g, 'n:', brandOf(g.system)))));
+    const recent = roms.filter(g => g.lastPlayed).sort(lastPlayedFirst).slice(0, 12);
+    if (recent.length) body.append(this.row('recent', t('Reprendre'), recent.map(g => this.gameTile(g, 'r:', playedText(g)))));
     // Ce qui était dans l'en-tête : en dernière rangée, hors du chemin
     body.append(this.row('tools', t('Options'), [
       this.toolTile('i-folder', t('Ajouter des jeux'), t('Ouvrir le dossier des jeux'), () => this.open({ what: 'games' }), 'tool:add'),
@@ -346,6 +354,34 @@ definePage('emulation', {
   },
   current() { return this.mode === 'game' ? this.gameById(this.gid) : this.sel || null; },
   play(opts) { const g = this.current(); if (g) launch(g, opts); },
+  // ---------------------------------------------------------------- mods (Switch, Switch 2)
+  async addMod(g, kind) {
+    const p = await pickFile(kind === 'dir' ? 'dir' : 'zip', kind === 'dir' ? t('Choisir le dossier du mod') : t('Choisir l’archive du mod'));
+    if (!p) return;
+    busy(t('Ajout du mod…'));
+    try {
+      const r = await api.post('/api/emu/mods/add', { id: g.id, path: p });
+      toast(tn(r.added.length, 'Mod ajouté : {list}', 'Mods ajoutés : {list}', { list: r.added.join(', ') }));
+    } catch (e) { toast(e.message, { error: true }); }
+    finally { busy(null); }
+    if (this.tab === 'mods') this.drawTab('mod-' + kind);
+  },
+  async openMods(g) {
+    try { await api.post('/api/emu/mods/open', { id: g.id }); toast(t('Dossier des mods ouvert sur le bureau')); }
+    catch (e) { toast(e.message, { error: true }); }
+  },
+  async modMenu(g, mod) {
+    const v = await dialog({
+      title: mod.name, text: t('Appliqué tout seul au lancement du jeu.'),
+      buttons: [{ label: t('Retirer ce mod'), value: 'remove', icon: 'i-trash' }, { label: t('Ouvrir le dossier des mods'), value: 'open', icon: 'i-open' }, { label: t('Fermer'), value: null }],
+    });
+    if (v === 'open') return this.openMods(g);
+    if (v !== 'remove') return;
+    if (!(await confirmDialog(t('Retirer ce mod ?'), t('Le dossier « {n} » est supprimé du dossier des mods. Votre archive d’origine n’est pas touchée.', { n: esc(mod.name) }), t('Retirer'), true))) return;
+    try { await api.post('/api/emu/mods/remove', { id: g.id, name: mod.name }); toast(t('Mod retiré')); }
+    catch (e) { toast(e.message, { error: true }); }
+    if (this.tab === 'mods') this.drawTab('mod-zip');
+  },
   toggleFav() {
     const g = this.current();
     if (!g) return;
@@ -401,7 +437,8 @@ definePage('emulation', {
     main.append(el('div', 'kg-head'));
     const tabs = el('div', 'kg-tabs');
     tabs.append(shoulder('lb'));
-    for (const [k, l, ic] of TABS()) tabs.append(nav(el('div', 'kg-tab' + (this.tab === k ? ' on' : ''), `${icon(ic)}<span>${esc(l)}</span>`), () => this.setTab(k), 'tab:' + k));
+    if (!TABS(g).some(x => x[0] === this.tab)) this.tab = 'play';
+    for (const [k, l, ic] of TABS(g)) tabs.append(nav(el('div', 'kg-tab' + (this.tab === k ? ' on' : ''), `${icon(ic)}<span>${esc(l)}</span>`), () => this.setTab(k), 'tab:' + k));
     tabs.append(shoulder('rb'));
     tabs.querySelectorAll('.shoulder').forEach(x => x.addEventListener('click', () => this.button(x.dataset.glyph)));
     main.append(tabs, el('div', 'kg-panel'));
@@ -466,6 +503,25 @@ definePage('emulation', {
       this.gset = { scope: 'game', sysId: g.system, g, box: panel, game: true };
       await this.drawSettings(this.gset, focusKey, true);
       if (this.tab !== 'settings') return;
+    } else if (this.tab === 'mods') {
+      panel.replaceChildren(el('div', 'loading', '<i class="spinner"></i>'));
+      let r;
+      try { r = await api.get('/api/emu/mods?id=' + encodeURIComponent(g.id)); }
+      catch (e) { r = { error: e.message }; }
+      if (this.tab !== 'mods' || this.el.querySelector('.kg-panel') !== panel) return;
+      const acts = el('div', 'kg-acts');
+      acts.append(
+        big('primary', 'i-plus', t('Ajouter un mod (.zip)…'), t('Archive .zip, .7z ou .rar : son dossier exefs, romfs ou cheats est copié'), () => this.addMod(g, 'zip'), 'mod-zip'),
+        big('', 'i-folder', t('Ajouter un dossier de mod…'), t('Un dossier qui contient exefs, romfs ou cheats'), () => this.addMod(g, 'dir'), 'mod-dir'),
+        big('', 'i-open', t('Ouvrir le dossier des mods'), r.dir ? esc(r.dir) : '', () => this.openMods(g), 'mod-open'),
+      );
+      const items = [];
+      if (r.error) items.push(el('div', 'notice', esc(r.error)));
+      else if (!r.mods.length) items.push(el('div', 'kg-desc', `<p class="muted">${t('Aucun mod pour ce jeu. Ils s’appliquent tout seuls au lancement, avec {e}.', { e: esc(r.emulator) })}</p>`));
+      else for (const mod of r.mods) {
+        items.push(big('', 'i-check', esc(mod.name), esc(mod.parts.join(' · ') || t('dossier vide')), () => this.modMenu(g, mod), 'mod:' + mod.name));
+      }
+      panel.replaceChildren(acts, el('div', 'row-title', t('Mods installés <small>{t}</small>', { t: r.titleId ? esc(r.titleId) : '' })), ...items);
     } else if (this.tab === 'art') {
       const grid = el('div', 'kg-arts');
       const custom = g.customArt || [];
@@ -707,10 +763,26 @@ definePage('emulation', {
       const job = (this.data.jobs || []).find(j => j.id === e.id);
       const desc = job && job.busy ? jobText(job)
         : e.installed ? (e.update ? t('Version {v} · version {latest} disponible', { v: esc(e.version), latest: esc(e.latest) }) : t('Version {v}', { v: esc(e.version) }) + (e.latest ? ' · ' + t('à jour') : ''))
-          : t('Non installé · environ {size} Mo', { size: e.size });
+          : e.local ? t('Non installée · depuis une archive .zip (Lichii-Frizti…)') : t('Non installé · environ {size} Mo', { size: e.size });
       const r = el('div', 'set-row nav', `<span class="${e.installed ? 'dot-ok' : 'dot-ko'}"></span><div class="txt"><b>${esc(e.name)}${e.experimental ? ` <i class="emu-exp">${t('expérimental')}</i>` : ''}</b><small>${desc}</small></div><span></span>`);
       r.style.gridTemplateColumns = 'auto 1fr auto';
       box.append(nav(r, async () => {
+        // Version modifiée : installée (ou remplacée) depuis l'archive de l'utilisateur
+        if (e.local) {
+          const c = await dialog({
+            title: e.name,
+            text: t('Une version modifiée de Lichii (Lichii-Frizti…) : choisissez son archive .zip. Elle partage les clés, sauvegardes et mods de Lichii, et se choisit jeu par jeu dans Réglages → Émulateur.') + (e.installed ? `<br><code>${esc(e.dir)}</code>` : ''),
+            buttons: [{ label: e.installed ? t('Remplacer par une autre archive…') : t('Choisir l’archive…'), value: 'zip', icon: 'i-folder', primary: true }, { label: t('Fermer'), value: null }],
+          });
+          if (c !== 'zip') return;
+          const p = await pickFile('zip', t('Archive de la version modifiée'));
+          if (!p) return;
+          busy(t('Installation…'));
+          try { const m = await api.post('/api/emu/install-local', { id: e.id, path: p }); toast(t('{n} installée', { n: m.name })); }
+          catch (err) { toast(err.message, { error: true }); }
+          finally { busy(null); }
+          return this.checkUpdates();
+        }
         const c = await dialog({
           title: e.name, text: e.installed ? esc(e.dir) : t('{name} s’installera tout seul au premier jeu. Vous pouvez aussi l’installer maintenant.', { name: esc(e.name) }),
           buttons: [{ label: e.installed ? t('Réinstaller ou mettre à jour') : t('Installer maintenant'), value: 'install', icon: 'i-download2', primary: true }, { label: t('Fermer'), value: null }],
@@ -803,7 +875,7 @@ definePage('emulation', {
     if (this.mode === 'game') {
       if (k === 'b') { this.closeGame(); return true; }
       if (k === 'lb' || k === 'rb') {
-        const ids = TABS().map(x => x[0]);
+        const ids = TABS(this.gameById(this.gid)).map(x => x[0]);
         const i = ids.indexOf(this.tab);
         this.setTab(ids[(i + (k === 'rb' ? 1 : -1) + ids.length) % ids.length], '-');
         return true;

@@ -32,7 +32,7 @@ const SYSTEMS = [
   // d'un tel dossier, montée par Windows au lancement (mount) plutôt que copiée
   { id: 'switch', name: 'Nintendo Switch', maker: 'Nintendo', folders: ['switch', 'nsw'], exts: ['xci', 'nsp', 'nca', 'nro', 'nso', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['eden', 'ryujinx', 'citron'] },
   // .nup : conteneur de jeu de Lichii (compressé), ouvert tel quel
-  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nup', 'xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii'], experimental: true },
+  { id: 'switch2', name: 'Nintendo Switch 2', maker: 'Nintendo', folders: ['switch2', 'ns2'], exts: ['nup', 'xci', 'nsp', 'nca', 'iso'], mount: ['iso'], dirGames: ['exefs/main', 'base/exefs/main'], emus: ['lichii', 'lichiimod'], experimental: true },
   { id: 'psx', name: 'PlayStation', maker: 'Sony', folders: ['psx', 'ps1', 'playstation'], exts: ['m3u', 'chd', 'cue', 'ccd', 'mds', 'pbp', 'ecm', 'iso', 'img', 'bin', 'exe'], emus: ['duckstation', 'retroarch'], cores: ['swanstation', 'mednafen_psx_hw', 'pcsx_rearmed'] },
   { id: 'ps2', name: 'PlayStation 2', maker: 'Sony', folders: ['ps2', 'playstation2'], exts: ['chd', 'iso', 'cso', 'zso', 'gz', 'mdf', 'nrg', 'img', 'bin', 'elf'], emus: ['pcsx2'] },
   { id: 'ps3', name: 'PlayStation 3', maker: 'Sony', folders: ['ps3', 'playstation3'], exts: ['iso'], dirGames: 'PS3_GAME/USRDIR/EBOOT.BIN', emus: ['rpcs3'] },
@@ -181,6 +181,8 @@ const EMULATORS = [
   { id: 'xemu', name: 'xemu', exes: ['xemu.exe'], dirs: ['xemu'], args: '-full-screen -dvd_path "{rom}"' },
   { id: 'xenia', name: 'Xenia', exes: ['xenia_canary.exe', 'xenia.exe'], dirs: ['Xenia', 'xenia', 'xenia_canary'], args: '--fullscreen=true "{rom}"' },
   { id: 'lichii', name: 'Lichii', exes: ['lichii.exe'], dirs: ['Lichii', 'lichii'], args: '-f -g "{rom}"' },
+  // Version modifiée de Lichii installée par KaneMode depuis un .zip (jamais trouvée ailleurs)
+  { id: 'lichiimod', name: 'Lichii (version modifiée)', exes: ['lichii.exe'], dirs: [], args: '-f -g "{rom}"' },
   { id: 'shadps4', name: 'shadPS4', exes: ['shadPS4.exe'], dirs: ['shadPS4', 'shadps4'], args: '--fullscreen true --game "{rom}"' },
   { id: 'vita3k', name: 'Vita3K', exes: ['Vita3K.exe'], dirs: ['Vita3K', 'vita3k'], args: '-F "{rom}"' },
 ];
@@ -299,6 +301,8 @@ const M3U_SYSTEMS = ['psx', 'saturn', 'segacd', 'dreamcast', 'pcengine'];
  * écrivent le romfs d'une mise à jour déjà fusionné avec la base (Donkey Kong Bananza : les 60
  * dossiers de la base + « Game ») : on lance l'exefs de la mise à jour la plus récente, sauf si son
  * romfs ne contient que les fichiers modifiés (il lui manque des dossiers de la base).
+ * Switch 2 : TOUJOURS la mise à jour la plus récente qui a son exefs (consigne de l'utilisateur,
+ * « File → Load folder → updates\<version>\exefs » pour chaque jeu), même sans romfs à côté.
  * Les DLC (dlc/<id>/…/romfs, sans exefs) ne se lancent pas.
  */
 function dirGameInner(sys, sub) {
@@ -309,6 +313,7 @@ function dirGameInner(sys, sub) {
   const versions = (list(path.join(sub, 'updates')) || []).filter(v => /^\d+$/.test(v)).sort((a, b) => Number(b) - Number(a));
   for (const v of versions) {
     if (!isFile(path.join(sub, 'updates', v, 'exefs', 'main'))) continue;
+    if (sys.id === 'switch2') return `updates/${v}/exefs/main`;
     const own = list(path.join(sub, 'updates', v, 'romfs'));
     if (!own) continue;
     const has = new Set(own.map(n => n.toLowerCase()));

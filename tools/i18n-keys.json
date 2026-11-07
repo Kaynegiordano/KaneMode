@@ -77,6 +77,9 @@
  "{a} : HTTP {b}": [
   "host/lib/emu-store.js"
  ],
+ "{a} : installée depuis une archive, pas de mise à jour en ligne": [
+  "host/lib/emu-store.js"
+ ],
  "{a} : pas de fichier Windows dans la version {b}": [
   "host/lib/emu-store.js"
  ],
@@ -92,6 +95,9 @@
  "{a} introuvable": [
   "host/syscontrol.ps1"
  ],
+ "{a} s’installe depuis son archive .zip (Émulation → Gérer)": [
+  "host/lib/emu-store.js"
+ ],
  "{a}<div>Ajouter un jeu ou une appli</div>": [
   "ui/js/pages/home.js"
  ],
@@ -102,8 +108,7 @@
   "ui/js/pages/home.js"
  ],
  "{a}Actualiser": [
-  "ui/js/pages/add.js",
-  "ui/js/pages/media.js"
+  "ui/js/pages/add.js"
  ],
  "{a}Ajouter": [
   "ui/js/pages/library.js"
@@ -123,20 +128,17 @@
  "{a}Image du disque…": [
   "ui/js/pages/artpicker.js"
  ],
- "{a}Parcourir SteamGridDB": [
+ "{a}Parcourir {b}": [
   "ui/js/pages/artpicker.js"
  ],
  "{a}Récupérer à nouveau": [
   "ui/js/pages/artpicker.js"
  ],
- "{a}Sélectionner": [
-  "ui/js/pages/media.js"
+ "{a}Source : {b}": [
+  "ui/js/pages/artpicker.js"
  ],
  "{a}Supprimer": [
   "ui/js/pages/add.js"
- ],
- "{a}Supprimer ({n})": [
-  "ui/js/pages/media.js"
  ],
  "{a}Tri : {label}": [
   "ui/js/pages/library.js"
@@ -186,12 +188,6 @@
  "{n} autres pilotes publiés": [
   "ui/js/pages/settings.js"
  ],
- "{n} capture(s) n’ont pas pu être supprimées": [
-  "ui/js/pages/media.js"
- ],
- "{n} captures supprimées": [
-  "ui/js/pages/media.js"
- ],
  "{n} console": [
   "ui/js/pages/settings.js"
  ],
@@ -237,6 +233,9 @@
   "ui/js/deals.js"
  ],
  "{n} installations lancées": [
+  "ui/js/pages/emulation.js"
+ ],
+ "{n} installée": [
   "ui/js/pages/emulation.js"
  ],
  "{n} jeu": [
@@ -443,9 +442,6 @@
  "<div class=\"loading\"><i class=\"spinner big\"></i>Ouverture du monde Émulation…</div>": [
   "ui/js/pages/emulation.js"
  ],
- "<div class=\"loading\"><i class=\"spinner big\"></i>Recherche des captures…</div>": [
-  "ui/js/pages/media.js"
- ],
  "<div class=\"mon-cell\"><small>Choisissez les mesures dans le widget KaneMode (Moniteur)</small></div>": [
   "ui/js/monitor.js"
  ],
@@ -461,17 +457,14 @@
  "<h1>{a}</h1>\n      <p><span class=\"pill src\" style=\"--src:{color}\">{b}</span>\n      {c}\n      <span>Dernière session : <b>{played}</b></span>\n      {d}\n      {e}\n      {f}</p>": [
   "ui/js/pages/home.js"
  ],
- "<h1>{a}</h1><p>Recherche sur SteamGridDB…</p>": [
+ "<h1>{a}</h1><p>Recherche sur {b}…</p>": [
   "ui/js/pages/artpicker.js"
  ],
- "<h1>{a}</h1><p>Visuels · SteamGridDB, sans compte ni clé</p>": [
+ "<h1>{a}</h1><p>Visuels · {b}, sans compte ni clé</p>": [
   "ui/js/pages/artpicker.js"
  ],
  "<h1>Bibliothèque vide</h1><p>Aucun jeu détecté. Ajoutez-en un, ou activez la bibliothèque de démonstration dans les Paramètres.</p>": [
   "ui/js/pages/home.js"
- ],
- "<h1>Médias</h1><p>Vos captures d’écran et vidéos de jeu, rassemblées depuis Steam (F12), la Xbox Game Bar (Win + Alt + Impr. écran) et les captures Windows.</p>": [
-  "ui/js/pages/media.js"
  ],
  "<h1>Paramètres</h1>": [
   "ui/js/pages/settings.js"
@@ -684,9 +677,6 @@
  "Affichée": [
   "ui/js/pages/settings.js"
  ],
- "Afficher": [
-  "ui/js/pages/media.js"
- ],
  "Afficher les secondes": [
   "ui/js/pages/settings.js"
  ],
@@ -695,6 +685,9 @@
  ],
  "Ajout {a}/{length}…": [
   "ui/js/pages/add.js"
+ ],
+ "Ajout du mod…": [
+  "ui/js/pages/emulation.js"
  ],
  "Ajouté à « {name} »": [
   "ui/js/pages/game.js"
@@ -727,8 +720,14 @@
  "Ajouter un dossier de jeux…": [
   "ui/js/pages/emulation.js"
  ],
+ "Ajouter un dossier de mod…": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ajouter un jeu ou une appli": [
   "ui/index.html"
+ ],
+ "Ajouter un mod (.zip)…": [
+  "ui/js/pages/emulation.js"
  ],
  "Ajouter une épingle": [
   "ui/js/personalization-settings.js"
@@ -835,6 +834,9 @@
  "Appliqué automatiquement à chaque lancement de {name}.": [
   "ui/js/pages/game.js"
  ],
+ "Appliqué tout seul au lancement du jeu.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Appliquer": [
   "ui/js/pages/artpicker.js",
   "ui/js/personalization-settings.js"
@@ -857,7 +859,14 @@
  "Après l’activation de la passerelle, fermez puis rouvrez Playnite. Ajoutez les connecteurs souhaités dans ses extensions. Les connecteurs chargés apparaissent ici après la première synchronisation.": [
   "ui/js/accounts-settings.js"
  ],
+ "Archive .zip, .7z ou .rar : son dossier exefs, romfs ou cheats est copié": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Archive de la version modifiée": [
+  "ui/js/pages/emulation.js"
+ ],
  "Archive illisible": [
+  "host/lib/emu-mods.js",
   "host/lib/emu-store.js"
  ],
  "Archive illisible : ": [
@@ -935,7 +944,7 @@
  "Aucun favori pour l’instant. Sur la fiche d’un jeu, appuyez sur {glyph} pour l’ajouter.": [
   "ui/js/pages/library.js"
  ],
- "Aucun jeu correspondant sur SteamGridDB.": [
+ "Aucun jeu correspondant sur {b}.": [
   "ui/js/pages/artpicker.js"
  ],
  "Aucun jeu lancé pour l’instant.": [
@@ -943,6 +952,12 @@
  ],
  "Aucun jeu reconnu dans {a}": [
   "host/lib/emu-archive.js"
+ ],
+ "Aucun mod pour ce jeu. Ils s’appliquent tout seuls au lancement, avec {e}.": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Aucun mod reconnu : il faut un dossier exefs, romfs ou cheats": [
+  "host/lib/emu-mods.js"
  ],
  "Aucun programme (.exe, .lnk, .bat, .url) dans ce dossier.": [
   "ui/js/pages/add.js"
@@ -953,7 +968,7 @@
  "Aucun réseau visible": [
   "ui/js/statusbar.js"
  ],
- "Aucun résultat sur SteamGridDB": [
+ "Aucun résultat sur {b}": [
   "ui/js/pages/artpicker.js"
  ],
  "Aucun son (.mp3, .wav, .ogg, .m4a) dans ce dossier.": [
@@ -962,7 +977,7 @@
  "Aucun sous-dossier.": [
   "ui/js/pages/add.js"
  ],
- "Aucun visuel « {a} » pour ce jeu sur SteamGridDB.": [
+ "Aucun visuel « {a} » pour ce jeu sur {b}.": [
   "ui/js/pages/artpicker.js"
  ],
  "Aucun visuel personnalisé pour ce jeu": [
@@ -971,9 +986,6 @@
  "Aucune": [
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
- ],
- "Aucune capture trouvée pour l’instant. Prenez une capture en jeu avec <b>F12</b> (Steam) ou <b>Win + Alt + Impr. écran</b> (Xbox Game Bar), elle apparaîtra ici.": [
-  "ui/js/pages/media.js"
  ],
  "Aucune cible de lancement": [
   "host/lib/launch.js"
@@ -1113,6 +1125,7 @@
  ],
  "Bibliothèque": [
   "ui/index.html",
+  "ui/js/pages/emulation.js",
   "ui/js/pages/library.js",
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
@@ -1231,12 +1244,6 @@
  "Capture": [
   "ui/js/pages/settings.js"
  ],
- "Capture supprimée": [
-  "ui/js/pages/media.js"
- ],
- "Captures": [
-  "ui/js/pages/media.js"
- ],
  "Carrés": [
   "ui/js/pages/settings.js"
  ],
@@ -1288,7 +1295,7 @@
  "Charge du processeur": [
   "ui/js/qam.js"
  ],
- "Chercher le jeu sur SteamGridDB": [
+ "Chercher le jeu sur {b}": [
   "ui/js/pages/artpicker.js"
  ],
  "choisi ici": [
@@ -1306,11 +1313,20 @@
  "Choisir ce dossier": [
   "ui/js/pages/add.js"
  ],
+ "Choisir l’archive du mod": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Choisir l’archive…": [
+  "ui/js/pages/emulation.js"
+ ],
  "Choisir la sortie audio et vérifier sa configuration": [
   "ui/js/dolby-settings.js"
  ],
  "Choisir la vidéo de démarrage": [
   "ui/js/pages/settings.js"
+ ],
+ "Choisir le dossier du mod": [
+  "ui/js/pages/emulation.js"
  ],
  "Choisir le son de démarrage": [
   "ui/js/pages/settings.js"
@@ -1353,6 +1369,12 @@
  ],
  "Choisissez un mode : il règle Windows, le processeur et le profil de la console": [
   "ui/js/qam.js"
+ ],
+ "Choisissez une archive .zip, .7z ou .rar": [
+  "host/lib/emu-store.js"
+ ],
+ "Choisissez une archive .zip, .7z ou .rar, ou un dossier": [
+  "host/lib/emu-mods.js"
  ],
  "Choisissez une collection pour y ajouter le jeu, ou l’en retirer.": [
   "ui/js/pages/game.js"
@@ -1778,6 +1800,9 @@
  "Dossier des jeux": [
   "ui/js/pages/emulation.js"
  ],
+ "Dossier des mods ouvert sur le bureau": [
+  "ui/js/pages/emulation.js"
+ ],
  "Dossier inaccessible": [
   "host/server.js",
   "ui/js/pages/add.js"
@@ -1792,6 +1817,9 @@
   "ui/js/pages/add.js"
  ],
  "Dossier retiré": [
+  "ui/js/pages/emulation.js"
+ ],
+ "dossier vide": [
   "ui/js/pages/emulation.js"
  ],
  "Dossiers de ROMs, émulateurs, consoles prises en charge": [
@@ -1874,12 +1902,6 @@
  ],
  "Effets allégés": [
   "ui/js/pages/settings.js"
- ],
- "Elle est envoyée à la corbeille de Windows : vous pourrez la récupérer de là.": [
-  "ui/js/pages/media.js"
- ],
- "Elles sont envoyées à la corbeille de Windows : vous pourrez les récupérer de là.": [
-  "ui/js/pages/media.js"
  ],
  "Empêcher le verrouillage automatique de Windows": [
   "ui/js/pages/settings.js"
@@ -2058,7 +2080,6 @@
   "ui/js/main.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
-  "ui/js/pages/media.js",
   "ui/js/pages/settings.js",
   "ui/js/statusbar.js"
  ],
@@ -2088,6 +2109,9 @@
  ],
  "Fichier de lancement introuvable : ": [
   "host/lib/launch.js"
+ ],
+ "Fichier introuvable": [
+  "host/lib/emu-mods.js"
  ],
  "Fichier ou dossier introuvable": [
   "host/launch.ps1"
@@ -2239,6 +2263,9 @@
  "Historique": [
   "ui/js/statusbar.js"
  ],
+ "Historique ({n})": [
+  "ui/js/statusbar.js"
+ ],
  "Horloge": [
   "ui/js/pages/settings.js"
  ],
@@ -2271,6 +2298,9 @@
  ],
  "Identifiant d’application Windows invalide": [
   "host/lib/launch.js"
+ ],
+ "Identifiant du jeu introuvable (ni dans le nom du fichier, ni dans main.npdm)": [
+  "host/server.js"
  ],
  "Identifiant Windows invalide": [
   "host/launch.ps1"
@@ -2398,6 +2428,9 @@
  "Installation officielle depuis le Microsoft Store": [
   "ui/js/dolby-settings.js"
  ],
+ "Installation…": [
+  "ui/js/pages/emulation.js"
+ ],
  "Installé": [
   "ui/js/pages/settings.js"
  ],
@@ -2457,6 +2490,9 @@
  ],
  "Installés": [
   "ui/js/pages/library.js"
+ ],
+ "Installez d’abord {a} (lancez le jeu une fois)": [
+  "host/server.js"
  ],
  "Installez Playnite ou choisissez son exécutable portable": [
   "host/lib/accounts.js"
@@ -2675,6 +2711,9 @@
  ],
  "Le chemin de lancement doit être absolu": [
   "host/lib/launch.js"
+ ],
+ "Le dossier « {n} » est supprimé du dossier des mods. Votre archive d’origine n’est pas touchée.": [
+  "ui/js/pages/emulation.js"
  ],
  "Le jeu reçoit une demande de fermeture, comme avec la croix de sa fenêtre : il peut sauvegarder ou demander confirmation.": [
   "ui/js/pages/game.js"
@@ -2901,10 +2940,6 @@
  "Material": [
   "ui/js/pages/settings.js"
  ],
- "Médias": [
-  "ui/index.html",
-  "ui/js/pages/media.js"
- ],
  "Mémoire": [
   "ui/js/pages/settings.js"
  ],
@@ -2989,6 +3024,15 @@
  ],
  "Mises à jour officielles ASUS, plus haut": [
   "ui/js/pages/settings.js"
+ ],
+ "Mod ajouté : {list}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Mod introuvable": [
+  "host/lib/emu-mods.js"
+ ],
+ "Mod retiré": [
+  "ui/js/pages/emulation.js"
  ],
  "Mode": [
   "ui/js/monitor.js",
@@ -3081,6 +3125,18 @@
  ],
  "Modifier « {a} »": [
   "ui/js/pages/add.js"
+ ],
+ "Mods": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Mods : jeu Switch ou Switch 2 seulement": [
+  "host/server.js"
+ ],
+ "Mods ajoutés : {list}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Mods installés <small>{t}</small>": [
+  "ui/js/pages/emulation.js"
  ],
  "Moins d’images par seconde : plus d’autonomie": [
   "ui/js/pages/settings.js"
@@ -3197,6 +3253,9 @@
  "Non installé · environ {size} Mo": [
   "ui/js/pages/emulation.js"
  ],
+ "Non installée · depuis une archive .zip (Lichii-Frizti…)": [
+  "ui/js/pages/emulation.js"
+ ],
  "Non installés": [
   "ui/js/pages/library.js"
  ],
@@ -3207,6 +3266,9 @@
   "ui/js/statusbar.js"
  ],
  "Notifications ({n} nouvelles)": [
+  "ui/js/statusbar.js"
+ ],
+ "Notifications effacées": [
   "ui/js/statusbar.js"
  ],
  "Nouveau": [
@@ -3349,6 +3411,9 @@
  "Ouvrir le dossier des jeux": [
   "ui/js/pages/emulation.js"
  ],
+ "Ouvrir le dossier des mods": [
+  "ui/js/pages/emulation.js"
+ ],
  "Ouvrir le streaming": [
   "ui/js/pages/settings.js"
  ],
@@ -3402,6 +3467,9 @@
  ],
  "Pas d'écran HDR": [
   "host/syscontrol.ps1"
+ ],
+ "Pas d’exécutable {a} dans l’archive": [
+  "host/lib/emu-store.js"
  ],
  "Pas de batterie": [
   "ui/js/statusbar.js"
@@ -3571,9 +3639,6 @@
  ],
  "Pourcentage de batterie": [
   "ui/js/pages/settings.js"
- ],
- "Précédente / suivante": [
-  "ui/js/pages/media.js"
  ],
  "Préférence de jaquettes enregistrée": [
   "ui/js/personalization-settings.js"
@@ -3908,6 +3973,9 @@
  "Relire les sorties audio et l’installation de Dolby Access": [
   "ui/js/dolby-settings.js"
  ],
+ "Remplacer par une autre archive…": [
+  "ui/js/pages/emulation.js"
+ ],
  "Réponse de la passerelle incomplète": [
   "host/lib/accounts.js"
  ],
@@ -3980,6 +4048,12 @@
  "Retirer ce dossier ?": [
   "ui/js/pages/emulation.js"
  ],
+ "Retirer ce mod": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Retirer ce mod ?": [
+  "ui/js/pages/emulation.js"
+ ],
  "Retirer de l’accueil": [
   "ui/js/pages/game.js"
  ],
@@ -4018,7 +4092,6 @@
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
   "ui/js/pages/library.js",
-  "ui/js/pages/media.js",
   "ui/js/pages/search.js",
   "ui/js/pages/settings.js"
  ],
@@ -4128,7 +4201,6 @@
   "ui/js/nav.js",
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
-  "ui/js/pages/media.js",
   "ui/js/pages/search.js",
   "ui/js/statusbar.js"
  ],
@@ -4218,6 +4290,9 @@
  ],
  "Sorties à venir": [
   "ui/js/pages/settings.js"
+ ],
+ "Source": [
+  "ui/js/pages/artpicker.js"
  ],
  "Source : Wikipédia": [
   "ui/js/pages/emulation.js"
@@ -4310,17 +4385,10 @@
   "ui/js/pages/settings.js"
  ],
  "Supprimer": [
-  "ui/js/pages/game.js",
-  "ui/js/pages/media.js"
+  "ui/js/pages/game.js"
  ],
  "Supprimer « {name} » ?": [
   "ui/js/pages/game.js"
- ],
- "Supprimer {n} captures ?": [
-  "ui/js/pages/media.js"
- ],
- "Supprimer cette capture ?": [
-  "ui/js/pages/media.js"
  ],
  "Supprimer de la bibliothèque": [
   "ui/js/pages/game.js"
@@ -4401,9 +4469,6 @@
  "Terminé": [
   "ui/js/widget.js"
  ],
- "Terminer": [
-  "ui/js/pages/media.js"
- ],
  "Tester le démarrage": [
   "ui/js/pages/settings.js"
  ],
@@ -4450,11 +4515,7 @@
  ],
  "Tout": [
   "ui/js/pages/library.js",
-  "ui/js/pages/media.js",
   "ui/js/widget.js"
- ],
- "Tout désélectionner": [
-  "ui/js/pages/media.js"
  ],
  "Tout effacer": [
   "ui/js/statusbar.js"
@@ -4465,8 +4526,8 @@
  "Tout mettre à jour": [
   "ui/js/pages/emulation.js"
  ],
- "Tout sélectionner": [
-  "ui/js/pages/media.js"
+ "Tout voir": [
+  "ui/js/pages/emulation.js"
  ],
  "Toute la bibliothèque": [
   "ui/js/pages/home.js"
@@ -4483,6 +4544,9 @@
  ],
  "Trois ambiances graves, sans clic aigu": [
   "ui/js/personalization-settings.js"
+ ],
+ "true": [
+  "host/lib/emu-setup.js"
  ],
  "Turbo": [
   "ui/js/pages/settings.js",
@@ -4527,6 +4591,9 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
+ "Un dossier qui contient exefs, romfs ou cheats": [
+  "ui/js/pages/emulation.js"
+ ],
  "Un émulateur installé par vous et indiqué ici passe avant celui de KaneMode.": [
   "ui/js/pages/emulation.js"
  ],
@@ -4553,6 +4620,9 @@
  ],
  "Une notification signale une nouvelle version": [
   "ui/js/pages/settings.js"
+ ],
+ "Une version modifiée de Lichii (Lichii-Frizti…) : choisissez son archive .zip. Elle partage les clés, sauvegardes et mods de Lichii, et se choisit jeu par jeu dans Réglages → Émulateur.": [
+  "ui/js/pages/emulation.js"
  ],
  "Uni": [
   "ui/js/pages/settings.js"
@@ -4653,9 +4723,6 @@
  "Vidéo perso…": [
   "ui/js/pages/settings.js"
  ],
- "Vidéos": [
-  "ui/js/pages/media.js"
- ],
  "Vider": [
   "ui/js/pages/emulation.js"
  ],
@@ -4676,10 +4743,10 @@
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js"
  ],
- "Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)": [
+ "Visuels · {b} : <b>{a}</b>": [
   "ui/js/pages/artpicker.js"
  ],
- "Visuels · SteamGridDB : <b>{a}</b>": [
+ "Visuels · aucun jeu correspondant sur {b} (Changer de jeu…)": [
   "ui/js/pages/artpicker.js"
  ],
  "Visuels (SteamGridDB, image perso)…": [

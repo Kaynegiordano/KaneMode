@@ -216,6 +216,8 @@ const SETUP = {
   },
   eden(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch')); switchConfig(dir, c, 'eden'); },
   lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'lichii'); },
+  // Version modifiée (Lichii-Frizti…) : dossier user partagé avec Lichii (jonction), mêmes réglages
+  lichiimod(dir, c) { SETUP.lichii(dir, c); },
   rpcs3(dir, c) { pads.rpcs3Pad(dir, c.pads); },
   cemu(dir, c) { pads.cemuPad(dir, c.pads); },
   // melonDS : réglages à côté de l'exécutable (dossier portable), manette n° 0

@@ -350,32 +350,35 @@ test('Switch et Switch 2 selon la machine : ROG Ally en mode portable, précisio
   assert.equal(roms[0].system, 'switch2');
 });
 
-test('Dump Switch 2 base + mise à jour sans romfs de base : l’exefs de la mise à jour la plus récente avec ses données', () => {
+test('Dump Switch 2 : toujours le dossier updates (la plus récente) ; Switch : la mise à jour seulement si elle a tout le jeu', () => {
   const root = tmp();
   const game = path.join(root, 'Nintendo Switch 2', 'Pokopia (v2.0.1a) (DUMP)');
-  const put = rel => { const f = path.join(game, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, 'NSO'); };
-  put('base/exefs/main');
-  put('updates/65536/exefs/main'); put('updates/65536/romfs/data.bin');
-  put('updates/655360/exefs/main'); put('updates/655360/romfs/data.bin');
-  put('updates/700000/exefs/main'); // sans romfs : ignorée
-  let roms = emu.scanRoms([root], {}, {});
+  const put = (g, rel) => { const f = path.join(g, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, 'NSO'); };
+  const rel = g => path.relative(g, emu.scanRoms([root], {}, {}).find(r => r.romPath.startsWith(g)).romPath).split(path.sep).join('/');
+  put(game, 'base/exefs/main');
+  put(game, 'updates/65536/exefs/main'); put(game, 'updates/65536/romfs/data.bin');
+  put(game, 'updates/655360/exefs/main'); put(game, 'updates/655360/romfs/data.bin');
+  const roms = emu.scanRoms([root], {}, {});
   assert.equal(roms.length, 1);
-  assert.equal(path.relative(game, roms[0].romPath).split(path.sep).join('/'), 'updates/655360/exefs/main');
+  assert.equal(rel(game), 'updates/655360/exefs/main');
   assert.equal(roms[0].name, 'Pokopia');
   // Même identifiant que si la base était lancée (favoris, jaquettes, réglages gardés)
   const idOf = p => 'rom:' + require('crypto').createHash('sha1').update(p.toLowerCase()).digest('hex').slice(0, 12);
   assert.equal(roms[0].id, idOf(path.join(game, 'base', 'exefs', 'main')));
-  // Base complète et mise à jour fusionnée (tous les dossiers de la base) : la mise à jour
-  const rel = () => path.relative(game, emu.scanRoms([root], {}, {})[0].romPath).split(path.sep).join('/');
-  put('base/romfs/data.bin'); put('base/romfs/Model/a.bin');
-  put('updates/655360/romfs/Model/a.bin'); put('updates/655360/romfs/Game/b.bin');
-  assert.equal(rel(), 'updates/655360/exefs/main');
-  // Mise à jour qui n'a que les fichiers modifiés (dossiers de la base absents) : la base
-  for (let i = 0; i < 9; i++) put(`base/romfs/Dir${i}/x.bin`);
-  assert.equal(rel(), 'base/exefs/main');
+  // Switch 2 : toujours la plus récente, même sans romfs et même avec une base complète
+  for (let i = 0; i < 9; i++) put(game, `base/romfs/Dir${i}/x.bin`);
+  put(game, 'updates/700000/exefs/main');
+  assert.equal(rel(game), 'updates/700000/exefs/main');
   // Dossier DLC (romfs seul) : jamais lancé, un seul jeu
-  put('dlc/040074a01bf13001/0/romfs/x.bin');
+  put(game, 'dlc/040074a01bf13001/0/romfs/x.bin');
   assert.equal(emu.scanRoms([root], {}, {}).length, 1);
+  // Switch : mise à jour fusionnée (tous les dossiers de la base) → la mise à jour, sinon la base
+  const sw = path.join(root, 'Nintendo Switch', 'Jeu (DUMP)');
+  put(sw, 'base/exefs/main'); put(sw, 'base/romfs/Model/a.bin'); put(sw, 'base/romfs/Sound/a.bin');
+  put(sw, 'updates/131072/exefs/main'); put(sw, 'updates/131072/romfs/Model/a.bin'); put(sw, 'updates/131072/romfs/Sound/a.bin');
+  assert.equal(rel(sw), 'updates/131072/exefs/main');
+  for (let i = 0; i < 9; i++) put(sw, `base/romfs/Dir${i}/x.bin`);
+  assert.equal(rel(sw), 'base/exefs/main');
 });
 
 test('Quitter complètement : RetroArch ne quitte plus dès Select + Start, la reprise automatique du jeu est effaçable', () => {
@@ -387,4 +390,89 @@ test('Quitter complètement : RetroArch ne quitte plus dès Select + Start, la r
   const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
   assert.match(src, /'POST \/api\/emu\/forget-resume'/);
   assert.ok(src.includes('.state') && src.includes('forgetResume(e)'));
+});
+
+test('Mods Switch : identifiant du jeu (nom ou main.npdm), dossier load de l’émulateur, ajout d’une archive et retrait', async () => {
+  const mods = require('../host/lib/emu-mods');
+  assert.equal(mods.titleIdOf('C:/x/The Legend of Zelda [0400486024dec000][v131072].nup'), '0400486024DEC000');
+  // main.npdm : « META », section ACI0 (adresse en 0x70), identifiant à +0x10
+  const game = tmp();
+  const npdm = Buffer.alloc(0x200);
+  npdm.write('META', 0, 'latin1'); npdm.writeUInt32LE(0x100, 0x70);
+  npdm.write('ACI0', 0x100, 'latin1'); npdm.writeBigUInt64LE(0x0400A3A01EE4C000n, 0x110);
+  fs.mkdirSync(path.join(game, 'exefs'));
+  fs.writeFileSync(path.join(game, 'exefs', 'main.npdm'), npdm);
+  assert.equal(mods.titleIdOf(path.join(game, 'exefs', 'main')), '0400A3A01EE4C000');
+  // Dossier load réglé dans l'émulateur (config reprise d'Eglantine) : c'est lui qui compte
+  const emuDir = tmp();
+  assert.equal(mods.modsDir(emuDir, 'AB'), path.join(emuDir, 'user', 'load', 'AB'));
+  const other = tmp();
+  fs.mkdirSync(path.join(emuDir, 'user', 'config'), { recursive: true });
+  fs.writeFileSync(path.join(emuDir, 'user', 'config', 'qt-config.ini'), ['[Data%20Storage]', 'load_directory\\default=false', 'load_directory=' + other.split(path.sep).join('/'), ''].join('\n'));
+  const dir = mods.modsDir(emuDir, '0400486024DEC000');
+  assert.equal(dir, path.join(other, '0400486024DEC000'));
+  // Archive du mod (dossier « Dynamic-fps/exefs/<build>.ips ») : copiée sous son nom
+  const src = tmp();
+  fs.mkdirSync(path.join(src, 'Dynamic-fps', 'exefs'), { recursive: true });
+  fs.writeFileSync(path.join(src, 'Dynamic-fps', 'exefs', 'E0F3.ips'), 'PATCH');
+  const zip = path.join(tmp(), 'Dynamic FPS Zelda.zip');
+  require('child_process').execFileSync(path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe'), ['-a', '-cf', zip, '-C', src, 'Dynamic-fps']);
+  assert.deepEqual(await mods.add(dir, zip), ['Dynamic-fps']);
+  assert.deepEqual(mods.list(dir), [{ name: 'Dynamic-fps', parts: ['exefs'] }]);
+  // Dossier de mod sans sous-dossier : refusé
+  await assert.rejects(() => mods.add(dir, tmp()), /Aucun mod reconnu/);
+  mods.remove(dir, 'Dynamic-fps');
+  assert.deepEqual(mods.list(dir), []);
+  assert.throws(() => mods.remove(dir, '..'), /introuvable/);
+});
+
+test('Lichii modifié (.zip) : copie de Lichii + exécutable de l’archive, dossier user partagé, jamais mis à jour en ligne', async () => {
+  const home = tmp();
+  const s = store.create({ home: () => home });
+  const base = path.join(home, 'Émulateurs', 'lichii');
+  fs.mkdirSync(path.join(base, 'user', 'keys'), { recursive: true });
+  fs.writeFileSync(path.join(base, 'lichii.exe'), 'OFFICIEL');
+  fs.writeFileSync(path.join(base, 'Qt6Core.dll'), 'DLL');
+  fs.writeFileSync(path.join(base, 'kanemode.json'), JSON.stringify({ id: 'lichii', version: 'build-94', exe: path.join(base, 'lichii.exe') }));
+  const src = tmp();
+  fs.mkdirSync(path.join(src, 'Lichii-Frizti-v3'));
+  fs.writeFileSync(path.join(src, 'Lichii-Frizti-v3', 'lichii.exe'), 'FRIZTI');
+  const zip = path.join(tmp(), 'Lichii-Frizti-v3-Windows-x64.zip');
+  require('child_process').execFileSync(path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe'), ['-a', '-cf', zip, '-C', src, 'Lichii-Frizti-v3']);
+  const m = await s.installLocal('lichiimod', zip);
+  const dir = path.join(home, 'Émulateurs', 'lichiimod');
+  assert.equal(m.label, 'Lichii-Frizti-v3');
+  assert.equal(fs.readFileSync(path.join(dir, 'lichii.exe'), 'utf8'), 'FRIZTI');
+  assert.equal(fs.readFileSync(path.join(dir, 'Qt6Core.dll'), 'utf8'), 'DLL');
+  assert.ok(fs.existsSync(path.join(dir, 'user', 'keys')), 'user partagé (jonction)');
+  assert.equal(fs.realpathSync(path.join(dir, 'user')), fs.realpathSync(path.join(base, 'user')));
+  assert.equal(fs.readFileSync(path.join(base, 'lichii.exe'), 'utf8'), 'OFFICIEL', 'Lichii officiel intact');
+  await assert.rejects(() => s.install('lichiimod'), /archive/);
+  const row = (await s.list({ check: true })).find(r => r.id === 'lichiimod');
+  assert.equal(row.local, true);
+  assert.ok(!row.update && !row.checkError, 'pas de recherche de mise à jour');
+  const sys = emu.SYSTEMS.find(x => x.id === 'switch2');
+  assert.deepEqual(sys.emus, ['lichii', 'lichiimod']);
+});
+
+test('Visuels Switch : le bon jeu sur le site de Nintendo (même nom, même console) et adresses d’images limitées à son CDN', () => {
+  const nin = require('../host/lib/nintendo-art');
+  const games = [
+    { id: '1', name: 'The Legend of Zelda: Ocarina of Time 3D', systems: ['Nintendo 3DS'] },
+    { id: '2', name: 'The Legend of Zelda: Ocarina of Time', systems: ['Nintendo 64', 'Wii'] },
+    { id: '3', name: 'The Legend of Zelda: Ocarina of Time', systems: ['Nintendo Switch 2'] },
+  ];
+  assert.equal(nin.best('The Legend of Zelda Ocarina of Time', 'switch2', games).id, '3');
+  assert.equal(nin.best('Pokopia', 'switch2', [{ id: 'p', name: 'Pokémon Pokopia', systems: ['Nintendo Switch 2'] }]).id, 'p');
+  assert.equal(nin.best('Rien à voir', 'switch2', games), null);
+  assert.ok(nin.isNintendoUrl('https://www.nintendo.com/eu/media/images/assets/x/1x1_A.png'));
+  assert.ok(!nin.isNintendoUrl('https://evil.example/eu/media/images/x.png'));
+});
+
+test('Reprise RetroArch faite avec une autre commande (Sonic & Knuckles : puce Lock-on avant la 4.16) : mise de côté, pas rechargée', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.match(src, /function staleResume\(e, args\)/);
+  assert.match(src, /staleResume\(e, launch\.args\);\s*\n\s*launch = \{ \.\.\.launch, args: launch\.args \+ retroarchLook/);
+  assert.match(src, /prev !== null \|\| \/#\[\^"\]\+"\/\.test\(args\) \? forgetResume\(e, \{ backup: true \}\)/);
+  assert.match(src, /fs\.renameSync\(p, p\.replace\(\/\(\\.png\)\?\$\/i, '\.bak\$1'\)\)/);
 });

@@ -51,62 +51,6 @@ function storage() {
   return drives;
 }
 
-// ---------- Captures d'écran ----------
-const MEDIA_EXT = { '.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.webp': 'image', '.mp4': 'video' };
-function mediaRoots(steamUserdata) {
-  const home = os.homedir();
-  const roots = [
-    { dir: path.join(home, 'Videos', 'Captures'), label: 'Xbox Game Bar' },
-    { dir: path.join(home, 'Pictures', 'Screenshots'), label: 'Captures Windows' },
-    { dir: path.join(home, 'OneDrive', 'Pictures', 'Screenshots'), label: 'Captures Windows' },
-    { dir: path.join(home, 'OneDrive', 'Images', 'Captures d’écran'), label: 'Captures Windows' },
-    { dir: path.join(home, 'Pictures', 'Captures d’écran'), label: 'Captures Windows' },
-  ];
-  if (steamUserdata && fs.existsSync(steamUserdata)) {
-    for (const uid of fs.readdirSync(steamUserdata)) {
-      const remote = path.join(steamUserdata, uid, '760', 'remote');
-      if (!fs.existsSync(remote)) continue;
-      for (const appid of fs.readdirSync(remote)) roots.push({ dir: path.join(remote, appid, 'screenshots'), label: 'Steam', appid });
-    }
-  }
-  return roots.filter(r => fs.existsSync(r.dir));
-}
-function listMedia(steamUserdata, limit = 400) {
-  const items = [];
-  for (const r of mediaRoots(steamUserdata)) {
-    let names = [];
-    try { names = fs.readdirSync(r.dir); } catch { continue; }
-    for (const n of names) {
-      const kind = MEDIA_EXT[path.extname(n).toLowerCase()];
-      if (!kind) continue;
-      const full = path.join(r.dir, n);
-      let st; try { st = fs.statSync(full); } catch { continue; }
-      if (!st.isFile()) continue;
-      items.push({ path: full, kind, label: r.label, appid: r.appid || null, date: st.mtimeMs, size: st.size, name: n });
-    }
-  }
-  return items.sort((a, b) => b.date - a.date).slice(0, limit);
-}
-/** Vrai si le fichier fait partie des dossiers de captures connus. */
-function isMediaPath(p, steamUserdata) {
-  const full = path.resolve(p).toLowerCase();
-  return !!MEDIA_EXT[path.extname(full)] && mediaRoots(steamUserdata).some(r => full.startsWith(path.resolve(r.dir).toLowerCase() + path.sep));
-}
-
-/**
- * Envoie des captures à la corbeille de Windows (elles restent récupérables). Seuls les fichiers des
- * dossiers de captures connus sont acceptés. Renvoie les chemins réellement supprimés.
- */
-async function deleteMedia(paths, steamUserdata) {
-  const files = [...new Set(paths)].filter(f => typeof f === 'string' && isMediaPath(f, steamUserdata) && isFile(f));
-  if (!files.length) return [];
-  // Liste passée par l'environnement : aucun nom de fichier n'est interprété comme du code
-  const ps = "Add-Type -AssemblyName Microsoft.VisualBasic; foreach ($f in ($env:KANEMODE_DELETE | ConvertFrom-Json)) { try { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($f, 'OnlyErrorDialogs', 'SendToRecycleBin') } catch {} }";
-  await new Promise(res => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps],
-    { windowsHide: true, env: { ...process.env, KANEMODE_DELETE: JSON.stringify(files) } }, () => res()));
-  return files.filter(f => !isFile(f));
-}
-
 // ---------- Retour au bureau ----------
 async function explorerRunning() {
   const out = await run('tasklist.exe', ['/FI', 'IMAGENAME eq explorer.exe', '/NH']);
@@ -125,4 +69,4 @@ async function toDesktop(profileDir, dry) {
   return steps;
 }
 
-module.exports = { xboxMode, storage, listMedia, isMediaPath, deleteMedia, toDesktop };
+module.exports = { xboxMode, storage, toDesktop };

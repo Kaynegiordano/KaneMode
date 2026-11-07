@@ -17,7 +17,6 @@ import './pages/search.js';
 import './pages/add.js';
 import './pages/settings.js';
 import './pages/artpicker.js';
-import './pages/media.js';
 import './pages/emulation.js';
 
 applyTheme();

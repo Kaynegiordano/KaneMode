@@ -1,5 +1,5 @@
 // Visuels d'un jeu : aperçu (jaquette, fond, logo…), récupération automatique, choix sur SteamGridDB
-// (sans compte ni clé) ou image du disque.
+// (sans compte ni clé), sur le site de Nintendo pour les jeux Switch et Switch 2, ou image du disque.
 import { t, tx } from '../i18n.js';
 import { el, esc, icon, api, lib, toast, busy, sfx } from '../core.js';
 import { definePage, nav, focusIn, glyph, renderHints } from '../nav.js';
@@ -11,6 +11,9 @@ const KINDS = [
   { id: 'header', label: t('Bannière'), f: true }, { id: 'icon', label: t('Icône'), f: true },
 ];
 const label = k => KINDS.find(x => x.id === k).label;
+// Sources de visuels : SteamGridDB pour tous, le site de Nintendo en plus pour les jeux Switch
+const SOURCES = { sgdb: { name: 'SteamGridDB', api: '/api/sgdb' }, nintendo: { name: 'Nintendo', api: '/api/nintendo' } };
+const hasNintendo = g => !!g && g.source === 'rom' && (g.system === 'switch' || g.system === 'switch2');
 
 // Vignettes SteamGridDB : leur serveur est lent (environ une seconde chacune). Elles ne sont
 // demandées qu'à l'approche de l'écran, et les premières sont préchargées à l'ouverture.
@@ -38,10 +41,11 @@ definePage('artpicker', {
   title: () => t('Visuels'),
   // direct : ouvert sur un type de visuel depuis une autre page (Émulation), B y ramène tout de suite
   render({ id, kind, direct }) {
-    if (this.forId !== id) { this.forId = id; this.game = undefined; this.items = {}; this.kind = 'portrait'; this.mode = 'overview'; }
+    if (this.forId !== id) { this.forId = id; this.games = {}; this.items = {}; this.kind = 'portrait'; this.mode = 'overview'; this.src = null; }
     this.direct = !!(kind && direct);
     if (kind) { this.kind = kind; this.mode = 'browse'; }
     this.g = lib.byId(id);
+    if (!this.src || (this.src === 'nintendo' && !hasNintendo(this.g))) this.src = hasNintendo(this.g) && this.g.system === 'switch2' ? 'nintendo' : 'sgdb';
     api.get('/api/config').then(cfg => { const style = cfg.sgdb.style || ''; if (this.forId !== id || style === this.style) return; this.style = style; this.items = {}; if (this.mode === 'browse') this.draw(); }).catch(() => {});
     this.draw();
   },
@@ -71,7 +75,7 @@ definePage('artpicker', {
   drawOverview(focusKey) {
     const g = this.g, custom = g.customArt || [];
     const root = this.el;
-    const head = el('div', 'page-head', t('<h1>{a}</h1><p>Visuels · SteamGridDB, sans compte ni clé</p>', { a: esc(g.name) }));
+    const head = el('div', 'page-head', t('<h1>{a}</h1><p>Visuels · {b}, sans compte ni clé</p>', { a: esc(g.name), b: SOURCES[this.src].name }));
     const shelf = el('div', 'art-shelf');
     for (const k of KINDS) {
       const src = g.art && g.art[k.id];
@@ -84,7 +88,8 @@ definePage('artpicker', {
     acts.append(
       nav(el('div', 'chip-btn big', t('{a}Récupérer à nouveau', { a: icon('i-refresh') })), () => this.refetch(), 'refetch'),
       nav(el('div', 'chip-btn big' + (custom.length ? '' : ' dim'), t('{a}Annuler les modifications', { a: icon('i-restart') })), () => this.resetAll(), 'reset-all'),
-      nav(el('div', 'chip-btn big primary', t('{a}Parcourir SteamGridDB', { a: icon('i-search') })), () => this.browse('portrait'), 'browse'),
+      nav(el('div', 'chip-btn big primary', t('{a}Parcourir {b}', { a: icon('i-search'), b: SOURCES[this.src].name })), () => this.browse('portrait'), 'browse'),
+      ...(hasNintendo(g) ? [nav(el('div', 'chip-btn big', t('{a}Source : {b}', { a: icon('i-refresh'), b: SOURCES[this.src].name })), () => this.toggleSource(), 'source')] : []),
       nav(el('div', 'chip-btn big', t('{a}Changer de jeu…', { a: icon('i-edit') })), () => this.changeGame(), 'match'),
     );
     const up = el('div', 'art-actions');
@@ -96,22 +101,26 @@ definePage('artpicker', {
   async matchLine(p) {
     const id = this.forId;
     try {
-      if (this.game === undefined) {
-        const result = await api.get('/api/sgdb/game?id=' + encodeURIComponent(id));
+      const src = this.src;
+      if (this.games[src] === undefined) {
+        const result = await api.get(SOURCES[src].api + '/game?id=' + encodeURIComponent(id));
         if (id !== this.forId) return;
-        this.game = result.game;
+        this.games[src] = result.game;
       }
-      if (this.game) this.prefetch();
+      if (src !== this.src) return;
+      if (this.games[src]) this.prefetch();
       if (this.mode !== 'overview' || !p.isConnected) return;
-      p.innerHTML = this.game ? t('Visuels · SteamGridDB : <b>{a}</b>', { a: esc(this.game.name) }) : t('Visuels · aucun jeu correspondant sur SteamGridDB (Changer de jeu…)');
+      p.innerHTML = this.games[src] ? t('Visuels · {b} : <b>{a}</b>', { a: esc(this.games[src].name), b: SOURCES[src].name }) : t('Visuels · aucun jeu correspondant sur {b} (Changer de jeu…)', { b: SOURCES[src].name });
     } catch (e) { if (p.isConnected) p.textContent = `${t('Visuels')} · ${tx(e.message)}`; }
   },
   /** Liste des visuels d'un type (une seule requête par type, partagée). */
   list(kind, first = false) {
-    const key = kind + ':' + (this.style || '') + (first ? ':first' : '');
+    const key = this.src + ':' + kind + ':' + (this.style || '') + (first ? ':first' : '');
     if (!this.items[key]) {
       const items = this.items;
-      items[key] = api.get(`/api/sgdb/assets?game=${this.game.id}&kind=${kind}${first ? '&first=1' : ''}${kind === 'portrait' && this.style ? '&style=' + encodeURIComponent(this.style) : ''}`);
+      items[key] = this.src === 'nintendo'
+        ? api.get(`/api/nintendo/assets?id=${encodeURIComponent(this.forId)}&kind=${kind}`)
+        : api.get(`/api/sgdb/assets?game=${this.games[this.src].id}&kind=${kind}${first ? '&first=1' : ''}${kind === 'portrait' && this.style ? '&style=' + encodeURIComponent(this.style) : ''}`);
       items[key].catch(() => { delete items[key]; });
     }
     return this.items[key];
@@ -140,7 +149,8 @@ definePage('artpicker', {
     bar.append(nav(el('div', 'chip-btn', t('{a}Image du disque…', { a: icon('i-folder') })), () => this.pickLocal(this.kind), 'local'));
     if (custom.includes(this.kind)) bar.append(nav(el('div', 'chip-btn', t('{a}Automatique', { a: icon('i-refresh') })), () => this.reset(this.kind), 'reset'));
     bar.append(nav(el('div', 'chip-btn', t('{a}Changer de jeu…', { a: icon('i-search') })), () => this.changeGame(), 'match'));
-    this.status = el('div', 'page-head', t('<h1>{a}</h1><p>Recherche sur SteamGridDB…</p>', { a: esc(g.name) }));
+    if (hasNintendo(g)) bar.append(nav(el('div', 'chip-btn', `${icon('i-refresh')}${esc(SOURCES[this.src].name)}`), () => this.toggleSource(), 'source'));
+    this.status = el('div', 'page-head', t('<h1>{a}</h1><p>Recherche sur {b}…</p>', { a: esc(g.name), b: SOURCES[this.src].name }));
     this.body = el('div', '', t('<div class="loading"><i class="spinner big"></i>Chargement des visuels…</div>'));
     root.replaceChildren(this.status, bar, this.body);
     focusIn(root, focusKey || 'kind:' + this.kind);
@@ -148,20 +158,20 @@ definePage('artpicker', {
   },
   async load(focusKey) {
     const p = this.status.querySelector('p');
-    const kind = this.kind, entryId = this.forId, body = this.body;
+    const kind = this.kind, entryId = this.forId, body = this.body, src = this.src;
     thumbs.disconnect();
     try {
-      if (this.game === undefined) {
-        const result = await api.get('/api/sgdb/game?id=' + encodeURIComponent(entryId));
+      if (this.games[src] === undefined) {
+        const result = await api.get(SOURCES[src].api + '/game?id=' + encodeURIComponent(entryId));
         if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return;
-        this.game = result.game;
+        this.games[src] = result.game;
       }
-      if (!this.game) {
-        p.textContent = t('Aucun jeu correspondant sur SteamGridDB.');
+      if (!this.games[src]) {
+        p.textContent = t('Aucun jeu correspondant sur {b}.', { b: SOURCES[src].name });
         this.body.innerHTML = t('<div class="notice">Utilisez <b>Changer de jeu…</b> pour le chercher sous un autre nom.</div>');
         return;
       }
-      p.innerHTML = `SteamGridDB : <b>${esc(this.game.name)}</b> · ${esc(label(kind))}`;
+      p.innerHTML = `${SOURCES[src].name} : <b>${esc(this.games[src].name)}</b> · ${esc(label(kind))}`;
       const list = await this.list(kind, true);
       if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return; // onglet changé entre-temps
       const grid = el('div', 'art-grid ' + kind);
@@ -176,7 +186,7 @@ definePage('artpicker', {
         grid.append(nav(item, () => this.choose(a), 'asset:' + a.id));
       } };
       append(list);
-      this.body.replaceChildren(list.length ? grid : el('div', 'empty', t('Aucun visuel « {a} » pour ce jeu sur SteamGridDB.', { a: esc(label(kind).toLowerCase()) })));
+      this.body.replaceChildren(list.length ? grid : el('div', 'empty', t('Aucun visuel « {a} » pour ce jeu sur {b}.', { a: esc(label(kind).toLowerCase()), b: SOURCES[src].name })));
       // Les pages suivantes complètent la grille sur place, sans déplacer le focus.
       this.list(kind).then(all => {
         if (entryId !== this.forId || body !== this.body || kind !== this.kind || this.mode !== 'browse') return;
@@ -250,25 +260,34 @@ definePage('artpicker', {
     finally { busy(null); }
   },
   async changeGame() {
-    const term = await openKeyboard({ title: t('Chercher le jeu sur SteamGridDB'), value: this.g.name });
+    const src = this.src;
+    const term = await openKeyboard({ title: t('Chercher le jeu sur {b}', { b: SOURCES[src].name }), value: this.g.name });
     if (!term) return;
     busy(t('Recherche…'));
     let results = [];
-    try { results = await api.get('/api/sgdb/search?term=' + encodeURIComponent(term)); }
+    try { results = await api.get(SOURCES[src].api + '/search?term=' + encodeURIComponent(term) + '&id=' + encodeURIComponent(this.g.id)); }
     catch (e) { busy(null); return toast(e.message, { error: true }); }
     busy(null);
-    if (!results.length) return toast(t('Aucun résultat sur SteamGridDB'), { error: true });
+    if (!results.length) return toast(t('Aucun résultat sur {b}', { b: SOURCES[src].name }), { error: true });
     const pick = await dialog({
       title: t('Quel jeu ?'),
-      buttons: [...results.slice(0, 8).map(r => ({ label: `${r.name}${r.year ? ` (${r.year})` : ''}${r.verified ? ' ✓' : ''}`, value: r })), { label: t('Annuler'), value: null }],
+      buttons: [...results.slice(0, 8).map(r => ({ label: `${r.name}${r.systems && r.systems.length ? ` · ${r.systems.join(', ')}` : ''}${r.year ? ` (${r.year})` : ''}${r.verified ? ' ✓' : ''}`, value: r })), { label: t('Annuler'), value: null }],
     });
     if (!pick) return;
-    await api.post('/api/sgdb/match', { id: this.g.id, game: pick });
-    this.game = pick;
+    await api.post(SOURCES[src].api + '/match', { id: this.g.id, game: pick });
+    this.games[src] = pick;
     this.items = {};
     await this.reload();
     this.draw('match');
     toast(t('Associé à « {name} »', { name: pick.name }));
+  },
+  /** SteamGridDB ↔ site de Nintendo (jeux Switch). */
+  toggleSource() {
+    if (!hasNintendo(this.g)) return;
+    sfx('move');
+    this.src = this.src === 'nintendo' ? 'sgdb' : 'nintendo';
+    thumbs.disconnect();
+    this.draw('source');
   },
   button(k) {
     if (this.mode === 'browse' && (k === 'lb' || k === 'rb')) {
@@ -279,11 +298,12 @@ definePage('artpicker', {
     }
     if (k === 'x') { this.pickLocal(this.kind); return true; }
     if (k === 'y' && this.mode === 'overview') { this.refetch(); return true; }
+    if (k === 'y' && this.mode === 'browse' && hasNintendo(this.g)) { this.toggleSource(); return true; }
     return false;
   },
   hints() {
     return this.mode === 'browse'
-      ? [[['lb', 'rb'], t('Type')], ['x', t('Image du disque')], ['a', t('Appliquer')], ['b', t('Aperçu')]]
+      ? [[['lb', 'rb'], t('Type')], ...(hasNintendo(this.g) ? [['y', t('Source')]] : []), ['x', t('Image du disque')], ['a', t('Appliquer')], ['b', t('Aperçu')]]
       : [['y', t('Récupérer à nouveau')], ['x', t('Importer une jaquette')], ['a', t('Choisir')], ['b', t('Retour')]];
   },
 });

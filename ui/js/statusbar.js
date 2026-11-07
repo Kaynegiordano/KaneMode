@@ -162,19 +162,19 @@ const RENDER = {
       out.append(row(lead('i-cpu'), d.title, esc(d.detail || ''), () => { close(); go('settings', { section: 'device' }); }, 'n-drv' + i));
     }
     if (!pending) out.append(el('div', 'sp-empty', `${icon('i-check')}<span>${esc(t('Tout est à jour'))}</span>`));
-    out.append(el('h3', 'sp-h', esc(t('Historique'))));
+    const list = getNotifications();
+    // « Tout effacer » en tête de l'historique (et sur Y) : sur un petit écran, la fin d'une
+    // trentaine de notifications est loin
+    const head = el('div', 'sp-hrow');
+    head.append(el('h3', 'sp-h', esc(list.length ? t('Historique ({n})', { n: list.length }) : t('Historique'))));
+    if (list.length) head.append(button('i-trash', t('Tout effacer'), clearAllNotifs, 'n-clear', 'small'));
+    out.append(head);
     if (!settings.notifications) {
       out.append(switchRow({ title: t('Notifications'), desc: esc(t('Désactivées : les nouveaux jeux, ajouts et mises à jour ne sont plus notés ici')), key: 'n-on', on: false,
         onToggle: v => { settings.notifications = v; saveSettings(); } }));
     }
-    const list = getNotifications();
     if (!list.length) out.append(el('div', 'sp-empty', `${icon('i-bell')}<span>${esc(t('Aucune notification pour l’instant'))}</span>`));
     list.forEach((n, i) => out.append(row(lead('i-bell'), n.msg, esc(n.at.toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })), () => {}, 'n' + i)));
-    if (list.length) {
-      const acts = el('div', 'sp-actions');
-      acts.append(button('i-trash', t('Tout effacer'), () => { clearNotifications(); show('notifs', { focusTab: true }); }, 'n-clear'));
-      out.append(acts);
-    }
   },
 
   // ---------- Réseau
@@ -352,6 +352,15 @@ async function chooseCity() {
 
 const paintNetSoon = () => setTimeout(() => window.dispatchEvent(new Event('kanemode-net')), 800);
 
+/** Efface tout l'historique des notifications ; le focus revient sur l'onglet. */
+function clearAllNotifs() {
+  if (!getNotifications().length) return false;
+  clearNotifications();
+  toast(t('Notifications effacées'));
+  show('notifs', { focusTab: true });
+  return true;
+}
+
 export function openStatus(tab = view.tab) {
   if (view.layer && topLayer() === view.layer) return show(tab, { focusTab: true });
   if (topLayer()) closeLayer(topLayer());
@@ -361,8 +370,10 @@ export function openStatus(tab = view.tab) {
     el: panel, name: 'status', scrim: true, focusKey: 'tab-' + tab,
     onOpen: () => render(),
     onClose: () => { clearInterval(view.timer); view.gen++; view.layer = null; $$('.status [data-status]').forEach(b => b.classList.remove('current')); },
-    hints: () => [['a', t('Sélectionner')], [['lb', 'rb'], t('Onglet')], ['b', t('Fermer')]],
+    hints: () => [['a', t('Sélectionner')], [['lb', 'rb'], t('Onglet')],
+      ...(view.tab === 'notifs' && getNotifications().length ? [['y', t('Tout effacer')]] : []), ['b', t('Fermer')]],
     button: k => {
+      if (k === 'y' && view.tab === 'notifs') { clearAllNotifs(); return true; }
       if (k === 'lb' || k === 'rb') {
         const i = TABS.findIndex(x => x[0] === view.tab), n = TABS[(i + (k === 'rb' ? 1 : TABS.length - 1)) % TABS.length][0];
         show(n, { focusTab: true });

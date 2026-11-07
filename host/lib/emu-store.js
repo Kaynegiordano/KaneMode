@@ -27,6 +27,10 @@ const CATALOG = {
   eden: { name: 'Eden', source: { type: 'forgejo', api: 'https://git.eden-emu.dev/api/v1/repos/eden-emu/eden', asset: /-amd64-msvc-standard\.zip$/i, ally: /-rog-ally-clang-pgo\.zip$/i }, exe: /^eden\.exe$/i, portable: ['user/'], size: 40 },
   // Switch 2 : Lichii (suite d'Eglantine, une version par jour) ; from : reprend le dossier user/ d'Eglantine
   lichii: { name: 'Lichii', source: { type: 'github', repo: 'zortos293/Lichii', pre: true, tags: [/^build-\d+$/], asset: /^lichii-windows-x86_64\.zip$/i }, exe: /^lichii\.exe$/i, portable: ['user/'], from: 'eglantine', size: 116, experimental: true },
+  // Version modifiée de Lichii (Lichii-Frizti…) donnée par l'utilisateur en .zip : l'exécutable seul,
+  // posé sur une copie de Lichii, dont elle partage le dossier user (clés, sauvegardes, mods).
+  // Choisie jeu par jeu (Réglages → Émulateur), jamais mise à jour toute seule.
+  lichiimod: { name: 'Lichii (version modifiée)', source: { type: 'local' }, local: true, base: 'lichii', exe: /^lichii\.exe$/i, size: 50, experimental: true },
   xemu: { name: 'xemu', source: { type: 'github', repo: 'xemu-project/xemu', asset: /^xemu-win-x86_64-release\.zip$/i }, exe: /^xemu\.exe$/i, size: 20 },
   xenia: { name: 'Xenia Canary', source: { type: 'github', repo: 'xenia-canary/xenia-canary-releases', asset: /^xenia_canary_windows.*\.zip$/i }, exe: /^xenia_canary\.exe$/i, portable: ['portable.txt'], size: 20 },
   flycast: { name: 'Flycast', source: { type: 'github', repo: 'flyinghead/flycast', asset: /^flycast-win64-.*\.zip$/i }, exe: /^flycast\.exe$/i, size: 15 },
@@ -107,6 +111,7 @@ function findExe(dir, re, depth = 0) {
 async function latest(id, { ally = false } = {}) {
   const c = CATALOG[id];
   const s = c.source;
+  if (s.type === 'local') throw new Error(`${c.name} : installée depuis une archive, pas de mise à jour en ligne`);
   if (s.type === 'retroarch') {
     const r = await get('https://api.github.com/repos/libretro/RetroArch/releases/latest', { json: true });
     const v = String(r.tag_name).replace(/^v/, '');
@@ -168,6 +173,7 @@ function create({ home, isAlly = async () => false }) {
   function install(id, { onDone } = {}) {
     const c = CATALOG[id];
     if (!c) return Promise.reject(new Error('Émulateur inconnu'));
+    if (c.local) return Promise.reject(new Error(`${c.name} s’installe depuis son archive .zip (Émulation → Gérer)`));
     const running = jobs.get(id);
     if (running && running.promise) return running.promise;
     const job = { id, name: c.name, phase: 'search', received: 0, total: 0, error: null };
@@ -222,6 +228,59 @@ function create({ home, isAlly = async () => false }) {
     return job.promise;
   }
 
+  /**
+   * Version modifiée d'un émulateur depuis une archive de l'utilisateur (souvent l'exécutable seul) :
+   * copie de l'émulateur de base (sans son dossier user), contenu de l'archive par-dessus, et dossier
+   * user relié à celui de la base (jonction) pour partager clés, sauvegardes et mods.
+   */
+  async function installLocal(id, archive) {
+    const c = CATALOG[id];
+    if (!c || !c.local) throw new Error('Émulateur inconnu');
+    if (!fs.existsSync(String(archive || '')) || !/\.(zip|7z|rar)$/i.test(archive)) throw new Error('Choisissez une archive .zip, .7z ou .rar');
+    if (pending(id)) return pending(id);
+    const job = { id, name: c.name, phase: 'extract', received: 0, total: 0, error: null };
+    jobs.set(id, job);
+    job.promise = (async () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `kanemode-${id}-`));
+      try {
+        if (!installed(c.base)) { job.phase = 'download'; await install(c.base); job.phase = 'extract'; }
+        const baseDir = dirOf(c.base);
+        const unpacked = path.join(tmp, 'x');
+        await extract(archive, unpacked);
+        const exeTmp = findExe(unpacked, c.exe);
+        if (!exeTmp) throw new Error(`Pas d’exécutable ${CATALOG[c.base].name} dans l’archive`);
+        const dest = dirOf(id);
+        fs.mkdirSync(dest, { recursive: true });
+        try {
+          fs.cpSync(baseDir, dest, { recursive: true, force: true, filter: src => {
+            const rel = path.relative(baseDir, src).toLowerCase();
+            return rel !== 'user' && !rel.startsWith('user' + path.sep) && rel !== 'kanemode.json';
+          } });
+          fs.cpSync(path.dirname(exeTmp), dest, { recursive: true, force: true });
+        } catch (e) { throw new Error(e.code === 'EBUSY' || e.code === 'EPERM' ? `${c.name} est encore ouverte : fermez-la puis réessayez` : e.message); }
+        const user = path.join(dest, 'user');
+        if (!fs.existsSync(user)) {
+          fs.mkdirSync(path.join(baseDir, 'user'), { recursive: true });
+          fs.symlinkSync(path.join(baseDir, 'user'), user, 'junction');
+        }
+        const label = path.basename(archive).replace(/\.(zip|7z|rar)$/i, '').replace(/-Windows-x64$/i, '');
+        const meta = { id, version: label, label, exe: path.join(dest, path.basename(exeTmp)), installed: new Date().toISOString(), source: archive, base: c.base };
+        fs.writeFileSync(metaFile(id), JSON.stringify(meta, null, 2));
+        job.phase = 'done';
+        console.log(`Émulation : ${label} installé dans ${dest} (dossier user partagé avec ${c.base})`);
+        return meta;
+      } catch (e) {
+        job.phase = 'error'; job.error = e.message;
+        throw e;
+      } finally {
+        fs.rm(tmp, { recursive: true, force: true }, () => {});
+        delete job.promise;
+        setTimeout(() => { if (jobs.get(id) === job && !job.promise) jobs.delete(id); }, 60e3);
+      }
+    })();
+    return job.promise;
+  }
+
   /** Cœur RetroArch : téléchargé depuis le buildbot de libretro s'il manque. */
   async function ensureCore(coreFile) {
     if (fs.existsSync(coreFile)) return coreFile;
@@ -256,8 +315,8 @@ function create({ home, isAlly = async () => false }) {
     const out = [];
     for (const [id, c] of Object.entries(CATALOG)) {
       const m = installed(id);
-      const row = { id, name: c.name, size: c.size, experimental: !!c.experimental, installed: !!m, version: m ? m.version : null, dir: m ? dirOf(id) : null };
-      if (check && m) {
+      const row = { id, name: (m && m.label) || c.name, size: c.size, experimental: !!c.experimental, installed: !!m, version: m ? m.version : null, dir: m ? dirOf(id) : null, local: !!c.local };
+      if (check && m && !c.local) {
         try { const v = await latestCached(id); row.latest = v.version; row.update = v.version !== m.version; }
         catch (e) { row.checkError = e.message; }
       }
@@ -271,7 +330,7 @@ function create({ home, isAlly = async () => false }) {
   /** Installation ou mise à jour en cours de cet émulateur (promesse), sinon null. */
   const pending = id => (jobs.get(id) && jobs.get(id).promise) || null;
 
-  return { CATALOG, installed, emulators, install, ensureCore, list, jobs: jobList, dirOf, root, pending };
+  return { CATALOG, installed, emulators, install, installLocal, ensureCore, list, jobs: jobList, dirOf, root, pending };
 }
 
 module.exports = { create, CATALOG, latest };

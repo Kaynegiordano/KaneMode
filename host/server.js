@@ -13,6 +13,8 @@ const emu = require('./lib/emulation');
 const emuStoreLib = require('./lib/emu-store');
 const emuSetup = require('./lib/emu-setup');
 const emuMetaLib = require('./lib/emu-meta');
+const nintendoLib = require('./lib/nintendo-art');
+const emuMods = require('./lib/emu-mods');
 const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
@@ -680,8 +682,29 @@ async function resolveArt(e, kind) {
   if (sgdbOn && kind === 'portrait' && cfg.sgdbStyle) { const f = await sgdbAuto(e, kind, cfg); if (f) return f; }
   if (sgdbOn && (!steamId || !cfg.sgdbPreferSteam)) { const f = await sgdbAuto(e, kind, cfg); if (f) return f; }
   if (steamId && kind !== 'icon') { const f = await steamCdn(steamId, kind); if (f) return f; }
-  if (sgdbOn && steamId && cfg.sgdbPreferSteam) return sgdbAuto(e, kind, cfg);
+  if (sgdbOn && steamId && cfg.sgdbPreferSteam) { const f = await sgdbAuto(e, kind, cfg); if (f) return f; }
+  if (isSwitchRom(e)) return nintendoAuto(e, kind);
   return null;
+}
+
+// Jeu Switch ou Switch 2 : premier visuel du site de Nintendo, téléchargé une fois
+async function nintendoAuto(e, kind) {
+  const base = path.join(ARTCACHE, `nin_${safeId(e.id)}_${kind}`);
+  const hit = cached(base);
+  if (hit) return hit;
+  if (recentMiss(base)) return null;
+  if (artPending.has(base)) return artPending.get(base);
+  const promise = (async () => {
+    try {
+      const list = await nintendo.assets(await nintendo.gameFor(e), kind);
+      if (!list.length) { fs.writeFileSync(base + '.miss', ''); return null; }
+      const img = await nintendoLib.download(list[0].url);
+      fs.writeFileSync(base + img.ext, img.data);
+      return base + img.ext;
+    } catch { return null; } // hors ligne : nouvel essai au prochain affichage
+  })().finally(() => artPending.delete(base));
+  artPending.set(base, promise);
+  return promise;
 }
 
 function setArtOverride(id, kind, file) {
@@ -818,6 +841,8 @@ const emuMount = require('./lib/emu-mount');
 const emuSbi = require('./lib/emu-sbi').create({ cacheFile: path.join(DATA, 'emu-cache', 'sbi-misses.json') });
 const emuArchive = require('./lib/emu-archive').create({ cacheDir: () => path.join(emuHome(), 'Cache') });
 const emuMeta = emuMetaLib.create({ cacheDir: path.join(DATA, 'emu-cache'), artDir: ARTCACHE });
+const nintendo = nintendoLib.create({ cacheDir: path.join(DATA, 'emu-cache') });
+const isSwitchRom = e => e && e.source === 'rom' && (e.system === 'switch' || e.system === 'switch2');
 const emuStore = emuStoreLib.create({
   home: emuHome,
   isAlly: async () => { try { return /^rog-ally/.test(((await device.info()) || {}).handheld?.id || ''); } catch { return false; } },
@@ -893,6 +918,24 @@ function retroarchLook(raDir, gameId, set, fresh = false) {
 }
 
 /**
+ * Dossier des mods d'un jeu Switch ou Switch 2 : celui de son émulateur (Eden, Lichii ; la version
+ * modifiée de Lichii partage le dossier user de Lichii), sous user\load\<identifiant du jeu>.
+ */
+function modsTarget(id) {
+  const e = findEntry(String(id || ''));
+  if (!e || e.source !== 'rom' || !['switch', 'switch2'].includes(e.system)) return { error: 'Mods : jeu Switch ou Switch 2 seulement' };
+  const tid = emuMods.titleIdOf(e.romPath);
+  if (!tid) return { error: 'Identifiant du jeu introuvable (ni dans le nom du fichier, ni dans main.npdm)' };
+  const sys = emu.SYSTEMS.find(s => s.id === e.system);
+  const emuId = e.emulatorId || sys.emus[0];
+  const m = emuStore.installed(emuId) || emuStore.installed(sys.emus[0]);
+  const own = (readJson(FILES.roms, {}).emulators || {})[emuId];
+  const exe = m ? m.exe : own && own.path;
+  if (!exe) return { error: `Installez d’abord ${emuStore.CATALOG[sys.emus[0]].name} (lancez le jeu une fois)` };
+  return { tid, dir: emuMods.modsDir(path.dirname(exe), tid), emulator: (m && m.label) || (emuStore.CATALOG[emuId] || {}).name || emuId };
+}
+
+/**
  * Avant un lancement : jeu décompressé s'il est dans une archive que l'émulateur ne lit pas, BIOS
  * présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. Renvoie { blocked } (réponse
  * à donner à l'interface) ou { launch } (commande, avec le fichier décompressé à la place de l'archive).
@@ -938,12 +981,36 @@ async function prepareRom(e, { fresh = false } = {}) {
   const set = emuEffective(e.system, e.id);
   const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
   emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', pads: padList, ...emuDisplay });
-  if (id === 'retroarch') launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
+  if (id === 'retroarch') {
+    staleResume(e, launch.args);
+    launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
+  }
   return { launch };
 }
+
+/**
+ * Reprise automatique de RetroArch faite avec une autre commande (autre cœur, autre fichier du zip) :
+ * elle ne correspond plus au jeu lancé et le figerait. Avant la 4.16, un zip à plusieurs fichiers
+ * (Sonic & Knuckles + sa puce « Lock-on ») lançait la puce seule : écran noir, enregistré en reprise
+ * sous le même nom que le vrai jeu, puis rechargé à chaque lancement. La commande est retenue par jeu ;
+ * quand elle change (ou la première fois pour un fichier pris dans un zip), l'ancienne reprise est mise
+ * de côté en « .bak » (pas supprimée).
+ */
+function staleResume(e, args) {
+  const file = path.join(DATA, 'emu-ra', safeId(e.id) + '.sig');
+  let prev = null;
+  try { prev = fs.readFileSync(file, 'utf8'); } catch { /* jamais lancé avec ce suivi */ }
+  if (prev === args) return 0;
+  const moved = prev !== null || /#[^"]+"/.test(args) ? forgetResume(e, { backup: true }) : 0;
+  try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, args); } catch { /* sans suivi */ }
+  return moved;
+}
 const emuAutoUpdate = { at: 0 };
-/** Supprime les sauvegardes d'état automatiques (« .state.auto ») d'un jeu RetroArch ; renvoie leur nombre. */
-function forgetResume(e) {
+/**
+ * Supprime les sauvegardes d'état automatiques (« .state.auto ») d'un jeu RetroArch ; renvoie leur
+ * nombre. backup : renommées en « .state.auto.bak » au lieu d'être supprimées.
+ */
+function forgetResume(e, { backup = false } = {}) {
   const names = new Set();
   const base = f => path.basename(f, path.extname(f)).toLowerCase();
   if (e.romPath) names.add(base(e.romPath));
@@ -962,16 +1029,18 @@ function forgetResume(e) {
       const p = path.join(d, x.name);
       if (x.isDirectory()) { walk(p); continue; }
       const m = /^(.*)\.state\.auto(\.png)?$/i.exec(x.name);
-      if (m && names.has(m[1].toLowerCase())) { try { fs.unlinkSync(p); removed++; } catch { /* encore ouvert */ } }
+      if (m && names.has(m[1].toLowerCase())) {
+        try { if (backup) fs.renameSync(p, p.replace(/(\.png)?$/i, '.bak$1')); else fs.unlinkSync(p); removed++; } catch { /* encore ouvert */ }
+      }
     }
   };
   walk(dir);
-  console.log(`Émulation : reprise de ${e.name} oubliée (${removed} fichier(s))`);
+  if (removed || !backup) console.log(`Émulation : reprise de ${e.name} ${backup ? 'mise de côté (.bak, faite avec une autre commande)' : 'oubliée'} (${removed} fichier(s))`);
   return removed;
 }
 // Manettes XInput branchées (host/xinput.ps1), relues au plus toutes les 15 s : les émulateurs qui
 // ne prennent pas la manette tout seuls la reçoivent avant le lancement (emu-pads.js)
-const PAD_EMUS = ['eden', 'lichii', 'azahar', 'rpcs3', 'cemu', 'melonds'];
+const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'azahar', 'rpcs3', 'cemu', 'melonds'];
 const padCache = { at: 0, list: [] };
 async function xinputPads() {
   if (Date.now() - padCache.at < 15e3) return padCache.list;
@@ -1053,7 +1122,7 @@ function scanEmulation() {
 
 // ---------------------------------------------------------------- navigateur de fichiers
 function browse(p, mode) {
-  const exts = mode === 'image' ? IMAGE_EXT : mode === 'video' ? VIDEO_EXT : mode === 'audio' ? AUDIO_EXT : mode === 'dir' ? [] : RUN_EXT;
+  const exts = mode === 'image' ? IMAGE_EXT : mode === 'video' ? VIDEO_EXT : mode === 'audio' ? AUDIO_EXT : mode === 'dir' ? [] : mode === 'zip' ? ['.zip', '.7z', '.rar'] : RUN_EXT;
   if (!p) {
     const home = os.homedir();
     const places = [
@@ -1308,7 +1377,9 @@ const routes = {
           id: s.id, name: s.name, maker: s.maker, folder: path.join(d.games, s.name), exts: s.exts, count: counts[s.id] || 0,
           experimental: !!s.experimental, emulator: managed, emulatorName: managed ? emuStore.CATALOG[managed].name : null,
           ready: !!own, bios: emuSetup.biosStatus(d.bios, s.id),
-          emus: s.emus.filter(e => emuStore.CATALOG[e] || (data.emulators || {})[e]).map(e => ({ id: e, name: (emuStore.CATALOG[e] || emu.EMULATORS.find(x => x.id === e)).name })),
+          // Version modifiée (installée depuis un .zip) : proposée seulement une fois installée
+          emus: s.emus.filter(e => (emuStore.CATALOG[e] && (!emuStore.CATALOG[e].local || emuStore.installed(e))) || (data.emulators || {})[e])
+            .map(e => ({ id: e, name: (emuStore.installed(e) || {}).label || (emuStore.CATALOG[e] || emu.EMULATORS.find(x => x.id === e)).name })),
           cores: s.cores || [], settings: emuSettings().systems[s.id] || {},
         };
       }),
@@ -1369,6 +1440,42 @@ const routes = {
     })();
     json(res, 200, { ok: true, updating: todo.map(e => ({ id: e.id, name: e.name, from: e.version, to: e.latest })) });
   },
+  // Version modifiée d'un émulateur (Lichii-Frizti…) depuis une archive choisie par l'utilisateur
+  'POST /api/emu/install-local': async (req, res) => {
+    const b = await readBody(req);
+    const c = emuStore.CATALOG[b.id];
+    if (!c || !c.local) return json(res, 400, { error: 'Émulateur inconnu' });
+    try { const m = await emuStore.installLocal(b.id, String(b.path || '')); scanEmulation(); json(res, 200, { ok: true, version: m.version, name: m.label }); }
+    catch (err) { json(res, 400, { error: err.message }); }
+  },
+  // Mods d'un jeu Switch ou Switch 2 : <émulateur>\user\load\<identifiant du jeu>
+  'GET /api/emu/mods': (req, res, q) => {
+    const r = modsTarget(q.get('id'));
+    if (r.error) return json(res, 400, r);
+    json(res, 200, { titleId: r.tid, dir: r.dir, emulator: r.emulator, mods: emuMods.list(r.dir) });
+  },
+  'POST /api/emu/mods/add': async (req, res) => {
+    const b = await readBody(req);
+    const r = modsTarget(b.id);
+    if (r.error) return json(res, 400, r);
+    try { const added = await emuMods.add(r.dir, String(b.path || '')); json(res, 200, { ok: true, added, mods: emuMods.list(r.dir) }); }
+    catch (err) { json(res, 400, { error: err.message }); }
+  },
+  'POST /api/emu/mods/remove': async (req, res) => {
+    const b = await readBody(req);
+    const r = modsTarget(b.id);
+    if (r.error) return json(res, 400, r);
+    try { emuMods.remove(r.dir, String(b.name || '')); json(res, 200, { ok: true, mods: emuMods.list(r.dir) }); }
+    catch (err) { json(res, 400, { error: err.message }); }
+  },
+  'POST /api/emu/mods/open': async (req, res) => {
+    const b = await readBody(req);
+    const r = modsTarget(b.id);
+    if (r.error) return json(res, 400, r);
+    fs.mkdirSync(r.dir, { recursive: true });
+    spawn('explorer.exe', [r.dir], { detached: true, stdio: 'ignore' }).unref();
+    json(res, 200, { ok: true, dir: r.dir });
+  },
   'POST /api/emu/cache/clear': (req, res) => json(res, 200, { ok: true, freed: emuArchive.clear() }),
   // Fiche d'un jeu rétro : développeur, éditeur, genre, année, joueurs, description
   'GET /api/emu/game': async (req, res, q) => {
@@ -1421,11 +1528,38 @@ const routes = {
     version++;
     json(res, 200, { ok: true });
   },
+  // --- Site de Nintendo (jeux Switch et Switch 2)
+  'GET /api/nintendo/game': async (req, res, q) => {
+    const e = findEntry(q.get('id') || '');
+    if (!e) return json(res, 404, { error: 'Entrée inconnue' });
+    try { json(res, 200, { game: await nintendo.gameFor(e) }); }
+    catch (err) { json(res, 502, { error: err.message }); }
+  },
+  'GET /api/nintendo/search': async (req, res, q) => {
+    const e = findEntry(q.get('id') || '');
+    try { json(res, 200, await nintendoLib.search(q.get('term') || '', e && e.system)); }
+    catch (err) { json(res, 502, { error: err.message }); }
+  },
+  'GET /api/nintendo/assets': async (req, res, q) => {
+    const e = findEntry(q.get('id') || '');
+    if (!e) return json(res, 404, { error: 'Entrée inconnue' });
+    try { json(res, 200, await nintendo.assets(await nintendo.gameFor(e), q.get('kind'))); }
+    catch (err) { json(res, 502, { error: err.message }); }
+  },
+  'POST /api/nintendo/match': async (req, res) => {
+    const b = await readBody(req);
+    if (!findEntry(String(b.id || ''))) return json(res, 404, { error: 'Entrée inconnue' });
+    nintendo.setMatch(String(b.id), b.game || null);
+    for (const f of fs.readdirSync(ARTCACHE)) if (f.startsWith(`nin_${safeId(b.id)}_`)) fs.rmSync(path.join(ARTCACHE, f), { force: true });
+    version++;
+    json(res, 200, { ok: true });
+  },
   'POST /api/art/choose': async (req, res) => {
     const b = await readBody(req);
     if (!ART_KINDS.includes(b.kind) || !findEntry(String(b.id || ''))) return json(res, 400, { error: 'Requête invalide' });
     try {
-      const img = await sgdb.download(String(b.url || ''));
+      const url = String(b.url || '');
+      const img = nintendoLib.isNintendoUrl(url) ? await nintendoLib.download(url) : await sgdb.download(url);
       const dir = path.join(ART, safeId(b.id));
       fs.mkdirSync(dir, { recursive: true });
       for (const f of fs.readdirSync(dir)) if (f.startsWith(b.kind + '.')) fs.rmSync(path.join(dir, f), { force: true });
@@ -1457,7 +1591,7 @@ const routes = {
     const game = sgdbCache[e.id];
     if (game) sgdb.forget(game.id);
     if (!b.keepMatch) { delete sgdbCache[e.id]; writeJson(FILES.sgdb, sgdbCache); }
-    const prefixes = [`sgdb_${safeId(e.id)}_`, ...(steamId ? [`${steamId}_`] : [])];
+    const prefixes = [`sgdb_${safeId(e.id)}_`, `nin_${safeId(e.id)}_`, ...(steamId ? [`${steamId}_`] : [])];
     for (const f of fs.readdirSync(ARTCACHE)) if (prefixes.some(p => f.startsWith(p))) fs.rmSync(path.join(ARTCACHE, f), { force: true });
     const st = state();
     st.artRev = { ...(st.artRev || {}), [e.id]: ((st.artRev || {})[e.id] || 1) + 1 };
@@ -2001,22 +2135,6 @@ const routes = {
         .map(g => ({ id: g.id, name: g.name, size: g.sizeOnDisk })),
     })));
   },
-  'GET /api/media': (req, res) => {
-    const all = allEntries(false);
-    const names = new Map(all.games.filter(g => g.steamAppId).map(g => [String(g.steamAppId), g.name]));
-    json(res, 200, sys.listMedia(all.steamUserdata).map(m => ({
-      url: '/mediafile?path=' + encodeURIComponent(m.path), kind: m.kind, date: m.date, size: m.size,
-      source: m.label, game: m.appid ? names.get(m.appid) || null : null, name: m.name,
-    })));
-  },
-  // Supprime des captures (corbeille Windows). Les adresses /mediafile?path=… de la liste sont acceptées.
-  'POST /api/media/delete': async (req, res) => {
-    const b = await readBody(req);
-    const urls = Array.isArray(b.urls) ? b.urls.slice(0, 500) : [];
-    const files = urls.map(u => { try { return new URL(String(u), 'http://localhost').searchParams.get('path') || ''; } catch { return ''; } });
-    const done = await sys.deleteMedia(files, allEntries(false).steamUserdata);
-    json(res, 200, { deleted: done.length, failed: urls.length - done.length });
-  },
 };
 
 http.createServer(async (req, res) => {
@@ -2049,11 +2167,6 @@ http.createServer(async (req, res) => {
       const v = str(config()[p === '/bootvideo' ? 'bootVideo' : 'bootSound']);
       if (!v || !isFile(v)) { res.writeHead(404); return res.end(); }
       return sendFile(res, v, req);
-    }
-    if (p === '/mediafile') {
-      const f = url.searchParams.get('path') || '';
-      if (!sys.isMediaPath(f, allEntries(false).steamUserdata)) { res.writeHead(404); return res.end(); }
-      return sendFile(res, f, req);
     }
     const file = path.join(UI, p === '/' ? 'index.html' : p);
     if (!file.startsWith(UI)) { res.writeHead(403); return res.end(); }

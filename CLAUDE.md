@@ -4,6 +4,35 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.23.0 : écran noir de Sonic & Knuckles, accueil Émulation, Switch 2 (updates, visuels Nintendo, mods, Lichii modifié), Médias retiré, notifications
+
+- **Sonic & Knuckles, écran noir sur l’Ally** : la cause est reproduite sur le PC. Avant la 4.16, le zip (« (Lock-on).bin » + « .md ») lançait la puce seule. RetroArch enregistrait alors une reprise noire de 1,7 Ko sous le même nom que le vrai jeu (« Sonic & Knuckles (World).state.auto »), puis la rechargeait dans le vrai jeu (`zip#….md`).
+  - Correctif `staleResume(e, args)` dans `prepareRom` : la commande RetroArch (cœur + contenu) est retenue dans `data/emu-ra/<id>.sig`. Si elle change, ou au premier lancement d’un fichier pris dans un zip (`#`), `forgetResume(e, { backup: true })` renomme la reprise en `.state.auto.bak` (et `.bak.png`), sans la supprimer.
+  - Pièges de test :
+    - les commandes réseau SCREENSHOT/QUIT étaient ignorées pour S&K alors que le jeu tournait (fausse piste « RetroArch figé ») ; `--max-frames=N --max-frames-ss --max-frames-ss-path=…` est fiable ;
+    - un test avec seulement `savestate_auto_load = false` a écrasé la reprise Sonic 2 de l’utilisateur : il faut aussi `savestate_auto_save = "false"`.
+- **Accueil Émulation** : Consoles, Bibliothèque (`l:`, 60 jeux + « Tout voir »), Favoris, Ajoutés récemment, Reprendre, Options.
+- **Switch 2** : consigne de l’utilisateur, « TOUJOURS le dossier updates ». `dirGameInner` prend pour switch2 la mise à jour la plus récente qui a `exefs/main`, sans contrôle du romfs. La Switch 1 garde le contrôle à 90 %.
+- **Visuels Nintendo** (`host/lib/nintendo-art.js`) :
+  - recherche du site européen (`searching.nintendo-europe.com/fr/select`, `fq=type:GAME`) : image carrée `image_url_sq_s` (jaquette, icône), 16/9 `image_url_h16x9_s` (fond, bannière), captures lues dans la page du jeu (30 jours) ;
+  - images d’origine = nom sans `_image500w`. Quand l’original manque (Final Fantasy Resonance), repli sur 1600/1280/950/500 ;
+  - association gardée dans `emu-cache/nintendo-games.json` ; nouvelle recherche si le nom change ou après 3 jours sans résultat ; un choix à la main reste ;
+  - automatique en dernier recours dans `resolveArt` (`nin_<id>_<kind>`), après SteamGridDB. Le sélecteur a une source « Nintendo » (Y), par défaut pour la Switch 2 ;
+  - Nlib (`api.nlib.cc`) ne connaît aucun jeu Switch 2 (04…).
+- **Mods** (`host/lib/emu-mods.js`) :
+  - identifiant du jeu lu dans le nom `[16 hex]` ou dans `main.npdm` (ACI0 + 0x10) ;
+  - le dossier est lu dans `Data%20Storage/load_directory` de qt-config. **La config de Lichii, reprise d’Eglantine, pointe nand/sdmc/load vers `Émulateurs\eglantine\user`** : ne jamais supprimer ce dossier ;
+  - routes `/api/emu/mods` (+ `/add`, `/remove`, `/open`), onglet « Mods » pour switch/switch2, `pickFile('zip')`.
+- **Lichii modifié** (`lichiimod`, CATALOG `local: true`, `base: 'lichii'`) :
+  - `installLocal` copie Lichii (sans user ni kanemode.json), pose l’exe de l’archive par-dessus et crée une jonction `user` → `lichii\user` ;
+  - jamais de mise à jour en ligne ; proposé dans Réglages → Émulateur une fois installé (nom = étiquette du zip) ; dialogue dans Gérer.
+- **Vérifié sur le PC** :
+  - Lichii-Frizti-v3 installé, Zelda (choisi en `lichiimod` dans la config réelle) démarre ;
+  - le mod Dynamic-fps (`Applying IPS patch from mod "Dynamic-fps"`) remplace le correctif intégré équivalent, sans double correction.
+- **Médias retiré** : page, menu, visionneuse, styles, `/api/media*`, `/mediafile`, captures dans system.js.
+- **Notifications** : « Historique (n) » avec « Tout effacer » en tête ; Y efface tout dans l’onglet Notifications, toast « Notifications effacées ».
+- **Non vérifié** : sur l’Ally (S&K corrigé, rendu), Splatoon Raiders (pas encore installé).
+
 ## Version 4.22.0 : jeux Switch en dossier lancés depuis leur mise à jour fusionnée
 
 - Signalé : Pokopia (Switch 2) ne démarre pas. Journal Lichii : `FindLooseRomFS: Base RomFS is absent and the update RomFS belongs to a different build … Load the update's exefs instead of the base one`, puis arrêt net à 1,9 s. Le dump a `base/exefs` (36 Mo, build D4E6…) sans `base/romfs`, et `updates/655360/{exefs,romfs}` (6,8 Go, build 76A4…).
