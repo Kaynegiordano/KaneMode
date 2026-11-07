@@ -68,6 +68,9 @@
  "« Super Nintendo », « PlayStation 2 »… un dossier par console est déjà prêt": [
   "ui/js/pages/emulation.js"
  ],
+ "{a} : aucune compilation Windows disponible": [
+  "host/lib/emu-store.js"
+ ],
  "{a} : aucune version publiée": [
   "host/lib/emu-store.js"
  ],
@@ -1054,6 +1057,9 @@
   "ui/js/pages/settings.js"
  ],
  "Automatique (format du jeu)": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Automatique (KaneMode)": [
   "ui/js/pages/emulation.js"
  ],
  "Automatique (langue de Windows)": [
@@ -2637,6 +2643,9 @@
  "KaneMode ne répond pas": [
   "ui/js/core.js"
  ],
+ "KaneMode ne touche plus à l’image ni aux performances : ce que vous réglez dans l’émulateur (Ouvrir … seul) reste.": [
+  "ui/js/pages/emulation.js"
+ ],
  "KaneMode se ferme, s’installe et se relance tout seul (environ 30 secondes)": [
   "ui/js/pages/settings.js"
  ],
@@ -2651,6 +2660,9 @@
  ],
  "L’écran s’éteint en fondu ; au réveil, KaneMode revient là où vous étiez": [
   "ui/js/pages/settings.js"
+ ],
+ "l’émulateur": [
+  "ui/js/pages/game.js"
  ],
  "L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.": [
   "ui/js/pages/game.js"
@@ -2921,6 +2933,9 @@
  ],
  "Manettes reconnectées": [
   "ui/js/main.js"
+ ],
+ "Manuel (rien d’imposé)": [
+  "ui/js/pages/emulation.js"
  ],
  "Masqué (visible dans l’onglet « Masqués »)": [
   "ui/js/pages/game.js"
@@ -3343,6 +3358,9 @@
  "Ouverture dans {label}…": [
   "ui/js/deals.js"
  ],
+ "Ouverture de {emulator}…": [
+  "ui/js/pages/game.js"
+ ],
  "Ouverture de {name}…": [
   "ui/js/pages/game.js"
  ],
@@ -3391,6 +3409,12 @@
  ],
  "Ouvrir {a}": [
   "ui/js/pages/settings.js"
+ ],
+ "Ouvrir {e}": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Ouvrir {e} seul": [
+  "ui/js/pages/emulation.js"
  ],
  "Ouvrir {name}": [
   "ui/js/pages/game.js"
@@ -3645,6 +3669,12 @@
  ],
  "Préférer les visuels officiels Steam": [
   "ui/js/pages/settings.js"
+ ],
+ "Préréglage": [
+  "ui/js/pages/emulation.js"
+ ],
+ "Preset IA": [
+  "ui/js/pages/emulation.js"
  ],
  "Prime Video": [
   "ui/js/pages/add.js"
@@ -3934,8 +3964,14 @@
  "Réglages audio Windows": [
   "ui/js/dolby-settings.js"
  ],
+ "Réglages choisis pour cette machine (PC à carte dédiée ou ROG Ally X) et, pour les jeux connus, pour le jeu.": [
+  "ui/js/pages/emulation.js"
+ ],
  "Réglages d’énergie": [
   "ui/js/statusbar.js"
+ ],
+ "Réglages de KaneMode selon la machine, réappliqués à chaque lancement.": [
+  "ui/js/pages/emulation.js"
  ],
  "Réglages de la console": [
   "ui/js/pages/emulation.js"
@@ -4165,6 +4201,9 @@
  ],
  "Sans jaquette choisie, KaneMode cherche un visuel sur la boutique Steam pour les jeux, puis génère une jaquette à partir de l’icône du programme.": [
   "ui/js/pages/add.js"
+ ],
+ "Sans lancer le jeu : réglages, ou lancement à la main": [
+  "ui/js/pages/emulation.js"
  ],
  "Sans nom": [
   "ui/js/pages/add.js"

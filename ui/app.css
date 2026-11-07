@@ -1330,6 +1330,9 @@ body.emu-world #bg::after { background: linear-gradient(180deg, rgba(10, 14, 22,
 .kg-desc.loading { display: flex; justify-content: center; }
 .kg-desc.focused { background: rgba(255, 255, 255, .05); box-shadow: inset 3px 0 0 var(--c); }
 .kg-note { margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+/* Ce que fait le préréglage Switch, une ligne par point */
+.es-why { margin: -2px 6px 10px 46px; line-height: 1.45; }
+.es-why span { display: block; }
 .kg-panel .es-sets { padding: 0; }
 .kg-panel .es-set { background: rgba(10, 14, 22, .55); }
 .kg-panel .es-set .txt b { font-size: 16px; }

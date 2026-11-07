@@ -4,6 +4,41 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.24.0 : Eden-NS2, émulateur ouvert seul, Preset IA (Switch, Switch 2)
+
+- **Eden-NS2** (`edenns2`, dépôt 0x2593/Eden-NS2, fork d’Eden pour la Switch 2) :
+  - le dépôt ne publie aucune version. Nouvelle source `type: 'actions'` : une vraie version non brouillon passe d’abord ; sinon, dernière compilation réussie du workflow `release-builds.yml` (API publique, sans compte), et artefact `Eden-NS2-windows-x86_64` téléchargé sans compte par `https://nightly.link/<repo>/actions/runs/<id>/<artefact>.zip`. Version affichée = « date + commit ». Le lien nightly.link par branche répond 404 (workflow lancé à la main) : il faut l’URL par numéro de compilation ;
+  - l’artefact contient un second zip (`Eden-NS2-0.0-windows-x86_64.zip`) : `install` décompresse une seconde fois quand l’exécutable n’est pas trouvé ;
+  - même exécutable `eden.exe` que l’Eden de la Switch ; EMULATORS `dirs: []` (installé par KaneMode seulement) ;
+  - énumérations identiques à Lichii, mais pas de `nvidia_dlss` : le Preset IA ne le mentionne pas pour Eden-NS2 ;
+  - profil posé une fois (`ens2-1`) :
+    - conseils du README : Vulkan, `memory_layout_mode=4` (12 Go), multicœur ;
+    - français (Europe), shaders asynchrones ;
+    - **`nand_directory`, `sdmc_directory` et `load_directory` repris de la config de Lichii** (aujourd’hui `Émulateurs\eglantine\user\…`) : même profil (abea02fe…), sauvegarde Donkey Kong et mods partagés ;
+  - vérifié sur le PC : installé par le magasin (2026-10-31 b643743), Donkey Kong démarre (environ 45 s au premier lancement) et ouvre la sauvegarde partagée. Donkey Kong est choisi en `edenns2` dans la config réelle.
+- **Émulateur ouvert seul** :
+  - `/api/launch` accepte `emuOnly` pour `EMU_ONLY_SYSTEMS = ['switch', 'switch2']` ; `prepareRom` passe comme d’habitude (réglages, manette, clés), puis les arguments sont vidés ;
+  - pas de `recordPlay` ni de temps de jeu ; garde de double lancement séparée (`id:emu`) ;
+  - interface :
+    - page du jeu : « Ouvrir … seul » ;
+    - barre de la console : « Ouvrir <émulateur> », un bouton par émulateur utilisé ;
+    - écran de lancement au nom de l’émulateur.
+- **`emulatorId` manquait dans les entrées envoyées à l’interface** : le bouton « Recommencer du début » de RetroArch (4.20) ne pouvait jamais s’afficher. Corrigé dans `publicEntry`.
+- **Preset IA** (`host/lib/emu-presets.js`, réglage `preset` : `auto` / `ia` / `manual`, par jeu ou par console) :
+  - `switchConfig` écrit `iaPreset(...)` (`ia`), rien (`manual`), ou `lichiiVideo` / `switchVideo` (`auto`) ;
+  - `/api/emu/settings` renvoie le résumé du preset pour la machine, affiché sous la ligne ;
+  - le réglage « Qualité » n’apparaît qu’en `auto` ;
+  - valeurs (sources : énumérations de Lichii, guide wichforks du 30 oct. au 7 nov.) :
+    - Switch 2, RTX : mode TV, 1x, SMAA, VRAM généreuse, DLSS (Lichii) ;
+    - Switch 2, Ally : mode portable, 1x ou moins avec FSR, sans anticrénelage, VRAM prudente ;
+    - Switch 2, partout : génération d’images coupée ;
+    - Switch 1 (Eden) : 2x réduit et anisotropie 16x sur RTX, 1x + FSR sur l’Ally ;
+    - Donkey Kong `040074A01BF12000` : 30 i/s (vitesse liée aux images), Accurate sur PC, 0,5x sur l’Ally ;
+    - Pokopia `0400A3A01EE4C000` : 60 i/s ;
+    - Zelda OoT `0400486024DEC000` : 60 sur PC, 30 sur l’Ally ;
+    - Splatoon Raiders `0400380020056000` : 60 sur PC, 30 sur l’Ally en 0,75x.
+  - Non vérifié en jeu.
+
 ## Version 4.23.0 : écran noir de Sonic & Knuckles, accueil Émulation, Switch 2 (updates, visuels Nintendo, mods, Lichii modifié), Médias retiré, notifications
 
 - **Sonic & Knuckles, écran noir sur l’Ally** : la cause est reproduite sur le PC. Avant la 4.16, le zip (« (Lock-on).bin » + « .md ») lançait la puce seule. RetroArch enregistrait alors une reprise noire de 1,7 Ko sous le même nom que le vrai jeu (« Sonic & Knuckles (World).state.auto »), puis la rechargeait dans le vrai jeu (`zip#….md`).

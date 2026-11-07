@@ -137,7 +137,7 @@ native.on(m => {
   }
 });
 
-/** opts.fresh : jeu d'émulateur repris du début, sans la sauvegarde automatique. */
+/** opts.fresh : jeu d'émulateur repris du début, sans la sauvegarde automatique. opts.emuOnly : son émulateur ouvert seul (Switch). */
 export async function launch(g, opts = {}) {
   if (g.demo) return toast(t('Entrée de démonstration : il n’y a rien à lancer'), { error: true });
   if (!g.installed && g.canInstall === false) return toast(t('Ce connecteur ne propose pas l’installation de ce jeu sur Windows'), { error: true });
@@ -156,17 +156,18 @@ export async function launch(g, opts = {}) {
   wallpapers.delete(g.id); // un autre fond la prochaine fois
   L.dataset.game = g.id;
   const title = $('#launch-title');
-  title.innerHTML = `<h2>${esc(g.name)}</h2>`;
-  if (g.art.logo) {
+  title.innerHTML = `<h2>${esc(opts.emuOnly ? g.emulator || g.name : g.name)}</h2>`;
+  if (g.art.logo && !opts.emuOnly) {
     const img = new Image();
     img.onload = () => title.replaceChildren(img);
     img.src = g.art.logo;
   }
   const status = $('#launch-status');
   // Jeu d'émulateur : la façon de revenir ici est dite avant que le jeu ne prenne l'écran
-  $('#launch-hint').innerHTML = g.source === 'rom' ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 1 seconde. 3 secondes : quitter complètement, le jeu repartira du début.') : '';
+  $('#launch-hint').innerHTML = g.source === 'rom' && !opts.emuOnly ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 1 seconde. 3 secondes : quitter complètement, le jeu repartira du début.') : '';
   status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
     : !g.installed ? t('Ouverture de {store} pour installer {name}…', { store: sourceOf(g.source).label, name: g.name })
+    : opts.emuOnly ? t('Ouverture de {emulator}…', { emulator: g.emulator || t('l’émulateur') })
     : g.emulator ? t('Lancement de {name} avec {emulator}…', { name: g.name, emulator: g.emulator }) : t('Lancement de {name}…', { name: g.name });
   const layer = openLayer({
     el: L, name: 'launch', noGlobal: true, hints: () => [['b', t('Fermer')]],
@@ -180,14 +181,14 @@ export async function launch(g, opts = {}) {
   let waitForGame = false;
   try {
     native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
-    let r = await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
+    let r = await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
     // Premier jeu d'une console : son émulateur s'installe ici, puis le jeu démarre
     if (r.needsEmulator) {
       status.textContent = t('Installation de {name}…', { name: r.needsEmulator.name });
       const error = await installEmulator(r.needsEmulator.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
       g = lib.byId(g.id) || g;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     // Jeu dans une archive que l'émulateur ne lit pas : décompressé une fois, puis lancé
@@ -195,7 +196,7 @@ export async function launch(g, opts = {}) {
       status.textContent = t('Décompression de {name}…', { name: g.name });
       const error = await extractGame(g.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     if (r.needsBios) {

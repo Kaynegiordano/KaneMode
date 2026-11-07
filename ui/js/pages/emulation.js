@@ -80,9 +80,12 @@ const metaCache = new Map();
 const FILTERS = () => [['none', t('Aucun (pixels d’origine)')], ['crt', t('Écran CRT (télé d’époque)')], ['scanlines', t('Lignes de balayage')], ['lcd', t('Écran LCD (portables)')], ['smooth', t('Lissé')], ['sharp', t('Net, sans scintillement')]];
 const ASPECTS = () => [['auto', t('Automatique (format du jeu)')], ['4:3', '4:3'], ['16:9', '16:9'], ['full', t('Plein écran (étiré)')]];
 const QUALITIES = () => [['auto', t('Adaptée à l’écran')], ['native', t('D’origine (plus léger)')]];
+// Switch, Switch 2 : qui règle l'émulateur avant le lancement
+const PRESETS = () => [['auto', t('Automatique (KaneMode)')], ['ia', t('Preset IA')], ['manual', t('Manuel (rien d’imposé)')]];
+const PRESET_EMUS = ['eden', 'lichii', 'lichiimod', 'edenns2'];
 const WIDES = () => [['on', t('Oui')], ['off', t('Non')]];
 const ASPECT_EMUS = ['retroarch', 'duckstation', 'pcsx2'];
-const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii', 'lichiimod'];
+const QUALITY_EMUS = ['duckstation', 'pcsx2', 'dolphin', 'ppsspp', 'azahar', 'eden', 'lichii', 'lichiimod', 'edenns2'];
 const WIDE_EMUS = ['duckstation', 'pcsx2', 'dolphin'];
 const label = (list, v) => (list.find(([k]) => k === v) || [])[1];
 
@@ -301,6 +304,13 @@ definePage('emulation', {
       chips.append(nav(el('div', 'kw-filter' + (this.filter === k ? ' on' : ''), esc(l)), () => { this.filter = k; this.draw('filter:' + k); }, 'filter:' + k));
     }
     if (!VIRTUAL[s.id]) chips.append(nav(el('div', 'kw-filter icon', `${icon('i-gear')}<span>${t('Réglages')}</span>`), () => this.openSettings('system', s.id), 'sys-settings'));
+    // Switch, Switch 2 : chaque émulateur de la console s'ouvre seul (Lichii, Lichii modifié, Eden),
+    // par le premier jeu qui l'utilise (mêmes réglages et manette, suivi par KaneMode)
+    if (hasMods({ system: s.id })) {
+      const byEmu = new Map();
+      for (const g of all) if (g.emulatorId && g.emulator && !byEmu.has(g.emulatorId)) byEmu.set(g.emulatorId, g);
+      for (const [emuId, g] of byEmu) chips.append(nav(el('div', 'kw-filter icon', `${icon('i-open')}<span>${esc(t('Ouvrir {e}', { e: g.emulator }))}</span>`), () => launch(g, { emuOnly: true }), 'emu-open:' + emuId));
+    }
     bar.append(chips);
     root.append(bar);
     const body = el('div', 'kw-body');
@@ -494,6 +504,8 @@ definePage('emulation', {
       acts.append(big('primary', 'i-play', t('Jouer'), g.lastPlayed && g.emulatorId === 'retroarch' ? t('Reprend là où vous vous étiez arrêté') : '', () => this.play(), 'g-play'));
       // Reprise automatique de RetroArch : on peut aussi repartir de zéro
       if (g.emulatorId === 'retroarch' && g.lastPlayed) acts.append(big('', 'i-restart', t('Recommencer du début'), t('Sans reprendre la dernière partie'), () => this.play({ fresh: true }), 'g-fresh'));
+      // Switch, Switch 2 : l'émulateur seul, pour le régler ou lancer le jeu à la main (File → Load folder)
+      if (hasMods(g) && g.emulator) acts.append(big('', 'i-open', t('Ouvrir {e} seul', { e: esc(g.emulator) }), t('Sans lancer le jeu : réglages, ou lancement à la main'), () => this.play({ emuOnly: true }), 'g-emu'));
       acts.append(big(favs.has(g.id) ? 'on' : '', 'i-star', favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), '', () => this.toggleFav(), 'g-fav'));
       panel.replaceChildren(acts);
       const desc = el('div', 'kg-desc' + (m ? '' : ' loading'), m ? (m.description ? `<p>${esc(m.description)}</p>${m.descriptionUrl ? `<small>${t('Source : Wikipédia')}</small>` : ''}` : `<p class="muted">${t('Pas de description trouvée pour ce jeu.')}</p>`) : '<i class="spinner"></i>');
@@ -610,7 +622,7 @@ definePage('emulation', {
     const defEmu = (ctx.scope === 'game' && !base.emulator && g.emulatorId) || (sys.emus[0] || {}).id;
     const d = r.defaults || {};
     const inherited = { emulator: base.emulator || defEmu, core: base.core || sys.cores[0], filter: base.filter || d.filter || 'none', aspect: base.aspect || d.aspect || 'auto',
-      quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off' };
+      quality: base.quality || d.quality || 'auto', wide: base.wide || d.wide || 'off', preset: base.preset || d.preset || 'auto' };
     const value = k => (own[k] !== undefined ? own[k] : inherited[k]);
     const emuId = value('emulator');
     const options = {
@@ -620,13 +632,16 @@ definePage('emulation', {
       aspect: ASPECTS(),
       quality: QUALITIES(),
       wide: WIDES(),
+      preset: PRESETS(),
     };
     ctx.state = { sysId, own, options, inherited };
     const kinds = [];
     if (sys.emus.length > 1) kinds.push(['emulator', t('Émulateur'), 'i-gamepad']);
     if (emuId === 'retroarch' && sys.cores.length > 1) kinds.push(['core', t('Cœur RetroArch'), 'i-cpu']);
     if (emuId === 'retroarch') kinds.push(['filter', t('Filtre d’image'), 'i-palette']);
-    if (QUALITY_EMUS.includes(emuId) || (emuId === 'retroarch' && sysId === 'n64')) kinds.push(['quality', t('Qualité de l’image'), 'i-image']);
+    if (PRESET_EMUS.includes(emuId)) kinds.push(['preset', t('Préréglage'), 'i-cpu']);
+    // Qualité : seulement quand KaneMode règle lui-même l'image (le Preset IA la choisit, Manuel n'y touche pas)
+    if ((QUALITY_EMUS.includes(emuId) && (!PRESET_EMUS.includes(emuId) || value('preset') === 'auto')) || (emuId === 'retroarch' && sysId === 'n64')) kinds.push(['quality', t('Qualité de l’image'), 'i-image']);
     if (WIDE_EMUS.includes(emuId)) kinds.push(['wide', t('Écran large (16:9)'), 'i-desktop']);
     if (ASPECT_EMUS.includes(emuId) && value('wide') !== 'on') kinds.push(['aspect', t('Format de l’image'), 'i-desktop']);
     const p = ctx.box;
@@ -645,10 +660,18 @@ definePage('emulation', {
       row.querySelector('.prev').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(ctx, k, -1); });
       row.querySelector('.next').addEventListener('click', e => { e.stopPropagation(); this.changeSetting(ctx, k, 1); });
       list.append(nav(row, () => this.changeSetting(ctx, k, 1), 'set:' + k));
+      // Ce que fait le préréglage choisi, sous sa ligne
+      if (k === 'preset') {
+        const why = v === 'ia' && r.ia ? r.ia.summary.map(x => `<span>${esc(x)}</span>`).join('')
+          : v === 'ia' ? esc(t('Réglages choisis pour cette machine (PC à carte dédiée ou ROG Ally X) et, pour les jeux connus, pour le jeu.'))
+            : v === 'manual' ? esc(t('KaneMode ne touche plus à l’image ni aux performances : ce que vous réglez dans l’émulateur (Ouvrir … seul) reste.'))
+              : esc(t('Réglages de KaneMode selon la machine, réappliqués à chaque lancement.'));
+        list.append(el('p', 'kg-note es-why', why));
+      }
     }
     if (Object.keys(own).length) {
       list.append(nav(el('div', 'es-row', `${icon('i-refresh')}<span>${ctx.scope === 'game' ? t('Revenir aux réglages de la console') : t('Revenir aux réglages par défaut')}</span>`), async () => {
-        await this.saveSetting(ctx, { emulator: null, core: null, filter: null, aspect: null, quality: null, wide: null });
+        await this.saveSetting(ctx, { emulator: null, core: null, filter: null, aspect: null, quality: null, wide: null, preset: null });
         await this.drawSettings(ctx);
       }, 'set-reset'));
     }

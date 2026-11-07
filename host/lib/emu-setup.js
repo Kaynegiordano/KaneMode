@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const pads = require('./emu-pads');
+const { iaPreset } = require('./emu-presets');
 
 const TAR = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 
@@ -218,6 +219,8 @@ const SETUP = {
   lichii(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'lichii'); },
   // Version modifiée (Lichii-Frizti…) : dossier user partagé avec Lichii (jonction), mêmes réglages
   lichiimod(dir, c) { SETUP.lichii(dir, c); },
+  // Eden-NS2 : clés de la Switch 2, mêmes énumérations que Lichii ; sauvegardes et mods de Lichii
+  edenns2(dir, c) { switchFiles(dir, path.join(c.bios, 'Switch 2')); switchConfig(dir, c, 'edenns2'); },
   rpcs3(dir, c) { pads.rpcs3Pad(dir, c.pads); },
   cemu(dir, c) { pads.cemuPad(dir, c.pads); },
   // melonDS : réglages à côté de l'exécutable (dossier portable), manette n° 0
@@ -278,6 +281,30 @@ function lichiiProfile() {
   };
 }
 
+// Eden-NS2 : réglages conseillés par son README (Vulkan, mémoire de 12 Go, processeur multicœur),
+// français (Europe), shaders asynchrones et caches ; posés une fois. Ses dossiers de données (nand :
+// sauvegardes et profils, sdmc, load : mods) pointent vers ceux de Lichii : la partie et les mods
+// suivent d'un émulateur à l'autre (Donkey Kong commencé dans Lichii continue dans Eden-NS2).
+const ENS2_PROFILE = 'ens2-1';
+function edenNs2Profile(dir) {
+  const lichiiDir = path.join(path.dirname(dir), 'lichii');
+  const lichiiCfg = read(path.join(lichiiDir, 'user', 'config', 'qt-config.ini'));
+  const storage = {};
+  for (const k of ['nand_directory', 'sdmc_directory', 'load_directory']) {
+    const v = (pads.iniValue(lichiiCfg, 'Data%20Storage', k) || '').trim();
+    const own = path.join(lichiiDir, 'user', k.replace('_directory', ''));
+    const target = v && path.isAbsolute(v) ? v : fs.existsSync(own) ? own.split(path.sep).join('/') : null;
+    if (target) storage[k] = target;
+  }
+  return {
+    Core: qt({ use_multi_core: 'true', memory_layout_mode: 4 }),
+    Renderer: qt({ backend: 1, use_vsync: 1, use_asynchronous_shaders: 'true', use_disk_shader_cache: 'true', use_vulkan_driver_pipeline_cache: 'true', accelerate_astc: 1, nvdec_emulation: 2 }),
+    System: qt({ language_index: 2, region_index: 2 }),
+    ...(Object.keys(storage).length ? { 'Data%20Storage': qt(storage) } : {}),
+  };
+}
+const PROFILES = { lichii: { mark: LICHII_PROFILE, make: () => lichiiProfile() }, edenns2: { mark: ENS2_PROFILE, make: dir => edenNs2Profile(dir) } };
+
 // Lichii, selon la machine, à chaque lancement : mode TV, filtre bilinéaire (le tuto) et DLSS NVIDIA à la
 // place du DLSS des jeux sur carte dédiée ; sur puce intégrée (ROG Ally) mode portable, 1x et FSR pour
 // agrandir à l'écran, l'upscaler des jeux restant AMD FSR 3.1 (le DLSS NVIDIA demande une GeForce RTX).
@@ -296,17 +323,22 @@ function switchConfig(dir, c = {}, variant = 'eden') {
   const file = path.join(dir, 'user', 'config', 'qt-config.ini');
   const pad = pads.yuzuPad(file, c.pads);
   const mark = path.join(dir, 'user', 'config', 'kanemode-profile.txt');
-  const fresh = variant === 'lichii' && read(mark).trim() !== LICHII_PROFILE;
+  const profile = PROFILES[variant];
+  const fresh = !!profile && read(mark).trim() !== profile.mark;
   const sections = [
     pad || {},
     { UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }), Miscellaneous: qt({ first_launch: 'false' }) },
-    fresh ? lichiiProfile() : {},
-    variant === 'lichii' ? lichiiVideo(c) : switchVideo(c),
+    fresh ? profile.make(dir) : {},
+    // Préréglage du jeu : « auto » (réglages de KaneMode selon la machine), « ia » (emu-presets.js),
+    // « manual » (rien d'imposé : ce qui est réglé dans l'émulateur reste)
+    c.preset === 'manual' ? {}
+      : c.preset === 'ia' ? Object.fromEntries(Object.entries(iaPreset({ ...c, variant }).sections).map(([k, v]) => [k, qt(v)]))
+        : variant === 'eden' ? switchVideo(c) : lichiiVideo(c),
   ];
   const all = {};
   for (const s of sections) for (const [k, v] of Object.entries(s)) all[k] = { ...(all[k] || {}), ...v };
   mergeIni(file, all, { sep: '=' });
-  if (fresh) fs.writeFileSync(mark, LICHII_PROFILE + '\n');
+  if (fresh) fs.writeFileSync(mark, profile.mark + '\n');
 }
 
 /** Prépare l'émulateur avant un lancement ; une erreur n'empêche jamais de jouer. */

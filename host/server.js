@@ -15,6 +15,7 @@ const emuSetup = require('./lib/emu-setup');
 const emuMetaLib = require('./lib/emu-meta');
 const nintendoLib = require('./lib/nintendo-art');
 const emuMods = require('./lib/emu-mods');
+const emuPresets = require('./lib/emu-presets');
 const sys = require('./lib/system');
 const device = require('./lib/device');
 const kaneplay = require('./lib/kaneplay');
@@ -308,7 +309,7 @@ function publicEntry(g, st, cfg) {
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
-    emulator: g.emulator || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null, added: g.added || 0,
+    emulator: g.emulator || null, emulatorId: g.emulatorId || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null, added: g.added || 0,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
     art,
@@ -870,13 +871,15 @@ function ensureEmuHome() {
 // Réglages de l'émulation choisis par l'utilisateur : par console, puis par jeu (le jeu l'emporte)
 const EMU_SETTING_KEYS = { emulator: v => typeof v === 'string' && /^[\w-]+$/.test(v), core: v => typeof v === 'string' && /^[\w-]+$/.test(v),
   filter: v => ['none', 'crt', 'scanlines', 'lcd', 'smooth', 'sharp'].includes(v), aspect: v => ['auto', '4:3', '16:9', 'full'].includes(v),
-  quality: v => ['auto', 'native'].includes(v), wide: v => ['on', 'off'].includes(v) };
+  quality: v => ['auto', 'native'].includes(v), wide: v => ['on', 'off'].includes(v),
+  // Jeux Switch et Switch 2 : réglages de KaneMode (auto), Preset IA, ou rien d'imposé (manual)
+  preset: v => ['auto', 'ia', 'manual'].includes(v) };
 const emuSettings = () => ({ systems: {}, games: {}, ...(config().emuSettings || {}) });
 // Réglages par défaut d'une console : écran d'époque pour les consoles de salon 2D, écran LCD pour
 // les portables, image agrandie à la taille de l'écran, écran large quand il est sans défaut (PS2)
 const CRT_SYSTEMS = ['nes', 'snes', 'megadrive', 'mastersystem', 'pcengine', 'neogeo', 'arcade', 'atari2600', 'segacd'];
 const LCD_SYSTEMS = ['gb', 'gbc', 'gba', 'gamegear'];
-const emuDefaults = sys => ({ filter: CRT_SYSTEMS.includes(sys) ? 'crt' : LCD_SYSTEMS.includes(sys) ? 'lcd' : 'none', aspect: 'auto', quality: 'auto', wide: sys === 'ps2' ? 'on' : 'off' });
+const emuDefaults = sys => ({ filter: CRT_SYSTEMS.includes(sys) ? 'crt' : LCD_SYSTEMS.includes(sys) ? 'lcd' : 'none', aspect: 'auto', quality: 'auto', wide: sys === 'ps2' ? 'on' : 'off', preset: 'auto' });
 const emuEffective = (sys, id) => { const s = emuSettings(); return { ...emuDefaults(sys), ...(s.systems[sys] || {}), ...(s.games[id] || {}) }; };
 // Écran et carte graphique : la résolution interne des émulateurs 3D en dépend (relevé au démarrage)
 const emuDisplay = { screenH: 1080, tier: 'low' };
@@ -980,7 +983,7 @@ async function prepareRom(e, { fresh = false } = {}) {
   }
   const set = emuEffective(e.system, e.id);
   const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', pads: padList, ...emuDisplay });
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: padList, ...emuDisplay });
   if (id === 'retroarch') {
     staleResume(e, launch.args);
     launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
@@ -1040,7 +1043,9 @@ function forgetResume(e, { backup = false } = {}) {
 }
 // Manettes XInput branchées (host/xinput.ps1), relues au plus toutes les 15 s : les émulateurs qui
 // ne prennent pas la manette tout seuls la reçoivent avant le lancement (emu-pads.js)
-const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'azahar', 'rpcs3', 'cemu', 'melonds'];
+const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'edenns2', 'azahar', 'rpcs3', 'cemu', 'melonds'];
+// Consoles dont l'émulateur peut s'ouvrir seul depuis la page d'un jeu (bouton « Ouvrir … seul »)
+const EMU_ONLY_SYSTEMS = ['switch', 'switch2'];
 const padCache = { at: 0, list: [] };
 async function xinputPads() {
   if (Date.now() - padCache.at < 15e3) return padCache.list;
@@ -1399,7 +1404,11 @@ const routes = {
   // Réglages d'un jeu ou d'une console ; une valeur null revient au réglage de la console / par défaut
   'GET /api/emu/settings': (req, res, q) => {
     const s = emuSettings();
-    json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {}, defaults: emuDefaults(q.get('system')) });
+    // Jeu Switch : ce que le Preset IA choisit sur cette machine, pour l'afficher
+    const e = q.get('id') ? findEntry(q.get('id')) : null;
+    const ia = e && e.source === 'rom' && EMU_ONLY_SYSTEMS.includes(e.system)
+      ? emuPresets.iaPreset({ variant: e.system === 'switch' ? 'eden' : e.emulatorId === 'edenns2' ? 'edenns2' : 'lichii', titleId: emuMods.titleIdOf(e.romPath), ...emuDisplay }) : null;
+    json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {}, defaults: emuDefaults(q.get('system')), ia: ia && { summary: ia.summary, game: ia.game } });
   },
   'POST /api/emu/settings': async (req, res) => {
     const b = await readBody(req);
@@ -1698,13 +1707,16 @@ const routes = {
       if (c) return json(res, 200, { ok: false, needsEmulator: { id: e.installEmu, name: c.name, size: c.size } });
       return json(res, 200, { ok: false, error: `Aucun émulateur trouvé pour ${e.systemName}` });
     }
+    // emuOnly : l'émulateur du jeu (Eden, Lichii…) ouvert seul, pour régler ou lancer à la main
+    // (File → Load folder). Mêmes réglages et manette, suivi par KaneMode, pas de temps de jeu compté.
+    const emuOnly = !!b.emuOnly && e.source === 'rom' && EMU_ONLY_SYSTEMS.includes(e.system);
     if (e.source === 'rom' && !b.dry) {
       const prep = await prepareRom(e, { fresh: !!b.fresh });
       if (prep.blocked) return json(res, 200, prep.blocked);
-      e = { ...e, launch: prep.launch };
+      e = { ...e, launch: emuOnly ? { ...prep.launch, args: '' } : prep.launch };
     }
     if (!b.dry && e.installed !== false && !id.startsWith('launcher:')) {
-      const last = recentLaunch.get(id);
+      const last = recentLaunch.get(emuOnly ? id + ':emu' : id);
       if (last && Date.now() - last < LAUNCH_GUARD) {
         console.log(`Lancement ignoré, déjà demandé il y a ${Math.round((Date.now() - last) / 1000)} s : ${e.name}`);
         return json(res, 200, { ok: true, already: true });
@@ -1714,15 +1726,15 @@ const routes = {
         return json(res, 200, { ok: true, running: true });
       }
     }
-    console.log(`Lancement : ${e.name} (${id})`);
+    console.log(emuOnly ? `Lancement : ${e.emulator || 'émulateur'} seul (depuis ${e.name})` : `Lancement : ${e.name} (${id})`);
     // Jeu Steam et Steam fermé : il démarre d'abord sans sa fenêtre (en mode Xbox, elle passait devant le jeu)
     if (!b.dry && /^steam:\/\/rungameid\//i.test(str(e.launch && e.launch.target))) await startSteamSilently();
     // Jeu d'un PC hôte : le lancement ne dure qu'un instant (la commande passe à l'écran de streaming)
     const r = e.launch?.kind === 'account'
       ? b.dry ? { ok: true, dry: true, mode: e.installed === false ? 'install' : 'start' }
         : await accounts.action(e.bridge.id, e.installed === false ? 'install' : 'start')
-      : await run(e.launch, { dry: !!b.dry, onExit: m => e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
-    if (r.ok && !b.dry && e.installed !== false) { recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(id, Date.now()); }
+      : await run(e.launch, { dry: !!b.dry, onExit: m => !emuOnly && e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
+    if (r.ok && !b.dry && e.installed !== false) { if (!emuOnly) recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(emuOnly ? id + ':emu' : id, Date.now()); }
     if (r.ok && !b.dry && e.installed !== false) Promise.resolve(autoHdr.started({ ...e, type: hdrType(e) })).catch(err => console.error('HDR automatique :', err.message));
     // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
     const gm = (config().gameModes || {})[id];
