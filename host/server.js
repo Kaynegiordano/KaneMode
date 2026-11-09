@@ -853,6 +853,24 @@ const emuStore = emuStoreLib.create({
  * Mods intégrés (emu-mods.js, BUILTIN) posés dans le dossier des mods de cet émulateur pour les
  * consoles qu'il fait tourner : installation, mise à jour, arrivée dans Émulation, lancement d'un jeu.
  */
+/**
+ * Mod Dynamic FPS (intégré) présent et actif pour ce jeu Switch 2 chez l'émulateur qui le lance :
+ * le Preset IA libère alors les images (Donkey Kong Bananza n'est plus bloqué à 30 i/s).
+ */
+function dynamicFpsActive(e, emuId) {
+  try {
+    if (!e || e.system !== 'switch2') return false;
+    const tid = emuMods.titleIdOf(e.romPath);
+    const mod = tid && emuMods.BUILTIN.find(b => b.dynamicFps && b.tid === tid);
+    const sys = emu.SYSTEMS.find(s => s.id === e.system);
+    const m = mod && (emuStore.installed(emuId || e.emulatorId || sys.emus[0]) || emuStore.installed(sys.emus[0]));
+    if (!m) return false;
+    const dir = path.dirname(m.exe);
+    let qt = '';
+    try { qt = fs.readFileSync(path.join(dir, 'user', 'config', 'qt-config.ini'), 'utf8'); } catch { /* pas encore de config */ }
+    return emuPresets.modActive(qt, emuMods.modsDir(dir, tid), tid, mod.folder);
+  } catch { return false; }
+}
 async function builtinMods(id) {
   const m = emuStore.installed(id);
   const systems = emu.SYSTEMS.filter(s => (s.emus || []).includes(id)).map(s => s.id);
@@ -941,9 +959,12 @@ function detectDisplay() {
         const h = Math.max(0, ...list.map(v => +v.CurrentVerticalResolution || 0));
         // Carte dédiée (GeForce, Radeon RX, Arc) : résolutions plus hautes ; sinon puce intégrée (ROG Ally)
         const high = list.some(v => /nvidia|geforce|rtx|radeon\s*(rx|pro)|\barc\b/i.test(v.Name || ''));
-        Object.assign(emuDisplay, { screenH: h || 1080, tier: high ? 'high' : 'low', gpu: list.map(v => v.Name).join(', ') });
+        // Processeur et mémoire (Preset IA : profil de la machine qui lance le jeu)
+        const cpus = os.cpus();
+        Object.assign(emuDisplay, { screenH: h || 1080, tier: high ? 'high' : 'low', gpu: list.map(v => v.Name).join(', '),
+          cpu: ((cpus[0] || {}).model || '').trim(), threads: cpus.length, ram: Math.round(os.totalmem() / 2 ** 30) });
         writeJson(cache, emuDisplay);
-        console.log(`Émulation : écran ${emuDisplay.screenH} lignes, carte ${emuDisplay.gpu} (${emuDisplay.tier === 'high' ? 'dédiée' : 'intégrée'})`);
+        console.log(`Émulation : écran ${emuDisplay.screenH} lignes, carte ${emuDisplay.gpu} (${emuDisplay.tier === 'high' ? 'dédiée' : 'intégrée'}), ${emuDisplay.cpu} (${emuDisplay.threads} fils), ${emuDisplay.ram} Go`);
       } catch { /* relevé illisible : valeurs précédentes */ }
     });
 }
@@ -1033,7 +1054,7 @@ async function prepareRom(e, { fresh = false } = {}) {
   if (isSwitchRom(e)) await Promise.race([builtinMods(id), new Promise(r => setTimeout(r, 8000))]).catch(() => {});
   const set = emuEffective(e.system, e.id);
   const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: padList, ...emuDisplay });
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: padList, ...emuDisplay, dynamicFps: dynamicFpsActive(e, id) });
   if (id === 'retroarch') {
     staleResume(e, launch.args);
     launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
@@ -1457,7 +1478,7 @@ const routes = {
     // Jeu Switch : ce que le Preset IA choisit sur cette machine, pour l'afficher
     const e = q.get('id') ? findEntry(q.get('id')) : null;
     const ia = e && e.source === 'rom' && EMU_ONLY_SYSTEMS.includes(e.system)
-      ? emuPresets.iaPreset({ variant: e.system === 'switch' ? 'eden' : 'lichii', titleId: emuMods.titleIdOf(e.romPath), ...emuDisplay }) : null;
+      ? emuPresets.iaPreset({ variant: e.system === 'switch' ? 'eden' : 'lichii', titleId: emuMods.titleIdOf(e.romPath), ...emuDisplay, dynamicFps: dynamicFpsActive(e) }) : null;
     json(res, 200, { system: s.systems[q.get('system')] || {}, game: s.games[q.get('id')] || {}, defaults: emuDefaults(q.get('system')), ia: ia && { summary: ia.summary, game: ia.game } });
   },
   'POST /api/emu/settings': async (req, res) => {

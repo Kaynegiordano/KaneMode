@@ -517,6 +517,37 @@ test('Preset IA Switch / Switch 2 : selon la machine et le jeu', () => {
   setup.prepare('lichii', dir, { bios: dir, saves: dir, tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', screenH: 1440, preset: 'ia', titleId: '040074A01BF12000' });
   assert.match(qt(), /^frame_pacing_mode=1$/m);
   assert.match(qt(), /^frame_gen=false$/m);
+  assert.match(qt(), /^precache_shaders=2$/m, 'shaders compilés au chargement');
+});
+
+test('Preset IA 4.27 : profil de la machine (très haut de gamme / dédiée / portable), Donkey Kong libre avec Dynamic FPS actif', () => {
+  const { iaPreset, machineClass, modActive } = require('../host/lib/emu-presets');
+  const pc = { variant: 'lichii', tier: 'high', gpu: 'NVIDIA GeForce RTX 5080', cpu: 'AMD Ryzen 7 9800X3D 8-Core Processor', threads: 8, ram: 32, screenH: 1440 };
+  assert.equal(machineClass(pc), 'ultra');
+  assert.equal(machineClass({ ...pc, gpu: 'NVIDIA GeForce RTX 4070 Ti SUPER' }), 'ultra');
+  assert.equal(machineClass({ ...pc, gpu: 'NVIDIA GeForce RTX 3060' }), 'high');
+  assert.equal(machineClass({ tier: 'low', gpu: 'AMD Radeon(TM) 780M Graphics' }), 'handheld');
+  // Jeu inconnu sur une très grosse carte : 1,5x sans anticrénelage ; carte moyenne : 1x SMAA
+  assert.equal(iaPreset(pc).sections.Renderer.resolution_setup, 5);
+  assert.equal(iaPreset(pc).sections.Renderer.anti_aliasing, 0);
+  assert.equal(iaPreset({ ...pc, gpu: 'NVIDIA GeForce RTX 3060' }).sections.Renderer.resolution_setup, 3);
+  assert.equal(iaPreset({ ...pc, titleId: '0400486024DEC000' }).sections.Renderer.resolution_setup, 6, 'Zelda OoT (limité par le processeur) : 2x');
+  assert.match(iaPreset(pc).summary[0], /RTX 5080 · Ryzen 7 9800X3D · 32 Go/);
+  // Donkey Kong : 30 i/s sans le mod, images libres avec, sur le PC comme sur l'Ally
+  const dk = { titleId: '040074A01BF12000' };
+  assert.equal(iaPreset({ ...pc, ...dk }).sections.Renderer.frame_pacing_mode, 1);
+  assert.equal(iaPreset({ ...pc, ...dk, dynamicFps: true }).sections.Renderer.frame_pacing_mode, 0);
+  assert.equal(iaPreset({ variant: 'lichii', tier: 'low', gpu: 'AMD Radeon(TM) 780M', ...dk, dynamicFps: true }).sections.Renderer.frame_pacing_mode, 0);
+  assert.match(iaPreset({ ...pc, ...dk, dynamicFps: true }).summary.join(' '), /Dynamic FPS actif/);
+  // Mod actif : dossier présent et pas désactivé dans l'émulateur ([DisabledAddOns], identifiant en décimal)
+  const mods = tmp();
+  fs.mkdirSync(path.join(mods, 'DK Bananza Dynamic FPS'));
+  const cfg = ['[DisabledAddOns]', 'size=1', '1\\title_id\\default=false', '1\\title_id=288358607164088320', '1\\disabled\\size=0'].join('\n');
+  assert.equal(modActive(cfg, mods, '040074A01BF12000', 'DK Bananza Dynamic FPS'), true);
+  const off = cfg.replace('1\\disabled\\size=0', '1\\disabled\\size=1\n1\\disabled\\1\\d=DK Bananza Dynamic FPS');
+  assert.notEqual(off, cfg);
+  assert.equal(modActive(off, mods, '040074A01BF12000', 'DK Bananza Dynamic FPS'), false, 'désactivé dans l’émulateur');
+  assert.equal(modActive(cfg, path.join(mods, 'absent'), '040074A01BF12000', 'DK Bananza Dynamic FPS'), false, 'dossier retiré');
 });
 
 test('Switch et Switch 2 « D’origine » (par défaut) : réglages d’image et de performance de l’émulateur ; mods, dossiers et manette gardés', () => {

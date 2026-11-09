@@ -2878,6 +2878,9 @@
  "Lissé": [
   "ui/js/pages/emulation.js"
  ],
+ "Liste des empreintes SHA-256 illisible ({a}) : réessayez dans quelques minutes": [
+  "host/lib/update.js"
+ ],
  "Logiciel {a} absent · ouvre la page d’assistance officielle": [
   "ui/js/pages/settings.js"
  ],
@@ -4491,7 +4494,7 @@
  "Téléchargement du visuel…": [
   "ui/js/pages/artpicker.js"
  ],
- "Téléchargement impossible ({a})": [
+ "Téléchargement impossible ({a}) : réessayez dans quelques minutes": [
   "host/lib/update.js"
  ],
  "Téléchargement refusé (HTTP {a})": [

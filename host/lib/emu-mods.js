@@ -130,6 +130,8 @@ const BUILTIN = [
     api: 'https://api.github.com/repos/ZendNevs/DynamicFPS.-DonkeyKong-Bananza-/releases/assets/696200886',
     source: 'https://github.com/ZendNevs/Dynamic-FPS-mods-v1.1---Mario-Kart-World-Donkey-Kong-Bananza',
     folder: 'DK Bananza Dynamic FPS',
+    // Le Preset IA libère les images quand ce mod est actif (emu-presets.js, GAMES[…].dfps)
+    dynamicFps: true,
   },
 ];
 const MARK = 'kanemode-mods.json';

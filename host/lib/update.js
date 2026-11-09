@@ -57,14 +57,37 @@ async function check(root, channel = 'stable') {
     latest: top ? {
       version: top.tag_name.replace(/^v/, ''), name: top.name || top.tag_name, notes: (top.body || '').slice(0, 4000),
       date: top.published_at, prerelease: !!top.prerelease, url: top.html_url,
-      msix: pkg ? { name: pkg.name, url: pkg.browser_download_url, size: pkg.size } : null,
+      // api : même fichier servi par l'API de GitHub (secours quand github.com répond 502/504)
+      msix: pkg ? { name: pkg.name, url: pkg.browser_download_url, api: pkg.url, size: pkg.size } : null,
       sums: (asset(top, /^SHA256SUMS(\.txt)?$/i) || {}).browser_download_url || null,
+      sumsApi: (asset(top, /^SHA256SUMS(\.txt)?$/i) || {}).url || null,
     } : null,
   };
 }
 
 // ---------------------------------------------------------------- téléchargement
-const isGitHub = u => { try { const h = new URL(u).hostname; return h === 'github.com' || h.endsWith('.githubusercontent.com'); } catch { return false; } };
+const isGitHub = u => { try { const h = new URL(u).hostname; return h === 'github.com' || h === 'api.github.com' || h.endsWith('.githubusercontent.com'); } catch { return false; } };
+
+/**
+ * Fichier d'une version : adresse directe de github.com, puis l'API de GitHub (même fichier), avec
+ * de nouveaux essais. Le 9 nov. 2026, github.com répondait 504 pendant que l'API servait les fichiers :
+ * la page d'erreur était lue comme SHA256SUMS et la mise à jour refusée.
+ */
+async function fetchAsset(direct, api, { timeout = 0, wait = 1500 } = {}) {
+  const tries = [direct, api, direct, api].filter(u => u && isGitHub(u));
+  let last = 'GitHub injoignable (connexion Internet ?)';
+  for (let i = 0; i < tries.length; i++) {
+    if (i) await new Promise(r => setTimeout(r, wait * i));
+    const viaApi = new URL(tries[i]).hostname === 'api.github.com';
+    try {
+      const r = await fetch(tries[i], { headers: { 'User-Agent': 'KaneMode', ...(viaApi ? { Accept: 'application/octet-stream' } : {}) }, ...(timeout ? { signal: AbortSignal.timeout(timeout) } : {}) });
+      if (r.ok && r.body) return r;
+      last = `GitHub a répondu ${r.status}`;
+      if (r.body) r.body.cancel().catch(() => {});
+    } catch (e) { last = e.name === 'TimeoutError' ? 'GitHub ne répond plus' : 'GitHub injoignable (connexion Internet ?)'; }
+  }
+  throw new Error(last);
+}
 
 function job() {
   const state = { phase: 'idle', received: 0, total: 0, error: null, file: null, version: null };
@@ -77,15 +100,18 @@ function job() {
       if (!latest.sums || !isGitHub(latest.sums)) throw new Error('Empreinte SHA-256 absente : mise à jour refusée');
       Object.assign(state, { phase: 'downloading', received: 0, total: latest.msix.size || 0, error: null, file: null, version: latest.version });
       try {
-        const sums = await (await fetch(latest.sums, { headers: HEADERS, signal: AbortSignal.timeout(20000) })).text();
+        let sums;
+        try { sums = await (await fetchAsset(latest.sums, latest.sumsApi, { timeout: 20000 })).text(); }
+        catch (e) { throw new Error(`Liste des empreintes SHA-256 illisible (${e.message}) : réessayez dans quelques minutes`); }
         const line = sums.split(/\r?\n/).find(l => l.toLowerCase().includes(latest.msix.name.toLowerCase()));
         const expected = line && (line.match(/\b[a-f0-9]{64}\b/i) || [])[0];
         if (!expected) throw new Error('Empreinte du paquet absente de SHA256SUMS');
         const dir = path.join(os.tmpdir(), 'KaneMode-update');
         fs.mkdirSync(dir, { recursive: true });
         const file = path.join(dir, path.basename(latest.msix.name));
-        const r = await fetch(latest.msix.url, { headers: { 'User-Agent': 'KaneMode' } });
-        if (!r.ok || !r.body) throw new Error(`Téléchargement impossible (${r.status})`);
+        let r;
+        try { r = await fetchAsset(latest.msix.url, latest.msix.api); }
+        catch (e) { throw new Error(`Téléchargement impossible (${e.message}) : réessayez dans quelques minutes`); }
         const hash = crypto.createHash('sha256');
         const length = Number(r.headers.get('content-length'));
         if (Number.isSafeInteger(length) && length > 0 && !r.headers.get('content-encoding')) state.total = length;
@@ -130,4 +156,4 @@ function apply(file, hostDir) {
   });
 }
 
-module.exports = { check, current, job, apply, newer, PAGE, REPO };
+module.exports = { check, current, job, apply, newer, fetchAsset, PAGE, REPO };

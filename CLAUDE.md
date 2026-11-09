@@ -4,6 +4,16 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.27.0 : mises à jour robustes aux erreurs de GitHub, Preset IA par profil de machine
+
+- **Mise à jour de KaneMode** (`host/lib/update.js`, `fetchAsset`) : le 9 nov. 2026 la 4.26.0 ne s’installait pas (l’utilisateur l’a téléchargée à la main). Cause : github.com/…/releases/download répondait 504 ; la réponse de SHA256SUMS n’était pas vérifiée (`r.ok`), la page d’erreur ne contenait pas l’empreinte → « Empreinte du paquet absente de SHA256SUMS ». Maintenant : adresse directe puis `api.github.com/repos/…/releases/assets/<id>` (`Accept: application/octet-stream`, champs `msix.api` et `sumsApi` de `check`), quatre essais espacés, messages clairs ; empreinte toujours exigée. Testé avec le vrai paquet 4.26.0 et l’adresse directe cassée exprès : 143 Mo par l’API en 34 s, empreinte bonne.
+- **Preset IA** (`emu-presets.js`) :
+  - `machineClass` : `ultra` (RTX x070 Ti / x080 / x090 des séries 40 et 50, RX 7900 / 9070), `high` (autre carte dédiée), `handheld` (puce intégrée) ; `detectDisplay` relève aussi `cpu`, `threads`, `ram` (`os.cpus`, `os.totalmem`, sans PowerShell de plus) ; première ligne du résumé « Machine : … » ;
+  - `ultra` : jeu inconnu en 1,5x, `GAMES[…].ultra` (Zelda OoT 2x, Splatoon Raiders 1,5x), pas d’anticrénelage au-dessus de 1x ;
+  - `precache_shaders = 2` (Always, sources nx2 `PrecacheShaders` Off/Ask/Always) partout ;
+  - Donkey Kong : `GAMES[…].dfps` (cadence auto) si `dynamicFpsActive` (server.js) : mod intégré `dynamicFps: true` présent dans le dossier des mods de l’émulateur et absent de `[DisabledAddOns]` (`modActive` : entrée du jeu par identifiant décimal, `N\\disabled\\M\\d=<nom>`).
+- Vérifié : 32 tests d’émulation, mod actif détecté sur la vraie config du PC. Pas essayé en jeu ni sur l’Ally.
+
 ## Version 4.26.0 : Select + Start sur toutes les manettes (Pro Controller, Joy-Con, DualSense), mods intégrés (DK Bananza Dynamic FPS)
 
 - **Manettes lues en HID brut** (`HidGamepads`, formats dans `DualShockReports.cs`, `PadKind`) : en plus des XInput (`&IG_`) et de la DualShock 4, la **DualSense** (054C:0CE6, Edge 0DF2), la **Pro Controller** (057E:2009, poignée 200E) et les **Joy-Con** seuls (2006/2007) :

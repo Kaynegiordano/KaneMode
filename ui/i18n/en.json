@@ -1655,6 +1655,8 @@
  "Archive .zip, .7z ou .rar : son dossier exefs, romfs ou cheats est copié": ".zip, .7z or .rar archive: its exefs, romfs or cheats folder is copied",
  "Archive de la version modifiée": "Archive of the modified build",
  "Aucun jeu correspondant sur {b}.": "No matching game on {b}.",
+ "Liste des empreintes SHA-256 illisible ({a}) : réessayez dans quelques minutes": "SHA-256 checksum list unreadable ({a}): try again in a few minutes",
+ "Téléchargement impossible ({a}) : réessayez dans quelques minutes": "Download failed ({a}): try again in a few minutes",
  "dossier « {a} » absent de l’archive": "folder “{a}” missing from the archive",
  "{p} · intégré à KaneMode, sur tous les émulateurs": "{p} · built into KaneMode, on every emulator",
  "Aucun mod pour ce jeu. Ils s’appliquent tout seuls au lancement, avec {e}.": "No mods for this game. They are applied automatically at launch, with {e}.",
