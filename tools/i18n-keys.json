@@ -385,6 +385,9 @@
  "{ok} : simulé dans le prototype (aucune action réelle)": [
   "ui/js/main.js"
  ],
+ "{p} · intégré à KaneMode, sur tous les émulateurs": [
+  "ui/js/pages/emulation.js"
+ ],
  "{refresh} Hz": [
   "ui/js/widget.js"
  ],
@@ -1802,6 +1805,9 @@
  ],
  "Données": [
   "ui/js/pages/settings.js"
+ ],
+ "dossier « {a} » absent de l’archive": [
+  "host/lib/emu-mods.js"
  ],
  "Dossier des jeux": [
   "ui/js/pages/emulation.js"

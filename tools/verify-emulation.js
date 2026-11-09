@@ -585,3 +585,34 @@ test('Eglantine (Switch 2) : version du jour d’abord, mêmes réglages que Lic
   assert.match(qt(), /^nvidia_dlss=true$/m);
   assert.match(qt(), /^cpu_ticks=16000$/m);
 });
+
+test('Mods intégrés : Donkey Kong Bananza Dynamic FPS posé chez chaque émulateur Switch 2, une seule fois, jamais remis après retrait', async () => {
+  const mods = require('../host/lib/emu-mods');
+  const dk = mods.BUILTIN.find(m => m.id === 'dkb-dynamic-fps');
+  assert.equal(dk.tid, '040074A01BF12000');
+  assert.deepEqual(dk.systems, ['switch2']);
+  assert.ok(emu.SYSTEMS.find(s => s.id === 'switch2').emus.every(id => ['lichii', 'eglantine', 'lichiimod'].includes(id)));
+  // Archive déjà dans le cache (aucun accès réseau) : zip fait comme celui de l'auteur, avec un autre mod à côté
+  const root = tmp(), cache = path.join(root, 'cache'), src = path.join(root, 'src', 'Eglantine-DynamicFPS-mods-v1.1');
+  for (const m of [dk.folder, 'MKW Dynamic FPS']) { fs.mkdirSync(path.join(src, m, 'exefs'), { recursive: true }); fs.writeFileSync(path.join(src, m, 'exefs', 'A.ips'), 'PATCHEOF'); }
+  fs.mkdirSync(cache);
+  require('child_process').execFileSync(path.join(process.env.SystemRoot, 'System32', 'tar.exe'), ['-a', '-cf', path.join(cache, `${dk.id}-${dk.version}.zip`), '-C', path.join(root, 'src'), '.']);
+  const emuDir = path.join(root, 'lichii');
+  fs.mkdirSync(path.join(emuDir, 'user', 'config'), { recursive: true });
+  // Dossier des mods réglé ailleurs (Lichii pointe vers celui d'Eglantine) : c'est lui qui reçoit le mod
+  const load = path.join(root, 'eglantine', 'user', 'load');
+  fs.writeFileSync(path.join(emuDir, 'user', 'config', 'qt-config.ini'), `[Data%20Storage]\nload_directory=${load.split(path.sep).join('/')}\n`);
+  assert.deepEqual(await mods.ensureBuiltin(emuDir, ['switch2'], cache), [dk.name]);
+  const dir = path.join(load, dk.tid);
+  assert.ok(fs.existsSync(path.join(dir, dk.folder, 'exefs', 'A.ips')));
+  assert.ok(!fs.existsSync(path.join(dir, 'MKW Dynamic FPS')), 'seul le mod du jeu est posé');
+  assert.deepEqual(mods.list(dir).map(m => m.name), [dk.folder]);
+  assert.ok(mods.builtinOf(dk.folder));
+  assert.deepEqual(await mods.ensureBuiltin(emuDir, ['switch2'], cache), [], 'déjà posé');
+  mods.remove(dir, dk.folder);
+  assert.deepEqual(await mods.ensureBuiltin(emuDir, ['switch2'], cache), [], 'retiré par l’utilisateur : pas remis');
+  assert.deepEqual(await mods.ensureBuiltin(path.join(root, 'eden'), ['switch'], cache), [], 'Switch 1 : rien');
+  const src2 = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.ok(src2.includes('onInstalled: id => builtinMods(id),'), 'après installation ou mise à jour d’un émulateur');
+  assert.ok(src2.includes('if (isSwitchRom(e)) await Promise.race([builtinMods(id)'), 'avant le lancement');
+});

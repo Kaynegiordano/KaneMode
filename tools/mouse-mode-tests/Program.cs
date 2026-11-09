@@ -54,13 +54,13 @@ internal static class Program
         Check(rejected.Count(f => f == Native.LEFT_DOWN) == 1, "Un clic refusé ne fuit pas dans la fenêtre suivante");
         retry.Step(0, 0, 0, 3030, 8, true); retry.Step(0x1000, 0, 0, 3040, 8, true);
         Check(rejected.Count(f => f == Native.LEFT_DOWN) == 2, "Un nouvel appui peut réessayer après un refus");
-        Check(DualShockReports.TryRead(Usb(), out var neutral) && neutral.Buttons == 0 && neutral.LX == 0, "DualShock USB neutre");
-        Check(DualShockReports.TryRead(Usb(0x28, 0x20), out var ds4) && ds4.Buttons == 0x1010, "DualShock : Croix et Options");
+        Check(DualShockReports.TryRead(PadKind.DualShock4, false, Usb(), out var neutral) && neutral.Buttons == 0 && neutral.LX == 0, "DualShock USB neutre");
+        Check(DualShockReports.TryRead(PadKind.DualShock4, false, Usb(0x28, 0x20), out var ds4) && ds4.Buttons == 0x1010, "DualShock : Croix et Options");
         var bt = new byte[78]; bt[0] = 0x11; Usb(0x58, 0x13).AsSpan(1).CopyTo(bt.AsSpan(3));
-        Check(DualShockReports.TryRead(bt, out var wireless) && wireless.Buttons == 0x6320, "DualShock Bluetooth : boutons et épaules");
+        Check(DualShockReports.TryRead(PadKind.DualShock4, true, bt, out var wireless) && wireless.Buttons == 0x6320, "DualShock Bluetooth : boutons et épaules");
         var axes = Usb(); axes[1] = 0; axes[2] = 0; axes[3] = 255; axes[4] = 255; axes[8] = 255;
-        Check(DualShockReports.TryRead(axes, out var limits) && limits.LX == -32767 && limits.LY == 32767 && limits.RX == 32767 && limits.RY == -32767 && limits.LT == 255, "DualShock : axes, inversion Y et gâchette");
-        Check(!DualShockReports.TryRead(new byte[] { 1, 128 }, out _) && !DualShockReports.Device(0x054c, 0x0ce6), "Rapport tronqué et disposition inconnue refusés");
+        Check(DualShockReports.TryRead(PadKind.DualShock4, false, axes, out var limits) && limits.LX == -32767 && limits.LY == 32767 && limits.RX == 32767 && limits.RY == -32767 && limits.LT == 255, "DualShock : axes, inversion Y et gâchette");
+        Check(!DualShockReports.TryRead(PadKind.DualShock4, false, new byte[] { 1, 128 }, out _) && DualShockReports.Kind(0x054c, 0x0ce6) == PadKind.DualSense && DualShockReports.Kind(0x057e, 0x2009) == PadKind.Nintendo && DualShockReports.Kind(0x1234, 0x5678) == PadKind.XInput, "Rapport tronqué refusé, manettes reconnues par modèle");
         // Le lecteur réel reçoit un relais simulé ; aucune manette ni entrée Windows réelle utilisée.
         XInputPads.Focus focus = XInputPads.Focus.Ours; using var pads = new XInputPads(() => focus);
         pads.SetMouseMode(true, "test"); Native.Events.Clear();
@@ -85,7 +85,7 @@ internal static class Program
         // Régression : une manette native connectée mais muette ne doit pas éliminer les axes reçus.
         var hid = (HidGamepads)typeof(XInputPads).GetField("_hid", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(pads)!;
         var connected = (bool[])typeof(HidGamepads).GetField("Connected", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
-        var sony = (bool[])typeof(HidGamepads).GetField("_sony", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
+        var kinds = (PadKind[])typeof(HidGamepads).GetField("_kind", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
         var states = (HidGamepads.XState[])typeof(HidGamepads).GetField("States", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(hid)!;
         var navigation = typeof(XInputPads).GetMethod("NavigationJson", BindingFlags.NonPublic | BindingFlags.Instance)!;
         connected[0] = true; states[0] = new HidGamepads.XState { Buttons = 0x1000, LX = 32767, LT = 255 };
@@ -99,7 +99,7 @@ internal static class Program
         states[0] = default; connected[0] = false;
         foreach (var source in new[] { "Xbox 360 Controller (XInput STANDARD GAMEPAD)", "DualShock 4 (054c:09cc)" })
         {
-            connected[0] = true; sony[0] = source.StartsWith("DualShock"); Native.Events.Clear();
+            connected[0] = true; kinds[0] = source.StartsWith("DualShock") ? PadKind.DualShock4 : PadKind.XInput; Native.Events.Clear();
             tick = Environment.TickCount64; pads.SetUiPad(0x1000, 1, 0, 0, 0, source);
             read.Invoke(pads, new object[] { tick }); step.Invoke(pads, new object[] { tick, 8.0 });
             Check(Native.Events.Any(e => e.Flags == Native.MOUSE_MOVE), "La source native muette ne bloque pas les axes de " + source);

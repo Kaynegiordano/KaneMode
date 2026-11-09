@@ -4,6 +4,22 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.26.0 : Select + Start sur toutes les manettes (Pro Controller, Joy-Con, DualSense), mods intégrés (DK Bananza Dynamic FPS)
+
+- **Manettes lues en HID brut** (`HidGamepads`, formats dans `DualShockReports.cs`, `PadKind`) : en plus des XInput (`&IG_`) et de la DualShock 4, la **DualSense** (054C:0CE6, Edge 0DF2), la **Pro Controller** (057E:2009, poignée 200E) et les **Joy-Con** seuls (2006/2007) :
+  - lecture seule, rien n’est envoyé : l’émulateur (SDL HIDAPI), Steam ou WebView2 règlent la manette, chaque format est décodé. Nintendo : rapport complet 0x30–0x33 (boutons octets 3/4/5, sticks 12 bits) et simple 0x3F du Bluetooth (boutons 16 bits, chapeau, sticks 16 bits). DualSense : USB 0x01 et Bluetooth 0x31 au format complet, Bluetooth 0x01 au format DualShock 4 (chemin `{00001124-` = Bluetooth) ;
+  - disposition XInput par position (B Nintendo = A, A Nintendo = B ; − = View, + = Menu, Home = Guide). Sticks Nintendo sans calibrage d’usine : zone morte 0,22 puis pleine course (centre mesuré 2253/1833 sur une Pro) ;
+  - `CheckQuit` : − sur un Joy-Con gauche et + sur un droit comptent ensemble (`JoyConSlot`) ;
+  - Pro Controller en USB : elle n’envoie rien tant que personne n’a fait la poignée de main USB (Steam, WebView2 ou l’émulateur la font). Bluetooth : rapport simple dès la connexion ;
+  - bancs : `tools/pad-reports-tests` (13 formats ; `live` lit les vraies manettes 8 s), `tools/mouse-mode-tests` adapté.
+- **Mods intégrés** (`emu-mods.js`, `BUILTIN`, `ensureBuiltin`) : posés dans le dossier des mods (`modsDir`, donc `load_directory` de l’émulateur) de chaque émulateur de la console :
+  - quand : fin d’installation ou de mise à jour (`emuStore.create({ onInstalled })`), arrivée dans Émulation (`/api/emu/autoupdate`, tous les émulateurs) et `prepareRom` d’un jeu Switch (8 s au plus) ;
+  - repère `load/<titre>/kanemode-mods.json` (`{ id: version }`) : réinstallé seulement pour une nouvelle version ; retiré dans l’onglet Mods, il ne revient pas ; désactivé dans l’émulateur (`[DisabledAddOns]`), il le reste ;
+  - archive gardée dans `<Émulation>\Cache\Mods\<id>-<version>.zip` ; adresse directe de GitHub puis, si elle échoue, `api` (asset par l’API, `Accept: application/octet-stream`) : le 9 nov. 2026 l’adresse directe répondait 504 pendant que l’API servait le fichier. `download` d’`emu-store` exporté, avec en-têtes ;
+  - onglet Mods : `builtin: true` → « intégré à KaneMode, sur tous les émulateurs ».
+  - `dkb-dynamic-fps` : Donkey Kong Bananza (040074A01BF12000), dossier « DK Bananza Dynamic FPS » de `Pokedinner-Eglantine-DynamicFPS-mods-v1.1.zip` (ZendNevs/DynamicFPS.-DonkeyKong-Bananza-, v1.1 ; page donnée par l’utilisateur : ZendNevs/Dynamic-FPS-mods-v1.1---Mario-Kart-World-Donkey-Kong-Bananza, README seul). Correctif `.ips` de l’identifiant de build E25C90C1… = mise à jour 458752.
+- Vérifié sur le PC : mod posé dans `eglantine\user\load\040074A01BF12000` (dossier commun à Lichii, Lichii modifié et Eglantine), même build que le dump du jeu ; onglet Mods capturé ; Pro Controller USB lue en direct (71 rapports/s, zéro au repos). Pas essayé : appui réel sur − et +, Bluetooth, DualSense, Joy-Con, partie de Donkey Kong avec le mod, Ally.
+
 ## Version 4.25.0 : réglages d’origine (Switch, Switch 2), Eglantine de retour, Eden-NS2 retiré
 
 - **Préréglage `origin`, nouveau défaut** (`emuDefaults`, interface `PRESETS`) : valeurs `origin` / `auto` / `ia` ; l’ancienne valeur `manual` vaut `origin` :

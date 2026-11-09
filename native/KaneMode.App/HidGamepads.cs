@@ -9,7 +9,8 @@ namespace KaneMode;
 /// chaque manette XInput : chemin « …&amp;IG_xx »). Contrairement à XInput, cette lecture ne dépend ni
 /// du premier plan ni du mode Xbox : sur la ROG Ally en mode Xbox, XInput ne donnait rien à KaneMode
 /// (Start maintenu pas vu, mode souris sans stick ni boutons, manette perdue après KanePlay).
-/// DualShock 4 : rapports USB/Bluetooth lus directement, sans dépendre de WebView2 en arrière-plan.
+/// DualShock 4, DualSense, Pro Controller et Joy-Con de Nintendo : rapports USB/Bluetooth lus directement
+/// (DualShockReports), sans dépendre de WebView2 en arrière-plan ni de l'émulateur au premier plan.
 /// Chaque manette trouvée est lue sur son propre fil ; son état est rendu au format XInput.
 /// </summary>
 public sealed class HidGamepads : IDisposable
@@ -21,13 +22,15 @@ public sealed class HidGamepads : IDisposable
     private readonly bool[] Connected = new bool[Max];
 
     public struct XState { public ushort Buttons; public short LX, LY, RX, RY; public byte LT, RT; }
-    private readonly bool[] _sony = new bool[Max];
-    public bool SonyConnected { get { lock (_lock) return Enumerable.Range(0, Max).Any(i => _sony[i] && Connected[i]); } }
-    public bool SonySlot(int slot) { lock (_lock) return _sony[slot] && Connected[slot]; }
+    private readonly PadKind[] _kind = new PadKind[Max];
+    public bool SonyConnected { get { lock (_lock) return Enumerable.Range(0, Max).Any(i => DualShockReports.IsSony(_kind[i]) && Connected[i]); } }
+    public bool SonySlot(int slot) { lock (_lock) return DualShockReports.IsSony(_kind[slot]) && Connected[slot]; }
+    /// <summary>Joy-Con seul : − et + sont sur deux manettes (Select + Start se lit sur la paire).</summary>
+    public bool JoyConSlot(int slot) { lock (_lock) return _kind[slot] == PadKind.JoyCon && Connected[slot]; }
     public bool Snapshot(int slot, out XState state) { lock (_lock) { state = States[slot]; return Connected[slot]; } }
 
     // Lecture par Raw Input : décodage identique à celui de ReadLoop, à partir du rapport reçu par le système
-    private sealed record Dev(int Slot, IntPtr Pre, Dictionary<(byte, ushort), ValueRange> Ranges, bool Sony, int Length);
+    private sealed record Dev(int Slot, IntPtr Pre, Dictionary<(byte, ushort), ValueRange> Ranges, PadKind Kind, bool Bluetooth, int Length);
     private readonly Dictionary<string, Dev> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly long[] _rawReports = new long[Max];
     // Tampons réutilisés (sous verrou) : Raw Input apporte des centaines de rapports par seconde
@@ -52,9 +55,9 @@ public sealed class HidGamepads : IDisposable
             }
             else return;
             XState s = States[d.Slot];
-            if (d.Sony)
+            if (d.Kind != PadKind.XInput)
             {
-                if (!DualShockReports.TryRead(report.AsSpan(0, report.Length), out s)) return;
+                if (!DualShockReports.TryRead(d.Kind, d.Bluetooth, report.AsSpan(0, report.Length), out s)) return;
             }
             else
             {
@@ -147,8 +150,9 @@ public sealed class HidGamepads : IDisposable
         var handle = CreateFile(path, 0x80000000 /* GENERIC_READ */, 3 /* FILE_SHARE_READ | FILE_SHARE_WRITE */, IntPtr.Zero, 3 /* OPEN_EXISTING */, 0, IntPtr.Zero);
         if (handle.IsInvalid) { handle.Dispose(); return; }
         var attrs = new HIDD_ATTRIBUTES { Size = Marshal.SizeOf<HIDD_ATTRIBUTES>() };
-        bool sony = HidD_GetAttributes(handle, ref attrs) && DualShockReports.Device(attrs.VendorID, attrs.ProductID);
-        if (!sony && !path.Contains("&ig_", StringComparison.OrdinalIgnoreCase)) { handle.Dispose(); return; }
+        var kind = HidD_GetAttributes(handle, ref attrs) ? DualShockReports.Kind(attrs.VendorID, attrs.ProductID) : PadKind.XInput;
+        bool bluetooth = path.Contains("{00001124-", StringComparison.OrdinalIgnoreCase);
+        if (kind == PadKind.XInput && !path.Contains("&ig_", StringComparison.OrdinalIgnoreCase)) { handle.Dispose(); return; }
         if (!HidD_GetPreparsedData(handle, out IntPtr pre)) { handle.Dispose(); return; }
         HIDP_CAPS caps;
         if (HidP_GetCaps(pre, out caps) != HIDP_STATUS_SUCCESS || caps.UsagePage != 1 || (caps.Usage != 4 && caps.Usage != 5) || caps.InputReportByteLength < 2)
@@ -161,19 +165,19 @@ public sealed class HidGamepads : IDisposable
             slot = Enumerable.Range(0, Max).FirstOrDefault(s => !_open.Values.Any(o => o.Slot == s), -1);
             if (slot < 0) { HidD_FreePreparsedData(pre); handle.Dispose(); return; }
             _open[path] = (slot, handle);
-            _sony[slot] = sony;
+            _kind[slot] = kind;
         }
         var ranges = ValueRanges(pre, caps);
-        lock (_lock) _devices[path] = new Dev(slot, pre, ranges, sony, caps.InputReportByteLength);
-        Log.Write($"Manette HID {slot} ouverte ({path.Split('#').ElementAtOrDefault(1) ?? path})");
+        lock (_lock) _devices[path] = new Dev(slot, pre, ranges, kind, bluetooth, caps.InputReportByteLength);
+        Log.Write($"Manette HID {slot} ouverte : {kind}{(bluetooth ? ", Bluetooth" : "")} ({path.Split('#').ElementAtOrDefault(1) ?? path})");
         // Description du périphérique : permet de vérifier le décodage des axes d'une console donnée
         Log.Write($"Manette HID {slot} : rapport de {caps.InputReportByteLength} octets, valeurs : " +
             string.Join(", ", ranges.Select(kv => $"id{kv.Key.Item1}/0x{kv.Key.Item2:X2}={kv.Value.Min}..{kv.Value.Max} ({kv.Value.Bits} bits)")));
-        var t = new Thread(() => ReadLoop(path, slot, handle, pre, caps.InputReportByteLength, ranges, sony)) { IsBackground = true, Name = "Manette HID " + slot, Priority = ThreadPriority.AboveNormal };
+        var t = new Thread(() => ReadLoop(path, slot, handle, pre, caps.InputReportByteLength, ranges, kind, bluetooth)) { IsBackground = true, Name = "Manette HID " + slot, Priority = ThreadPriority.AboveNormal };
         t.Start();
     }
 
-    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<(byte, ushort), ValueRange> ranges, bool sony)
+    private void ReadLoop(string path, int slot, SafeFileHandle handle, IntPtr pre, int length, Dictionary<(byte, ushort), ValueRange> ranges, PadKind kind, bool bluetooth)
     {
         var report = new byte[length];
         var usages = new ushort[32];
@@ -189,9 +193,9 @@ public sealed class HidGamepads : IDisposable
                 lock (_lock) { _reports[slot]++; _last[slot] = report.AsSpan(0, Math.Min(n, 24)).ToArray(); }
                 if (_reports[slot] <= 2) Log.Write($"Manette HID {slot} : premier rapport reçu ({BitConverter.ToString(report, 0, Math.Min(n, 24))})");
                 Snapshot(slot, out var s);
-                if (sony)
+                if (kind != PadKind.XInput)
                 {
-                    if (!DualShockReports.TryRead(report.AsSpan(0, n), out s)) continue;
+                    if (!DualShockReports.TryRead(kind, bluetooth, report.AsSpan(0, n), out s)) continue;
                 }
                 else
                 {

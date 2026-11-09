@@ -847,7 +847,18 @@ const isSwitchRom = e => e && e.source === 'rom' && (e.system === 'switch' || e.
 const emuStore = emuStoreLib.create({
   home: emuHome,
   isAlly: async () => { try { return /^rog-ally/.test(((await device.info()) || {}).handheld?.id || ''); } catch { return false; } },
+  onInstalled: id => builtinMods(id),
 });
+/**
+ * Mods intégrés (emu-mods.js, BUILTIN) posés dans le dossier des mods de cet émulateur pour les
+ * consoles qu'il fait tourner : installation, mise à jour, arrivée dans Émulation, lancement d'un jeu.
+ */
+async function builtinMods(id) {
+  const m = emuStore.installed(id);
+  const systems = emu.SYSTEMS.filter(s => (s.emus || []).includes(id)).map(s => s.id);
+  if (!m || !systems.some(s => emuMods.BUILTIN.some(b => b.systems.includes(s)))) return [];
+  return emuMods.ensureBuiltin(path.dirname(m.exe), systems, path.join(emuHome(), 'Cache', 'Mods'), t => console.log(t));
+}
 // Émulateurs retirés de KaneMode (Eden-NS2 en 4.25) : leur dossier est effacé s'il a été installé par
 // KaneMode et ne garde ni sauvegarde ni lien (Eden-NS2 rangeait ses sauvegardes et mods chez Lichii)
 const RETIRED_EMUS = ['edenns2'];
@@ -1017,6 +1028,9 @@ async function prepareRom(e, { fresh = false } = {}) {
       catch (err) { return { blocked: { ok: false, error: `Cœur ${path.basename(core, '_libretro.dll')} : ${err.message}` } }; }
     }
   }
+  // Mods intégrés du jeu (Donkey Kong Bananza…) : posés avant le lancement s'ils manquent (petits
+  // fichiers ; hors ligne, le jeu part sans eux)
+  if (isSwitchRom(e)) await Promise.race([builtinMods(id), new Promise(r => setTimeout(r, 8000))]).catch(() => {});
   const set = emuEffective(e.system, e.id);
   const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
   emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: padList, ...emuDisplay });
@@ -1482,6 +1496,8 @@ const routes = {
         try { await emuStore.install(e.id); scanEmulation(); console.log(`Émulation : ${e.name} mis à jour (${e.version} → ${e.latest})`); }
         catch { /* erreur gardée dans la tâche */ }
       }
+      // Mods intégrés des émulateurs déjà à jour (nouveau mod dans une version de KaneMode)
+      for (const id of Object.keys(emuStore.CATALOG)) await builtinMods(id).catch(() => {});
     })();
     json(res, 200, { ok: true, updating: todo.map(e => ({ id: e.id, name: e.name, from: e.version, to: e.latest })) });
   },
@@ -1497,7 +1513,7 @@ const routes = {
   'GET /api/emu/mods': (req, res, q) => {
     const r = modsTarget(q.get('id'));
     if (r.error) return json(res, 400, r);
-    json(res, 200, { titleId: r.tid, dir: r.dir, emulator: r.emulator, mods: emuMods.list(r.dir) });
+    json(res, 200, { titleId: r.tid, dir: r.dir, emulator: r.emulator, mods: emuMods.list(r.dir).map(m => ({ ...m, builtin: !!emuMods.builtinOf(m.name) })) });
   },
   'POST /api/emu/mods/add': async (req, res) => {
     const b = await readBody(req);

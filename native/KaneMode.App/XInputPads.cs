@@ -281,6 +281,13 @@ public sealed class XInputPads : IDisposable
         int slot = -1;
         for (int i = 0; i < SLOTS; i++)
             if (_connected[i] && (_state[i].Pad.Buttons & (BACK | START)) == (BACK | START)) { pad = true; slot = i; break; }
+        // Paire de Joy-Con : − sur le gauche, + sur le droit
+        if (!pad)
+        {
+            ushort joy = 0;
+            for (int k = 0; k < HidGamepads.Max; k++) if (_connected[HID0 + k] && _hid.JoyConSlot(k)) joy |= _state[HID0 + k].Pad.Buttons;
+            if ((joy & (BACK | START)) == (BACK | START)) { pad = true; slot = HID0; }
+        }
         bool key = (GetAsyncKeyState(0x1B) & 0x8000) != 0;
         _quitPadSince = pad ? (_quitPadSince == 0 ? t : _quitPadSince) : 0;
         _quitKeySince = key ? (_quitKeySince == 0 ? t : _quitKeySince) : 0;

@@ -1655,6 +1655,8 @@
  "Archive .zip, .7z ou .rar : son dossier exefs, romfs ou cheats est copié": ".zip, .7z or .rar archive: its exefs, romfs or cheats folder is copied",
  "Archive de la version modifiée": "Archive of the modified build",
  "Aucun jeu correspondant sur {b}.": "No matching game on {b}.",
+ "dossier « {a} » absent de l’archive": "folder “{a}” missing from the archive",
+ "{p} · intégré à KaneMode, sur tous les émulateurs": "{p} · built into KaneMode, on every emulator",
  "Aucun mod pour ce jeu. Ils s’appliquent tout seuls au lancement, avec {e}.": "No mods for this game. They are applied automatically at launch, with {e}.",
  "Aucun mod reconnu : il faut un dossier exefs, romfs ou cheats": "No mod found: an exefs, romfs or cheats folder is needed",
  "Aucun résultat sur {b}": "No results on {b}",

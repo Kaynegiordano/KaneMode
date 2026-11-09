@@ -111,4 +111,88 @@ function remove(dir, name) {
   fs.rmSync(target, { recursive: true, force: true });
 }
 
-module.exports = { titleIdOf, modsDir, list, add, remove, findRoots, PARTS };
+// ---------- Mods intégrés ----------
+// Installés tout seuls dans le dossier des mods de chaque émulateur de la console : à l'installation
+// et à la mise à jour de l'émulateur, à l'arrivée dans Émulation et avant de lancer le jeu. Une fois
+// posé, un mod n'est plus réinstallé que pour une nouvelle version : retiré dans l'onglet Mods, il ne
+// revient pas ; désactivé dans l'émulateur (Propriétés → Modules), il le reste.
+const BUILTIN = [
+  {
+    id: 'dkb-dynamic-fps',
+    name: 'DK Bananza Dynamic FPS',
+    game: 'Donkey Kong Bananza',
+    // Garde la vitesse normale du jeu sous 60 i/s (jusqu'à 20 environ), mise à jour 458752 seulement
+    // (correctif lié à son identifiant de build : ignoré par les autres versions)
+    tid: '040074A01BF12000',
+    systems: ['switch2'],
+    version: '1.1',
+    url: 'https://github.com/ZendNevs/DynamicFPS.-DonkeyKong-Bananza-/releases/download/v1.1/Pokedinner-Eglantine-DynamicFPS-mods-v1.1.zip',
+    api: 'https://api.github.com/repos/ZendNevs/DynamicFPS.-DonkeyKong-Bananza-/releases/assets/696200886',
+    source: 'https://github.com/ZendNevs/Dynamic-FPS-mods-v1.1---Mario-Kart-World-Donkey-Kong-Bananza',
+    folder: 'DK Bananza Dynamic FPS',
+  },
+];
+const MARK = 'kanemode-mods.json';
+const readMark = dir => { try { return JSON.parse(fs.readFileSync(path.join(dir, MARK), 'utf8')) || {}; } catch { return {}; } };
+const inFlight = new Map();
+
+/** Archive d'un mod intégré, gardée dans le cache (une seule fois pour tous les émulateurs). */
+function fetchArchive(mod, cacheDir) {
+  const file = path.join(cacheDir, `${mod.id}-${mod.version}${path.extname(new URL(mod.url).pathname) || '.zip'}`);
+  if (isFile(file)) return Promise.resolve(file);
+  if (inFlight.has(file)) return inFlight.get(file);
+  const p = (async () => {
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const part = file + '.part';
+    const { download } = require('./emu-store');
+    // Second essai par l'API de GitHub : son adresse de téléchargement directe répond parfois 504
+    // pendant des heures alors que l'API sert le même fichier
+    try { await download(mod.url, part, () => {}); }
+    catch (err) {
+      if (!mod.api) { fs.rmSync(part, { force: true }); throw err; }
+      await download(mod.api, part, () => {}, 6, { Accept: 'application/octet-stream' }).catch(e => { fs.rmSync(part, { force: true }); throw e; });
+    }
+    fs.renameSync(part, file);
+    return file;
+  })().finally(() => inFlight.delete(file));
+  inFlight.set(file, p);
+  return p;
+}
+
+/**
+ * Pose les mods intégrés de ces consoles dans le dossier des mods de l'émulateur (emuDir). Renvoie
+ * les noms posés. Hors ligne ou archive introuvable : rien, réessayé à la prochaine occasion.
+ */
+async function ensureBuiltin(emuDir, systems, cacheDir, log = () => {}) {
+  const done = [];
+  for (const mod of BUILTIN.filter(m => m.systems.some(s => systems.includes(s)))) {
+    const dir = modsDir(emuDir, mod.tid);
+    const mark = readMark(dir);
+    if (mark[mod.id] === mod.version) continue;
+    let tmp = null;
+    try {
+      const archive = await fetchArchive(mod, cacheDir);
+      tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kanemode-mod-'));
+      await extract(archive, tmp);
+      const root = findRoots(tmp).find(r => path.basename(r) === mod.folder);
+      if (!root) throw new Error(`dossier « ${mod.folder} » absent de l’archive`);
+      fs.mkdirSync(dir, { recursive: true });
+      const dest = path.join(dir, mod.folder);
+      fs.rmSync(dest, { recursive: true, force: true });
+      fs.cpSync(root, dest, { recursive: true });
+      fs.writeFileSync(path.join(dir, MARK), JSON.stringify({ ...readMark(dir), [mod.id]: mod.version }, null, 2));
+      done.push(mod.name);
+      log(`Mods intégrés : ${mod.name} ${mod.version} installé (${dir})`);
+    } catch (err) {
+      log(`Mods intégrés : ${mod.name} pas installé (${err.message})`);
+    } finally {
+      if (tmp) fs.rm(tmp, { recursive: true, force: true }, () => {});
+    }
+  }
+  return done;
+}
+
+/** Mod intégré de ce dossier (nom), pour l'onglet Mods. */
+const builtinOf = name => BUILTIN.find(m => m.folder === name) || null;
+
+module.exports = { titleIdOf, modsDir, list, add, remove, findRoots, PARTS, BUILTIN, ensureBuiltin, builtinOf };

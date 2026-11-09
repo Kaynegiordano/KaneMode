@@ -531,7 +531,8 @@ definePage('emulation', {
       if (r.error) items.push(el('div', 'notice', esc(r.error)));
       else if (!r.mods.length) items.push(el('div', 'kg-desc', `<p class="muted">${t('Aucun mod pour ce jeu. Ils s’appliquent tout seuls au lancement, avec {e}.', { e: esc(r.emulator) })}</p>`));
       else for (const mod of r.mods) {
-        items.push(big('', 'i-check', esc(mod.name), esc(mod.parts.join(' · ') || t('dossier vide')), () => this.modMenu(g, mod), 'mod:' + mod.name));
+        const parts = esc(mod.parts.join(' · ') || t('dossier vide'));
+        items.push(big('', 'i-check', esc(mod.name), mod.builtin ? t('{p} · intégré à KaneMode, sur tous les émulateurs', { p: parts }) : parts, () => this.modMenu(g, mod), 'mod:' + mod.name));
       }
       panel.replaceChildren(acts, el('div', 'row-title', t('Mods installés <small>{t}</small>', { t: r.titleId ? esc(r.titleId) : '' })), ...items);
     } else if (this.tab === 'art') {

@@ -64,12 +64,12 @@ function get(url, { json = false, headers = {} } = {}, redirects = 6) {
   });
 }
 
-function download(url, file, onProgress, redirects = 6) {
+function download(url, file, onProgress, redirects = 6, headers = {}) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': UA }, timeout: 60000 }, res => {
+    const req = https.get(url, { headers: { 'User-Agent': UA, ...headers }, timeout: 60000 }, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects > 0) {
         res.resume();
-        return resolve(download(new URL(res.headers.location, url).href, file, onProgress, redirects - 1));
+        return resolve(download(new URL(res.headers.location, url).href, file, onProgress, redirects - 1, headers));
       }
       if (res.statusCode !== 200) { res.resume(); return reject(new Error(`Téléchargement refusé (HTTP ${res.statusCode})`)); }
       const total = +res.headers['content-length'] || 0;
@@ -142,7 +142,7 @@ async function latest(id, { ally = false } = {}) {
 }
 
 // ---------- Magasin ----------
-function create({ home, isAlly = async () => false }) {
+function create({ home, isAlly = async () => false, onInstalled = async () => {} }) {
   const root = () => path.join(home(), 'Émulateurs');
   const dirOf = id => path.join(root(), id);
   const metaFile = id => path.join(dirOf(id), 'kanemode.json');
@@ -214,6 +214,8 @@ function create({ home, isAlly = async () => false }) {
         const exe = path.join(dest, path.basename(exeTmp));
         const meta = { id, version: v.version, exe, installed: new Date().toISOString(), source: v.url };
         fs.writeFileSync(metaFile(id), JSON.stringify(meta, null, 2));
+        // Mods intégrés de ses consoles (voir emu-mods.js), avant de rendre la main
+        await onInstalled(id, meta).catch(() => {});
         job.phase = 'done';
         console.log(`Émulation : ${c.name} ${v.version} installé dans ${dest}`);
         onDone && onDone(meta);
@@ -269,6 +271,8 @@ function create({ home, isAlly = async () => false }) {
         const label = path.basename(archive).replace(/\.(zip|7z|rar)$/i, '').replace(/-Windows-x64$/i, '');
         const meta = { id, version: label, label, exe: path.join(dest, path.basename(exeTmp)), installed: new Date().toISOString(), source: archive, base: c.base };
         fs.writeFileSync(metaFile(id), JSON.stringify(meta, null, 2));
+        // Mods intégrés de ses consoles (voir emu-mods.js), avant de rendre la main
+        await onInstalled(id, meta).catch(() => {});
         job.phase = 'done';
         console.log(`Émulation : ${label} installé dans ${dest} (dossier user partagé avec ${c.base})`);
         return meta;
@@ -336,4 +340,4 @@ function create({ home, isAlly = async () => false }) {
   return { CATALOG, installed, emulators, install, installLocal, ensureCore, list, jobs: jobList, dirOf, root, pending };
 }
 
-module.exports = { create, CATALOG, latest };
+module.exports = { create, CATALOG, latest, download };
