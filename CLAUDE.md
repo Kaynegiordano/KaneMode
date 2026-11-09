@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.28.0 : portages PC rangés dans les consoles
+
+- **Raccourci .lnk dans le dossier d’une console** (`host/lib/lnk.js`, lecture du format Shell Link sans PowerShell ; `scanSystemDir` dans `emulation.js`) : cible `.exe` existante → entrée `source: 'rom'` de la console avec `native: true`, `emulatorId: 'native'`, `emulator: 'Portage PC'`, lancement `{ kind: 'exe', target, args, cwd }` du raccourci. Raccourci cassé ou vers autre chose qu’un .exe : ignoré.
+- `server.js` : `prepareRom` rend la commande telle quelle (pas de BIOS, mods, réglages) ; `scanEmulation` ne remplace pas un portage par l’émulateur choisi pour la console ; pas de « Ouvrir … seul » ; `modsTarget` refuse. `trackDir` (dossier de l’exe) suit le jeu comme un émulateur.
+- Interface (`emulation.js`) : ni onglet Réglages, ni Mods, ni puce « Ouvrir <émulateur> » pour `g.native`.
+- Origine : l’utilisateur a construit Zelda Ocarina of Time avec NX2navi (`D:GamesNX2naviocarina.exe`, recompilation, hors de KaneMode) et voulait le jeu dans Switch 2 à la place du .nup. Sur son PC : .nup déplacé dans `D:GamesDumpsSwitch 2` (chemin `dump` du lanceur NX2navi mis à jour), raccourci posé dans « Nintendo Switch 2 », temps de jeu reporté de `rom:68e9be5f8be9` vers `rom:38cce4d4a204` (sauvegardes `*.avant-portage.bak`).
+- Vérifié : 33 tests d’émulation (raccourci créé par WScript.Shell, cassé, faux), page du jeu capturée sans fenêtre sur le serveur de dev. Pas lancé depuis KaneMode.
+
 ## Version 4.27.0 : mises à jour robustes aux erreurs de GitHub, Preset IA par profil de machine
 
 - **Mise à jour de KaneMode** (`host/lib/update.js`, `fetchAsset`) : le 9 nov. 2026 la 4.26.0 ne s’installait pas (l’utilisateur l’a téléchargée à la main). Cause : github.com/…/releases/download répondait 504 ; la réponse de SHA256SUMS n’était pas vérifiée (`r.ok`), la page d’erreur ne contenait pas l’empreinte → « Empreinte du paquet absente de SHA256SUMS ». Maintenant : adresse directe puis `api.github.com/repos/…/releases/assets/<id>` (`Accept: application/octet-stream`, champs `msix.api` et `sumsApi` de `check`), quatre essais espacés, messages clairs ; empreinte toujours exigée. Testé avec le vrai paquet 4.26.0 et l’adresse directe cassée exprès : 143 Mo par l’API en 34 s, empreinte bonne.

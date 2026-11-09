@@ -3649,6 +3649,9 @@
  "Police": [
   "ui/js/pages/settings.js"
  ],
+ "Portage PC : ses mods se règlent dans le jeu lui-même": [
+  "host/server.js"
+ ],
  "Position actuelle": [
   "ui/js/statusbar.js"
  ],

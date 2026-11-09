@@ -1710,5 +1710,6 @@
  "Preset IA": "AI preset",
  "Réglages choisis pour cette machine (PC à carte dédiée ou ROG Ally X) et, pour les jeux connus, pour le jeu.": "Settings chosen for this machine (PC with a dedicated GPU or ROG Ally X) and, for known games, for the game.",
  "Réglages de KaneMode selon la machine, réappliqués à chaque lancement.": "KaneMode settings for this machine, applied again at every launch.",
- "{a} : aucune compilation Windows disponible": "{a}: no Windows build available"
+ "{a} : aucune compilation Windows disponible": "{a}: no Windows build available",
+ "Portage PC : ses mods se règlent dans le jeu lui-même": "PC port: its mods are set up in the game itself"
 }

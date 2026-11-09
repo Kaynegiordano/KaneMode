@@ -96,8 +96,9 @@ const heroOf = g => g && g.art && (g.art.hero || g.art.header);
 const VIRTUAL = { all: () => t('Tous les jeux'), fav: () => t('Favoris') };
 // Onglets de la page d'un jeu (LB / RB)
 // Jeux Switch et Switch 2 : un onglet « Mods » (correctifs 60 FPS, résolution… rangés dans user\load)
-const hasMods = g => !!g && (g.system === 'switch' || g.system === 'switch2');
-const TABS = g => [['play', t('Jouer'), 'i-play'], ['settings', t('Réglages'), 'i-gear'], ...(hasMods(g) ? [['mods', t('Mods'), 'i-collection']] : []), ['art', t('Visuels'), 'i-image'], ['info', t('Infos'), 'i-info']];
+// Portage PC (raccourci .lnk) : ni mods, ni réglages d'émulateur, il se règle dans le jeu lui-même
+const hasMods = g => !!g && !g.native && (g.system === 'switch' || g.system === 'switch2');
+const TABS = g => [['play', t('Jouer'), 'i-play'], ...(g && g.native ? [] : [['settings', t('Réglages'), 'i-gear']]), ...(hasMods(g) ? [['mods', t('Mods'), 'i-collection']] : []), ['art', t('Visuels'), 'i-image'], ['info', t('Infos'), 'i-info']];
 // Visuels qu'on peut changer depuis la page du jeu (écran Visuels de KaneMode)
 const ART_KINDS = () => [['portrait', t('Jaquette')], ['logo', t('Logo')], ['hero', t('Fond')], ['header', t('Bannière')]];
 
@@ -308,7 +309,7 @@ definePage('emulation', {
     // par le premier jeu qui l'utilise (mêmes réglages et manette, suivi par KaneMode)
     if (hasMods({ system: s.id })) {
       const byEmu = new Map();
-      for (const g of all) if (g.emulatorId && g.emulator && !byEmu.has(g.emulatorId)) byEmu.set(g.emulatorId, g);
+      for (const g of all) if (g.emulatorId && g.emulator && !g.native && !byEmu.has(g.emulatorId)) byEmu.set(g.emulatorId, g);
       for (const [emuId, g] of byEmu) chips.append(nav(el('div', 'kw-filter icon', `${icon('i-open')}<span>${esc(t('Ouvrir {e}', { e: g.emulator }))}</span>`), () => launch(g, { emuOnly: true }), 'emu-open:' + emuId));
     }
     bar.append(chips);

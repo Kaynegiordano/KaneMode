@@ -309,7 +309,7 @@ function publicEntry(g, st, cfg) {
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
     streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
-    emulator: g.emulator || null, emulatorId: g.emulatorId || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, archive: g.archive || null, added: g.added || 0,
+    emulator: g.emulator || null, emulatorId: g.emulatorId || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, native: !!g.native, archive: g.archive || null, added: g.added || 0,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
     art,
@@ -995,6 +995,7 @@ function retroarchLook(raDir, gameId, set, fresh = false) {
 function modsTarget(id) {
   const e = findEntry(String(id || ''));
   if (!e || e.source !== 'rom' || !['switch', 'switch2'].includes(e.system)) return { error: 'Mods : jeu Switch ou Switch 2 seulement' };
+  if (e.native) return { error: 'Portage PC : ses mods se règlent dans le jeu lui-même' };
   const tid = emuMods.titleIdOf(e.romPath);
   if (!tid) return { error: 'Identifiant du jeu introuvable (ni dans le nom du fichier, ni dans main.npdm)' };
   const sys = emu.SYSTEMS.find(s => s.id === e.system);
@@ -1014,6 +1015,8 @@ function modsTarget(id) {
 async function prepareRom(e, { fresh = false } = {}) {
   let launch = e.launch, gameFile = e.romPath;
   const id = e.emulatorId;
+  // Portage PC (raccourci dans le dossier de la console) : lancé tel quel, sans BIOS ni émulateur
+  if (e.native) return { launch };
   // Émulateur en cours de mise à jour (arrivée dans Émulation) : le jeu attend la nouvelle version
   const updating = id && emuStore.pending(id);
   if (updating) await updating.catch(() => {});
@@ -1181,7 +1184,7 @@ function scanEmulation() {
   for (const r of roms) {
     // Émulateur choisi par l'utilisateur, pas encore installé : KaneMode l'installera au lancement
     const want = emuEffective(r.system, r.id).emulator;
-    if (want && r.emulatorId !== want && emuStore.CATALOG[want] && !emulators[want]) {
+    if (want && !r.native && r.emulatorId !== want && emuStore.CATALOG[want] && !emulators[want]) {
       Object.assign(r, { launch: null, emulatorId: null, core: null, installEmu: want, installed: true, emulator: emuStore.CATALOG[want].name });
       continue;
     }
@@ -1782,7 +1785,7 @@ const routes = {
     }
     // emuOnly : l'émulateur du jeu (Eden, Lichii…) ouvert seul, pour régler ou lancer à la main
     // (File → Load folder). Mêmes réglages et manette, suivi par KaneMode, pas de temps de jeu compté.
-    const emuOnly = !!b.emuOnly && e.source === 'rom' && EMU_ONLY_SYSTEMS.includes(e.system);
+    const emuOnly = !!b.emuOnly && e.source === 'rom' && !e.native && EMU_ONLY_SYSTEMS.includes(e.system);
     if (e.source === 'rom' && !b.dry) {
       const prep = await prepareRom(e, { fresh: !!b.fresh });
       if (prep.blocked) return json(res, 200, prep.blocked);

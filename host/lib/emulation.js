@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const { readLnk } = require('./lnk');
 
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 // Date d'arrivée du jeu dans le dossier (création du fichier sous Windows) : rangée « Ajoutés récemment »
@@ -392,6 +393,15 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
     const mode = look && look.extract ? 'extract' : archiveMode(own, ext);
     out.push({ sys: own, path: full, name: cleanName(f.replace(DISC, '')), region: regionOf(f), size, archive: mode === 'extract' || mode === 'mount' ? mode : null, inner: (look && look.inner) || null });
   }
+  // Portage PC rangé avec les jeux de sa console (Zelda Ocarina of Time recompilé dans « Nintendo
+  // Switch 2 ») : un raccourci Windows vers son .exe devient un jeu de la console, lancé sans émulateur
+  for (const f of files) {
+    if (!/.lnk$/i.test(f)) continue;
+    const full = path.join(dir, f);
+    const l = readLnk(full);
+    if (!l || !/.exe$/i.test(l.target) || !isFile(l.target)) continue;
+    out.push({ sys, path: full, name: cleanName(f), region: regionOf(f), size: 0, native: l });
+  }
   const dirsFrom = out.length;
   for (const e of entries) {
     if (!e.isDirectory() || /^(media|images|videos|manuals|downloaded_media|\.)/i.test(e.name)) continue;
@@ -408,6 +418,9 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   const folders = new Set(out.slice(dirsFrom).filter(r => r.dirGame && r.sys === sys).map(r => r.name.toLowerCase()));
   if (folders.size) for (let i = dirsFrom - 1; i >= startAt; i--) if (!out[i].dirGame && folders.has(out[i].name.toLowerCase())) out.splice(i, 1);
 }
+
+// Portage PC (raccourci .lnk dans le dossier d'une console) : nom affiché à la place d'un émulateur
+const NATIVE_NAME = 'Portage PC';
 
 /**
  * settings : réglages choisis par console et par jeu ({ systems: { snes: {…} }, games: { 'rom:…': {…} } }),
@@ -427,12 +440,13 @@ function scanRoms(roots, emulators, prefs, { m3uDir = null, settings = {} } = {}
   return found.map(r => {
     const id = 'rom:' + crypto.createHash('sha1').update((r.idPath || r.path).toLowerCase()).digest('hex').slice(0, 12);
     const set = { ...((settings.systems || {})[r.sys.id] || {}), ...((settings.games || {})[id] || {}) };
-    const how = launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
+    const how = r.native ? { emulator: NATIVE_NAME, emulatorId: 'native', core: null, launch: { kind: 'exe', target: r.native.target, args: r.native.args, cwd: r.native.cwd } }
+      : launchFor(r.sys, r.path, emulators, set.emulator ? { ...prefs, [r.sys.id]: set.emulator } : prefs, set.core || null);
     // Archive à plusieurs fichiers : RetroArch reçoit le jeu lui-même (« archive.zip#jeu.md »)
     if (how && r.inner && how.emulatorId === 'retroarch') how.launch.args = how.launch.args.split(`"${r.path}"`).join(`"${r.path}#${r.inner}"`);
     return {
       id, source: 'rom', name: r.name, type: 'game', system: r.sys.id, systemName: r.sys.name, region: r.region,
-      romPath: r.path, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0, added: addedAt(r.romFile || r.path),
+      romPath: r.path, native: !!r.native, discs: r.discs || null, archive: r.archive || null, installed: !!how, installDir: path.dirname(r.romFile || r.path), sizeOnDisk: r.size, lastPlayed: 0, added: addedAt(r.romFile || r.path),
       emulator: how ? how.emulator : null, emulatorId: how ? how.emulatorId : null, core: how ? how.core : null, launch: how ? how.launch : null, art: {},
     };
   });

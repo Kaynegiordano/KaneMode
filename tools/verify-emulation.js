@@ -647,3 +647,34 @@ test('Mods intégrés : Donkey Kong Bananza Dynamic FPS posé chez chaque émula
   assert.ok(src2.includes('onInstalled: id => builtinMods(id),'), 'après installation ou mise à jour d’un émulateur');
   assert.ok(src2.includes('if (isSwitchRom(e)) await Promise.race([builtinMods(id)'), 'avant le lancement');
 });
+
+test('Portage PC 4.28 : un raccourci .lnk vers un .exe dans le dossier d’une console devient un jeu lancé sans émulateur', () => {
+  const root = tmp();
+  const sys = path.join(root, 'Nintendo Switch 2');
+  const game = path.join(root, 'Jeux PC', 'Zélda port');
+  fs.mkdirSync(sys, { recursive: true });
+  fs.mkdirSync(game, { recursive: true });
+  const exe = path.join(game, 'ocarina.exe');
+  fs.writeFileSync(exe, '');
+  const lnk = path.join(sys, 'The Legend of Zelda Ocarina of Time.lnk');
+  const q = s => `'${s.replace(/'/g, "''")}'`;
+  require('child_process').execFileSync('powershell.exe', ['-NoProfile', '-Command',
+    `$s = (New-Object -ComObject WScript.Shell).CreateShortcut(${q(lnk)}); $s.TargetPath = ${q(exe)}; $s.Arguments = '--x 1'; $s.WorkingDirectory = ${q(game)}; $s.Save()`], { windowsHide: true });
+  // Raccourci cassé (exécutable absent) et raccourci vers autre chose qu'un .exe : ignorés
+  fs.copyFileSync(lnk, path.join(sys, 'Cassé.lnk'));
+  const { readLnk } = require('../host/lib/lnk');
+  assert.deepEqual(readLnk(lnk), { target: exe, args: '--x 1', cwd: game });
+  assert.equal(readLnk(path.join(root, 'absent.lnk')), null);
+  fs.writeFileSync(path.join(sys, 'faux.lnk'), 'pas un raccourci');
+  const roms = emu.scanRoms([root], { lichii: { path: path.join(root, 'lichii.exe') } }, {}, { settings: { systems: { switch2: { emulator: 'lichii' } } } });
+  const z = roms.filter(r => r.system === 'switch2');
+  assert.equal(z.length, 2, 'le raccourci et sa copie (même cible) ; le faux ignoré');
+  assert.equal(z[0].emulatorId, 'native');
+  assert.equal(z[0].native, true);
+  assert.deepEqual(z[0].launch, { kind: 'exe', target: exe, args: '--x 1', cwd: game });
+  fs.rmSync(exe);
+  assert.equal(emu.scanRoms([root], {}, {}).length, 0, 'exécutable absent : plus de jeu');
+  const srv = fs.readFileSync(path.join(__dirname, '..', 'host', 'server.js'), 'utf8');
+  assert.ok(srv.includes('if (e.native) return { launch };'), 'lancé tel quel');
+  assert.ok(srv.includes('if (want && !r.native &&'), 'le choix d’émulateur de la console ne le remplace pas');
+});
