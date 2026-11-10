@@ -138,7 +138,9 @@ public sealed class StreamerSetup
             var buf = new byte[len];
             f.ReadExactly(buf);
             string text = System.Text.Encoding.UTF8.GetString(buf);
-            return text.LastIndexOf("CLIENT CONNECTED", StringComparison.Ordinal) > text.LastIndexOf("CLIENT DISCONNECTED", StringComparison.Ordinal);
+            // Fin de session : console déconnectée, ou jeu fermé (« Process terminated »)
+            int ended = Math.Max(text.LastIndexOf("CLIENT DISCONNECTED", StringComparison.Ordinal), text.LastIndexOf("Process terminated", StringComparison.Ordinal));
+            return text.LastIndexOf("CLIENT CONNECTED", StringComparison.Ordinal) > ended;
         }
         catch { return false; }
     }

@@ -79,7 +79,10 @@ function streamActive(logFile) {
     fs.closeSync(fd);
     text = buf.toString('utf8');
   } catch { return false; }
-  return text.lastIndexOf('CLIENT CONNECTED') > text.lastIndexOf('CLIENT DISCONNECTED');
+  // Fin de session : la console se déconnecte, ou le jeu se ferme (Sunshine n'écrit alors que
+  // « Process terminated » : sans cela, le streaming restait cru en cours après chaque partie)
+  const ended = Math.max(text.lastIndexOf('CLIENT DISCONNECTED'), text.lastIndexOf('Process terminated'));
+  return text.lastIndexOf('CLIENT CONNECTED') > ended;
 }
 
 // restart : redémarrage du service (remplacé dans les tests, pour ne jamais toucher au vrai Sunshine) ;

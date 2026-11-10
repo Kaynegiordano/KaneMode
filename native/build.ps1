@@ -77,9 +77,24 @@ Copy-Item (Join-Path $root 'setup\kanemode.ico') $app
 # Lanceur des jeux pour Sunshine (consoles en streaming) : exécutable ordinaire, compilé par le C# de
 # Windows (.NET Framework 4), copié hors du paquet par l'hôte (host/lib/sunshine-games.js)
 New-Item -ItemType Directory -Force (Join-Path $app 'tools') | Out-Null
-$csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-& $csc -nologo -target:winexe -optimize "-out:$(Join-Path $app 'tools\KaneModeStream.exe')" (Join-Path $native 'KaneMode.Stream\KaneModeStream.cs')
-if ($LASTEXITCODE -ne 0) { throw 'Échec de la compilation du lanceur pour Sunshine' }
+# Le même fichier d'une version à l'autre (gardé dans le dépôt, recompilé seulement si sa source change) :
+# chaque nouvelle compilation donnait un fichier inconnu de Defender, qui l'envoyait en analyse au
+# premier lancement par Sunshine (15 s d'attente sur la console après chaque mise à jour).
+$streamDir = Join-Path $native 'KaneMode.Stream'
+$streamExe = Join-Path $streamDir 'KaneModeStream.exe'
+$streamSum = Join-Path $streamDir 'KaneModeStream.sha256'
+$streamSrc = [IO.File]::ReadAllText((Join-Path $streamDir 'KaneModeStream.cs')).Replace("`r", '')
+$sha = [Security.Cryptography.SHA256]::Create()
+$streamHash = -join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($streamSrc)) | ForEach-Object { $_.ToString('x2') })
+$sha.Dispose()
+$known = if (Test-Path $streamSum) { ([IO.File]::ReadAllText($streamSum)).Trim() } else { '' }
+if (-not (Test-Path $streamExe) -or $known -ne $streamHash) {
+  $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+  & $csc -nologo -target:winexe -optimize "-out:$streamExe" (Join-Path $streamDir 'KaneModeStream.cs')
+  if ($LASTEXITCODE -ne 0) { throw 'Échec de la compilation du lanceur pour Sunshine' }
+  [IO.File]::WriteAllText($streamSum, $streamHash)
+}
+Copy-Item $streamExe (Join-Path $app 'tools\KaneModeStream.exe') -Force
 # Développement : au premier lancement, l'app reprend les données du prototype depuis ce dépôt.
 if (-not $Release) { Set-Content (Join-Path $app 'source-root.txt') $root -Encoding UTF8 }
 $node = (Get-Command node -ErrorAction SilentlyContinue).Source

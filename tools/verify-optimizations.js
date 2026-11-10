@@ -14,7 +14,7 @@ function load(file, fetch, dependencies = {}) {
   const module = { exports: {} };
   const localRequire = id => dependencies[id] || require(id);
   vm.runInNewContext(fs.readFileSync(path.join(root, file), 'utf8'),
-    { module, exports: module.exports, require: localRequire, fetch, Buffer, process, URL, AbortSignal });
+    { module, exports: module.exports, require: localRequire, fetch, Buffer, process, URL, AbortSignal, setTimeout });
   return module.exports;
 }
 
@@ -69,7 +69,7 @@ test('La mise à jour utilise les octets reçus, vérifie SHA-256 et remonte les
   const data = Buffer.alloc(53217, 123);
   const hash = crypto.createHash('sha256').update(data).digest('hex');
   const latest = { version: '3.2.0', msix: { name: 'fixture.msix', url: 'https://github.com/example/fixture.msix', size: 100000000 }, sums: 'https://github.com/example/SHA256SUMS' };
-  const fakeFetch = sum => async url => url.endsWith('SHA256SUMS') ? { text: async () => sum + '  fixture.msix' } : new Response(data, { headers: { 'content-length': String(data.length) } });
+  const fakeFetch = sum => async url => url.endsWith('SHA256SUMS') ? new Response(sum + '  fixture.msix') : new Response(data, { headers: { 'content-length': String(data.length) } });
   const dependencies = { os: { tmpdir: () => directory } };
   try {
     const job = load('host/lib/update.js', fakeFetch(hash), dependencies).job();

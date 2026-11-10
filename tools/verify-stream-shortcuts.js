@@ -53,6 +53,9 @@ test('Streaming en cours lu dans le journal de Sunshine (mise à jour remise à 
   assert.equal(sg.streamActive(log), false);
   fs.appendFileSync(log, '[c]: Info: CLIENT CONNECTED\n');
   assert.equal(sg.streamActive(log), true);
+  // Partie terminée par la fermeture du jeu : Sunshine n'écrit pas « CLIENT DISCONNECTED »
+  fs.appendFileSync(log, '[d]: Info: App exited with code [0]\n[e]: Info: Process terminated\n');
+  assert.equal(sg.streamActive(log), false);
   assert.equal(sg.streamActive(path.join(d, 'absent.log')), false);
 });
 
@@ -116,6 +119,10 @@ test('Serveur, interface, moteur et lanceur branchés', () => {
   const launcher = read('native/KaneMode.Stream/KaneModeStream.cs');
   assert.ok(launcher.includes('"\\\\AppContainerNamedObjects\\\\"'), 'canal du widget, même nom que WidgetBridge');
   assert.ok(read('native/build.ps1').includes('KaneModeStream.exe'), 'lanceur compilé dans le paquet');
+  // Même fichier d'une version à l'autre (sinon Defender l'analyse à chaque mise à jour : 15 s d'attente)
+  const sum = require('crypto').createHash('sha256').update(Buffer.from(launcher.replace(/\r/g, ''), 'utf8')).digest('hex');
+  assert.equal(read('native/KaneMode.Stream/KaneModeStream.sha256').trim(), sum, 'lanceur du dépôt à jour avec sa source (lancer native/build.ps1)');
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'native/KaneMode.Stream/KaneModeStream.exe')));
   assert.ok(read('setup/hote-echelle/Installer.ps1').includes("-match '--stream-game'"), 'pas de variantes d’échelle pour les jeux');
   assert.ok(read('engine/KanePlay/app/gui/main.qml').includes('returnAfterStream'), 'retour à KaneMode après la partie');
 });
