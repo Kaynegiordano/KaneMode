@@ -119,6 +119,12 @@ export function badges(card, g) {
   if (g.demo) b.append(el('span', 'badge-demo', t('DÉMO')));
   if (!g.installed) b.append(el('span', 'badge-dl', '<svg><use href="#i-download2"/></svg>'));
   if (favs.has(g.id)) b.append(el('span', 'badge-fav', '★'));
+  // Jeu d'un autre PC, lancé en streaming (raccourci, voir Paramètres → Streaming)
+  if (g.streamHost) {
+    const s = el('span', 'badge-stream', '<svg><use href="#i-stream"/></svg>');
+    s.title = t('Streaming · {host}', { host: g.streamHost });
+    b.append(s);
+  }
   if (b.children.length) card.append(b);
   if (g.systemName) card.append(el('span', 'sys-badge', esc(g.systemName)));
   const s = sourceOf(g.source);

@@ -878,6 +878,9 @@ body.night::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer
 .card.uninstalled > img, .card.uninstalled > .gen { filter: grayscale(0.7) brightness(0.55); }
 .badge-dl { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.7); }
 .badge-dl svg { width: 16px; height: 16px; fill: #cfd5dd; }
+/* Jeu d'un autre PC en streaming : logo dans le coin de la jaquette */
+.badge-stream { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.7); box-shadow: 0 0 0 1.5px var(--accent); }
+.badge-stream svg { width: 15px; height: 15px; fill: #fff; }
 .btn-play.install { background: linear-gradient(90deg, #2d8cf0, #1a5fc4); box-shadow: 0 6px 22px rgba(26, 132, 255, 0.25); }
 .btn-play.install.focused { box-shadow: 0 0 0 3px #fff, 0 8px 30px rgba(26, 132, 255, 0.5); }
 /* Jeu en cours : « Reprendre » à la couleur d'accent, bouton d'arrêt rouge au focus */

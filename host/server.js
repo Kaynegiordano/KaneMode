@@ -35,6 +35,7 @@ const autoHdrLib = require('./lib/autohdr');
 const wifi = require('./lib/wifi');
 const weatherLib = require('./lib/weather');
 const hostScaleLib = require('./lib/hostscale');
+const sunshineGamesLib = require('./lib/sunshine-games');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -259,7 +260,7 @@ function buildEntries(withDemo) {
   const roms = (readJson(FILES.roms, {}) || {}).roms || [];
   return {
     generated: lib.generated, steamUserdata: ud, pending,
-    games: [...accounts.entries([...games, ...(ud ? steam.shortcuts(ud) : [])]), ...custom, ...roms, ...(withDemo ? DEMO : [])],
+    games: [...accounts.entries([...games, ...(ud ? steam.shortcuts(ud) : [])]), ...custom, ...roms, ...streamShortcutEntries(), ...(withDemo ? DEMO : [])],
     launchers: lib.launchers || [],
   };
 }
@@ -377,6 +378,8 @@ const keeper = { tick: Date.now(), ac: null, fixes: [], pausedUntil: 0, quiet: 0
 const keeperConflict = () => Date.now() < keeper.pausedUntil;
 const netState = { t: 0, p: null }; // connexion réseau (GET /api/net)
 const hostScale = hostScaleLib.create(ROOT); // complément PC hôte (Paramètres → Streaming)
+// Jeux de KaneMode proposés aux consoles qui streament ce PC (Paramètres → Streaming, PC hôte)
+const sunshineGames = sunshineGamesLib.create({ appsFile: hostScaleLib.appsFile, root: ROOT, coversDir: path.join(DATA, 'sunshine-covers'), runPs });
 const weather = weatherLib.create({ read: config, write: c => writeJson(FILES.config, c) }); // panneau Heure (GET /api/weather)
 const deals = dealsLib.create(DATA, { lang: () => config().lang || 'fr' }); // bons plans des boutiques (GET /api/deals)
 // Réglages graphiques du pilote : outil du fabricant de la carte (voir lib/gpuctl.js)
@@ -581,12 +584,64 @@ async function refreshKanePlay() {
     const hosts = exe ? await kaneplay.hosts() : [];
     const one = kaneplay.entry(exe, KANEPLAY_COVER, engineLook());
     const entries = one ? [one] : [];
-    const sig = (x, h, list) => JSON.stringify([x, h.map(y => y.uuid + y.paired), list.map(e => e.id + e.name + !!e.art.portrait)]);
-    const changed = sig(exe, hosts, entries) !== sig(kp.exe, kp.hosts, kp.entries);
-    Object.assign(kp, { exe, hosts, entries });
-    if (changed) version++;
+    // Raccourcis vers les jeux d'un PC : leur jaquette arrive quand le moteur l'a téléchargée
+    const shortcutArt = () => (config().streamShortcuts || []).map(s => !!kaneplay.boxArt(s.host, s.app)).join('');
+    const sig = (x, h, list, art) => JSON.stringify([x, h.map(y => y.uuid + y.paired + y.name), list.map(e => e.id + e.name + !!e.art.portrait), art]);
+    const before = sig(kp.exe, kp.hosts, kp.entries, kp.shortcutArt);
+    const art = shortcutArt();
+    Object.assign(kp, { exe, hosts, entries, shortcutArt: art });
+    if (sig(exe, hosts, entries, art) !== before) version++;
   } catch (e) { console.error('Streaming :', e.message); }
 }
+
+/**
+ * Raccourcis vers les jeux d'un PC (console qui streame : Ally, PC portable…), choisis dans
+ * Paramètres → Streaming parmi les applis de ses PC (config.streamShortcuts : [{ host, app, name }]).
+ * Jouer ouvre le streaming directement sur ce jeu (moteur : « stream <PC> <appli> ») ; la jaquette
+ * est celle que le PC envoie (cache des jaquettes du moteur). Un PC retiré du streaming : plus d'entrée.
+ */
+function streamShortcutEntries() {
+  const list = config().streamShortcuts || [];
+  if (!list.length) return [];
+  const out = [];
+  for (const s of list) {
+    const host = kp.hosts.find(h => h.uuid === s.host);
+    if (!host) continue;
+    const portrait = kaneplay.boxArt(s.host, s.app);
+    out.push({
+      id: `stream:${s.host}:${s.app}`, source: 'stream', name: s.name, type: 'game', streamHost: host.name,
+      installed: !!kp.exe, addedAt: s.added || 0,
+      launch: kp.exe ? { kind: 'exe', target: kp.exe, args: '', env: kaneplay.env(`stream\t${s.host}\t${s.app}\t${s.name}`, engineLook()) } : null,
+      art: portrait ? { portrait } : {},
+    });
+  }
+  return out;
+}
+
+// PC qui diffuse : ses jeux proposés aux consoles (applis de Sunshine), mis à jour quand la
+// bibliothèque change (au plus toutes les minutes ; jamais pendant un streaming, voir sunshine-games.js)
+let sunshineSyncing = null;
+function syncSunshineGames() {
+  if (!config().sunshineGames) return Promise.resolve(null);
+  if (sunshineSyncing) return sunshineSyncing;
+  sunshineSyncing = (async () => {
+    const st = state(), cfg = config();
+    const games = [];
+    for (const g of allEntries(false).games) {
+      if (g.streamHost || ['kaneplay', 'stream'].includes(g.source)) continue;
+      const p = publicEntry(g, st, cfg);
+      if (!p.installed || p.removed || p.demo || p.type === 'app') continue;
+      let art = null;
+      try { art = await resolveArt(g, 'portrait'); } catch { /* sans jaquette */ }
+      games.push({ id: g.id, name: p.name, source: g.source, art });
+    }
+    games.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    return sunshineGames.sync(games);
+  })().finally(() => { sunshineSyncing = null; });
+  return sunshineSyncing;
+}
+setTimeout(() => syncSunshineGames().catch(() => {}), 20e3);
+setInterval(() => syncSunshineGames().catch(() => {}), 60e3);
 
 // ---------------------------------------------------------------- visuels : surcharges, Steam, SteamGridDB
 let sgdbCache = readJson(FILES.sgdb, {});
@@ -2199,6 +2254,55 @@ const routes = {
     const b = await readBody(req);
     try { json(res, 200, await (b.remove === true ? hostScale.remove() : hostScale.install())); }
     catch (e) { json(res, 400, { error: e.message }); }
+  },
+  // Console qui streame : applis de chaque PC appairé (jeux de son KaneMode compris), à cocher pour
+  // en faire des raccourcis de la bibliothèque
+  'GET /api/stream/catalog': async (req, res, q) => {
+    if (q.get('refresh') === '1') await refreshKanePlay();
+    const chosen = new Set((config().streamShortcuts || []).map(s => `${s.host}:${s.app}`));
+    json(res, 200, {
+      engine: !!kp.exe,
+      hosts: kp.hosts.filter(h => h.paired).map(h => ({
+        uuid: h.uuid, name: h.name,
+        apps: h.apps.filter(a => !a.hidden && !kaneplay.isScaleVariant(a.name))
+          .map(a => ({ id: a.id, name: a.name, chosen: chosen.has(`${h.uuid}:${a.id}`), art: !!kaneplay.boxArt(h.uuid, a.id) })),
+      })),
+    });
+  },
+  'POST /api/stream/shortcut': async (req, res) => {
+    const b = await readBody(req);
+    const host = kp.hosts.find(h => h.uuid === str(b.host));
+    const app = host && host.apps.find(a => a.id === +b.app);
+    if (!app) return json(res, 404, { error: 'Jeu introuvable sur ce PC' });
+    const c = readJson(FILES.config, {});
+    const list = (c.streamShortcuts || []).filter(s => !(s.host === host.uuid && s.app === app.id));
+    if (b.on !== false) list.push({ host: host.uuid, app: app.id, name: app.name, added: Date.now() });
+    c.streamShortcuts = list;
+    writeJson(FILES.config, c);
+    version++;
+    json(res, 200, { ok: true, chosen: b.on !== false });
+  },
+  // PC qui diffuse : ses jeux proposés aux consoles (applis de Sunshine), avec l'autorisation unique
+  'GET /api/stream/sunshine-games': async (req, res) => json(res, 200, { on: !!config().sunshineGames, ...(await sunshineGames.status()) }),
+  'POST /api/stream/sunshine-games': async (req, res) => {
+    const b = await readBody(req);
+    const c = readJson(FILES.config, {});
+    try {
+      if (b.on === false) {
+        c.sunshineGames = false;
+        writeJson(FILES.config, c);
+        const r = await sunshineGames.sync([]);
+        return json(res, 200, { on: false, ...(await sunshineGames.status()), result: r });
+      }
+      let st = await sunshineGames.status();
+      if (!st.sunshine) return json(res, 400, { error: 'Sunshine n’est pas installé sur ce PC' });
+      if (!st.allowed) st = await sunshineGames.allow();
+      if (!st.allowed) return json(res, 400, { error: 'Autorisation incomplète' });
+      c.sunshineGames = true;
+      writeJson(FILES.config, c);
+      const r = await syncSunshineGames();
+      json(res, 200, { on: true, ...(await sunshineGames.status()), result: r });
+    } catch (e) { json(res, 400, { error: e.message }); }
   },
   // Ouvre l'écran de streaming (ou le ramène devant, là où il en était)
   'POST /api/stream/open': async (req, res) => {

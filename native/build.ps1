@@ -69,6 +69,8 @@ Copy-Item (Join-Path $root 'host') (Join-Path $app 'host') -Recurse
 New-Item -ItemType Directory -Force (Join-Path $app 'setup') | Out-Null
 # Complément pour le PC hôte (Sunshine), installé depuis Paramètres → Streaming (host/lib/hostscale.js)
 Copy-Item (Join-Path $root 'setup\hote-echelle') (Join-Path $app 'setup\hote-echelle') -Recurse
+# Autorisation unique pour proposer les jeux de KaneMode aux consoles en streaming (host/lib/sunshine-games.js)
+Copy-Item (Join-Path $root 'setup\sunshine-jeux') (Join-Path $app 'setup\sunshine-jeux') -Recurse
 Copy-Item (Join-Path $root 'VERSION') $app
 # Icône de KaneMode pour la fenêtre du streaming
 Copy-Item (Join-Path $root 'setup\kanemode.ico') $app

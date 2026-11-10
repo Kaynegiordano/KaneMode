@@ -136,6 +136,68 @@ function restore(box, snap, focus, fallback = []) {
   else if (focus || snap.key) focusIn(box);
 }
 
+// ---------- Console qui streame : jeux de ses PC à mettre dans la bibliothèque, avec leur jaquette
+// et un logo streaming ; Jouer ouvre directement le jeu sur son PC (host/server.js, streamShortcuts)
+async function streamShortcutsBlock(s) {
+  const d = await api.get('/api/stream/catalog').catch(() => null);
+  if (!d || !d.hosts.length) return;
+  h2(s, 'i-library', t('Jeux de vos PC dans la bibliothèque'));
+  s.append(el('div', 'notice', t('Les jeux cochés rejoignent votre bibliothèque avec un logo streaming : <b>Jouer</b> lance directement le jeu sur son PC, puis revient ici à la fin. Pour voir les jeux de KaneMode d’un PC, activez <b>Jeux proposés aux consoles</b> dans le KaneMode de ce PC.')));
+  for (const h of d.hosts) {
+    if (!h.apps.length) {
+      infoRow(s, esc(h.name), t('Aucun jeu connu pour l’instant : ouvrez une fois le streaming de ce PC'));
+      continue;
+    }
+    infoRow(s, `<span class="dot-ok"></span>${esc(h.name)}`, tn(h.apps.length, '{n} jeu ou appli', '{n} jeux ou applis'));
+    for (const a of h.apps) {
+      s.append(switchRow({
+        title: a.name, desc: a.chosen ? t('Dans la bibliothèque') : '', on: a.chosen, key: `ss-${h.uuid}-${a.id}`,
+        onToggle: async on => {
+          try {
+            await api.post('/api/stream/shortcut', { host: h.uuid, app: a.id, on });
+            toast(on ? t('{a} ajouté à la bibliothèque', { a: a.name }) : t('{a} retiré de la bibliothèque', { a: a.name }));
+            lib.load({ background: true }).catch(() => {});
+          } catch (e) { toast(e.message, { error: true }); }
+        },
+      }));
+    }
+  }
+}
+
+// ---------- PC qui diffuse : ses jeux proposés aux consoles (applis de Sunshine, autorisation unique)
+// Seulement sur un PC qui a Sunshine (host/lib/sunshine-games.js)
+async function sunshineGamesBlock(s) {
+  const box = el('div');
+  s.append(box);
+  async function render(focus) {
+    const st = await api.get('/api/stream/sunshine-games').catch(() => null);
+    const snap = snapshot(box);
+    box.replaceChildren();
+    if (!st || !st.sunshine) return;
+    h2(box, 'i-desktop', t('Jeux proposés aux consoles'));
+    const desc = !st.on ? t('Vos jeux installés deviennent des applis de Sunshine, avec leur jaquette : une console (Ally, PC portable) les ajoute à sa bibliothèque')
+      : st.error ? t('Erreur : {a}', { a: esc(st.error) })
+      : st.pending ? t('{n} jeu(x) · mise à jour à la fin du streaming en cours', { n: st.published })
+      : t('{n} jeu(x) proposé(s) · mis à jour quand la bibliothèque change', { n: st.published });
+    box.append(switchRow({
+      title: t('Proposer mes jeux aux consoles'), desc, on: st.on, key: 'sg-on',
+      onToggle: async on => {
+        busy(on ? t('Publication des jeux dans Sunshine…') : t('Retrait des jeux de Sunshine…'));
+        try {
+          await api.post('/api/stream/sunshine-games', { on });
+          toast(on ? t('Jeux proposés aux consoles · Sunshine redémarré') : t('Jeux retirés de Sunshine'), { notify: true });
+        } catch (e) { toast(e.message, { error: true }); }
+        busy();
+        render('sg-on');
+      },
+    }));
+    if (!st.on && !st.allowed) box.append(el('div', 'notice', t('La première fois, Windows demande les droits d’administrateur : KaneMode pourra ensuite mettre à jour les applis de Sunshine et le redémarrer, jamais pendant un streaming.')));
+    if (!st.packaged) box.append(el('div', 'notice', t('Il faut l’app KaneMode installée sur ce PC : Sunshine lance les jeux par elle.')));
+    restore(box, snap, focus);
+  }
+  await render();
+}
+
 // ---------- Complément PC hôte (streaming) : mise à l'échelle de ce PC quand une console y joue
 // Seulement sur un PC qui a Sunshine (host/lib/hostscale.js)
 async function hostScaleBlock(s) {
@@ -515,6 +577,7 @@ const BUILDERS = {
     const d = await api.get('/api/stream').catch(() => null);
     if (!d || !d.engine) {
       infoRow(s, t('<span class="dot-ko"></span>Moteur de streaming absent'), t('L’app KaneMode l’embarque ; en développement : engine\\build-engine.ps1'));
+      sunshineGamesBlock(s);
       return hostScaleBlock(s);
     }
     infoRow(s, t('<span class="dot-ok"></span>Streaming intégré{a}', { a: d.dev ? t(" (moteur compilé : engine\\out)") : '' }), t('Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran'));
@@ -522,8 +585,10 @@ const BUILDERS = {
       infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? t('Appairé') : t('Non appairé')} · ${tn(h.apps, '{n} application', '{n} applications')}`);
     }
     actionRow(s, 'i-gamepad', t('Ouvrir le streaming'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
-    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
+    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu de jeu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
     s.append(el('div', 'notice', t('<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Il faut le <b>complément PC hôte</b> sur le PC qui diffuse : il s’installe ci-dessous quand KaneMode est aussi sur ce PC.')));
+    await streamShortcutsBlock(s);
+    sunshineGamesBlock(s);
     hostScaleBlock(s);
   },
   async look(s) {

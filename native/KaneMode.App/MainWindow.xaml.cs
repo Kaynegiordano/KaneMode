@@ -639,7 +639,7 @@ public partial class MainWindow : Window
     private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e) => HandleMessage(e.WebMessageAsJson, fromWidget: false);
 
     // Ce que le widget Game Bar peut demander à l'app (le reste est réservé à l'interface de KaneMode)
-    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "gamebar-close", "mouse-mode" };
+    private static readonly HashSet<string> WidgetMessages = new() { "power", "show", "game-stop", "widget-state", "lossless", "gamebar-close", "mouse-mode", "stream-game", "stream-game-state", "stream-stop" };
 
     /// <summary>
     /// Message de l'interface (WebView2) ou du widget Game Bar. Renvoie la réponse JSON pour le
@@ -656,6 +656,11 @@ public partial class MainWindow : Window
             if (fromWidget && type != "widget-state") Log.Write($"Widget : {type}"); // l'état est demandé toutes les 3 s
             switch (type)
             {
+                case "stream-game":
+                case "stream-game-state":
+                case "stream-stop":
+                case "stream-launch-failed":
+                    return StreamGameMessage(type, Text(root, "id") ?? "");
                 case "widget-state":
                     // Jeu en cours, pour la section « Jeu » du widget
                     var g = _game;

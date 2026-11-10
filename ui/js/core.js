@@ -340,6 +340,8 @@ export const SOURCES = {
   custom: { label: t('Ajouts perso'), short: t('Perso'), color: '#f0a030' },
   rom: { label: t('Émulation'), short: t('Émulation'), color: '#e05a2b' },
   kaneplay: { label: t('Streaming'), short: t('Streaming'), color: 'var(--accent)' },
+  // Raccourci vers le jeu d'un autre PC (streaming)
+  stream: { label: t('Streaming'), short: t('Streaming'), color: 'var(--accent)' },
 };
 export const sourceOf = id => SOURCES[id] || { label: id, color: '#888' };
 

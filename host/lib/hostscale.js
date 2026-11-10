@@ -35,8 +35,10 @@ function create(root) {
     try { apps = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')).apps || []; }
     catch { return { sunshine: false, bundled: fs.existsSync(dir) }; }
     const names = new Set(apps.map(a => a.name));
-    const bases = apps.filter(a => !VARIANT.test(a.name));
-    const variants = apps.length - bases.length;
+    // Jeux de KaneMode proposés aux consoles (sunshine-games.js) : sans variantes d'échelle
+    const games = apps.filter(a => typeof a.cmd === 'string' && a.cmd.includes('--stream-game')).length;
+    const bases = apps.filter(a => !VARIANT.test(a.name) && !(typeof a.cmd === 'string' && a.cmd.includes('--stream-game')));
+    const variants = apps.length - bases.length - games;
     // Applis ajoutées dans Sunshine depuis l'installation : sans variantes
     const missing = bases.filter(b => !VALUES.every(v => names.has(`${b.name} [${v} %]`))).map(b => b.name);
     const script = fs.existsSync(TARGET);
@@ -66,4 +68,4 @@ function create(root) {
   return { status, install: () => run(false), remove: () => run(true) };
 }
 
-module.exports = { create, VALUES };
+module.exports = { create, VALUES, appsFile };

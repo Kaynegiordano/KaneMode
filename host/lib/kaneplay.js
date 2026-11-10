@@ -83,4 +83,13 @@ function entry(exe, art, opts) {
     art: art && isFile(art) ? { portrait: art, hero: art } : {},
   };
 }
-module.exports = { findExe, env, hosts, entry };
+/** Jaquette d'une appli d'un PC, téléchargée par le moteur (cache des jaquettes), ou null. */
+function boxArt(uuid, appId) {
+  const f = path.join(CACHE, 'boxart', String(uuid), `${+appId}.png`);
+  try { return fs.statSync(f).size > 0 ? f : null; } catch { return null; }
+}
+
+// Variantes d'échelle du complément PC hôte (« Desktop [150 %] ») : le moteur les choisit seul
+const isScaleVariant = name => /^(.+) \[(\d{3}) %\]$/.test(String(name));
+
+module.exports = { findExe, env, hosts, entry, boxArt, isScaleVariant };

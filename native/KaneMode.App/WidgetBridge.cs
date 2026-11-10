@@ -61,7 +61,7 @@ public static class WidgetBridge
     /// son nom de famille en minuscules (UTF-16), comme DeriveAppContainerSidFromAppContainerName
     /// (qui plante lorsqu'on l'appelle depuis l'app installée).
     /// </summary>
-    private static string ContainerSid(string family)
+    internal static string ContainerSid(string family)
     {
         byte[] hash = System.Security.Cryptography.SHA256.HashData(Encoding.Unicode.GetBytes(family.ToLowerInvariant()));
         var parts = new uint[7];

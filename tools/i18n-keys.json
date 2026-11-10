@@ -89,11 +89,17 @@
  "{a} · installé : {b}": [
   "host/server.js"
  ],
+ "{a} ajouté à la bibliothèque": [
+  "ui/js/pages/settings.js"
+ ],
  "{a} appli(s) de Sunshine × 5 échelles (100 à 200 %)": [
   "ui/js/pages/settings.js"
  ],
  "{a} introuvable": [
   "host/syscontrol.ps1"
+ ],
+ "{a} retiré de la bibliothèque": [
+  "ui/js/pages/settings.js"
  ],
  "{a} s’installe depuis son archive .zip (Émulation → Gérer)": [
   "host/lib/emu-store.js"
@@ -247,8 +253,17 @@
  "{n} jeu importé": [
   "ui/js/accounts-settings.js"
  ],
+ "{n} jeu ou appli": [
+  "ui/js/pages/settings.js"
+ ],
  "{n} jeu trouvé": [
   "ui/js/pages/emulation.js"
+ ],
+ "{n} jeu(x) · mise à jour à la fin du streaming en cours": [
+  "ui/js/pages/settings.js"
+ ],
+ "{n} jeu(x) proposé(s) · mis à jour quand la bibliothèque change": [
+  "ui/js/pages/settings.js"
  ],
  "{n} jeux": [
   "ui/js/accounts-settings.js",
@@ -258,6 +273,9 @@
  ],
  "{n} jeux importés": [
   "ui/js/accounts-settings.js"
+ ],
+ "{n} jeux ou applis": [
+  "ui/js/pages/settings.js"
  ],
  "{n} jeux trouvés": [
   "ui/js/pages/emulation.js"
@@ -947,6 +965,9 @@
  "Aucun favori pour l’instant. Sur la fiche d’un jeu, appuyez sur {glyph} pour l’ajouter.": [
   "ui/js/pages/library.js"
  ],
+ "Aucun jeu connu pour l’instant : ouvrez une fois le streaming de ce PC": [
+  "ui/js/pages/settings.js"
+ ],
  "Aucun jeu correspondant sur {b}.": [
   "ui/js/pages/artpicker.js"
  ],
@@ -1070,6 +1091,12 @@
  ],
  "Automatique par écran": [
   "ui/js/personalization-settings.js"
+ ],
+ "Autorisation absente de cette version de KaneMode": [
+  "host/lib/sunshine-games.js"
+ ],
+ "Autorisation incomplète": [
+  "host/server.js"
  ],
  "Autoriser la position": [
   "ui/js/statusbar.js"
@@ -1541,6 +1568,9 @@
  "Complète automatiquement les jaquettes, fonds et logos manquants": [
   "ui/js/pages/settings.js"
  ],
+ "Compte Windows introuvable": [
+  "host/lib/sunshine-games.js"
+ ],
  "Comptes et boutiques": [
   "ui/js/accounts-settings.js",
   "ui/js/pages/settings.js"
@@ -1659,6 +1689,9 @@
  ],
  "D’origine (plus léger)": [
   "ui/js/pages/emulation.js"
+ ],
+ "Dans la bibliothèque": [
+  "ui/js/pages/settings.js"
  ],
  "Dans la Game Bar seulement": [
   "ui/js/widget.js"
@@ -2036,6 +2069,9 @@
   "ui/js/qam.js",
   "ui/js/statusbar.js"
  ],
+ "Erreur : {a}": [
+  "ui/js/pages/settings.js"
+ ],
  "Erreur {status}": [
   "ui/js/core.js"
  ],
@@ -2317,6 +2353,9 @@
  "Identifiant Windows invalide": [
   "host/launch.ps1"
  ],
+ "Il faut l’app KaneMode installée sur ce PC : Sunshine lance les jeux par elle.": [
+  "ui/js/pages/settings.js"
+ ],
  "Il faut un nom et un programme ou une adresse": [
   "ui/js/pages/add.js"
  ],
@@ -2566,6 +2605,9 @@
  "Jeu inconnu": [
   "host/server.js"
  ],
+ "Jeu introuvable sur ce PC": [
+  "host/server.js"
+ ],
  "Jeu ou compte inconnu": [
   "host/lib/accounts.js"
  ],
@@ -2583,6 +2625,9 @@
  ],
  "Jeux de vos PC": [
   "ui/js/streamcover.js"
+ ],
+ "Jeux de vos PC dans la bibliothèque": [
+  "ui/js/pages/settings.js"
  ],
  "Jeux décompressés": [
   "ui/js/pages/emulation.js"
@@ -2605,8 +2650,17 @@
  "Jeux ouverts ailleurs": [
   "ui/js/pages/settings.js"
  ],
+ "Jeux proposés aux consoles": [
+  "ui/js/pages/settings.js"
+ ],
+ "Jeux proposés aux consoles · Sunshine redémarré": [
+  "ui/js/pages/settings.js"
+ ],
  "Jeux récents": [
   "ui/js/pages/home.js"
+ ],
+ "Jeux retirés de Sunshine": [
+  "ui/js/pages/settings.js"
  ],
  "jeux seulement": [
   "ui/js/widget.js"
@@ -2681,6 +2735,9 @@
  ],
  "La passerelle de comptes ne répond pas": [
   "host/lib/accounts.js"
+ ],
+ "La première fois, Windows demande les droits d’administrateur : KaneMode pourra ensuite mettre à jour les applis de Sunshine et le redémarrer, jamais pendant un streaming.": [
+  "ui/js/pages/settings.js"
  ],
  "Lancement de {name} avec {emulator}…": [
   "ui/js/pages/game.js"
@@ -2805,7 +2862,10 @@
  "Les consoles ne pourront plus changer l’échelle de ce PC pendant le streaming. Sunshine redémarre.": [
   "ui/js/pages/settings.js"
  ],
- "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> met la session en pause : le jeu reste ouvert sur le PC, <b>Reprendre</b> y retourne. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
+ "Les jeux cochés rejoignent votre bibliothèque avec un logo streaming : <b>Jouer</b> lance directement le jeu sur son PC, puis revient ici à la fin. Pour voir les jeux de KaneMode d’un PC, activez <b>Jeux proposés aux consoles</b> dans le KaneMode de ce PC.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu de jeu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
  "Les jeux rangés dans une archive (.zip, .7z, .rar) que leur émulateur ne sait pas ouvrir sont décompressés au premier lancement, puis gardés pour les suivants. Les plus anciens partent tout seuls au-delà de 40 Go.": [
@@ -3768,8 +3828,14 @@
  "Proposé en premier, automatiquement et dans « Parcourir »": [
   "ui/js/pages/settings.js"
  ],
+ "Proposer mes jeux aux consoles": [
+  "ui/js/pages/settings.js"
+ ],
  "Protocole non installe : {a}": [
   "host/launch.ps1"
+ ],
+ "Publication des jeux dans Sunshine…": [
+  "ui/js/pages/settings.js"
  ],
  "publié : {a}{b}{c}": [
   "ui/js/pages/settings.js"
@@ -3929,6 +3995,9 @@
  ],
  "Récupérer à nouveau": [
   "ui/js/pages/artpicker.js"
+ ],
+ "Redémarrage de Sunshine impossible": [
+  "host/lib/sunshine-games.js"
  ],
  "redémarrage nécessaire": [
   "ui/js/pages/settings.js"
@@ -4145,6 +4214,9 @@
  ],
  "Retour aux jeux": [
   "ui/js/pages/emulation.js"
+ ],
+ "Retrait des jeux de Sunshine…": [
+  "ui/js/pages/settings.js"
  ],
  "Retrait du complément…": [
   "ui/js/pages/settings.js"
@@ -4403,6 +4475,7 @@
   "ui/js/streamcover.js"
  ],
  "Streaming · {host}": [
+  "ui/js/cards.js",
   "ui/js/pages/game.js"
  ],
  "Streaming depuis vos PC": [
@@ -4425,6 +4498,9 @@
  ],
  "Sunshine diffuse depuis ce PC : avec le complément, une console peut passer son écran à 150 % (par exemple) le temps du streaming": [
   "ui/js/pages/settings.js"
+ ],
+ "Sunshine n’est pas installé sur ce PC": [
+  "host/server.js"
  ],
  "Super Resolution": [
   "ui/js/widget.js"
@@ -4833,6 +4909,9 @@
  ],
  "Vos jeux et collections préférés": [
   "ui/js/pages/home.js"
+ ],
+ "Vos jeux installés deviennent des applis de Sunshine, avec leur jaquette : une console (Ally, PC portable) les ajoute à sa bibliothèque": [
+  "ui/js/pages/settings.js"
  ],
  "Vos propres émulateurs": [
   "ui/js/pages/emulation.js"

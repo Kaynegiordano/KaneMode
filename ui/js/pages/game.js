@@ -86,6 +86,16 @@ export async function stopGame(g) {
   }, 8000);
 }
 
+// Jeu demandé par une console qui streame ce PC (Sunshine → KaneMode.exe --stream-game) : lancé
+// comme depuis la bibliothèque. Introuvable ou refusé : l'app native le dit au lanceur de Sunshine.
+native.on(async m => {
+  if (m.type !== 'stream-launch') return;
+  let g = lib.byId(m.id);
+  if (!g) { await lib.load({ background: true }).catch(() => {}); g = lib.byId(m.id); }
+  if (!g || !g.installed) return native.send('stream-launch-failed', { id: m.id });
+  launch(g).catch(() => native.send('stream-launch-failed', { id: m.id }));
+});
+
 // Jeux quittés « complètement » (Select + Start maintenus 3 s) : leur reprise automatique est
 // effacée une fois le jeu fermé (RetroArch l'écrit en quittant)
 const forgetOnEnd = new Set();

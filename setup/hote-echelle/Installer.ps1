@@ -46,6 +46,8 @@ if ($Desinstaller) {
     $liste = New-Object System.Collections.ArrayList
     foreach ($a in $origine) { [void]$liste.Add($a) }
     foreach ($a in $origine) {
+        # Jeux de KaneMode proposés aux consoles (KaneMode.exe --stream-game) : pas de variantes
+        if ($a.PSObject.Properties['cmd'] -and "$($a.cmd)" -match '--stream-game') { continue }
         foreach ($v in $valeurs) {
             # Copie complète de l'appli (commande, image, préparations…) + la mise à l'échelle en premier
             $copie = $a | ConvertTo-Json -Depth 10 | ConvertFrom-Json
