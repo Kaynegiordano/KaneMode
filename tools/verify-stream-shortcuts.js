@@ -62,6 +62,24 @@ test('Synchronisation : rien d’écrit sans autorisation ; liste inchangée = p
   assert.equal(r2.changed, false);
 });
 
+test('4.31.1 : la liste est écrite sans rien créer dans le dossier de Sunshine (seul apps.json est autorisé)', async () => {
+  const d = tmp(), cfgDir = path.join(d, 'Sunshine', 'config'), data = path.join(d, 'data');
+  fs.mkdirSync(cfgDir, { recursive: true });
+  const apps = path.join(cfgDir, 'apps.json');
+  fs.writeFileSync(apps, JSON.stringify({ env: {}, apps: [{ name: 'Desktop' }] }));
+  fs.writeFileSync(path.join(cfgDir, 'sunshine.log'), 'CLIENT CONNECTED\nCLIENT DISCONNECTED\n');
+  let restarted = 0;
+  const lib = sg.create({ appsFile: () => apps, root: d, coversDir: path.join(data, 'sunshine-covers'), runPs: async () => ({}), log: () => {}, restart: async () => { restarted++; } });
+  const r = await lib.sync([{ id: 'rom:1', name: 'Zelda', source: 'rom', art: null }]);
+  assert.equal(r.changed, true, r.error);
+  assert.equal(restarted, 1, 'Sunshine redémarré une fois');
+  assert.deepEqual(fs.readdirSync(cfgDir).sort(), ['apps.json', 'sunshine.log'], 'rien de nouveau dans le dossier de Sunshine');
+  assert.ok(fs.existsSync(path.join(data, 'sunshine-apps.avant-jeux-kanemode.json')), 'copie de sécurité chez KaneMode');
+  assert.deepEqual(JSON.parse(fs.readFileSync(apps, 'utf8')).apps.map(a => a.name), ['Desktop', 'Zelda']);
+  assert.equal((await lib.sync([{ id: 'rom:1', name: 'Zelda', source: 'rom', art: null }])).changed, false);
+  assert.equal(restarted, 1, 'pas de redémarrage quand rien ne change');
+});
+
 test('Console : variantes d’échelle cachées, jaquette lue dans le cache du moteur', () => {
   assert.equal(kaneplay.isScaleVariant('Desktop [150 %]'), true);
   assert.equal(kaneplay.isScaleVariant('Zelda'), false);

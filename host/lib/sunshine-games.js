@@ -75,7 +75,8 @@ function streamActive(logFile) {
   return text.lastIndexOf('CLIENT CONNECTED') > text.lastIndexOf('CLIENT DISCONNECTED');
 }
 
-function create({ appsFile, root, coversDir, runPs, log = console.log }) {
+// restart : redémarrage du service (remplacé dans les tests, pour ne jamais toucher au vrai Sunshine)
+function create({ appsFile, root, coversDir, runPs, log = console.log, restart = null }) {
   const configDir = () => path.dirname(appsFile());
   let sid = null;
   let last = { at: 0, sig: null, error: null, count: 0, pending: false };
@@ -187,9 +188,12 @@ function create({ appsFile, root, coversDir, runPs, log = console.log }) {
         last.pending = true;
         return { ok: true, changed: false, waiting: 'stream' };
       }
-      fs.writeFileSync(file + '.avant-jeux-kanemode', JSON.stringify(doc, null, 2));
+      // Copie de sécurité chez KaneMode : l'autorisation ne porte que sur apps.json, pas sur son
+      // dossier (4.31 : la copie posée à côté échouait, EPERM, et rien n'était jamais écrit)
+      fs.mkdirSync(coversDir, { recursive: true });
+      fs.writeFileSync(path.join(path.dirname(coversDir), 'sunshine-apps.avant-jeux-kanemode.json'), JSON.stringify(doc, null, 2));
       fs.writeFileSync(file, JSON.stringify(next, null, 2));
-      await restartService();
+      await (restart || restartService)();
       Object.assign(last, { at: Date.now(), error: null, count: list.length, pending: false });
       log(`Sunshine : ${list.length} jeu(x) de KaneMode proposés aux consoles en streaming`);
       return { ok: true, changed: true };

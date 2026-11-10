@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.31.1 : jeux du PC enfin écrits dans Sunshine
+
+- Retour de l’utilisateur : « c’est coché », mais la console ne voyait que Desktop et Steam Big Picture. Journal de KaneMode du PC, chaque minute depuis la 4.30 : « Sunshine : mise à jour des jeux impossible : EPERM … apps.json.avant-jeux-kanemode ». L’autorisation (icacls) ne porte que sur apps.json, pas sur la création de fichiers dans `Program FilesSunshineconfig` : la copie de sécurité échouait avant toute écriture. Les jaquettes PNG, elles, étaient bien faites (`data/sunshine-covers`).
+- `sunshine-games.js` : copie dans `<data>sunshine-apps.avant-jeux-kanemode.json` ; `create({ restart })` remplaçable (les tests ne touchent jamais au vrai service). Test : rien de nouveau dans le dossier de Sunshine, une seule écriture et un seul redémarrage, rien quand la liste ne change pas.
+- Vérifié sur le PC : droits en place (apps.json `(M)` pour le compte, ACE `LCRPWPLO` sur SunshineService), alias `KaneMode.exe` présent (4.31.0 installée). L’écriture réelle se fera à l’installation de la 4.31.1.
+
 ## Version 4.31.0 : rôle du PC à l’installation (jouer, streamer, les deux)
 
 - Idée de l’utilisateur : l’installateur demande si le PC sert à « jouer » ou « streamer » et règle ce qu’il faut.
