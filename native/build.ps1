@@ -74,6 +74,12 @@ Copy-Item (Join-Path $root 'setup\sunshine-jeux') (Join-Path $app 'setup\sunshin
 Copy-Item (Join-Path $root 'VERSION') $app
 # Icône de KaneMode pour la fenêtre du streaming
 Copy-Item (Join-Path $root 'setup\kanemode.ico') $app
+# Lanceur des jeux pour Sunshine (consoles en streaming) : exécutable ordinaire, compilé par le C# de
+# Windows (.NET Framework 4), copié hors du paquet par l'hôte (host/lib/sunshine-games.js)
+New-Item -ItemType Directory -Force (Join-Path $app 'tools') | Out-Null
+$csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+& $csc -nologo -target:winexe -optimize "-out:$(Join-Path $app 'tools\KaneModeStream.exe')" (Join-Path $native 'KaneMode.Stream\KaneModeStream.cs')
+if ($LASTEXITCODE -ne 0) { throw 'Échec de la compilation du lanceur pour Sunshine' }
 # Développement : au premier lancement, l'app reprend les données du prototype depuis ce dépôt.
 if (-not $Release) { Set-Content (Join-Path $app 'source-root.txt') $root -Encoding UTF8 }
 $node = (Get-Command node -ErrorAction SilentlyContinue).Source

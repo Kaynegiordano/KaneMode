@@ -1,10 +1,12 @@
 // Jeux de KaneMode proposés aux consoles qui streament ce PC (Ally, PC portable…), activé dans
 // Paramètres → Streaming sur le PC qui diffuse. Chaque jeu installé de la bibliothèque devient une
 // appli de Sunshine, avec sa jaquette (PNG, seul format que Sunshine envoie) :
-//   commande « KaneMode.exe --stream-game <id> » (alias d'exécution du paquet, voir
-//   native/KaneMode.App/StreamHelper.cs) : le KaneMode du PC lance le jeu comme depuis sa
-//   bibliothèque, et la commande se termine avec le jeu (Sunshine arrête alors le streaming) ;
-//   fin de session : « KaneMode.exe --stop-game <id> » ferme le jeu.
+//   commande « KaneModeStream.exe --stream-game <id> --app <AUMID> » : petit lanceur ordinaire
+//   (native/KaneMode.Stream, .NET Framework de Windows) copié dans %LOCALAPPDATA%KaneModein ; il
+//   demande au KaneMode du PC de lancer le jeu comme depuis sa bibliothèque, puis se termine avec
+//   le jeu (Sunshine arrête alors le streaming) ; fin de session : « --stop-game » ferme le jeu.
+//   4.31.2 : Sunshine lance l'appli dans un groupe de processus (job), d'où l'alias de l'app du
+//   paquet (KaneMode.exe, 4.30–4.31.1) était refusé : « Failed to launch process: 5 ».
 // La console choisit ensuite, parmi les applis du PC, celles qui deviennent des raccourcis.
 // Sunshine garde ses applis dans Program Files et ne les relit qu'au redémarrage de son service :
 // une autorisation d'administrateur, une seule fois (setup/sunshine-jeux/Autoriser.ps1), permet
@@ -16,7 +18,7 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 
 const MARK = '--stream-game';
-const ALIAS = path.join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WindowsApps', 'KaneMode.exe');
+const LAUNCHER = path.join(process.env.LOCALAPPDATA || '', 'KaneMode', 'bin', 'KaneModeStream.exe');
 const SERVICE = 'SunshineService';
 
 const run = (exe, args, timeout = 30000) => new Promise(resolve =>
@@ -26,12 +28,17 @@ const readApps = file => JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/
 const ours = a => typeof a.cmd === 'string' && a.cmd.includes(MARK);
 const quote = s => `"${String(s).replace(/"/g, '')}"`;
 
-/** Appli Sunshine d'un jeu (cover : PNG de sa jaquette, ou null). */
-function appFor(id, name, cover) {
+/**
+ * Appli Sunshine d'un jeu (cover : PNG de sa jaquette, ou null). launch : { exe, aumid } (lanceur
+ * copié et identifiant de l'app KaneMode, dont le lanceur tire le nom de son canal).
+ */
+function appFor(id, name, cover, launch = { exe: LAUNCHER, aumid: process.env.KANEMODE_AUMID || '' }) {
+  const tail = `${quote(id)} --app ${quote(launch.aumid)}`;
   const app = {
     name,
-    cmd: `${quote(ALIAS)} ${MARK} ${quote(id)}`,
-    'prep-cmd': [{ do: '', undo: `${quote(ALIAS)} --stop-game ${quote(id)}`, elevated: false }],
+    cmd: `${quote(launch.exe)} ${MARK} ${tail}`,
+    'working-dir': path.dirname(launch.exe),
+    'prep-cmd': [{ do: '', undo: `${quote(launch.exe)} --stop-game ${tail}`, elevated: false }],
     // Le lanceur reste ouvert pendant toute la partie : sa fin est celle du jeu
     'auto-detach': false,
     'wait-all': false,
@@ -46,7 +53,7 @@ function appFor(id, name, cover) {
  * Applis de Sunshine : celles de l'utilisateur gardées, les jeux de KaneMode remplacés par `games`
  * ([{ id, name, cover }]). Noms en double (même jeu sur deux boutiques) : la boutique entre parenthèses.
  */
-function merge(doc, games) {
+function merge(doc, games, launch) {
   const others = (doc.apps || []).filter(a => !ours(a));
   const taken = new Set(others.map(a => a.name));
   const apps = [];
@@ -55,7 +62,7 @@ function merge(doc, games) {
     if (taken.has(name)) name = `${name} (${g.source || g.id.split(':')[0]})`;
     for (let n = 2; taken.has(name); n++) name = `${String(g.name).trim()} (${n})`;
     taken.add(name);
-    apps.push(appFor(g.id, name, g.cover || null));
+    apps.push(appFor(g.id, name, g.cover || null, launch));
   }
   return { ...doc, apps: [...others, ...apps] };
 }
@@ -75,9 +82,26 @@ function streamActive(logFile) {
   return text.lastIndexOf('CLIENT CONNECTED') > text.lastIndexOf('CLIENT DISCONNECTED');
 }
 
-// restart : redémarrage du service (remplacé dans les tests, pour ne jamais toucher au vrai Sunshine)
-function create({ appsFile, root, coversDir, runPs, log = console.log, restart = null }) {
+// restart : redémarrage du service (remplacé dans les tests, pour ne jamais toucher au vrai Sunshine) ;
+// launch : { exe, aumid } imposé (tests), sinon le lanceur du paquet copié dans %LOCALAPPDATA%
+function create({ appsFile, root, coversDir, runPs, log = console.log, restart = null, launch = null }) {
   const configDir = () => path.dirname(appsFile());
+
+  /**
+   * Lanceur pour Sunshine : toolsKaneModeStream.exe du paquet, copié hors du paquet (Sunshine ne
+   * peut pas lancer l'app du paquet) quand il manque ou a changé. Null hors de l'app installée.
+   */
+  function launcher() {
+    if (launch) return launch;
+    const src = path.join(root, 'tools', 'KaneModeStream.exe');
+    const aumid = process.env.KANEMODE_AUMID || '';
+    if (!aumid || !fs.existsSync(src)) return null;
+    try {
+      const same = fs.existsSync(LAUNCHER) && fs.readFileSync(LAUNCHER).equals(fs.readFileSync(src));
+      if (!same) { fs.mkdirSync(path.dirname(LAUNCHER), { recursive: true }); fs.copyFileSync(src, LAUNCHER); }
+    } catch { if (!fs.existsSync(LAUNCHER)) return null; } // en cours d'utilisation (une partie) : gardé
+    return { exe: LAUNCHER, aumid };
+  }
   let sid = null;
   let last = { at: 0, sig: null, error: null, count: 0, pending: false };
 
@@ -107,7 +131,7 @@ function create({ appsFile, root, coversDir, runPs, log = console.log, restart =
     let published = 0;
     try { published = (readApps(file).apps || []).filter(ours).length; } catch { /* fichier abîmé */ }
     return {
-      sunshine: true, packaged: fs.existsSync(ALIAS), allowed: writable() && await restartable(),
+      sunshine: true, packaged: !!launcher(), allowed: writable() && await restartable(),
       published, lastSync: last.at || null, error: last.error, pending: last.pending,
       bundled: fs.existsSync(path.join(root, 'setup', 'sunshine-jeux', 'Autoriser.ps1')),
     };
@@ -175,10 +199,12 @@ function create({ appsFile, root, coversDir, runPs, log = console.log, restart =
     const file = appsFile();
     try {
       if (!fs.existsSync(file) || !writable()) return { ok: false, skipped: 'not-allowed' };
+      const how = launcher();
+      if (!how) return { ok: false, skipped: 'no-launcher' };
       const pngs = await covers(games);
       const list = games.map(g => ({ ...g, cover: pngs.get(g.id) || null }));
       const doc = readApps(file);
-      const next = merge(doc, list);
+      const next = merge(doc, list, how);
       const sig = JSON.stringify(next.apps.filter(ours));
       if (JSON.stringify((doc.apps || []).filter(ours)) === sig) {
         Object.assign(last, { at: Date.now(), error: null, count: list.length, pending: false });
@@ -207,4 +233,4 @@ function create({ appsFile, root, coversDir, runPs, log = console.log, restart =
   return { status, allow, sync, ours };
 }
 
-module.exports = { create, appFor, merge, streamActive, ALIAS, MARK };
+module.exports = { create, appFor, merge, streamActive, LAUNCHER, MARK };

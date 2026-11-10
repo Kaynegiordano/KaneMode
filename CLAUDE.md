@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.31.2 : Sunshine lance les jeux par un petit lanceur ordinaire
+
+- Retour de l’utilisateur : jeux bien visibles sur la console, mais « l’hôte a renvoyé une erreur : Failed to start the specified application (error:0) ». Journal de Sunshine : « Executing: ["…\Microsoft\WindowsApps\KaneMode.exe" --stream-game …] in [WindowsApps] » → « Failed to launch process: 5 », alors que la commande de fin (même alias, hors job) démarrait. Reproduit avec un `CreateProcess` + `PROC_THREAD_ATTRIBUTE_JOB_LIST` (comme Sunshine) : l’alias du paquet est refusé (erreur 5) selon le dossier de travail ; l’exécutable du paquet par son chemin aussi (0xC0070…). Pas fiable dans le job de Sunshine.
+- `native/KaneMode.Stream/KaneModeStream.cs` : lanceur en C# 5 / .NET Framework 4 (compilé par `csc.exe` de Windows dans `native/build.ps1`, `app	oolsKaneModeStream.exe`, 6 Ko, `winexe` sans fenêtre). `--stream-game|--stop-game <id> --app <AUMID>` : nom du canal du widget calculé depuis la famille du paquet (SHA-256, comme `WidgetBridge.ContainerSid`), mêmes messages que `StreamHelper` (`stream-game`, `stream-game-state`, `stream-stop`), KaneMode ouvert par `explorer shell:AppsFolder` s’il est fermé. Vérifié dans un job avec trois dossiers de travail.
+- `sunshine-games.js` : `launcher()` copie `toolsKaneModeStream.exe` vers `%LOCALAPPDATA%KaneModein` (si absent ou différent ; gardé s’il est en cours d’utilisation) ; `appFor(id, nom, jaquette, { exe, aumid })` : `cmd` et `undo` par ce lanceur, `working-dir` = son dossier ; sans lanceur ni `KANEMODE_AUMID` (développement) : rien n’est écrit. Les jeux publiés avec l’alias (4.30–4.31.1) sont remplacés (repérés par `--stream-game`). L’alias `KaneMode.exe` et `StreamHelper` restent dans l’app (inutilisés par Sunshine).
+- Tests : 8 dans `tools/verify-stream-shortcuts.js`. Pas essayé : une vraie partie lancée depuis la console.
+
 ## Version 4.31.1 : jeux du PC enfin écrits dans Sunshine
 
 - Retour de l’utilisateur : « c’est coché », mais la console ne voyait que Desktop et Steam Big Picture. Journal de KaneMode du PC, chaque minute depuis la 4.30 : « Sunshine : mise à jour des jeux impossible : EPERM … apps.json.avant-jeux-kanemode ». L’autorisation (icacls) ne porte que sur apps.json, pas sur la création de fichiers dans `Program FilesSunshineconfig` : la copie de sécurité échouait avant toute écriture. Les jaquettes PNG, elles, étaient bien faites (`data/sunshine-covers`).
