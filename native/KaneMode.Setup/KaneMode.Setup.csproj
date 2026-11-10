@@ -28,6 +28,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Rôle « Streamer » : carte graphique (WMI), service de Sunshine -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="$(PayloadDir)\KaneMode.msix" LogicalName="KaneMode.msix" Condition="Exists('$(PayloadDir)\KaneMode.msix')" />
     <EmbeddedResource Include="$(PayloadDir)\KaneMode.cer" LogicalName="KaneMode.cer" Condition="Exists('$(PayloadDir)\KaneMode.cer')" />
     <EmbeddedResource Include="$(PayloadDir)\XboxModeEnabler.exe" LogicalName="XboxModeEnabler.exe" Condition="Exists('$(PayloadDir)\XboxModeEnabler.exe')" />

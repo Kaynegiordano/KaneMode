@@ -169,6 +169,18 @@ public sealed class Installer
         return null;
     }
 
+    /// <summary>Fichier de l'app installée (dossier du paquet), ou null.</summary>
+    public static string? AppFile(string relative)
+    {
+        foreach (var p in new PackageManager().FindPackagesForUser(string.Empty))
+            if (p.Id.Name == "KaneMode")
+            {
+                string f = Path.Combine(p.InstalledLocation.Path, relative);
+                return File.Exists(f) ? f : null;
+            }
+        return null;
+    }
+
     public static bool HasPayload(string name) => Assembly.GetExecutingAssembly().GetManifestResourceNames().Contains(name);
 
     /// <summary>Ouvre une page des Paramètres ou lance l'app (sans droits administrateur via l'Explorateur).</summary>

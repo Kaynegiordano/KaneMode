@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.31.0 : rôle du PC à l’installation (jouer, streamer, les deux)
+
+- Idée de l’utilisateur : l’installateur demande si le PC sert à « jouer » ou « streamer » et règle ce qu’il faut.
+- `native/KaneMode.Setup` : `SetupForm` (fenêtre 720 × 640) : boutons « Jouer / Streamer / Les deux », explication selon le choix ; rôle proposé par `StreamerSetup.SuggestedRole` (WMI `Win32_VideoController` : GeForce, Quadro, NVIDIA RTX, Radeon RX/Pro, Arc → Les deux ; sinon Jouer). Jouer/Les deux cochent mode Xbox et mode développeur, Streamer les décoche ; options déjà faites ou impossibles verrouillées par `Lock` (`AutoCheck` faux, gris clair) au lieu d’être désactivées (texte illisible).
+- `StreamerSetup.Run` (après l’installation de l’app, échec non bloquant) : sans `Program FilesSunshinesunshine.exe`, message seulement. Sinon : `sunshine.conf` en `gamepad = auto` (`WithAutoGamepad`, `gamepad_driver = vigembus` ajouté seulement si le service ViGEmBus existe et qu’aucun pilote n’est choisi ; copie `.avant-kanemode.bak`) ; mêmes droits que `setup/sunshine-jeux/Autoriser.ps1` pour le compte connecté (`Win32_ComputerSystem.UserName`, pas le compte administrateur de l’UAC) ; `config.json` de ce compte (`ProfileList` → `AppDataLocalKaneModedata`) avec `sunshineGames: true` ; `appsetuphote-echelleInstaller.ps1` du paquet installé (`Installer.AppFile`) ; redémarrage du service sauf streaming en cours.
+- Vérification sans installer : `KaneMode-Setup.exe --test` (`SelfTest` : réécriture de sunshine.conf, streaming en cours) et `--apercu <png> [jouer|streamer|deux]` (fenêtre dessinée hors de l’écran). Compilées à part sans manifeste administrateur (`-p:ApplicationManifest=`). Paquets NuGet System.Management et System.ServiceProcess.ServiceController.
+- Vérifié : `--test` réussi (rôle proposé ici : Les deux), aperçus des trois rôles. **Pas lancé pour de vrai** (réinstallerait KaneMode et modifierait Sunshine).
+
 ## Version 4.30.0 : raccourcis vers les jeux d’un PC (streaming), jeux de KaneMode proposés par le PC hôte
 
 - Demande de l’utilisateur : sur l’Ally (et le MSI Pulse 15), ne plus passer par Streaming → PC → KaneMode du PC pour jouer à l’émulation du PC ; des raccourcis dans la bibliothèque de la console, avec la jaquette et un petit logo streaming dans le coin, **choisis depuis la console**.
