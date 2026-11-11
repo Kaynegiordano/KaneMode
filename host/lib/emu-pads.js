@@ -48,7 +48,7 @@ const KANE_YUZU = /^"engine:sdl,port:0,guid:[0-9a-f]{32},button:1"$/;
 function yuzuPad(file, pads) {
   const pad = pads && pads[0];
   if (!pad) return false;
-  const cur = iniValue(read(file), 'Controls', 'player_0_button_a');
+  const cur = file ? iniValue(read(file), 'Controls', 'player_0_button_a') : null; // null : sans contrôle
   if (cur && !/^"engine:keyboard/.test(cur) && !KANE_YUZU.test(cur)) return false; // réglé à la main
   const g = sdlGuid(pad);
   const base = `engine:sdl,port:0,guid:${g}`;
@@ -67,6 +67,84 @@ function yuzuPad(file, pads) {
     player_0_vibration_enabled: 'true',
   };
   return { Controls: Object.fromEntries(Object.entries(v).flatMap(([k, x]) => [[`${k}\\default`, 'false'], [k, x]])) };
+}
+
+// ---------- Eden, Lichii : une disposition par manette (4.32) ----------
+// Ces émulateurs lient le joueur 1 à UNE manette (son identifiant SDL). En streaming, la manette
+// virtuelle du PC change avec celle de la console (Xbox pour la manette de l'Ally, DualShock 4 pour une
+// Pro Controller ou une DualSense) : la disposition réglée pour l'une ne marchait plus avec l'autre, et
+// KaneMode remettait sa disposition Xbox par-dessus une disposition DualShock 4 faite à la main.
+// Désormais, la disposition trouvée avant chaque lancement est retenue pour sa manette
+// (user/config/kanemode-pads.json, par vendeur:produit), puis :
+//   - sa manette est branchée : rien ne change ;
+//   - une autre manette est branchée : sa disposition retenue est remise ; à défaut, pour une manette
+//     Xbox (XInput), la disposition de KaneMode ;
+//   - aucune manette (pas encore créée par Sunshine) : rien ne change.
+
+/** « vendeur:produit » (hexadécimal) d'un identifiant SDL, ou null (manette XInput sans identité). */
+function guidPad(guid) {
+  if (!/^[0-9a-f]{32}$/i.test(guid || '')) return null;
+  const b = Buffer.from(guid, 'hex');
+  const vid = b.readUInt16LE(4), pid = b.readUInt16LE(8);
+  return vid ? padKey(vid, pid) : null;
+}
+const padKey = (vid, pid) => `${(vid & 0xffff).toString(16).padStart(4, '0')}:${(pid & 0xffff).toString(16).padStart(4, '0')}`;
+
+/** Clés du joueur 1 dans [Controls] (avec leurs « \default »), telles qu'écrites. */
+function playerOne(text) {
+  const keys = {};
+  let inside = false;
+  for (const line of text.split(/\r?\n/)) {
+    const s = /^\s*\[(.*)\]\s*$/.exec(line);
+    if (s) { inside = s[1] === 'Controls'; continue; }
+    const i = line.indexOf('=');
+    if (inside && i > 0 && line.startsWith('player_0_')) keys[line.slice(0, i)] = line.slice(i + 1);
+  }
+  return keys;
+}
+
+/** Manette liée au joueur 1 : identifiant SDL lu dans ses boutons (clavier : null). */
+function boundGuid(keys) {
+  for (const k of ['player_0_button_a', 'player_0_button_b', 'player_0_lstick']) {
+    const v = keys[k] || '';
+    if (!/engine:sdl/.test(v)) continue;
+    const m = /guid:([0-9a-f]{32})/i.exec(v);
+    if (m) return m[1].toLowerCase();
+  }
+  return null;
+}
+
+/**
+ * Manette du joueur 1 d'Eden ou Lichii avant un lancement : section [Controls] à écrire, ou false.
+ * pads : manettes XInput (xinput.ps1) ; hid : manettes PlayStation et Nintendo ({ vid, pid }, hidpads.ps1).
+ */
+function yuzuController(file, pads = [], hid = []) {
+  const store = path.join(path.dirname(file), 'kanemode-pads.json');
+  const keys = playerOne(read(file));
+  const guid = boundGuid(keys);
+  let saved = {};
+  try { saved = JSON.parse(read(store) || '{}') || {}; } catch { saved = {}; }
+  const connected = [
+    ...(pads || []).map(p => ({ key: guidPad(sdlGuid(p)), xinput: p })),
+    ...(hid || []).map(h => ({ key: padKey(h.vid, h.pid) })),
+  ];
+  const bound = guidPad(guid);
+  if (bound) {
+    // Retenue pour cette manette (la dernière disposition vue gagne)
+    if (JSON.stringify((saved[bound] || {}).keys) !== JSON.stringify(keys)) {
+      saved[bound] = { guid, keys, at: new Date().toISOString() };
+      try { mkdir(path.dirname(store)); fs.writeFileSync(store, JSON.stringify(saved, null, 2)); } catch { /* sans mémoire */ }
+    }
+    if (connected.some(c => c.key === bound)) return false;
+  }
+  if (!connected.length) return false;
+  const known = connected.find(c => c.key && saved[c.key]);
+  if (known) return { Controls: saved[known.key].keys };
+  const x = connected.find(c => c.xinput);
+  if (!x) return false;
+  // Clavier, rien, ou une manette absente : disposition Xbox de KaneMode (le contrôle « réglé à la main »
+  // de yuzuPad est sauté : une disposition faite à la main vient d'être retenue pour sa manette)
+  return yuzuPad(null, [x.xinput]);
 }
 
 // ---------- Azahar (Citra) ----------
@@ -171,4 +249,4 @@ function melonPad(file, pads) {
   };
 }
 
-module.exports = { sdlGuid, iniValue, yuzuPad, azaharPad, rpcs3Pad, cemuPad, melonPad };
+module.exports = { sdlGuid, iniValue, yuzuPad, yuzuController, guidPad, azaharPad, rpcs3Pad, cemuPad, melonPad };

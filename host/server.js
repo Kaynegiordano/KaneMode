@@ -1067,7 +1067,7 @@ function modsTarget(id) {
  * présents, cœur RetroArch téléchargé, réglages de l'émulateur à jour. Renvoie { blocked } (réponse
  * à donner à l'interface) ou { launch } (commande, avec le fichier décompressé à la place de l'archive).
  */
-async function prepareRom(e, { fresh = false } = {}) {
+async function prepareRom(e, { fresh = false, stream = false } = {}) {
   let launch = e.launch, gameFile = e.romPath;
   const id = e.emulatorId;
   // Portage PC (raccourci dans le dossier de la console) : lancé tel quel, sans BIOS ni émulateur
@@ -1111,8 +1111,8 @@ async function prepareRom(e, { fresh = false } = {}) {
   // fichiers ; hors ligne, le jeu part sans eux)
   if (isSwitchRom(e)) await Promise.race([builtinMods(id), new Promise(r => setTimeout(r, 8000))]).catch(() => {});
   const set = emuEffective(e.system, e.id);
-  const padList = PAD_EMUS.includes(id) ? await xinputPads() : [];
-  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: padList, ...emuDisplay, dynamicFps: dynamicFpsActive(e, id) });
+  const found = PAD_EMUS.includes(id) ? await connectedPads({ wait: stream ? 8000 : 0 }) : { xinput: [], hid: [] };
+  emuSetup.prepare(id, path.dirname(m.exe), { bios: d.bios, saves: d.saves, system: e.system, aspect: set.aspect || 'auto', quality: set.quality, wide: set.wide === 'on', preset: set.preset, titleId: emuMods.titleIdOf(gameFile), pads: found.xinput, hidPads: found.hid, lang: config().lang, ...emuDisplay, dynamicFps: dynamicFpsActive(e, id) });
   if (id === 'retroarch') {
     staleResume(e, launch.args);
     launch = { ...launch, args: launch.args + retroarchLook(path.dirname(m.exe), e.id, set, fresh) };
@@ -1175,13 +1175,30 @@ function forgetResume(e, { backup = false } = {}) {
 const PAD_EMUS = ['eden', 'lichii', 'lichiimod', 'eglantine', 'azahar', 'rpcs3', 'cemu', 'melonds'];
 // Consoles dont l'émulateur peut s'ouvrir seul depuis la page d'un jeu (bouton « Ouvrir … seul »)
 const EMU_ONLY_SYSTEMS = ['switch', 'switch2'];
-const padCache = { at: 0, list: [] };
-async function xinputPads() {
-  if (Date.now() - padCache.at < 15e3) return padCache.list;
-  let list = [];
-  try { const r = await runPs('xinput.ps1'); list = JSON.parse(r.out || '[]'); } catch { list = []; }
-  Object.assign(padCache, { at: Date.now(), list: Array.isArray(list) ? list : [list] });
-  return padCache.list;
+// Manettes PlayStation et Nintendo (hidpads.ps1), dont la manette virtuelle de Sunshine : Eden et
+// Lichii reprennent la disposition réglée pour la manette branchée (emu-pads.js, yuzuController)
+const padCache = { at: 0, list: [], hid: [] };
+const psList = async script => {
+  try { const r = await runPs(script); const l = JSON.parse(r.out || '[]'); return Array.isArray(l) ? l : [l]; } catch { return []; }
+};
+/**
+ * Manettes branchées : { xinput, hid }, relues au plus toutes les 15 s. wait : jeu demandé par une
+ * console en streaming, dont Sunshine crée la manette virtuelle quelques secondes après : attendue
+ * jusqu'à ce délai (sinon l'émulateur garderait la disposition de la manette précédente).
+ */
+async function connectedPads({ wait = 0 } = {}) {
+  const until = Date.now() + wait;
+  let fresh = Date.now() - padCache.at >= 15e3 || wait > 0;
+  for (;;) {
+    if (fresh) {
+      const [list, hid] = await Promise.all([psList('xinput.ps1'), psList('hidpads.ps1')]);
+      Object.assign(padCache, { at: Date.now(), list, hid });
+    }
+    if (padCache.list.length || padCache.hid.length || Date.now() >= until) break;
+    await new Promise(r => setTimeout(r, 700));
+    fresh = true;
+  }
+  return { xinput: padCache.list, hid: padCache.hid };
 }
 // Jeux ajoutés ou retirés dans le dossier : la bibliothèque suit sans scan manuel
 let emuWatch = null, emuWatchTimer = null;
@@ -1842,7 +1859,7 @@ const routes = {
     // (File → Load folder). Mêmes réglages et manette, suivi par KaneMode, pas de temps de jeu compté.
     const emuOnly = !!b.emuOnly && e.source === 'rom' && !e.native && EMU_ONLY_SYSTEMS.includes(e.system);
     if (e.source === 'rom' && !b.dry) {
-      const prep = await prepareRom(e, { fresh: !!b.fresh });
+      const prep = await prepareRom(e, { fresh: !!b.fresh, stream: !!b.stream });
       if (prep.blocked) return json(res, 200, prep.blocked);
       e = { ...e, launch: emuOnly ? { ...prep.launch, args: '' } : prep.launch };
     }

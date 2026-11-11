@@ -607,6 +607,10 @@ function readPads() {
       padLive.buttons = p.buttons.map(b => b.pressed);
       padLive.axes = [axis(p, 0), axis(p, 1), axis(p, 2), axis(p, 3)];
     }
+    // Start avec un autre bouton (Select + Start maintenus pour quitter un jeu) : ni mode souris, ni
+    // action de Start au relâchement (4.32 : la souris s'activait en quittant un jeu)
+    const chord = startAt[p.index + ':start'];
+    if (chord && [...down].some(k => k !== 'start')) chord.chord = true;
     for (const k of down) {
       const id = p.index + ':' + k;
       seen.add(id);
@@ -616,7 +620,7 @@ function readPads() {
       if (!heldBy[id]) {
         heldBy[id] = now + 380; // délai avant répétition
         // Start agit au relâchement : maintenu 1 s, il active le mode souris (app native)
-        if (k === 'start') { startAt[id] = { t: now, mode: mouseMode.on }; continue; }
+        if (k === 'start') { startAt[id] = { t: now, mode: mouseMode.on, chord: down.size > 1 }; continue; }
         if (now - (lastPress[k] || -1e9) < SAME_PRESS_MS) continue;
         lastPress[k] = now;
         logSource(p);
@@ -638,12 +642,12 @@ function readPads() {
     if (seen.has(id)) {
       // Toujours tenu après 1,3 s sans basculement natif : le relais de l'interface le demande.
       // Le mode initial évite un second basculement si le lecteur natif a déjà traité le maintien.
-      if (!startAt[id].sent && mouseMode.on === startAt[id].mode && now - startAt[id].t >= 1300) { startAt[id].sent = true; native.send('mouse-mode', { on: !startAt[id].mode }); }
+      if (!startAt[id].sent && !startAt[id].chord && mouseMode.on === startAt[id].mode && now - startAt[id].t >= 1300) { startAt[id].sent = true; native.send('mouse-mode', { on: !startAt[id].mode }); }
       continue;
     }
-    const held = now - startAt[id].t;
+    const held = now - startAt[id].t, chorded = startAt[id].chord;
     delete startAt[id];
-    if (held >= START_HOLD_MS || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
+    if (chorded || held >= START_HOLD_MS || now - (lastPress.start || -1e9) < SAME_PRESS_MS) continue;
     lastPress.start = now;
     press(padAction('start'));
   }

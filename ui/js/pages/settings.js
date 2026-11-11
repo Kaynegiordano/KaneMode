@@ -585,7 +585,7 @@ const BUILDERS = {
       infoRow(s, `<span class="${h.paired ? 'dot-ok' : 'dot-ko'}"></span>${esc(h.name)}`, `${h.paired ? t('Appairé') : t('Non appairé')} · ${tn(h.apps, '{n} application', '{n} applications')}`);
     }
     actionRow(s, 'i-gamepad', t('Ouvrir le streaming'), t('PC trouvés automatiquement, appairage, bibliothèque de chaque PC, qualité, profils'), openStreaming, 'open-stream');
-    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu de jeu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
+    s.append(el('div', 'notice', t('Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>Select + Start</b> maintenus 1 seconde quittent un jeu d’émulation, comme sur le PC ; <b>LB + RB + Select + Start</b> ouvre le menu du streaming ; <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.')));
     s.append(el('div', 'notice', t('<b>Bureau à distance</b> : dans le streaming, le profil <b>Bureau</b> donne un texte net, la souris du bureau et 60 i/s. <b>Réglages → Système → Mise à l’échelle du PC hôte</b> passe l’écran du PC à 150 % (par exemple) pendant la session, puis le remet comme avant. Il faut le <b>complément PC hôte</b> sur le PC qui diffuse : il s’installe ci-dessous quand KaneMode est aussi sur ce PC.')));
     await streamShortcutsBlock(s);
     sunshineGamesBlock(s);

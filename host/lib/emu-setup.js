@@ -321,6 +321,26 @@ function originReset(file) {
   fs.writeFileSync(file, kept.join('\r\n'));
 }
 
+// Langue et région de la console Switch d'après la langue de KaneMode, tant qu'elles sont celles
+// d'origine (anglais, États-Unis) : les jeux s'ouvraient en anglais après chaque remise à zéro, et il
+// fallait tout repasser en français (Europe). Un choix fait dans l'émulateur reste.
+// Valeurs des énumérations d'Eden et de Lichii (langue : 2 français, 3 allemand, 4 italien,
+// 5 espagnol, 8 néerlandais, 9 portugais ; région : 2 Europe).
+const SWITCH_LANG = { fr: 2, de: 3, it: 4, es: 5, nl: 8, pt: 9 };
+function systemLanguage(file, lang) {
+  const want = SWITCH_LANG[String(lang || '').slice(0, 2)];
+  if (want === undefined) return {};
+  const text = read(file);
+  const atDefault = key => {
+    const d = pads.iniValue(text, 'System', key + '\\default');
+    return d === null ? pads.iniValue(text, 'System', key) === null : d === 'true';
+  };
+  const out = {};
+  if (atDefault('language_index')) out.language_index = want;
+  if (atDefault('region_index')) out.region_index = 2;
+  return Object.keys(out).length ? { System: qt(out) } : {};
+}
+
 function switchConfig(dir, c = {}, variant = 'eden') {
   const conf = path.join(dir, 'user', 'config');
   const file = path.join(conf, 'qt-config.ini');
@@ -330,9 +350,10 @@ function switchConfig(dir, c = {}, variant = 'eden') {
     originReset(file);
     fs.rmSync(path.join(conf, 'kanemode-profile.txt'), { force: true }); // repère des versions 4.21 à 4.24
   }
-  const pad = pads.yuzuPad(file, c.pads);
+  const pad = pads.yuzuController(file, c.pads, c.hidPads);
   const sections = [
     pad || {},
+    systemLanguage(file, c.lang),
     { UI: qt({ fullscreen: 'true', confirmStop: 2, pauseWhenInBackground: 'false', hideInactiveMouse: 'true' }), Miscellaneous: qt({ first_launch: 'false' }) },
     ...(mode === 'ia' ? [Object.fromEntries(Object.entries(iaPreset({ ...c, variant }).sections).map(([k, v]) => [k, qt(v)]))]
       : mode === 'auto' ? (variant === 'eden' ? [switchVideo(c)] : [lichiiProfile(), lichiiVideo(c)]) : []),

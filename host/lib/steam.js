@@ -169,6 +169,9 @@ function shortcuts(userdata) {
       const name = sc.AppName || sc.appname;
       const exe = String(sc.Exe || sc.exe || '').replace(/^"|"$/g, '');
       if (!name || !exe || sc.IsHidden) continue;
+      // KaneMode lui-même ajouté à Steam (explorer shell:AppsFolderKaneMode_…!App) : pas un jeu. Proposé aux
+      // consoles en streaming, il faisait passer KaneMode par Steam (fenêtre « Lancement… », rien ne s'ouvrait)
+      if (isKaneMode(exe, sc.LaunchOptions || sc.launchoptions)) continue;
       const appid = (sc.appid >>> 0);
       const gameId = ((BigInt(appid) << 32n) | 0x02000000n).toString();
       const icon = String(sc.icon || '').replace(/^"|"$/g, '');
@@ -185,4 +188,10 @@ function shortcuts(userdata) {
   return out;
 }
 
-module.exports = { parseVdf, ci, localApps, gridDir, gridArt, cacheArt, shortcuts, users };
+/** Raccourci qui lance KaneMode lui-même (paquet KaneMode_…!App, ou un KaneMode.exe). */
+function isKaneMode(exe, options) {
+  const all = `${exe || ''} ${options || ''}`;
+  return /KaneMode_[a-z0-9]+!App/i.test(all) || /(^|[\\/])KaneMode\.exe$/i.test(String(exe || '').trim());
+}
+
+module.exports = { parseVdf, isKaneMode, ci, localApps, gridDir, gridArt, cacheArt, shortcuts, users };

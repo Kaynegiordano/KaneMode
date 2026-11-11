@@ -185,7 +185,8 @@ public sealed class XInputPads : IDisposable
                     bool pressed = (all & ~_prevAll) != 0;
                     _prevAll = all;
                     // Start maintenu : seulement quand KaneMode a la main (ou pour quitter le mode souris)
-                    if (ours || _mouse || focus == Focus.Desktop) CheckHold(t);
+                    // Jeu d'émulateur en cours : Start lui appartient (pause), pas de mode souris (seulement pour en sortir)
+                    if ((ours || _mouse || focus == Focus.Desktop) && (_mouse || !QuitArmed)) CheckHold(t);
                     if (_mouse) MouseStep(t, dt);
                     if (quitWatch) CheckQuit(t);
                     now = NavigationJson(focus);

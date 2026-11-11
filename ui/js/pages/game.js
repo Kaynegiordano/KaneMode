@@ -93,7 +93,7 @@ native.on(async m => {
   let g = lib.byId(m.id);
   if (!g) { await lib.load({ background: true }).catch(() => {}); g = lib.byId(m.id); }
   if (!g || !g.installed) return native.send('stream-launch-failed', { id: m.id });
-  launch(g).catch(() => native.send('stream-launch-failed', { id: m.id }));
+  launch(g, { stream: true }).catch(() => native.send('stream-launch-failed', { id: m.id }));
 });
 
 // Jeux quittés « complètement » (Select + Start maintenus 3 s) : leur reprise automatique est
@@ -191,14 +191,14 @@ export async function launch(g, opts = {}) {
   let waitForGame = false;
   try {
     native.send('foreground', { id: g.id }); // relevé des fenêtres avant le lancement, puis passage de la main
-    let r = await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
+    let r = await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly, stream: !!opts.stream });
     // Premier jeu d'une console : son émulateur s'installe ici, puis le jeu démarre
     if (r.needsEmulator) {
       status.textContent = t('Installation de {name}…', { name: r.needsEmulator.name });
       const error = await installEmulator(r.needsEmulator.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
       g = lib.byId(g.id) || g;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly, stream: !!opts.stream });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     // Jeu dans une archive que l'émulateur ne lit pas : décompressé une fois, puis lancé
@@ -206,7 +206,7 @@ export async function launch(g, opts = {}) {
       status.textContent = t('Décompression de {name}…', { name: g.name });
       const error = await extractGame(g.id, text => { if (launching && launching.layer === layer) status.textContent = text; });
       if (!launching || launching.layer !== layer) return;
-      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly });
+      r = error ? { ok: false, error } : await api.post('/api/launch', { id: g.id, fresh: !!opts.fresh, emuOnly: !!opts.emuOnly, stream: !!opts.stream });
       if (r.ok) native.send('foreground', { id: g.id });
     }
     if (r.needsBios) {

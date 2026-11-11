@@ -277,11 +277,17 @@ test('Manette XInput (ROG Ally, Xbox) posée dans Eden, Lichii, Azahar, RPCS3, C
   assert.ok(ini().includes('player_0_button_dup="engine:sdl,port:0,guid:030000005e0400008e02000014017801,hat:0,direction:up"'));
   assert.equal((ini().match(/^player_0_button_a=/gm) || []).length, 1, 'une seule ligne par touche');
   // Autre manette ensuite (identifiant posé par KaneMode) : suivie ; réglage à la main : gardé
-  setup.prepare('lichii', dir, { bios: dir, saves: dir, pads: [{ ...pad, vid: 0x0b05, pid: 0x1b4c, ver: 0x0100 }] });
+  const ally = { ...pad, vid: 0x0b05, pid: 0x1b4c, ver: 0x0100 };
+  setup.prepare('lichii', dir, { bios: dir, saves: dir, pads: [ally] });
   assert.ok(ini().includes('guid:03000000050b00004c1b000000017801,button:1'));
-  fs.writeFileSync(qt, ini().replace(/player_0_button_a=.*/, 'player_0_button_a="engine:sdl,port:0,guid:aaaa,button:3"'));
+  fs.writeFileSync(qt, ini().replace(/player_0_button_a=.*/, 'player_0_button_a="engine:sdl,port:0,guid:03000000050b00004c1b000000017801,button:3"'));
+  setup.prepare('eden', dir, { bios: dir, saves: dir, pads: [ally] });
+  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:03000000050b00004c1b000000017801,button:3"'), 'sa manette branchée : gardé');
+  // 4.32 : avec une autre manette, la disposition de celle-ci ; le réglage à la main revient avec sa manette
   setup.prepare('eden', dir, { bios: dir, saves: dir, pads: [pad] });
-  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:aaaa,button:3"'));
+  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:030000005e0400008e02000014017801,button:1"'));
+  setup.prepare('eden', dir, { bios: dir, saves: dir, pads: [ally] });
+  assert.ok(ini().includes('player_0_button_a="engine:sdl,port:0,guid:03000000050b00004c1b000000017801,button:3"'), 'revenu avec sa manette');
   // Sans manette : rien n'est changé
   const az = tmp();
   setup.prepare('azahar', az, { bios: az, saves: az, pads: [] });
