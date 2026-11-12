@@ -597,14 +597,9 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 .brand-mark { width: 34px; height: 34px; }
 .menu-item { display: flex; align-items: center; gap: 16px; margin: 2px 12px; padding: 13px 16px; border-radius: var(--radius); font-size: 17px; font-weight: 500; color: #cdd3db; cursor: pointer; transition: background 140ms, color 140ms; }
 .menu-item svg { width: 22px; height: 22px; fill: currentColor; opacity: 0.85; flex: none; }
-.menu-item .chev { margin-left: auto; width: 18px; height: 18px; transition: transform 160ms; }
-.menu-item.expanded .chev { transform: rotate(90deg); }
 .menu-item.focused { background: var(--selected); color: var(--text); box-shadow: inset 0 0 0 2px var(--focus); }
 .menu-item.current:not(.focused) { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .menu-sep { height: 1px; background: var(--line); margin: 10px 24px; }
-.submenu { display: none; padding-left: 20px; }
-.submenu.open { display: block; }
-.submenu .menu-item { font-size: 15px; padding: 10px 16px; }
 .menu-foot { margin-top: auto; padding: 18px 26px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 .qam-section { padding: 6px 22px 16px; }
@@ -864,15 +859,6 @@ body.night::after { content: ""; position: fixed; inset: 0; z-index: 95; pointer
 }
 
 /* ---------- Accueil : barre d'actions ---------- */
-.home-top { display: flex; align-items: center; gap: 12px; margin: 12px var(--gutter) 0; }
-.home-top .row-title { margin: 0; flex: 1; }
-.btn-desktop {
-  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; cursor: pointer;
-  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); font-weight: 600; font-size: 14px;
-  transition: background 160ms, transform 160ms var(--ease);
-}
-.btn-desktop svg { width: 20px; height: 20px; fill: currentColor; }
-.btn-desktop.focused { background: #fff; color: #111; transform: scale(1.05); }
 
 /* ---------- Jeux non installés, émulation ---------- */
 .card.uninstalled > img, .card.uninstalled > .gen { filter: grayscale(0.7) brightness(0.55); }
@@ -930,11 +916,6 @@ body.lowfx .art-item::before, body.reduce-motion .art-item::before { animation: 
 .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
 
 /* ---------- Émulation ---------- */
-.sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-.sys-card { padding: 14px 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); }
-.sys-card b { display: block; }
-.sys-card small { color: var(--muted); font-size: 12px; }
-.sys-card.has { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .dot-ok, .dot-ko { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; background: var(--play); }
 .dot-ko { background: #555; }
 
@@ -1111,7 +1092,6 @@ body.lowfx #bg::before { animation: none; }
 body.lowfx .game-bar, body.lowfx #power { backdrop-filter: none; }
 body.lowfx .game-bar { background: rgba(10, 13, 18, 0.92); }
 
-.shot.sel.focused { box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--accent); }
 .chip-btn.danger { color: #ff8d90; }
 .chip-btn.danger.focused { background: var(--danger); color: #fff; }
 .chip-btn.disabled { opacity: 0.4; }

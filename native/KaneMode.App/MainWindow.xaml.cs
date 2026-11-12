@@ -391,6 +391,12 @@ public partial class MainWindow : Window
         if (data.Kind != (IntPtr)0x4B4D || data.Data == IntPtr.Zero) return IntPtr.Zero;
         string text = System.Runtime.InteropServices.Marshal.PtrToStringUni(data.Data) ?? "";
         string[] parts = text.Split('\t');
+        if (parts.Length == 2 && parts[0] == "open" && parts[1] == "return")
+        {
+            handled = true;
+            ReturnFromKanePlay();
+            return (IntPtr)1;
+        }
         if (parts.Length == 2 && parts[0] == "open" && (parts[1] == "qam" || parts[1] == "menu"))
         {
             handled = true;
@@ -510,6 +516,36 @@ public partial class MainWindow : Window
         Web.Focus();
         await Task.Delay(400); // KanePlay a fini de lâcher la manette
         ReconnectPads();
+    }
+
+    /// <summary>
+    /// Le moteur de streaming rend la main (fin de session, B sur son accueil) : KaneMode reprend
+    /// l'écran tout de suite. Il attendait la fin du processus du moteur, qui pouvait rester ouvert
+    /// jusqu'à 30 s fenêtre cachée (nettoyage de la session) : écran noir, fermeture forcée. Les
+    /// manettes sont reconnectées à sa fermeture ; s'il traîne plus de 10 s, il est arrêté.
+    /// </summary>
+    private async void ReturnFromKanePlay()
+    {
+        if (!_ready) return;
+        Log.Write("Streaming : le moteur rend la main, KaneMode revient devant");
+        _kanePlayOpen = true; // sa fermeture est attendue (reconnexion des manettes)
+        _returnTo = IntPtr.Zero;
+        StopForegroundWatch();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Maximized;
+        Show();
+        if (!Native.ForceForeground(Hwnd)) Activate();
+        Web.Focus();
+        await Task.Delay(10000);
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName("KanePlay"))
+        {
+            try
+            {
+                // Seulement un moteur sans fenêtre visible (celui qui se ferme), jamais une session relancée
+                if (p.MainWindowHandle == IntPtr.Zero) { Log.Write("Streaming : moteur encore ouvert 10 s après la fin, arrêté"); p.Kill(); }
+            }
+            catch { /* déjà fermé */ }
+            finally { p.Dispose(); }
+        }
     }
 
     private void ReconnectPads()
@@ -653,7 +689,8 @@ public partial class MainWindow : Window
             var root = doc.RootElement;
             string type = root.GetProperty("type").GetString() ?? "";
             if (fromWidget && !WidgetMessages.Contains(type)) { Log.Write($"Widget : message refusé ({type})"); return null; }
-            if (fromWidget && type != "widget-state") Log.Write($"Widget : {type}"); // l'état est demandé toutes les 3 s
+            // L'état du widget est demandé toutes les 3 s, celui d'un jeu streamé toutes les 2 s : pas au journal
+            if (fromWidget && type != "widget-state" && type != "stream-game-state") Log.Write($"Widget : {type}");
             switch (type)
             {
                 case "stream-game":

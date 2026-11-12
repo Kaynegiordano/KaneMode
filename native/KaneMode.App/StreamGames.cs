@@ -4,7 +4,7 @@ using System.Windows.Threading;
 namespace KaneMode;
 
 /// <summary>
-/// Jeux lancés par Sunshine pour une console qui streame ce PC (voir StreamHelper) : la demande
+/// Jeux lancés par Sunshine pour une console qui streame ce PC (lanceur native/KaneMode.Stream) : la demande
 /// passe par l'interface, qui lance le jeu comme depuis la bibliothèque ; le lanceur de Sunshine
 /// demande ensuite son état jusqu'à sa fin, et « stream-stop » le ferme quand la console quitte.
 /// </summary>

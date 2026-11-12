@@ -12,16 +12,6 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Lanceur d'un jeu pour Sunshine (streaming vers une console) : pas d'interface, pas
-        // d'instance unique, il parle au KaneMode ouvert puis s'arrête (voir StreamHelper)
-        if (StreamHelper.IsHelperCall(e.Args))
-        {
-            ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            base.OnStartup(e);
-            Dispatcher.InvokeAsync(async () => Shutdown(await StreamHelper.RunAsync(e.Args)));
-            return;
-        }
-
         _single = new Mutex(true, "KaneMode-InstanceUnique", out bool first);
         if (!first)
         {

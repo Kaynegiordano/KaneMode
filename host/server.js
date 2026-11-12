@@ -623,6 +623,8 @@ function streamShortcutEntries() {
 let sunshineSyncing = null;
 function syncSunshineGames() {
   if (!config().sunshineGames) return Promise.resolve(null);
+  // Pendant un jeu (KaneMode derrière), rien n'est recalculé : la liste suivra au retour sur KaneMode
+  if (!fpsScope.front) return Promise.resolve(null);
   if (sunshineSyncing) return sunshineSyncing;
   sunshineSyncing = (async () => {
     const st = state(), cfg = config();
@@ -2160,10 +2162,6 @@ const routes = {
     fpsScope.front = !!b.front;
     try { json(res, 200, withFps(await applyFpsScope())); }
     catch (e) { json(res, 200, { error: e.message }); }
-  },
-  'GET /api/graphics/live': async (req, res) => {
-    try { json(res, 200, await gfx.live()); }
-    catch (e) { json(res, 500, { error: e.message }); }
   },
   // Widgets Game Bar : toutes les mesures en direct en une requête (processeur, batterie, GPU), gardées
   // un court instant : le widget et le moniteur ouverts ensemble ne les demandent qu'une fois

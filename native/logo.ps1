@@ -1,39 +1,41 @@
-﻿# Logo de KaneMode (4.33) : un K dont les branches s'ouvrent sur les quatre boutons d'une manette,
-# en blanc sur un carre arrondi en degrade bleu -> violet. Meme dessin que le symbole i-brand de
-# ui/index.html (grille de 48 unites). KaneOS garde l'ancien K.
+﻿# Logo de KaneMode (4.34) : un K massif et les quatre boutons d'une manette, en degrade bleu -> violet
+# sur un carre arrondi sombre cercle du meme degrade. Meme dessin que le symbole i-brand de
+# ui/index.html (grille de 48 unites). KaneOS garde l'ancien K blanc sur fond degrade.
 #   . .\logo.ps1 ; New-KaneModeLogo -File x.png -Width 256 -Height 256 [-Scale 1] [-Opaque]
 #   Get-KaneModeLogoBitmap 32   (System.Drawing.Bitmap carre, transparent)
 Add-Type -AssemblyName System.Drawing
+
+function New-KaneModeRound([double]$x, [double]$y, [double]$s, [double]$d) {
+    $p = New-Object Drawing.Drawing2D.GraphicsPath
+    $p.AddArc($x, $y, $d, $d, 180, 90); $p.AddArc($x + $s - $d, $y, $d, $d, 270, 90)
+    $p.AddArc($x + $s - $d, $y + $s - $d, $d, $d, 0, 90); $p.AddArc($x, $y + $s - $d, $d, $d, 90, 90); $p.CloseFigure()
+    return $p
+}
 
 function Draw-KaneModeLogo([System.Drawing.Graphics]$g, [double]$x, [double]$y, [double]$s) {
     $g.SmoothingMode = 'AntiAlias'
     $g.PixelOffsetMode = 'HighQuality'
     $k = $s / 48.0
-    # Carre arrondi (rayon 12 sur 48), degrade #1A9FFF -> #6A5CFF en diagonale
-    $d = 24 * $k
-    $tile = New-Object Drawing.Drawing2D.GraphicsPath
-    $tile.AddArc($x, $y, $d, $d, 180, 90); $tile.AddArc($x + $s - $d, $y, $d, $d, 270, 90)
-    $tile.AddArc($x + $s - $d, $y + $s - $d, $d, $d, 0, 90); $tile.AddArc($x, $y + $s - $d, $d, $d, 90, 90); $tile.CloseFigure()
+    # Degrade #1A9FFF -> #6A5CFF en diagonale sur toute la tuile
     $brush = New-Object Drawing.Drawing2D.LinearGradientBrush ([Drawing.PointF]::new($x, $y)), ([Drawing.PointF]::new($x + $s, $y + $s)), ([Drawing.Color]::FromArgb(26, 159, 255)), ([Drawing.Color]::FromArgb(106, 92, 255))
-    $g.FillPath($brush, $tile)
-    $white = [Drawing.Brushes]::White
-    # Barre du K : 6,5 x 28 aux bouts ronds
-    $w = 6.5 * $k
-    $stem = New-Object Drawing.Drawing2D.GraphicsPath
-    $sx = $x + 9 * $k; $sy = $y + 10 * $k; $sh = 28 * $k
-    $stem.AddArc($sx, $sy, $w, $w, 180, 180); $stem.AddArc($sx, $sy + $sh - $w, $w, $w, 0, 180); $stem.CloseFigure()
-    $g.FillPath($white, $stem)
-    # Branches : traits de 6,5 aux bouts ronds
-    $pen = New-Object Drawing.Pen ([Drawing.Color]::White), ([single]$w)
-    $pen.StartCap = 'Round'; $pen.EndCap = 'Round'; $pen.LineJoin = 'Round'
-    $g.DrawLine($pen, [single]($x + 15.5 * $k), [single]($y + 25 * $k), [single]($x + 30 * $k), [single]($y + 12.5 * $k))
-    $g.DrawLine($pen, [single]($x + 18.5 * $k), [single]($y + 22.5 * $k), [single]($x + 31.5 * $k), [single]($y + 35.5 * $k))
-    # Les quatre boutons, en losange dans l'ouverture du K
-    $r = 2.4 * $k
-    foreach ($c in @(@(36.5, 19), @(41, 23.5), @(36.5, 28), @(32, 23.5))) {
-        $g.FillEllipse($white, [single]($x + $c[0] * $k - $r), [single]($y + $c[1] * $k - $r), [single](2 * $r), [single](2 * $r))
+    # Carre arrondi sombre (rayon 12 sur 48)
+    $tile = New-KaneModeRound $x $y $s (24 * $k)
+    $dark = New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(11, 14, 19))
+    $g.FillPath($dark, $tile)
+    # Cercle : trait de 2 a 1 unite du bord (rayon 11)
+    $ring = New-KaneModeRound ($x + $k) ($y + $k) (46 * $k) (22 * $k)
+    $pen = New-Object Drawing.Pen $brush, ([single](2 * $k))
+    $g.DrawPath($pen, $ring)
+    # K massif
+    $pts = @(@(8,11),@(14,11),@(14,21.2),@(23.6,11),@(31,11),@(20.6,22.2),@(31.4,37),@(24.1,37),@(16.5,26.4),@(14,29),@(14,37),@(8,37)) |
+        ForEach-Object { [Drawing.PointF]::new([single]($x + $_[0] * $k), [single]($y + $_[1] * $k)) }
+    $g.FillPolygon($brush, [Drawing.PointF[]]$pts)
+    # Les quatre boutons, en losange
+    $r = 2.7 * $k
+    foreach ($c in @(@(35.5, 18.6), @(40.6, 24), @(35.5, 29.4), @(30.4, 24))) {
+        $g.FillEllipse($brush, [single]($x + $c[0] * $k - $r), [single]($y + $c[1] * $k - $r), [single](2 * $r), [single](2 * $r))
     }
-    $pen.Dispose(); $brush.Dispose(); $tile.Dispose(); $stem.Dispose()
+    $pen.Dispose(); $brush.Dispose(); $dark.Dispose(); $tile.Dispose(); $ring.Dispose()
 }
 
 function Get-KaneModeLogoBitmap([int]$size) {
