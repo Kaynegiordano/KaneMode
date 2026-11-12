@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.33.0 : nouveau logo (K aux quatre boutons)
+
+- Demande de l’utilisateur : un logo « stylé entre une manette et un K », l’ancien étant celui de KaneOS (le lanceur de KaneOS fabrique `assets/kane-os-logo.ico` depuis `ui/media/icon.png` par `fabrique_icone.py` ; KaneOS garde l’ancien K, son .ico déjà fait n’a pas bougé — ne pas relancer ce script sans le vouloir). Quatre propositions montrées, choix : « K aux quatre boutons », couleurs de KaneMode (premier essai rose → violet refusé : « les couleurs ne correspondent pas du tout à KaneMode »).
+- Dessin (grille 48) : barre `rect x9 y10 6,5×28 rx3,25`, branches `M15.5 25L30 12.5` et `M18.5 22.5L31.5 35.5` (trait 6,5, bouts ronds), quatre boutons r 2,4 en losange (36,5/19, 41/23,5, 36,5/28, 32/23,5), carré arrondi rx 12 en dégradé `#1A9FFF → #6A5CFF` (dans l’interface : `var(--accent)` → `#6a5cff`, symbole `i-brand` de `ui/index.html` et `ui/widget.html`).
+- `native/logo.ps1` (System.Drawing) : `Draw-KaneModeLogo`, `New-KaneModeLogo`, `Get-KaneModeLogoBitmap`, utilisé par `build.ps1` (icônes du paquet) et `tools/make-logo.ps1`, qui régénère `ui/media/icon.png` et `setup/kanemode.ico` (10 tailles dessinées chacune à sa taille ; 16–128 en BMP 32 bits + masque, 256 en PNG, comme `fabrique_icone.py`). La jaquette du streaming (`streamcover.js`, écran + signal) n’est pas le logo et n’a pas changé.
+
 ## Version 4.32.0 : émulation en streaming (Select + Start, manette par manette, langue)
 
 - Retours de l’utilisateur : Select + Start « parfois moins » bien, un menu « pour se déconnecter ou non » en plus (le menu en jeu du moteur, pas Steam), la souris virtuelle qui s’active ; jeux lancés depuis la bibliothèque qui « remettent les paramètres d’origine » (manette DualShock 4 et français/Europe à refaire).

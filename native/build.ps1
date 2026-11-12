@@ -148,28 +148,12 @@ if (-not $NoWidget) {
 
 # ---------------------------------------------------------------- 3. Icônes du paquet
 Step 'Icônes du paquet'
-Add-Type -AssemblyName System.Drawing
+# Logo de KaneMode (K aux quatre boutons) : native\logo.ps1, même dessin que l'interface et le .ico
+. (Join-Path $native 'logo.ps1')
 $assets = Join-Path $layout 'Assets'
 New-Item -ItemType Directory -Force $assets | Out-Null
-function New-Logo([string]$file, [int]$w, [int]$h, [double]$scale, [bool]$transparent = $true) {
-    $bmp = New-Object Drawing.Bitmap $w, $h
-    $g = [Drawing.Graphics]::FromImage($bmp)
-    $g.SmoothingMode = 'AntiAlias'
-    $g.Clear($(if ($transparent) { [Drawing.Color]::Transparent } else { [Drawing.Color]::FromArgb(11, 14, 19) }))
-    $s = [Math]::Round([Math]::Min($w, $h) * $scale)
-    $x = ($w - $s) / 2; $y = ($h - $s) / 2
-    $r = $s / 4
-    $path = New-Object Drawing.Drawing2D.GraphicsPath
-    $path.AddArc($x, $y, $r, $r, 180, 90); $path.AddArc($x + $s - $r, $y, $r, $r, 270, 90)
-    $path.AddArc($x + $s - $r, $y + $s - $r, $r, $r, 0, 90); $path.AddArc($x, $y + $s - $r, $r, $r, 90, 90); $path.CloseFigure()
-    $brush = New-Object Drawing.Drawing2D.LinearGradientBrush ([Drawing.PointF]::new($x, $y)), ([Drawing.PointF]::new($x + $s, $y + $s)), ([Drawing.Color]::FromArgb(26, 159, 255)), ([Drawing.Color]::FromArgb(106, 92, 255))
-    $g.FillPath($brush, $path)
-    $k = $s / 48
-    $pts = @(@(15,11),@(21,11),@(21,21.2),@(30.6,11),@(38,11),@(27.6,22.2),@(38.4,37),@(31.1,37),@(23.5,26.4),@(21,29),@(21,37),@(15,37)) |
-        ForEach-Object { [Drawing.PointF]::new($x + $_[0] * $k, $y + $_[1] * $k) }
-    $g.FillPolygon([Drawing.Brushes]::White, [Drawing.PointF[]]$pts)
-    $bmp.Save((Join-Path $assets $file), [Drawing.Imaging.ImageFormat]::Png)
-    $g.Dispose(); $bmp.Dispose()
+function New-Logo([string]$file, [int]$w, [int]$h, [double]$scale) {
+    New-KaneModeLogo -File (Join-Path $assets $file) -Width $w -Height $h -Scale $scale
 }
 New-Logo 'Square44x44Logo.png' 44 44 1
 New-Logo 'Square44x44Logo.targetsize-256_altform-unplated.png' 256 256 1
