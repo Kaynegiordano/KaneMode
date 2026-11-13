@@ -6,7 +6,8 @@
 // Lecteurs vidéo reconnus (nom du programme, en minuscules) et OBS
 const PLAYERS = ['vlc.exe', 'mpc-hc64.exe', 'mpc-hc.exe', 'mpc-be64.exe', 'mpc-be.exe', 'potplayermini64.exe', 'potplayermini.exe', 'potplayer64.exe', 'mpv.exe', 'mpvnet.exe'];
 const OBS = ['obs64.exe', 'obs32.exe'];
-const DEFAULTS = { games: true, outside: false, videos: false, obs: true };
+// noEmulation : jeux émulés, portages PC et émulateurs jamais en HDR (sauf choix « HDR du jeu »)
+const DEFAULTS = { games: true, outside: false, videos: false, obs: true, noEmulation: true };
 const GAME_MODES = ['on', 'off'];
 
 const base = p => String(p).split('\\').pop().toLowerCase();
@@ -14,12 +15,28 @@ const norm = d => String(d || '').replace(/[\\/]+$/, '').toLowerCase();
 
 function prefs(config) { return { ...DEFAULTS, ...(config.autoHdr || {}) }; }
 
+// Émulateurs reconnus à leur nom dans la bibliothèque (RetroArch de Steam, Dolphin ajouté à la main…)
+const EMU_NAME = /\b(retroarch|pcsx2|duckstation|ppsspp|cemu|rpcs3|ryujinx|yuzu|citra|azahar|xemu|xenia|flycast|melonds|shadps4|vita3k|lichii|eglantine|eden emulator|dolphin emulator)\b|\b[ée]mulat/i;
+/**
+ * Test « touche à l'émulation » : jeu de l'émulation (ROM ou portage PC), ou entrée qui lance un
+ * émulateur (programme reconnu par exes, des expressions sur le nom du fichier, ou nom de l'entrée).
+ */
+function emulationTest(exes = []) {
+  return e => {
+    if (!e) return false;
+    if (e.source === 'rom') return true;
+    const target = e.launch && e.launch.kind === 'exe' ? String(e.launch.target || '').split(/[\\/]/).pop() : '';
+    if (target && exes.some(re => re.test(target))) return true;
+    return EMU_NAME.test(String(e.name || ''));
+  };
+}
+
 /**
  * read/write : configuration ; hdr() : -1 sans écran HDR, 0 coupé, 1 actif ; setHdr(on) ;
  * paths() : chemins des programmes ouverts ; games() : jeux de la bibliothèque [{ id, name, dir }] ;
  * log(message).
  */
-function create({ read, write, hdr, setHdr, paths, games, log = () => {} }) {
+function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulationTest(), log = () => {} }) {
   const reasons = new Map(); // cause → libellé (journal)
   let owned = !!read().autoHdrOwned; // KaneMode a allumé le HDR (gardé si l'hôte redémarre)
   let blocked = false, pending = Promise.resolve();
@@ -54,9 +71,12 @@ function create({ read, write, hdr, setHdr, paths, games, log = () => {} }) {
     prefs: () => prefs(read()),
     /** Jeu lancé par KaneMode (route /api/launch). */
     started(entry) {
-      if (!entry || entry.source === 'kaneplay' || entry.source === 'rom' || entry.streamHost || String(entry.id).startsWith('launcher:')) return;
+      if (!entry || entry.source === 'kaneplay' || entry.streamHost || String(entry.id).startsWith('launcher:')) return;
+      const p = prefs(read());
       const mode = gameMode(entry.id);
-      const auto = prefs(read()).games && entry.type !== 'app';
+      // Émulation exclue : seul un « Toujours » choisi pour ce jeu passe outre
+      if (p.noEmulation && mode !== 'on' && isEmulation(entry)) return;
+      const auto = p.games && entry.type !== 'app';
       if (mode === 'off' || (mode !== 'on' && !auto)) return;
       reasons.set('game:' + entry.id, entry.name || entry.id);
       return apply();
@@ -80,7 +100,7 @@ function create({ read, write, hdr, setHdr, paths, games, log = () => {} }) {
       const seen = new Set();
       for (const g of await games()) {
         const mode = gameMode(g.id);
-        if (mode === 'off' || (mode !== 'on' && !p.outside)) continue;
+        if (mode === 'off' || (mode !== 'on' && (!p.outside || (p.noEmulation && g.emulation)))) continue;
         const d = norm(g.dir);
         if (d && list.some(x => x.startsWith(d + '\\'))) { seen.add('outside:' + g.id); reasons.set('outside:' + g.id, g.name); }
       }
@@ -103,9 +123,9 @@ function trackable(entries) {
     const d = norm(e.dir);
     // Au moins trois niveaux (C:\Jeux\Nom) et pas le dossier d'une bibliothèque entière
     if (!d || d.split('\\').filter(Boolean).length < 3 || /\\(steamapps\\common|epic games|gog galaxy\\games|xboxgames)$/.test(d)) continue;
-    out.push({ id: e.id, name: e.name, dir: e.dir });
+    out.push({ id: e.id, name: e.name, dir: e.dir, emulation: !!e.emulation });
   }
   return out;
 }
 
-module.exports = { create, prefs, trackable, DEFAULTS, GAME_MODES, PLAYERS, OBS };
+module.exports = { create, prefs, trackable, emulationTest, DEFAULTS, GAME_MODES, PLAYERS, OBS };

@@ -693,10 +693,11 @@ const BUILDERS = {
     for (const [k, title, desc] of [
       ['games', t('Jeux lancés depuis KaneMode'), t('HDR au lancement, SDR à la fermeture')],
       ['outside', t('Jeux ouverts ailleurs'), t('Jeux de la bibliothèque lancés depuis Steam, l’app Xbox ou un raccourci')],
+      ['noEmulation', t('Exclure l’émulation'), t('Jeux émulés, portages PC et émulateurs (RetroArch, Dolphin, Eden…), même lancés depuis Steam')],
       ['videos', t('Lecteurs vidéo'), t('VLC, MPC-HC, MPC-BE, PotPlayer ou mpv ouverts')],
       ['obs', t('Pause pendant OBS'), t('Pas de HDR automatique tant qu’OBS est ouvert : couleurs justes à l’enregistrement')],
     ]) s.append(switchRow({ title, desc, on: p[k], key: 'hdr-' + k, onToggle: v => save({ [k]: v }) }));
-    s.append(el('div', 'notice', t('Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>.')));
+    s.append(el('div', 'notice', t('Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.')));
   },
 
   async energy(s) {

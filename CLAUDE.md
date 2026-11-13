@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.35.1 : HDR automatique, option « Exclure l’émulation »
+
+- Demande : « ajoute une option dans les paramètres pour exclure tout ce qui touche à l’émulation ». Avant, les ROM lancées par KaneMode étaient exclues en dur (`started` sortait sur `source === 'rom'`), même avec « HDR du jeu → Toujours » ; RetroArch de Steam ou un émulateur ajouté à la main comptaient comme des jeux.
+- `autohdr.js` : préférence `noEmulation` (défaut `true`) ; `emulationTest(exes)` = ROM (portages PC compris), programme lancé reconnu par les expressions `exe` du catalogue (`emuStoreLib.CATALOG`), ou nom d’entrée (`EMU_NAME`, avec bornes de mot : « Ecco the Dolphin », « Garden of Eden » ne sont pas pris). `started` : émulation exclue sauf `gameHdr[id] === 'on'`. `poll` : jeux ouverts ailleurs marqués `emulation` (via `hdrGames` → `trackable`) ignorés tant que l’option est active. Option coupée : les ROM suivent `games` et le choix par jeu.
+- Tests : `tools/verify-autohdr.js` (13, dont 5 nouveaux). Bascule essayée dans le navigateur (hôte de développement). **Pas essayé** : un vrai écran HDR avec un émulateur.
+
 ## Version 4.35.0 : streaming adapté au réseau, bilan en clair, reprise du dernier jeu
 
 - Demande : premier lot d’idées retenues par l’utilisateur (reprise instantanée, profils de streaming automatiques « très intéressé », diagnostic après session). Constat avant d’écrire : le moteur savait déjà apprendre un débit par PC (`learnBitrate`, clé `uuid/local|remote|auto`), séparer un débit Wi-Fi (`useWifiBitrate`), afficher un bilan chiffré (`SessionSummaryView.qml`) et réveiller un PC depuis sa page. La 4.35 complète, elle ne refait pas.

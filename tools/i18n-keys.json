@@ -1329,7 +1329,7 @@
  "Chaque émulateur vient de son site officiel et s’installe au premier jeu de sa console. Ses réglages et vos sauvegardes restent dans {dir}.": [
   "ui/js/pages/emulation.js"
  ],
- "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>.": [
+ "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.": [
   "ui/js/pages/settings.js"
  ],
  "Charge du processeur": [
@@ -2099,6 +2099,9 @@
  "Ethernet · Internet": [
   "ui/js/statusbar.js"
  ],
+ "Exclure l’émulation": [
+  "ui/js/pages/settings.js"
+ ],
  "Exécutable de l’émulateur": [
   "ui/js/pages/emulation.js"
  ],
@@ -2634,6 +2637,9 @@
  ],
  "jeux dossiers analyse démonstration steam epic gog xbox comptes connexion visuels jaquettes images steamgriddb": [
   "ui/js/pages/search.js"
+ ],
+ "Jeux émulés, portages PC et émulateurs (RetroArch, Dolphin, Eden…), même lancés depuis Steam": [
+  "ui/js/pages/settings.js"
  ],
  "Jeux et collections affichés dans l’ordre de votre choix": [
   "ui/js/personalization-settings.js"

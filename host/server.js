@@ -496,6 +496,8 @@ const powerController = powerLib.create({ read: config, write: c => writeJson(FI
 // ---------------------------------------------------------------- HDR automatique (voir lib/autohdr.js)
 // Jeux de la bibliothèque et leur dossier, gardés 30 s (classement jeu / application de l'utilisateur compris)
 const hdrType = (g, st = state()) => (st.overrides[g.id] || {}).type || (g.source === 'custom' || g.source === 'rom' ? g.type : (meta[g.id] || {}).type || g.type || 'game');
+// Émulation (option « Exclure l'émulation ») : ROM, portage PC, ou programme d'un émulateur du catalogue
+const hdrIsEmulation = autoHdrLib.emulationTest(Object.values(emuStoreLib.CATALOG).map(c => c.exe).filter(Boolean));
 const hdrGamesMemo = { t: 0, list: [] };
 function hdrGames() {
   if (Date.now() - hdrGamesMemo.t < 30000) return hdrGamesMemo.list;
@@ -504,6 +506,7 @@ function hdrGames() {
     id: g.id, name: g.name, source: g.source, installed: g.installed, demo: g.demo, streamHost: g.streamHost,
     type: hdrType(g, st),
     dir: trackDir(g),
+    emulation: hdrIsEmulation(g),
   }));
   hdrGamesMemo.t = Date.now(); hdrGamesMemo.list = autoHdrLib.trackable(list);
   return hdrGamesMemo.list;
@@ -514,6 +517,7 @@ const autoHdr = autoHdrLib.create({
   setHdr: on => sysctl.call('hdr', { value: on }),
   paths: async () => (await sysctl.call('procpaths')).paths || [],
   games: async () => hdrGames(),
+  isEmulation: hdrIsEmulation,
   log: m => console.log(m),
 });
 // Écran HDR branché ? Relu chaque minute : sans lui (écran de l'Ally seul), rien n'est surveillé

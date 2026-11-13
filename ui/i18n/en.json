@@ -258,7 +258,6 @@
  "Aucune mise à jour choisie": "No update selected",
  "Aucune mise à jour de pilote en attente": "No driver updates pending",
  "Aucune mise à jour téléchargée": "No update downloaded",
- "Aucune nouvelle notification": "No new notifications",
  "Aucune version publiée": "No version released",
  "Aucune vidéo (.mp4, .webm) dans ce dossier.": "No videos (.mp4, .webm) in this folder.",
  "Aujourd'hui": "Today",
@@ -1696,5 +1695,8 @@
  "son audio casque dolby hdr écran sons volume": "sound audio headphones dolby hdr display sounds volume",
  "Son et image": "Sound and picture",
  "système mises à jour version pilotes bios asus stockage disque espace mode xbox": "system updates version drivers bios asus storage disk space xbox mode",
- "thème ambiance couleurs langue police animations profils démarrage vidéo intro taille": "theme mood colors language font animations profiles startup boot video intro size"
+ "thème ambiance couleurs langue police animations profils démarrage vidéo intro taille": "theme mood colors language font animations profiles startup boot video intro size",
+ "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.": "Each game can have its own choice: game menu, <b>Game HDR</b>. “Always” takes priority over excluding emulation.",
+ "Exclure l’émulation": "Exclude emulation",
+ "Jeux émulés, portages PC et émulateurs (RetroArch, Dolphin, Eden…), même lancés depuis Steam": "Emulated games, PC ports and emulators (RetroArch, Dolphin, Eden…), even when launched from Steam"
 }

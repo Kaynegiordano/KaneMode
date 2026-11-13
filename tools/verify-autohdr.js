@@ -101,3 +101,51 @@ test('dossiers suivis : jeux seulement, jamais une bibliothèque entière', () =
   ]);
   assert.deepStrictEqual(list.map(g => g.id), ['a']);
 });
+
+test('émulation reconnue : ROM, émulateur par son programme ou son nom, sans confondre les jeux', () => {
+  const isEmu = autohdr.emulationTest([/^retroarch\.exe$/i]);
+  assert.strictEqual(isEmu({ id: 'rom:1', source: 'rom', name: 'Zelda' }), true);
+  assert.strictEqual(isEmu({ id: 'steam:2', source: 'steam', name: 'RetroArch' }), true);
+  assert.strictEqual(isEmu({ id: 'custom:3', source: 'custom', name: 'X', launch: { kind: 'exe', target: 'D:\\Emu\\retroarch.exe' } }), true);
+  assert.strictEqual(isEmu({ id: 'custom:4', source: 'custom', name: 'Dolphin Emulator' }), true);
+  for (const name of ['Ecco the Dolphin', 'Garden of Eden', 'Hades II']) assert.strictEqual(isEmu({ id: 'x', source: 'steam', name }), false, name);
+});
+
+test('« Exclure l’émulation » (par défaut) : ni ROM ni émulateur en HDR, sauf « Toujours » pour ce jeu', async () => {
+  const rom = { id: 'rom:1', name: 'Zelda', type: 'game', source: 'rom' };
+  const steamEmu = { id: 'steam:9', name: 'RetroArch', type: 'game', source: 'steam' };
+  const e = setup();
+  await e.ctl.started(rom);
+  await e.ctl.started(steamEmu);
+  assert.strictEqual(e.screen, 0);
+  e.cfg.gameHdr = { 'rom:1': 'on' };
+  await e.ctl.started(rom);
+  assert.strictEqual(e.screen, 1, 'le choix du jeu passe avant l’exclusion');
+  await e.ctl.ended(rom.id);
+  assert.strictEqual(e.screen, 0);
+});
+
+test('« Exclure l’émulation » coupé : l’émulation suit le réglage des jeux', async () => {
+  const e = setup({ cfg: { autoHdr: { noEmulation: false } } });
+  await e.ctl.started({ id: 'rom:1', name: 'Zelda', type: 'game', source: 'rom' });
+  assert.strictEqual(e.screen, 1);
+  e.cfg.gameHdr = { 'rom:2': 'off' };
+  await e.ctl.started({ id: 'rom:2', name: 'Mario', type: 'game', source: 'rom' });
+  assert.deepStrictEqual(e.ctl.state().active, ['Zelda']);
+});
+
+test('émulateur de la bibliothèque ouvert ailleurs : ignoré tant que l’émulation est exclue', async () => {
+  const emu = { id: 'steam:9', name: 'RetroArch', dir: 'D:\\Steam\\steamapps\\common\\RetroArch', emulation: true };
+  const procs = ['D:\\Steam\\steamapps\\common\\RetroArch\\retroarch.exe'];
+  const e = setup({ cfg: { autoHdr: { outside: true } }, procs, games: [emu] });
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0);
+  e.cfg.autoHdr.noEmulation = false;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1);
+});
+
+test('dossiers suivis : l’émulation y est marquée', () => {
+  const [g] = autohdr.trackable([{ id: 'a', type: 'game', dir: 'D:\\Jeux\\RetroArch', source: 'steam', emulation: true }]);
+  assert.strictEqual(g.emulation, true);
+});
