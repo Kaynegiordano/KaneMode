@@ -9,7 +9,8 @@ import { playBoot, chime } from '../boot.js';
 import { sleepNow } from '../power.js';
 import { QAM_SECTIONS, PERF_MODES } from '../qam.js';
 import { HOME_ROWS } from './home.js';
-import { renderPersonalization } from '../personalization-settings.js';
+import { renderPersonalization, ambienceNames } from '../personalization-settings.js';
+import { AMBIENCES } from '../personalization.js';
 import { renderDolby } from '../dolby-settings.js';
 import { renderAccounts } from '../accounts-settings.js';
 
@@ -21,17 +22,29 @@ const THEMES = [
   ['retro', t('Rétro'), { accent: '#ff8a3d', background: 'dark', corners: 'square', cardSize: 'l', solidPanels: true, font: 'segoe' }],
   ['nature', t('Nature'), { accent: '#3fca5a', background: 'art', corners: 'round', cardSize: 'm', solidPanels: false, font: 'segoe' }],
 ];
+// Un seul choix de thème : les thèmes prêts, puis les ambiances (qui règlent aussi sons et animations)
+const ALL_THEMES = [...THEMES, ...AMBIENCES.map(({ id, ...values }) => ['amb:' + id, ambienceNames[id], { ...values, ambience: id }])];
 const ACCENTS = ['#1a9fff', '#6a5cff', '#3fca5a', '#ff8a3d', '#ff4d8d', '#e5484d', '#1fc7c1', '#e6e9ee'];
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', t('Select'), t('Start'), 'L3', 'R3', '↑', '↓', '←', '→', t('Guide')];
-const SECTIONS = [
-  ['library', 'i-library', t('Bibliothèque')], ['accounts', 'i-store', t('Comptes et boutiques')], ['sgdb', 'i-image', 'SteamGridDB'], ['emulation', 'i-rom', t('Émulation')], ['stream', 'i-gamepad', t('Streaming')],
-  ['personal', 'i-star', t('Personnalisation')], ['dolby', 'i-volume', 'Dolby Atmos'], ['hdr', 'i-hdr', t('HDR automatique')], ['look', 'i-palette', t('Apparence')], ['boot', 'i-media', t('Démarrage')], ['pad', 'i-gamepad', t('Manette')],
-  ['qam', 'i-grid', t('Accès rapide')], ['access', 'i-info', t('Accessibilité')], ['power', 'i-moon', t('Veille')], ['energy', 'i-power', t('Énergie')],
-  ['device', 'i-battery', t('Appareil et pilotes')],
-  ['storage', 'i-drive', t('Stockage')], ['xbox', 'i-desktop', t('Mode Xbox')], ['system', 'i-cpu', t('Système')],
+// Dix rubriques : chacune réunit des blocs de réglages (BUILDERS), affichés l'un sous l'autre.
+// Avant la 4.35, chaque bloc était une rubrique (19 en tout), avec des réglages en double.
+export const SECTIONS = [
+  ['library', 'i-library', t('Bibliothèque'), ['library', 'accounts', 'sgdb', 'covers']],
+  ['emulation', 'i-rom', t('Émulation'), ['emulation']],
+  ['stream', 'i-stream', t('Streaming'), ['stream']],
+  ['look', 'i-palette', t('Apparence'), ['look', 'ambience', 'profiles', 'immersive', 'boot']],
+  ['home', 'i-home', t('Accueil'), ['homeperso', 'deals']],
+  ['media', 'i-volume', t('Son et image'), ['sounds', 'dolby', 'hdr']],
+  ['pad', 'i-gamepad', t('Manette'), ['pad', 'qam']],
+  ['energy', 'i-power', t('Énergie'), ['energy', 'power']],
+  ['access', 'i-info', t('Accessibilité'), ['access']],
+  ['system', 'i-cpu', t('Système'), ['system', 'device', 'storage', 'xbox']],
 ];
+// Bloc (ou ancienne rubrique) demandé par une autre page → rubrique qui le contient
+const PART_SECTION = { ...Object.fromEntries(SECTIONS.flatMap(([id, , , parts]) => parts.map(p => [p, id]))), personal: 'look' };
+const sectionOf = id => (SECTIONS.some(([s]) => s === id) ? id : PART_SECTION[id] || 'library');
 // Réglage demandé par une autre page → catégorie à afficher
-const SECTION_OF = { 'sgdb-key': 'sgdb', scan: 'library', demo: 'library', 'upd-apply': 'system', 'upd-check': 'system' };
+const SECTION_OF = { 'sgdb-key': 'library', scan: 'library', demo: 'library', 'upd-apply': 'system', 'upd-check': 'system' };
 
 export async function rescan() {
   busy(t('Analyse de la bibliothèque…'));
@@ -487,7 +500,9 @@ function buttonsBlock(s) {
 
 const BUILDERS = {
   dolby(s) { return renderDolby(s, { h2, infoRow, actionRow, rerender }); },
-  personal(s) { return renderPersonalization(s, { h2, infoRow, actionRow, rerender, orderList, homeRows: HOME_ROWS }); },
+  // Blocs de l'ancienne rubrique Personnalisation, rangés dans Apparence, Accueil, Bibliothèque, Son et image
+  ...Object.fromEntries(['ambience', 'homeperso', 'covers', 'profiles', 'sounds', 'immersive'].map(part =>
+    [part, s => renderPersonalization(s, { h2, infoRow, actionRow, rerender, orderList, homeRows: HOME_ROWS }, [part])])),
   async library(s) {
     h2(s, 'i-library', t('Bibliothèque'));
     actionRow(s, 'i-refresh', t('Actualiser la bibliothèque'), t('Détecte les jeux de toutes les boutiques et les ROMs{a}', { a: lib.generated ? t(
@@ -605,13 +620,13 @@ const BUILDERS = {
       saveSettings();
       location.reload();
     }, 'lang');
-    const theme = THEMES.find(([, , v]) => Object.entries(v).every(([k, x]) => settings[k] === x));
-    actionRow(s, 'i-palette', `${t('Thème')} · ${esc(theme ? theme[1] : t('Personnalisé'))}`, esc(t('Couleur, fond, coins, jaquettes et police en un choix')), async () => {
+    const theme = ALL_THEMES.find(([, , v]) => Object.entries(v).every(([k, x]) => settings[k] === x));
+    actionRow(s, 'i-palette', `${t('Thème')} · ${esc(theme ? theme[1] : t('Personnalisé'))}`, esc(t('Couleur, fond, coins et police en un choix · les ambiances règlent aussi les sons')), async () => {
       const v = await dialog({
         title: t('Thème'),
-        buttons: [...THEMES.map(([value, label]) => ({ label, value, primary: theme && theme[0] === value })), { label: t('Fermer'), value: null }],
+        buttons: [...ALL_THEMES.map(([value, label]) => ({ label, value, primary: theme && theme[0] === value })), { label: t('Fermer'), value: null }],
       });
-      const th = THEMES.find(([id]) => id === v);
+      const th = ALL_THEMES.find(([id]) => id === v);
       if (!th) return;
       Object.assign(settings, th[2]);
       saveSettings();
@@ -643,12 +658,10 @@ const BUILDERS = {
     toggle(s, 'clockSeconds', t('Afficher les secondes'), '');
     toggle(s, 'batteryPct', t('Pourcentage de batterie'), t('À côté de l’icône, sur les consoles et PC portables'));
 
-    h2(s, 'i-home', t('Accueil'));
-    s.append(el('div', 'notice', t('Choisissez l’ordre et l’affichage des rangées de votre accueil.')));
-    orderList(s, HOME_ROWS, 'homeRows', 'homeHidden', 'home');
-    toggle(s, 'sounds', t('Sons de l’interface'), t('Petits sons de navigation et de validation'));
     toggle(s, 'notifications', t('Notifications'), t('Nouveaux jeux détectés, ajouts…'));
+  },
 
+  async deals(s) {
     h2(s, 'i-store', t('Bons plans et nouveautés'));
     s.append(el('div', 'notice', t('Rangée de l’accueil : promotions, nouveautés, sorties à venir et jeux gratuits, relus toutes les 4 heures au plus (jamais pendant un jeu). A sur une offre ouvre sa page dans l’application de la boutique si elle est installée, sinon dans le navigateur.')));
     toggle(s, 'dealsSteam', 'Steam', t('Promotions, nouveautés et sorties à venir'));
@@ -688,6 +701,7 @@ const BUILDERS = {
 
   async energy(s) {
     h2(s, 'i-power', t('Énergie'));
+    s.append(el('div', 'notice', t('Profils appliqués d’eux-mêmes quand la console passe sur batterie ou sur secteur. Pour un réglage immédiat : accès rapide, section <b>Performance</b>.')));
     const [p, sys, d] = await Promise.all([api.get('/api/power/profiles'), api.get('/api/sys').catch(() => null), device()]);
     const save = async patch => {
       try { Object.assign(p, await api.post('/api/power/profiles', patch)); } catch (e) { toast(e.message, { error: true }); }
@@ -892,7 +906,7 @@ const BUILDERS = {
     infoRow(s, x.enabled ? t('<span class="dot-ok"></span>Mode Xbox activé') : t('<span class="dot-ko"></span>Mode Xbox non activé'),
       t('Windows {a} · {b}', { a: esc(x.windows), b: x.compatible ? (x.native ? 'build compatible (native)' : t("build compatible (ancienne méthode)")) : t("build non compatible : mettez Windows à jour") }));
     infoRow(s, 'XboxFullScreenExperienceTool', x.toolInstalled ? t('Installé : {a}', { a: esc(x.toolPath) }) : t('Non installé'));
-    infoRow(s, 'Activation silencieuse (/silentenable)', x.enabler ? t('Compilée et prête (setup\\bin\\xfset)') : t('Pas encore compilée : setup\\build-xbox-enabler.ps1'));
+    infoRow(s, t('Activation automatique du mode Xbox'), x.enabler ? t('Prête') : t('Non disponible sur cette installation'));
     infoRow(s, native.available ? t('<span class="dot-ok"></span>App native KaneMode') : t('<span class="dot-ko"></span>Version navigateur (prototype)'),
       native.available ? t('Déclarée à Windows comme application de jeu : elle peut devenir l’application d’accueil du mode Xbox.')
         : t('Seule l’app native peut devenir l’application d’accueil : native\\build.ps1 -Register'));
@@ -921,11 +935,14 @@ const BUILDERS = {
 page = definePage('settings', {
   libBound: true,
   title: () => t('Paramètres'),
-  initialFocus: p => p.section ? 'sec:' + p.section : null,
+  initialFocus: p => p.section ? 'sec:' + sectionOf(p.section) : null,
   render(p = {}, { refresh = false } = {}) {
     // Rafraîchissement : on garde l'élément sélectionné ; nouvelle visite : celui demandé
     const keep = refresh && focused && this.el.contains(focused) ? focused.dataset.key : null;
-    const section = p.section || SECTION_OF[p.focus] || this.section || 'library';
+    const asked = p.section || SECTION_OF[p.focus] || this.section || 'library';
+    const section = sectionOf(asked);
+    // Bloc demandé à l'intérieur d'une rubrique (ex. Dolby dans Son et image) : on y va directement
+    this.part = !refresh && asked !== section && !p.focus ? asked : null;
     this.show(keep ? this.section || section : section, keep || p.focus || this.initialFocus(p));
   },
   /** Affiche une catégorie. Sans `focus`, le focus ne bouge pas (survol de la barre latérale). */
@@ -963,10 +980,17 @@ page = definePage('settings', {
     const token = (this.token = {});
     this.wrap.lastElementChild.setAttribute('aria-busy', 'true');
     this.wrap.lastElementChild.inert = changed;
-    try { await BUILDERS[section](s); }
-    catch (e) { s.append(el('div', 'notice', t('Impossible de charger cette section : {a}', { a: esc(e.message) }))); }
+    // Les blocs de la rubrique se préparent en même temps, puis se rangent dans l'ordre
+    const built = await Promise.all((entry ? entry[3] : [section]).map(async part => {
+      const box = el('div', 'settings-part');
+      box.dataset.part = part;
+      try { await BUILDERS[part](box); }
+      catch (e) { box.append(el('div', 'notice', t('Impossible de charger cette section : {a}', { a: esc(e.message) }))); }
+      return box;
+    }));
+    s.append(...built);
     if (token !== this.token) return; // une autre catégorie a été demandée entre-temps
-    const firstGroup = s.querySelector(':scope > h2');
+    const firstGroup = s.querySelector('.settings-part > h2');
     if (entry && firstGroup && firstGroup.textContent.trim() === entry[2]) firstGroup.remove();
     const old = this.wrap.lastElementChild;
     const hadFocus = focused && old.contains(focused);
@@ -976,6 +1000,11 @@ page = definePage('settings', {
     if (!changed) s.scrollTop = top;
     if (focus && !focus.startsWith('sec:')) focusIn(root, focus);
     else if (hadFocus) focusIn(s);
+    if (this.part) {
+      const box = s.querySelector(`[data-part="${this.part}"]`);
+      this.part = null;
+      if (box && box.firstElementChild) { focusIn(box); box.firstElementChild.scrollIntoView({ block: 'start' }); }
+    }
     if (section === 'pad') this.live();
   },
   /** A (ou droite) sur une catégorie : on entre dans ses réglages. */

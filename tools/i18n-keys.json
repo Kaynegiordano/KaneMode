@@ -349,9 +349,6 @@
  "{name} est prêt": [
   "ui/js/pages/emulation.js"
  ],
- "{name} garde le mode en cours": [
-  "ui/js/pages/game.js"
- ],
  "{name} n’est pas installé sur ce PC": [
   "ui/js/pages/game.js"
  ],
@@ -627,17 +624,22 @@
  ],
  "Accès rapide": [
   "ui/index.html",
+  "ui/js/pages/search.js",
   "ui/js/pages/settings.js"
  ],
  "Accessibilité": [
   "ui/js/pages/settings.js"
  ],
+ "accessibilité taille texte": [
+  "ui/js/pages/search.js"
+ ],
  "Accueil": [
   "ui/index.html",
-  "ui/js/pages/settings.js"
- ],
- "Accueil personnel": [
+  "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js"
+ ],
+ "accueil rangées épingles tuile reprise bons plans": [
+  "ui/js/pages/search.js"
  ],
  "Achat et licence existante vérifiés dans Dolby Access avec votre compte Microsoft": [
   "ui/js/dolby-settings.js"
@@ -645,11 +647,17 @@
  "Acheter ou activer Atmos": [
   "ui/js/dolby-settings.js"
  ],
+ "Action": [
+  "ui/js/pages/search.js"
+ ],
  "Action de compte invalide": [
   "host/lib/accounts.js"
  ],
  "Action Dolby inconnue": [
   "host/lib/dolby.js"
+ ],
+ "Activation automatique du mode Xbox": [
+  "ui/js/pages/settings.js"
  ],
  "activé": [
   "ui/js/widget.js"
@@ -657,6 +665,9 @@
  "Activé": [
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
+ ],
+ "Activer les sons": [
+  "ui/js/personalization-settings.js"
  ],
  "Activez le mode souris puis déplacez le stick droit.": [
   "ui/js/pages/settings.js"
@@ -745,7 +756,8 @@
   "ui/js/pages/emulation.js"
  ],
  "Ajouter un jeu ou une appli": [
-  "ui/index.html"
+  "ui/index.html",
+  "ui/js/pages/search.js"
  ],
  "Ajouter un mod (.zip)…": [
   "ui/js/pages/emulation.js"
@@ -765,7 +777,9 @@
  ],
  "Alimentation": [
   "ui/index.html",
-  "ui/js/main.js",
+  "ui/js/main.js"
+ ],
+ "Alimentation, streaming, Dolby Atmos": [
   "ui/js/qam.js"
  ],
  "Allumé depuis": [
@@ -777,7 +791,7 @@
  "Amazon": [
   "ui/js/core.js"
  ],
- "Ambiance sonore": [
+ "Ambiances et animations": [
   "ui/js/personalization-settings.js"
  ],
  "AMD Fluid Motion Frames non pris en charge": [
@@ -827,9 +841,6 @@
  "Appairé": [
   "ui/js/pages/settings.js"
  ],
- "Appareil et pilotes": [
-  "ui/js/pages/settings.js"
- ],
  "Apparence": [
   "ui/js/pages/settings.js"
  ],
@@ -852,7 +863,7 @@
  "Applications installées": [
   "ui/js/pages/add.js"
  ],
- "Appliqué automatiquement à chaque lancement de {name}.": [
+ "Appliqué à chaque lancement de {name}. À sa fermeture, les réglages d’avant reviennent.": [
   "ui/js/pages/game.js"
  ],
  "Appliqué tout seul au lancement du jeu.": [
@@ -1043,10 +1054,6 @@
  ],
  "Aucune notification pour l’instant": [
   "ui/js/statusbar.js"
- ],
- "Aucune nouvelle notification": [
-  "ui/js/main.js",
-  "ui/js/qam.js"
  ],
  "Aucune version publiée": [
   "ui/js/pages/settings.js"
@@ -1385,9 +1392,6 @@
  "Choisir une ville": [
   "ui/js/statusbar.js"
  ],
- "Choisissez l’ordre et l’affichage des rangées de votre accueil.": [
-  "ui/js/pages/settings.js"
- ],
  "Choisissez la vidéo plus bas (« Vidéo perso… »)": [
   "ui/js/pages/settings.js"
  ],
@@ -1547,9 +1551,6 @@
  "Compatibles manette": [
   "ui/js/pages/library.js"
  ],
- "Compilée et prête (setup\\bin\\xfset)": [
-  "ui/js/pages/settings.js"
- ],
  "Complément absent de cette version de KaneMode": [
   "host/lib/hostscale.js"
  ],
@@ -1572,8 +1573,7 @@
   "host/lib/sunshine-games.js"
  ],
  "Comptes et boutiques": [
-  "ui/js/accounts-settings.js",
-  "ui/js/pages/settings.js"
+  "ui/js/accounts-settings.js"
  ],
  "Configurer": [
   "ui/js/widget.js"
@@ -1669,7 +1669,7 @@
  "Couleur d’accent": [
   "ui/js/pages/settings.js"
  ],
- "Couleur, fond, coins, jaquettes et police en un choix": [
+ "Couleur, fond, coins et police en un choix · les ambiances règlent aussi les sons": [
   "ui/js/pages/settings.js"
  ],
  "coupé": [
@@ -1787,9 +1787,6 @@
  ],
  "dernière version à vérifier sur le site": [
   "ui/js/pages/settings.js"
- ],
- "Dernières notifications de KaneMode": [
-  "ui/js/qam.js"
  ],
  "Derrière les menus": [
   "ui/js/pages/settings.js"
@@ -2015,6 +2012,9 @@
  ],
  "Énergie": [
   "ui/js/pages/settings.js"
+ ],
+ "énergie batterie puissance tdp turbo veille verrouillage": [
+  "ui/js/pages/search.js"
  ],
  "Enregistré": [
   "ui/js/statusbar.js"
@@ -2632,6 +2632,9 @@
  "Jeux décompressés": [
   "ui/js/pages/emulation.js"
  ],
+ "jeux dossiers analyse démonstration steam epic gog xbox comptes connexion visuels jaquettes images steamgriddb": [
+  "ui/js/pages/search.js"
+ ],
  "Jeux et collections affichés dans l’ordre de votre choix": [
   "ui/js/personalization-settings.js"
  ],
@@ -2865,7 +2868,7 @@
  "Les jeux cochés rejoignent votre bibliothèque avec un logo streaming : <b>Jouer</b> lance directement le jeu sur son PC, puis revient ici à la fin. Pour voir les jeux de KaneMode d’un PC, activez <b>Jeux proposés aux consoles</b> dans le KaneMode de ce PC.": [
   "ui/js/pages/settings.js"
  ],
- "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu de jeu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
+ "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>Select + Start</b> maintenus 1 seconde quittent un jeu d’émulation, comme sur le PC ; <b>LB + RB + Select + Start</b> ouvre le menu du streaming ; <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
  "Les jeux rangés dans une archive (.zip, .7z, .rar) que leur émulateur ne sait pas ouvrir sont décompressés au premier lancement, puis gardés pour les suivants. Les plus anciens partent tout seuls au-delà de 40 Go.": [
@@ -2910,6 +2913,12 @@
  "Limite d’images": [
   "ui/js/widget.js"
  ],
+ "Limite d’images : {a}": [
+  "ui/js/pages/game.js"
+ ],
+ "Limite d’images du jeu": [
+  "ui/js/pages/game.js"
+ ],
  "Limite d'images non prise en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
  ],
@@ -2931,6 +2940,12 @@
  "Limite du processeur": [
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
+ ],
+ "Limite générale": [
+  "ui/js/pages/game.js"
+ ],
+ "Limite inconnue": [
+  "host/server.js"
  ],
  "Limite réglée": [
   "ui/js/qam.js"
@@ -2971,6 +2986,9 @@
   "ui/js/qam.js",
   "ui/js/widget.js"
  ],
+ "luminosité volume wifi bluetooth mode nuit performance batterie": [
+  "ui/js/pages/search.js"
+ ],
  "Maintenez Start/Options 1 s. Dans KaneMode : stick gauche et boutons pour naviguer, stick droit pour le curseur. Dans les autres fenêtres : sticks pour le curseur, A/Croix pour cliquer, Y/Triangle pour le clic droit, B/Rond pour revenir en arrière, X/Carré maintenu avec le stick pour défiler, LB/L1 pour le clic du milieu, RB/R1 pour avancer, croix pour défiler par crans.": [
   "ui/js/pages/settings.js"
  ],
@@ -2987,6 +3005,9 @@
  ],
  "Manette : premier appui reçu par {src}": [
   "ui/js/nav.js"
+ ],
+ "manette boutons accès rapide raccourcis mode souris": [
+  "ui/js/pages/search.js"
  ],
  "Manette connectée : {a}": [
   "ui/js/main.js"
@@ -3131,9 +3152,6 @@
  "Mode {name}{a}{b}": [
   "ui/js/widget.js"
  ],
- "Mode appliqué au lancement de {name}": [
-  "ui/js/pages/game.js"
- ],
  "Mode d’alimentation, profil de la console, puissance, fréquence de l’écran": [
   "ui/js/qam.js"
  ],
@@ -3141,14 +3159,17 @@
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
  ],
- "Mode de performance du jeu": [
+ "Mode de performance : {a}": [
   "ui/js/pages/game.js"
  ],
- "Mode de performance du jeu…": [
+ "Mode de performance du jeu": [
   "ui/js/pages/game.js"
  ],
  "mode Éco": [
   "ui/js/statusbar.js"
+ ],
+ "Mode en cours": [
+  "ui/js/pages/game.js"
  ],
  "Mode faible latence non pris en charge par ce pilote Intel": [
   "native/KaneMode.Gpu/Intel.cpp"
@@ -3187,9 +3208,6 @@
  "mode Turbo": [
   "ui/js/statusbar.js"
  ],
- "Mode Xbox": [
-  "ui/js/pages/settings.js"
- ],
  "Mode Xbox (plein écran)": [
   "ui/js/pages/settings.js"
  ],
@@ -3218,6 +3236,9 @@
  ],
  "Mods installés <small>{t}</small>": [
   "ui/js/pages/emulation.js"
+ ],
+ "Moins d’images par seconde : moins de chaleur et plus d’autonomie.": [
+  "ui/js/pages/game.js"
  ],
  "Moins d’images par seconde : plus d’autonomie": [
   "ui/js/pages/settings.js"
@@ -3326,6 +3347,9 @@
  "Non détecté sur ce PC": [
   "ui/js/pages/settings.js"
  ],
+ "Non disponible sur cette installation": [
+  "ui/js/pages/settings.js"
+ ],
  "Non installé": [
   "ui/js/accounts-settings.js",
   "ui/js/dolby-settings.js",
@@ -3343,7 +3367,6 @@
  "Notifications": [
   "ui/index.html",
   "ui/js/pages/settings.js",
-  "ui/js/qam.js",
   "ui/js/statusbar.js"
  ],
  "Notifications ({n} nouvelles)": [
@@ -3534,6 +3557,7 @@
  "Paramètres": [
   "ui/index.html",
   "ui/js/i18n.js",
+  "ui/js/pages/search.js",
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
@@ -3603,9 +3627,6 @@
  "Pas de réponse du système": [
   "host/lib/syscontrol.js"
  ],
- "Pas encore compilée : setup\\build-xbox-enabler.ps1": [
-  "ui/js/pages/settings.js"
- ],
  "Pas encore de favori ici : X sur un jeu l’ajoute.": [
   "ui/js/pages/emulation.js"
  ],
@@ -3646,11 +3667,14 @@
   "ui/js/statusbar.js",
   "ui/js/widget.js"
  ],
+ "Performance du jeu": [
+  "ui/js/pages/game.js"
+ ],
+ "Performance du jeu…": [
+  "ui/js/pages/game.js"
+ ],
  "Perso": [
   "ui/js/core.js"
- ],
- "Personnalisation": [
-  "ui/js/pages/settings.js"
  ],
  "Personnalisé": [
   "ui/js/monitor.js",
@@ -3674,9 +3698,6 @@
   "ui/js/personalization-settings.js"
  ],
  "Petite": [
-  "ui/js/pages/settings.js"
- ],
- "Petits sons de navigation et de validation": [
   "ui/js/pages/settings.js"
  ],
  "Pilote {a}{when}": [
@@ -3745,6 +3766,9 @@
  "Preset IA": [
   "ui/js/pages/emulation.js"
  ],
+ "Prête": [
+  "ui/js/pages/settings.js"
+ ],
  "Prime Video": [
   "ui/js/pages/add.js"
  ],
@@ -3799,6 +3823,9 @@
   "ui/js/widget.js"
  ],
  "Profils {a} : les mêmes que dans {b}. La puissance en watts est expérimentale : restez dans les valeurs proposées.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Profils appliqués d’eux-mêmes quand la console passe sur batterie ou sur secteur. Pour un réglage immédiat : accès rapide, section <b>Performance</b>.": [
   "ui/js/pages/settings.js"
  ],
  "Profils automatiques": [
@@ -3981,7 +4008,7 @@
  "Rechercher un jeu à épingler": [
   "ui/js/personalization-settings.js"
  ],
- "Rechercher un jeu, une appli, un genre, une boutique…": [
+ "Rechercher un jeu, un réglage, une action…": [
   "ui/js/pages/search.js"
  ],
  "Recommencer du début": [
@@ -4027,6 +4054,9 @@
  "Réglage avancé": [
   "ui/js/qam.js"
  ],
+ "Réglage enregistré pour {name}": [
+  "ui/js/pages/game.js"
+ ],
  "Réglages": [
   "ui/js/pages/emulation.js"
  ],
@@ -4061,6 +4091,7 @@
   "ui/js/qam.js"
  ],
  "Réglages rapides": [
+  "ui/js/pages/search.js",
   "ui/js/qam.js"
  ],
  "Réglages système indisponibles": [
@@ -4265,6 +4296,9 @@
  "Rockstar": [
   "ui/js/core.js"
  ],
+ "roms émulateurs bios consoles": [
+  "ui/js/pages/search.js"
+ ],
  "Rond": [
   "ui/js/personalization-settings.js"
  ],
@@ -4285,6 +4319,9 @@
  ],
  "Sans lancer le jeu : réglages, ou lancement à la main": [
   "ui/js/pages/emulation.js"
+ ],
+ "Sans limite": [
+  "ui/js/pages/game.js"
  ],
  "Sans nom": [
   "ui/js/pages/add.js"
@@ -4353,10 +4390,16 @@
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
+ "son audio casque dolby hdr écran sons volume": [
+  "ui/js/pages/search.js"
+ ],
  "son coupé": [
   "ui/js/widget.js"
  ],
  "Son de démarrage enregistré": [
+  "ui/js/pages/settings.js"
+ ],
+ "Son et image": [
   "ui/js/pages/settings.js"
  ],
  "Son exécutable, par exemple retroarch.exe": [
@@ -4394,7 +4437,6 @@
   "ui/js/personalization-settings.js"
  ],
  "Sons de l’interface": [
-  "ui/js/pages/settings.js",
   "ui/js/personalization-settings.js",
   "ui/js/qam.js"
  ],
@@ -4412,7 +4454,8 @@
   "ui/js/pages/settings.js"
  ],
  "Source": [
-  "ui/js/pages/artpicker.js"
+  "ui/js/pages/artpicker.js",
+  "ui/js/qam.js"
  ],
  "Source : Wikipédia": [
   "ui/js/pages/emulation.js"
@@ -4480,6 +4523,9 @@
  ],
  "Streaming depuis vos PC": [
   "ui/js/pages/home.js"
+ ],
+ "streaming pc sunshine diffusion": [
+  "ui/js/pages/search.js"
  ],
  "Style de jaquettes": [
   "ui/js/personalization-settings.js"
@@ -4549,6 +4595,9 @@
  "Système": [
   "ui/js/pages/settings.js"
  ],
+ "système mises à jour version pilotes bios asus stockage disque espace mode xbox": [
+  "ui/js/pages/search.js"
+ ],
  "Taille": [
   "ui/js/pages/emulation.js",
   "ui/js/pages/game.js",
@@ -4604,6 +4653,9 @@
  ],
  "Thème": [
   "ui/js/pages/settings.js"
+ ],
+ "thème ambiance couleurs langue police animations profils démarrage vidéo intro taille": [
+  "ui/js/pages/search.js"
  ],
  "Timbre": [
   "ui/js/personalization-settings.js"
@@ -4765,7 +4817,6 @@
  ],
  "Veille": [
   "ui/index.html",
-  "ui/js/main.js",
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
@@ -4786,9 +4837,6 @@
  ],
  "Veille simulée · appuyez sur un bouton pour réveiller": [
   "ui/js/power.js"
- ],
- "Veille, alimentation, streaming": [
-  "ui/js/qam.js"
  ],
  "Vent": [
   "ui/js/statusbar.js"

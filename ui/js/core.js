@@ -407,7 +407,9 @@ export const lib = {
     return this;
   },
   byId(id) { return this.index.get(id); },
-  visible() { return this.games.filter(g => !g.hidden && !g.removed && !settings.hiddenSources.includes(g.source)); },
+  // resumeOnly : dernier jeu streamé sans raccourci, proposé par la tuile de l'accueil seulement
+  visible() { return this.games.filter(g => !g.hidden && !g.removed && !g.resumeOnly && !settings.hiddenSources.includes(g.source)); },
+  resumable() { return this.games.filter(g => !g.hidden && !g.removed && !settings.hiddenSources.includes(g.source)); },
   launcher(id) { return this.launchers.find(l => l.id === id); },
 };
 

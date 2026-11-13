@@ -98,7 +98,7 @@ definePage('home', {
     const root = this.el;
     root.innerHTML = '';
     const vis = lib.visible();
-    const game = settings.homeResume && resumeEntry(vis, running);
+    const game = settings.homeResume && resumeEntry(lib.resumable(), running);
     root.classList.toggle('has-resume', !!game);
     if (game) {
       queryGame(game);

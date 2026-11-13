@@ -149,7 +149,6 @@ async function pollSystem() {
 Object.assign(qamShortcuts, {
   leave: () => actions['overlay-leave'](),
   list: [
-    ['i-moon', t('Veille'), () => sleepNow(), 'sc-sleep'],
     ['i-power', t('Alimentation'), () => actions['power-open'](), 'sc-power'],
     ['i-gamepad', t('Streaming'), () => openStreaming(), 'sc-kaneplay'],
     ['i-volume', 'Dolby Atmos', () => go('settings', { section: 'dolby' }), 'sc-dolby'],
@@ -162,14 +161,6 @@ hooks.qam = () => openLayer({
   onOpen: () => { renderQam().then(pollSystem); sysTimer = setInterval(pollSystem, 1500); startLive(); },
   onClose: () => { clearInterval(sysTimer); stopLive(); overlayClosed(); },
   hints: () => [['a', t('Sélectionner')], [['left', 'right'], t('Régler')], ['b', t('Fermer')]],
-});
-
-on('notifications', list => {
-  if (!$('#notifs')) return;
-  $('#notifs').className = list.length ? '' : 'notif-empty';
-  $('#notifs').innerHTML = list.length
-    ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
-    : t('Aucune nouvelle notification');
 });
 
 // ---------- Barre d'état ----------

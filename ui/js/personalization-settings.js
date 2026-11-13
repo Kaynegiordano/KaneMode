@@ -5,7 +5,7 @@ import { nav, openLayer, closeLayer, refresh } from './nav.js';
 import { dialog, segmented, switchRow, openKeyboard } from './widgets.js';
 import { AMBIENCES, DISPLAY_PROFILES, normalizePins, activeDisplayProfile } from './personalization.js';
 
-const ambienceNames = { calm: t('Sobre'), retro: t('Console rétro'), night: t('Nuit') };
+export const ambienceNames = { calm: t('Sobre'), retro: t('Console rétro'), night: t('Nuit') };
 const ambienceDescs = {
   calm: t('Fond uni, tons clairs, sons ronds et animations discrètes'),
   retro: t('Dégradé ambré, coins carrés, sons graves et animations rapides'),
@@ -80,72 +80,88 @@ async function choosePin() {
   if (id) pinItem(type, id);
 }
 
-export async function renderPersonalization(s, { h2, infoRow, actionRow, rerender, orderList, homeRows }) {
+/**
+ * Blocs de personnalisation, rangés dans plusieurs rubriques des Paramètres (pages/settings.js) :
+ * ambience et profiles et immersive (Apparence), homeperso (Accueil), covers (Bibliothèque), sounds (Son et image).
+ */
+export async function renderPersonalization(s, { h2, infoRow, actionRow, rerender, orderList, homeRows }, parts = ['ambience', 'homeperso', 'covers', 'profiles', 'sounds', 'immersive']) {
   const pick = (title, desc, key, options, view = false) => infoRow(s, title, desc, segmented(options.map(([value, label]) => ({ value, label })), (view ? effectiveSettings() : settings)[key], value => {
     if (view) setAppearance(key, value); else { settings[key] = value; saveSettings(); if (key === 'displayMode') refresh(); }
   }, key));
   const toggle = (key, title, desc) => s.append(switchRow({ key, title, desc, on: settings[key], onToggle: value => { settings[key] = value; saveSettings(); } }));
-  h2(s, 'i-palette', t('Packs d’ambiance'));
-  actionRow(s, 'i-palette', t('Aperçu des ambiances'), t('Comparez les couleurs, fonds, sons et animations avant d’appliquer'), previewAmbiences, 'ambience-preview');
-  pick(t('Animations'), t('Les réglages d’accessibilité restent prioritaires'), 'motionStyle', [['normal', t('Classiques')], ['calm', t('Discrètes')], ['snappy', t('Rapides')]]);
-
-  h2(s, 'i-home', t('Accueil personnel'));
-  toggle('homeResume', t('Grande tuile de reprise'), t('Reprendre le jeu en cours ou retrouver votre dernière partie'));
-  actionRow(s, 'i-plus', t('Ajouter une épingle'), t('Jeux et collections affichés dans l’ordre de votre choix'), async () => { await choosePin(); rerender('pin-add'); }, 'pin-add');
-  const pins = normalizePins(settings.homePins, lib.visible(), lib.collections);
-  const pinBox = el('div', 'order-list'); s.append(pinBox);
-  for (const [index, pin] of pins.entries()) {
-    const item = pin.type === 'game' ? lib.byId(pin.id) : lib.collections.find(c => c.id === pin.id);
-    const row = el('div', 'set-row pin-row', `<div class="txt"><b>${esc(item.name)}</b><small>${esc(pin.type === 'game' ? t('Jeu') : t('Collection'))}</small></div>`);
-    for (const delta of [-1, 1]) row.append(nav(el('button', 'chip-btn', delta < 0 ? '▲' : '▼'), () => {
-      const to = index + delta; if (to < 0 || to >= pins.length) return;
-      [pins[index], pins[to]] = [pins[to], pins[index]]; settings.homePins = pins; saveSettings(); rerender('pin-add');
-    }, `pin:${index}:${delta}`));
-    row.append(nav(el('button', 'chip-btn', t('Retirer')), () => { pinItem(pin.type, pin.id); rerender('pin-add'); }, `pin:${index}:remove`)); pinBox.append(row);
-  }
-  pick(t('Densité de l’accueil'), t('Espacement entre les rangées et les jaquettes'), 'homeDensity', [['compact', t('Compacte')], ['comfortable', t('Confortable')], ['spacious', t('Aérée')]], true);
-  orderList(s, homeRows, 'homeRows', 'homeHidden', 'home');
-
-  h2(s, 'i-image', t('Jaquettes harmonisées'));
-  const cfg = await api.get('/api/config').catch(() => null);
-  if (cfg) infoRow(s, t('Style de jaquettes'), t('Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées'), segmented([
-    { value: '', label: t('Tous') }, { value: 'no_logo', label: t('Illustrations seules') }, { value: 'white_logo', label: t('Titres intégrés') }, { value: 'alternate', label: t('Affiches alternatives') },
-  ], cfg.sgdb.style, async value => {
-    try { await api.post('/api/config', { sgdbStyle: value }); await lib.load(); toast(t('Préférence de jaquettes enregistrée')); }
-    catch (e) { toast(e.message, { error: true }); }
-  }, 'cover-style'));
-  actionRow(s, 'i-image', t('Choisir une jaquette'), t('Ouvrir la bibliothèque, puis Visuels sur la fiche du jeu'), () => import('./nav.js').then(({ go }) => go('library')), 'cover-library');
-
-  h2(s, 'i-desktop', t('Profils d’interface'));
-  const active = activeDisplayProfile(settings, displayState.id);
-  infoRow(s, t('Profil actif'), esc(profileNames[active]));
-  infoRow(s, t('Écran actuel'), esc(displayState.name));
-  pick(t('Choix du profil'), t('Chaque écran associé retrouve son profil automatiquement'), 'displayMode', Object.entries(profileNames), false);
-  actionRow(s, 'i-desktop', t('Associer cet écran'), t('Mémoriser Console portable ou TV pour cet écran'), async () => {
-    const id = await dialog({ title: t('Associer cet écran'), buttons: [
-      { label: t('Console portable'), value: 'portable' }, { label: t('TV'), value: 'tv' }, { label: t('Personnel'), value: 'manual' }, { label: t('Annuler'), value: null },
-    ] });
-    if (!id) return;
-    settings.displayBindings = { ...settings.displayBindings, [displayState.id]: id }; settings.displayMode = 'auto'; saveSettings(); refresh();
-  }, 'display-bind');
-  for (const id of Object.keys(DISPLAY_PROFILES)) {
-    const values = { ...DISPLAY_PROFILES[id], ...settings.displayProfiles?.[id] };
-    infoRow(s, profileNames[id], t('Taille de l’interface'), segmented([90, 100, 110, 125, 150].map(value => ({ value, label: value + ' %' })), values.uiScale, value => {
-      settings.displayProfiles = { ...settings.displayProfiles, [id]: { ...settings.displayProfiles?.[id], uiScale: +value } }; saveSettings();
-    }, 'profile-scale:' + id));
-    actionRow(s, 'i-restart', t('Réinitialiser le profil {name}', { name: profileNames[id] }), '', () => {
-      const profiles = { ...settings.displayProfiles }; delete profiles[id]; settings.displayProfiles = profiles; saveSettings(); rerender('display-bind');
-    }, 'profile-reset:' + id);
+  if (parts.includes('ambience')) {
+    h2(s, 'i-palette', t('Ambiances et animations'));
+    actionRow(s, 'i-palette', t('Aperçu des ambiances'), t('Comparez les couleurs, fonds, sons et animations avant d’appliquer'), previewAmbiences, 'ambience-preview');
+    pick(t('Animations'), t('Les réglages d’accessibilité restent prioritaires'), 'motionStyle', [['normal', t('Classiques')], ['calm', t('Discrètes')], ['snappy', t('Rapides')]]);
   }
 
-  h2(s, 'i-volume', t('Ambiance sonore'));
-  toggle('sounds', t('Sons de l’interface'), t('Indépendants du son de démarrage'));
-  pick(t('Timbre'), t('Trois ambiances graves, sans clic aigu'), 'soundTheme', Object.entries(soundNames));
-  infoRow(s, t('Volume de l’interface'), t('Ne modifie pas le volume de Windows ni celui des jeux'), segmented([0, 25, 50, 75, 100].map(value => ({ value, label: value + ' %' })), settings.soundVolume, value => { settings.soundVolume = +value; saveSettings(); }, 'sound-volume'));
-  toggle('soundMoves', t('Sons de déplacement'), t('Vous pouvez garder uniquement les validations et notifications'));
-  actionRow(s, 'i-volume', t('Écouter les sons'), t('Déplacement, validation, retour et notification au volume choisi'), () => previewSounds(), 'sound-preview');
+  if (parts.includes('homeperso')) {
+    h2(s, 'i-home', t('Accueil'));
+    toggle('homeResume', t('Grande tuile de reprise'), t('Reprendre le jeu en cours ou retrouver votre dernière partie'));
+    actionRow(s, 'i-plus', t('Ajouter une épingle'), t('Jeux et collections affichés dans l’ordre de votre choix'), async () => { await choosePin(); rerender('pin-add'); }, 'pin-add');
+    const pins = normalizePins(settings.homePins, lib.visible(), lib.collections);
+    const pinBox = el('div', 'order-list'); s.append(pinBox);
+    for (const [index, pin] of pins.entries()) {
+      const item = pin.type === 'game' ? lib.byId(pin.id) : lib.collections.find(c => c.id === pin.id);
+      const row = el('div', 'set-row pin-row', `<div class="txt"><b>${esc(item.name)}</b><small>${esc(pin.type === 'game' ? t('Jeu') : t('Collection'))}</small></div>`);
+      for (const delta of [-1, 1]) row.append(nav(el('button', 'chip-btn', delta < 0 ? '▲' : '▼'), () => {
+        const to = index + delta; if (to < 0 || to >= pins.length) return;
+        [pins[index], pins[to]] = [pins[to], pins[index]]; settings.homePins = pins; saveSettings(); rerender('pin-add');
+      }, `pin:${index}:${delta}`));
+      row.append(nav(el('button', 'chip-btn', t('Retirer')), () => { pinItem(pin.type, pin.id); rerender('pin-add'); }, `pin:${index}:remove`)); pinBox.append(row);
+    }
+    pick(t('Densité de l’accueil'), t('Espacement entre les rangées et les jaquettes'), 'homeDensity', [['compact', t('Compacte')], ['comfortable', t('Confortable')], ['spacious', t('Aérée')]], true);
+    orderList(s, homeRows, 'homeRows', 'homeHidden', 'home');
+  }
 
-  h2(s, 'i-eye-off', t('Mode immersif'));
-  toggle('immersive', t('Masquer les indications au repos'), t('Sur l’accueil, la bibliothèque et les fiches de jeu · chaque action les fait réapparaître'));
-  pick(t('Délai avant masquage'), t('Les menus, dialogues et réglages restent visibles'), 'immersiveDelay', [[3, t('3 secondes')], [6, t('6 secondes')], [10, t('10 secondes')]]);
+  if (parts.includes('covers')) {
+    h2(s, 'i-image', t('Jaquettes harmonisées'));
+    const cfg = await api.get('/api/config').catch(() => null);
+    if (cfg) infoRow(s, t('Style de jaquettes'), t('Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées'), segmented([
+      { value: '', label: t('Tous') }, { value: 'no_logo', label: t('Illustrations seules') }, { value: 'white_logo', label: t('Titres intégrés') }, { value: 'alternate', label: t('Affiches alternatives') },
+    ], cfg.sgdb.style, async value => {
+      try { await api.post('/api/config', { sgdbStyle: value }); await lib.load(); toast(t('Préférence de jaquettes enregistrée')); }
+      catch (e) { toast(e.message, { error: true }); }
+    }, 'cover-style'));
+    actionRow(s, 'i-image', t('Choisir une jaquette'), t('Ouvrir la bibliothèque, puis Visuels sur la fiche du jeu'), () => import('./nav.js').then(({ go }) => go('library')), 'cover-library');
+  }
+
+  if (parts.includes('profiles')) {
+    h2(s, 'i-desktop', t('Profils d’interface'));
+    const active = activeDisplayProfile(settings, displayState.id);
+    infoRow(s, t('Profil actif'), esc(profileNames[active]));
+    infoRow(s, t('Écran actuel'), esc(displayState.name));
+    pick(t('Choix du profil'), t('Chaque écran associé retrouve son profil automatiquement'), 'displayMode', Object.entries(profileNames), false);
+    actionRow(s, 'i-desktop', t('Associer cet écran'), t('Mémoriser Console portable ou TV pour cet écran'), async () => {
+      const id = await dialog({ title: t('Associer cet écran'), buttons: [
+        { label: t('Console portable'), value: 'portable' }, { label: t('TV'), value: 'tv' }, { label: t('Personnel'), value: 'manual' }, { label: t('Annuler'), value: null },
+      ] });
+      if (!id) return;
+      settings.displayBindings = { ...settings.displayBindings, [displayState.id]: id }; settings.displayMode = 'auto'; saveSettings(); refresh();
+    }, 'display-bind');
+    for (const id of Object.keys(DISPLAY_PROFILES)) {
+      const values = { ...DISPLAY_PROFILES[id], ...settings.displayProfiles?.[id] };
+      infoRow(s, profileNames[id], t('Taille de l’interface'), segmented([90, 100, 110, 125, 150].map(value => ({ value, label: value + ' %' })), values.uiScale, value => {
+        settings.displayProfiles = { ...settings.displayProfiles, [id]: { ...settings.displayProfiles?.[id], uiScale: +value } }; saveSettings();
+      }, 'profile-scale:' + id));
+      actionRow(s, 'i-restart', t('Réinitialiser le profil {name}', { name: profileNames[id] }), '', () => {
+        const profiles = { ...settings.displayProfiles }; delete profiles[id]; settings.displayProfiles = profiles; saveSettings(); rerender('display-bind');
+      }, 'profile-reset:' + id);
+    }
+  }
+
+  if (parts.includes('sounds')) {
+    h2(s, 'i-volume', t('Sons de l’interface'));
+    toggle('sounds', t('Activer les sons'), t('Indépendants du son de démarrage'));
+    pick(t('Timbre'), t('Trois ambiances graves, sans clic aigu'), 'soundTheme', Object.entries(soundNames));
+    infoRow(s, t('Volume de l’interface'), t('Ne modifie pas le volume de Windows ni celui des jeux'), segmented([0, 25, 50, 75, 100].map(value => ({ value, label: value + ' %' })), settings.soundVolume, value => { settings.soundVolume = +value; saveSettings(); }, 'sound-volume'));
+    toggle('soundMoves', t('Sons de déplacement'), t('Vous pouvez garder uniquement les validations et notifications'));
+    actionRow(s, 'i-volume', t('Écouter les sons'), t('Déplacement, validation, retour et notification au volume choisi'), () => previewSounds(), 'sound-preview');
+  }
+
+  if (parts.includes('immersive')) {
+    h2(s, 'i-eye-off', t('Mode immersif'));
+    toggle('immersive', t('Masquer les indications au repos'), t('Sur l’accueil, la bibliothèque et les fiches de jeu · chaque action les fait réapparaître'));
+    pick(t('Délai avant masquage'), t('Les menus, dialogues et réglages restent visibles'), 'immersiveDelay', [[3, t('3 secondes')], [6, t('6 secondes')], [10, t('10 secondes')]]);
+  }
 }

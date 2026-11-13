@@ -443,6 +443,10 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--accent); vertical-align: text-bottom; margin-left: 1px; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 #page-search { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--bottom); }
+.settings-part { display: contents; }
+#page-search .search-shortcuts { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px var(--gutter) 6px; }
+#page-search .search-shortcuts .chip-btn span { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
+#page-search .search-shortcuts .chip-btn small { opacity: .6; font-size: 11px; font-weight: 500; }
 #page-search .results { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; scroll-padding: 20px 0; }
 #page-search .row-title { margin-top: 10px; }
 .dock { padding: 14px var(--gutter) 12px; background: linear-gradient(0deg, rgba(8, 10, 14, 0.96) 70%, transparent); }

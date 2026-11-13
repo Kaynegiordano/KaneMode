@@ -89,7 +89,49 @@ function boxArt(uuid, appId) {
   try { return fs.statSync(f).size > 0 ? f : null; } catch { return null; }
 }
 
+/**
+ * Dernier jeu streamé, écrit par le moteur à la fin de chaque session d'au moins 10 secondes
+ * (streamhealth.cpp, « last-session.json » de son cache), ou null. Les variantes d'échelle du
+ * bureau ne comptent pas : le moteur les choisit seul.
+ */
+function lastSession(file = path.join(CACHE, 'last-session.json')) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!j || typeof j.host !== 'string' || !j.host || !Number.isInteger(j.appId) || typeof j.appName !== 'string' || !j.appName) return null;
+    if (isScaleVariant(j.appName)) return null;
+    const recent = (Array.isArray(j.recent) ? j.recent : [])
+      .filter(r => r && typeof r.host === 'string' && r.host && Number.isInteger(r.appId))
+      .map(r => ({ host: r.host, app: r.appId, endedAt: +r.endedAt || 0, seconds: +r.durationSecs || 0 }));
+    return { host: j.host, app: j.appId, name: j.appName, endedAt: +j.endedAt || 0, seconds: +j.durationSecs || 0,
+      issues: Array.isArray(j.issues) ? j.issues.map(String) : [], recent };
+  } catch { return null; }
+}
+
+/**
+ * Sessions streamées terminées après « since » (ms), pour compter leur temps de jeu : le moteur
+ * garde les 20 dernières, car plusieurs jeux peuvent se suivre avant le retour sur KaneMode.
+ * Le temps est rangé sous l'identifiant du raccourci du jeu (« stream:<PC>:<appli> »).
+ */
+function sessionsSince(last, since) {
+  if (!last) return [];
+  const list = last.recent && last.recent.length ? last.recent : [{ host: last.host, app: last.app, endedAt: last.endedAt, seconds: last.seconds }];
+  return list.filter(s => s.endedAt > (since || 0) && s.seconds > 0)
+    .map(s => ({ id: `stream:${s.host}:${s.app}`, minutes: s.seconds / 60, endedAt: s.endedAt }));
+}
+
+/**
+ * Ce que l'accueil propose de reprendre après un streaming : le raccourci du jeu s'il en a un
+ * (sa date de dernière partie suit la session), sinon le jeu lui-même, hors bibliothèque.
+ * Rien si son PC n'est plus appairé. played : en secondes, comme les autres dates de partie.
+ */
+function resumeFor(last, shortcuts, hosts) {
+  if (!last || !last.endedAt || !hosts.some(h => h.uuid === last.host && h.paired)) return null;
+  const played = Math.floor(last.endedAt / 1000);
+  const sc = (shortcuts || []).find(s => s.host === last.host && +s.app === last.app);
+  return sc ? { shortcut: `stream:${sc.host}:${sc.app}`, played } : { host: last.host, app: last.app, name: last.name, played };
+}
+
 // Variantes d'échelle du complément PC hôte (« Desktop [150 %] ») : le moteur les choisit seul
 const isScaleVariant = name => /^(.+) \[(\d{3}) %\]$/.test(String(name));
 
-module.exports = { findExe, env, hosts, entry, boxArt, isScaleVariant };
+module.exports = { findExe, env, hosts, entry, boxArt, isScaleVariant, lastSession, resumeFor, sessionsSince };

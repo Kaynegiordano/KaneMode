@@ -2,7 +2,7 @@
 // mode d'alimentation, profil de la console, puissance, fréquence de l'écran, limite de charge),
 // en sections que l'utilisateur choisit et ordonne (Paramètres → Accès rapide).
 import { t, locale } from './i18n.js';
-import { $, el, esc, icon, api, settings, saveSettings, toast, sfx, getNotifications } from './core.js';
+import { $, el, esc, icon, api, settings, saveSettings, toast, sfx } from './core.js';
 import { nav, focusIn } from './nav.js';
 
 /**
@@ -16,11 +16,10 @@ export const QAM_SECTIONS = [
   { id: 'quick', label: t('Réglages rapides'), desc: t('Volume, luminosité, Wi-Fi, Bluetooth, mode nuit') },
   { id: 'perf', label: t('Performance'), desc: t('Mode d’alimentation, profil de la console, puissance, fréquence de l’écran') },
   { id: 'battery', label: t('Batterie'), desc: t('Niveau, source, limite de charge') },
-  { id: 'shortcuts', label: t('Raccourcis'), desc: t('Veille, alimentation, streaming') },
+  { id: 'shortcuts', label: t('Raccourcis'), desc: t('Alimentation, streaming, Dolby Atmos') },
   { id: 'monitor', label: t('Moniteur'), desc: t('Processeur et mémoire en direct') },
-  { id: 'notifs', label: t('Notifications'), desc: t('Dernières notifications de KaneMode') },
 ];
-export const QAM_DEFAULT = ['quick', 'perf', 'battery', 'shortcuts', 'monitor', 'notifs'];
+export const QAM_DEFAULT = ['quick', 'perf', 'battery', 'shortcuts', 'monitor'];
 
 /** Sections affichées, dans l'ordre choisi. */
 export function qamOrder() {
@@ -78,7 +77,7 @@ function paintLive(flash = false) {
   if (!strip || !sys) return;
   const cells = [];
   if (live && live.watts != null && live.discharging) cells.push([fmtW(live.watts), t('Consommation')]);
-  else if (live && live.discharging === false) cells.push([t('Secteur'), t('Alimentation')]);
+  else if (live && live.discharging === false) cells.push([t('Secteur'), t('Source')]);
   else cells.push([live && live.load != null ? live.load + ' %' : '—', t('Charge du processeur')]);
   cells.push([fmtGhz(live && live.mhz), t('Fréquence réelle')]);
   const vm = sys.vendor && sys.vendor.mode;
@@ -325,16 +324,6 @@ const BUILD = {
     return section(t('Moniteur'),
       el('div', 'meter', t('<span>Processeur</span><div class="bar"><i id="cpu-bar"></i></div><output id="cpu-val">—</output>')),
       el('div', 'meter', t('<span>Mémoire</span><div class="bar"><i id="mem-bar"></i></div><output id="mem-val">—</output>')));
-  },
-
-  notifs() {
-    const list = getNotifications();
-    const box = el('div', list.length ? '' : 'notif-empty');
-    box.id = 'notifs';
-    box.innerHTML = list.length
-      ? list.map(n => `<div class="notif">${esc(n.msg)}<small>${n.at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
-      : t('Aucune nouvelle notification');
-    return section(t('Notifications'), box);
   },
 };
 

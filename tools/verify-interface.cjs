@@ -169,7 +169,7 @@ const server=http.createServer(async(req,res)=>{
     await settingsSection('personal');
     await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});navigation.setFocus(document.querySelector('[data-key="sec:personal"]'));});await settled();
     await page.evaluate(()=>mockPad.buttons[13].pressed=true);await page.waitForTimeout(200);
-    assert.notEqual(await page.evaluate(()=>navigation.focused.dataset.key),'sec:personal','La croix continue de naviguer en mode souris');
+    assert.notEqual(await page.evaluate(()=>navigation.focused.dataset.key),'sec:look','La croix continue de naviguer en mode souris');
     await page.evaluate(()=>{mockPad.buttons[13].pressed=false;sendNative({type:'mouse-mode',on:false});document.querySelector('[data-key="home-resume"]')._act=oldMouseAct;Object.defineProperty(navigator,'getGamepads',{value:()=>[]});navigation.go('home');});await settled();
     check('Souris et manette simultanées : croix, validations uniques, Start court/long, basculement et sources native/WebView2');
   };
@@ -199,7 +199,7 @@ const server=http.createServer(async(req,res)=>{
     await page.evaluate(()=>navigation.setFocus(document.querySelector('[data-key="pin-collection:c1"]')));
     assert.equal(await page.locator('.home-info h1').textContent(),'Coop canapé');
     check('Accueil : reprise sans doublon, informations des collections actualisées');
-    for(const section of ['personal','dolby','look','access','system']){
+    for(const section of ['home','media','look','access','system']){
       await settingsSection(section);
       assert.equal(await page.evaluate(()=>navigation.focused.dataset.key),'sec:'+section);
     }

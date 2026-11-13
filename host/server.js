@@ -309,7 +309,7 @@ function publicEntry(g, st, cfg) {
     lastPlayed: Math.max(g.lastPlayed || 0, played.last || 0), playCount: played.count || 0,
     playtime: (g.playtime || 0) + Math.round(played.minutes || 0),
     sizeOnDisk: g.sizeOnDisk || 0, installDir: str(g.installDir), steamAppId: g.steamAppId || null, trackDir: trackDir(g),
-    streamHost: g.streamHost || null, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
+    streamHost: g.streamHost || null, resumeOnly: !!g.resumeOnly, system: g.system || null, systemName: g.systemName || null, region: g.region || null,
     emulator: g.emulator || null, emulatorId: g.emulatorId || null, core: g.core || null, romPath: g.romPath || null, installEmu: g.installEmu || null, native: !!g.native, archive: g.archive || null, added: g.added || 0,
     launch: g.launch && str(g.launch.target) ? { kind: g.launch.kind, target: g.launch.target, args: str(g.launch.args) || '' } : null,
     customArt: Object.keys(artOv).filter(k => k !== '_v'),
@@ -392,7 +392,11 @@ const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud
 // réglée à 60 i/s dans le widget, elle bridait aussi l'interface (120 Hz sur la ROG Ally). La limite
 // choisie est gardée (config.fpsLimit) et appliquée seulement quand KaneMode n'est pas au premier
 // plan ; l'app signale chaque passage (POST /api/graphics/front).
-const fpsScope = { front: true, busy: null };
+const fpsScope = { front: true, busy: null, game: null };
+// Limite propre au jeu en cours (menu du jeu → Performance du jeu), sinon la limite générale
+const gameFpsLimit = c => { const own = (c.gameFps || {})[fpsScope.game]; return Number.isFinite(own) ? own : c.fpsLimit; };
+// Mode de performance changé pour un jeu : le mode d'avant, remis à sa fermeture
+const gamePerf = { id: null, prev: null };
 async function applyFpsScope() {
   const run = async () => {
     const st = await gfx.state(true).catch(() => null);
@@ -400,7 +404,7 @@ async function applyFpsScope() {
     const c = config();
     // Première fois : la limite déjà réglée dans le pilote devient celle des jeux
     if (c.fpsLimit == null) { c.fpsLimit = st.fps.on ? st.fps.value : 0; writeJson(FILES.config, c); }
-    const want = fpsScope.front ? 0 : c.fpsLimit;
+    const want = fpsScope.front ? 0 : gameFpsLimit(c);
     const now = st.fps.on ? st.fps.value : 0;
     if (want === now) return st;
     console.log(want ? `Limite de ${want} i/s appliquée (jeu au premier plan)` : 'Limite d’images levée (KaneMode au premier plan)');
@@ -586,11 +590,14 @@ async function refreshKanePlay() {
     const entries = one ? [one] : [];
     // Raccourcis vers les jeux d'un PC : leur jaquette arrive quand le moteur l'a téléchargée
     const shortcutArt = () => (config().streamShortcuts || []).map(s => !!kaneplay.boxArt(s.host, s.app)).join('');
-    const sig = (x, h, list, art) => JSON.stringify([x, h.map(y => y.uuid + y.paired + y.name), list.map(e => e.id + e.name + !!e.art.portrait), art]);
-    const before = sig(kp.exe, kp.hosts, kp.entries, kp.shortcutArt);
+    const sig = (x, h, list, art, last) => JSON.stringify([x, h.map(y => y.uuid + y.paired + y.name), list.map(e => e.id + e.name + !!e.art.portrait), art, last && [last.host, last.app, last.endedAt]]);
+    const before = sig(kp.exe, kp.hosts, kp.entries, kp.shortcutArt, kp.last);
     const art = shortcutArt();
-    Object.assign(kp, { exe, hosts, entries, shortcutArt: art });
-    if (sig(exe, hosts, entries, art) !== before) version++;
+    // Dernier jeu streamé : l'accueil propose de le reprendre (voir streamShortcutEntries)
+    const last = exe ? kaneplay.lastSession() : null;
+    countStreamSessions(kaneplay.sessionsSince(last, state().streamCounted));
+    Object.assign(kp, { exe, hosts, entries, shortcutArt: art, last });
+    if (sig(exe, hosts, entries, art, last) !== before) version++;
   } catch (e) { console.error('Streaming :', e.message); }
 }
 
@@ -602,18 +609,29 @@ async function refreshKanePlay() {
  */
 function streamShortcutEntries() {
   const list = config().streamShortcuts || [];
-  if (!list.length) return [];
-  const out = [];
-  for (const s of list) {
-    const host = kp.hosts.find(h => h.uuid === s.host);
-    if (!host) continue;
+  // Dernier jeu streamé (même choisi dans le moteur, sans raccourci) : la tuile « Reprendre » de
+  // l'accueil le propose. Sans raccourci, c'est une entrée hors bibliothèque (resumeOnly).
+  const resume = kaneplay.resumeFor(kp.last, list, kp.hosts);
+  const entry = (s, host, extra) => {
     const portrait = kaneplay.boxArt(s.host, s.app);
-    out.push({
+    return {
       id: `stream:${s.host}:${s.app}`, source: 'stream', name: s.name, type: 'game', streamHost: host.name,
       installed: !!kp.exe, addedAt: s.added || 0,
       launch: kp.exe ? { kind: 'exe', target: kp.exe, args: '', env: kaneplay.env(`stream\t${s.host}\t${s.app}\t${s.name}`, engineLook()) } : null,
       art: portrait ? { portrait } : {},
-    });
+      ...extra,
+    };
+  };
+  const out = [];
+  for (const s of list) {
+    const host = kp.hosts.find(h => h.uuid === s.host);
+    if (!host) continue;
+    const e = entry(s, host);
+    out.push(resume && resume.shortcut === e.id ? { ...e, lastPlayed: resume.played } : e);
+  }
+  if (resume && !resume.shortcut) {
+    const host = kp.hosts.find(h => h.uuid === resume.host);
+    out.push(entry({ host: resume.host, app: resume.app, name: resume.name }, host, { lastPlayed: resume.played, resumeOnly: true }));
   }
   return out;
 }
@@ -781,6 +799,18 @@ function recordPlay(id) {
   const p = st.played[id] || {};
   st.played[id] = { ...p, last: Math.floor(Date.now() / 1000), count: (p.count || 0) + 1 };
   writeJson(FILES.state, st);
+}
+/** Temps de jeu des sessions streamées (durée réelle donnée par le moteur), comptées une fois. */
+function countStreamSessions(list) {
+  if (!list.length) return;
+  const st = state();
+  for (const s of list) {
+    const p = st.played[s.id] || {};
+    st.played[s.id] = { ...p, minutes: (p.minutes || 0) + s.minutes, last: Math.max(p.last || 0, Math.floor(s.endedAt / 1000)) };
+    st.streamCounted = Math.max(st.streamCounted || 0, s.endedAt);
+  }
+  writeJson(FILES.state, st);
+  version++;
 }
 function addMinutes(id, minutes) {
   const st = state();
@@ -1883,12 +1913,14 @@ const routes = {
     const r = e.launch?.kind === 'account'
       ? b.dry ? { ok: true, dry: true, mode: e.installed === false ? 'install' : 'start' }
         : await accounts.action(e.bridge.id, e.installed === false ? 'install' : 'start')
-      : await run(e.launch, { dry: !!b.dry, onExit: m => !emuOnly && e.source !== 'kaneplay' && m > 0.2 && addMinutes(id, m) });
+      : await run(e.launch, { dry: !!b.dry, onExit: m => !emuOnly && e.source !== 'kaneplay' && e.source !== 'stream' && m > 0.2 && addMinutes(id, m) });
     if (r.ok && !b.dry && e.installed !== false) { if (!emuOnly) recordPlay(id); if (!id.startsWith('launcher:')) recentLaunch.set(emuOnly ? id + ':emu' : id, Date.now()); }
     if (r.ok && !b.dry && e.installed !== false) Promise.resolve(autoHdr.started({ ...e, type: hdrType(e) })).catch(err => console.error('HDR automatique :', err.message));
     // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
     const gm = (config().gameModes || {})[id];
+    if (r.ok && !b.dry && e.installed !== false) fpsScope.game = id;
     if (r.ok && !b.dry && PERF_MODES.includes(gm) && config().perfMode !== gm) {
+      Object.assign(gamePerf, { id, prev: config().perfMode });
       try {
         keeperQuiet();
         const res2 = await sysctl.apply(await expandProfile({ mode: gm }));
@@ -1935,8 +1967,24 @@ const routes = {
   },
   'POST /api/launch/ended': async (req, res) => {
     const b = await readBody(req);
-    recentLaunch.delete(String(b.id || ''));
-    Promise.resolve(autoHdr.ended(String(b.id || ''))).catch(err => console.error('HDR automatique :', err.message));
+    const id = String(b.id || '');
+    recentLaunch.delete(id);
+    Promise.resolve(autoHdr.ended(id)).catch(err => console.error('HDR automatique :', err.message));
+    if (fpsScope.game === id) fpsScope.game = null;
+    // Mode de performance propre au jeu : celui d'avant revient, sauf s'il a été changé entre-temps
+    if (gamePerf.id === id) {
+      const { prev } = gamePerf;
+      const gm = (config().gameModes || {})[id];
+      Object.assign(gamePerf, { id: null, prev: null });
+      if (PERF_MODES.includes(prev) && prev !== gm && config().perfMode === gm) {
+        try {
+          keeperQuiet();
+          const back = await sysctl.apply(await expandProfile({ mode: prev }));
+          if (!back.errors.length || back.done.length) { setPerfMode(prev); console.log(`Mode ${prev} remis après le jeu`); }
+          keeperQuiet();
+        } catch (err) { console.error('Mode du jeu :', err.message); }
+      }
+    }
     json(res, 200, { ok: true });
   },
   // Fond d'écran du lancement : une image « hero » du jeu tirée au hasard sur SteamGridDB
@@ -2108,13 +2156,24 @@ const routes = {
     const b = await readBody(req);
     if (typeof b.id !== 'string' || !b.id) return json(res, 400, { error: 'Jeu inconnu' });
     if (b.mode != null && !PERF_MODES.includes(b.mode)) return json(res, 400, { error: 'Mode inconnu' });
+    // fps : limite d'images du jeu (0 : sans limite, null : la limite générale) ; absent : inchangée
+    const hasFps = Object.hasOwn(b, 'fps');
+    if (hasFps && b.fps != null && !(Number.isInteger(b.fps) && b.fps >= 0 && b.fps <= 360)) return json(res, 400, { error: 'Limite inconnue' });
     const c = config();
-    const m = { ...(c.gameModes || {}) };
-    if (b.mode == null) delete m[b.id]; else m[b.id] = b.mode;
-    c.gameModes = m;
+    if (Object.hasOwn(b, 'mode')) {
+      const m = { ...(c.gameModes || {}) };
+      if (b.mode == null) delete m[b.id]; else m[b.id] = b.mode;
+      c.gameModes = m;
+    }
+    if (hasFps) {
+      const f = { ...(c.gameFps || {}) };
+      if (b.fps == null) delete f[b.id]; else f[b.id] = b.fps;
+      c.gameFps = f;
+    }
     writeJson(FILES.config, c);
-    json(res, 200, { id: b.id, mode: b.mode ?? null });
+    json(res, 200, { id: b.id, mode: (c.gameModes || {})[b.id] ?? null, fps: (c.gameFps || {})[b.id] ?? null });
   },
+  'GET /api/game-fps': (req, res) => json(res, 200, config().gameFps || {}),
   'GET /api/game-mode': (req, res) => json(res, 200, config().gameModes || {}),
   // HDR automatique : réglages, état, choix par jeu (toujours / jamais)
   'GET /api/hdr/auto': async (req, res) => {

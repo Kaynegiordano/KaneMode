@@ -346,7 +346,7 @@ async function options(g) {
       { label: favs.has(g.id) ? t('Retirer des favoris') : t('Ajouter aux favoris'), value: 'fav', icon: 'i-star' },
       { label: t('Collections…'), value: 'collections', icon: 'i-collection' },
       { label: (settings.homePins || []).some(p => p.type === 'game' && p.id === g.id) ? t('Retirer de l’accueil') : t('Épingler sur l’accueil'), value: 'pin', icon: 'i-home' },
-      ...(!g.demo && g.type === 'game' ? [{ label: t('Mode de performance du jeu…'), value: 'mode', icon: 'i-cpu' }] : []),
+      ...(!g.demo && g.type === 'game' ? [{ label: t('Performance du jeu…'), value: 'mode', icon: 'i-cpu' }] : []),
       ...(!g.demo && !g.streamHost && g.source !== 'kaneplay' ? [{ label: t('HDR du jeu…'), value: 'hdr', icon: 'i-hdr' }] : []),
       ...(!g.demo ? [{ label: t('Visuels (SteamGridDB, image perso)…'), value: 'art', icon: 'i-image' }] : []),
       ...(steamInstalled ? [{ label: t('Désinstaller (via Steam)'), value: 'uninstall', icon: 'i-trash' }] : []),
@@ -360,7 +360,7 @@ async function options(g) {
   if (choice === 'fav') toggleFav(g);
   if (choice === 'collections') collectionsDialog(g);
   if (choice === 'pin') pinItem('game', g.id);
-  if (choice === 'mode') gameModeDialog(g);
+  if (choice === 'mode') gamePerfDialog(g);
   if (choice === 'hdr') gameHdrDialog(g);
   if (choice === 'art') go('artpicker', { id: g.id });
   if (choice === 'uninstall' && (await confirmDialog(t('Désinstaller {name} ?', { name: g.name }), t('Steam va s’ouvrir pour confirmer la désinstallation.'), t('Continuer'), true))) {
@@ -389,26 +389,56 @@ export async function removeFromLibrary(g) {
   } catch (error) { toast(error.message, { error: true }); return false; }
 }
 
-// Mode de performance propre à un jeu : l'hôte l'applique à chaque lancement (il reste ensuite le mode en cours)
-async function gameModeDialog(g) {
-  const modes = await api.get('/api/game-mode').catch(() => ({}));
-  const cur = modes[g.id] || null;
-  const mark = v => (v === cur ? ' ✓' : '');
+// Performance propre à un jeu : mode de performance et limite d'images. L'hôte les applique à
+// chaque lancement ; à la fermeture du jeu, le mode d'avant et la limite générale reviennent.
+const GAME_FPS = [30, 40, 45, 60, 90, 120];
+async function gamePerfDialog(g) {
+  const [modes, limits] = await Promise.all([api.get('/api/game-mode').catch(() => ({})), api.get('/api/game-fps').catch(() => ({}))]);
+  const MODES = [['eco', t('Économie')], ['balanced', t('Équilibré')], ['performance', t('Performance')]];
+  const mode = modes[g.id] || null;
+  const fps = Number.isFinite(limits[g.id]) ? limits[g.id] : null;
+  const fpsLabel = v => (v === null ? t('Limite générale') : v === 0 ? t('Sans limite') : t('{n} i/s', { n: v }));
+  const mark = on => (on ? ' ✓' : '');
   const choice = await dialog({
-    title: t('Mode de performance du jeu'),
-    text: t('Appliqué automatiquement à chaque lancement de {name}.', { name: esc(g.name) }),
+    title: t('Performance du jeu'),
+    text: t('Appliqué à chaque lancement de {name}. À sa fermeture, les réglages d’avant reviennent.', { name: esc(g.name) }),
     buttons: [
-      { label: t('Aucun (mode en cours)') + mark(null), value: 'none' },
-      ...[['eco', t('Économie')], ['balanced', t('Équilibré')], ['performance', t('Performance')]].map(([v, l]) => ({ label: l + mark(v), value: v })),
+      { label: t('Mode de performance : {a}', { a: mode ? MODES.find(m => m[0] === mode)[1] : t('Mode en cours') }), value: 'mode', icon: 'i-cpu' },
+      // La limite du pilote graphique vaut pour les jeux de cette machine, pas pour un jeu streamé
+      ...(!g.streamHost ? [{ label: t('Limite d’images : {a}', { a: fpsLabel(fps) }), value: 'fps', icon: 'i-clock' }] : []),
       { label: t('Fermer'), value: null },
     ],
   });
   if (!choice) return;
-  const mode = choice === 'none' ? null : choice;
-  try {
-    await api.post('/api/game-mode', { id: g.id, mode });
-    toast(mode ? t('Mode appliqué au lancement de {name}', { name: g.name }) : t('{name} garde le mode en cours', { name: g.name }));
-  } catch (e) { toast(e.message, { error: true }); }
+  const body = { id: g.id };
+  if (choice === 'mode') {
+    const pick = await dialog({
+      title: t('Mode de performance du jeu'),
+      buttons: [
+        { label: t('Aucun (mode en cours)') + mark(mode === null), value: 'none' },
+        ...MODES.map(([v, l]) => ({ label: l + mark(v === mode), value: v })),
+        { label: t('Retour'), value: null },
+      ],
+    });
+    if (pick) body.mode = pick === 'none' ? null : pick;
+  } else {
+    const pick = await dialog({
+      title: t('Limite d’images du jeu'),
+      text: t('Moins d’images par seconde : moins de chaleur et plus d’autonomie.'),
+      buttons: [
+        { label: t('Limite générale') + mark(fps === null), value: 'general' },
+        { label: t('Sans limite') + mark(fps === 0), value: 'f0' },
+        ...GAME_FPS.map(v => ({ label: t('{n} i/s', { n: v }) + mark(v === fps), value: 'f' + v })),
+        { label: t('Retour'), value: null },
+      ],
+    });
+    if (pick) body.fps = pick === 'general' ? null : +pick.slice(1);
+  }
+  if (Object.keys(body).length > 1) {
+    try { await api.post('/api/game-mode', body); toast(t('Réglage enregistré pour {name}', { name: g.name })); }
+    catch (e) { toast(e.message, { error: true }); return; }
+  }
+  return gamePerfDialog(g);
 }
 
 // HDR propre à un jeu : suit le réglage général (Paramètres → HDR automatique), toujours ou jamais
