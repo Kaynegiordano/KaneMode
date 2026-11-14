@@ -24,3 +24,6 @@ vendor/XboxFullScreenExperienceTool/Modules/ViVe/
 # Moteur de streaming compilé (engine\build-engine.ps1)
 engine/out/
 engine/build.log
+
+# Outils de vérification (tools/dev, npm install)
+tools/dev/node_modules/

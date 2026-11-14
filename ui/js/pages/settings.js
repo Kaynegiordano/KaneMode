@@ -38,7 +38,7 @@ export const SECTIONS = [
   ['pad', 'i-gamepad', t('Manette'), ['pad', 'qam']],
   ['energy', 'i-power', t('Énergie'), ['energy', 'power']],
   ['access', 'i-info', t('Accessibilité'), ['access']],
-  ['system', 'i-cpu', t('Système'), ['system', 'device', 'storage', 'xbox']],
+  ['system', 'i-cpu', t('Système'), ['system', 'logs', 'device', 'storage', 'xbox']],
 ];
 // Bloc (ou ancienne rubrique) demandé par une autre page → rubrique qui le contient
 const PART_SECTION = { ...Object.fromEntries(SECTIONS.flatMap(([id, , , parts]) => parts.map(p => [p, id]))), personal: 'look' };
@@ -931,7 +931,53 @@ const BUILDERS = {
     h2(s, 'i-cpu', t('Interface'));
     actionRow(s, 'i-restart', t('Redémarrer l’interface'), t('Recharge KaneMode sans quitter'), () => location.reload(), 'reload');
   },
+
+  // Journal : dernières erreurs de l'app, de l'hôte et du streaming, et copie de la fin des journaux
+  async logs(s) {
+    h2(s, 'i-file', t('Journal'));
+    const r = await api.get('/api/logs').catch(() => null);
+    actionRow(s, 'i-file', t('Copier le journal'), t('La fin des journaux de KaneMode et du streaming, à coller dans un message'), async () => {
+      try {
+        const { text } = await api.get('/api/logs?copy=1');
+        await copyToClipboard(text);
+        toast(t('Journal copié'));
+      } catch (e) { toast(t('Copie impossible : {a}', { a: e.message }), { error: true }); }
+    }, 'logs-copy');
+    if (!r) { s.append(el('div', 'notice', t('Journal illisible pour l’instant.'))); return; }
+    const day = at => { const d = new Date(String(at).replace(' ', 'T')); return isNaN(d) ? esc(at) : d.toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' }); };
+    const times = n => (n > 1 ? ' · ' + t('{n} fois', { n }) : '');
+    const SOURCES = { app: t('App'), host: t('Hôte') };
+    // Chaque erreur est sélectionnable (la liste défile à la manette) ; A copie cette erreur seule
+    const entry = (text, desc, detail, key) => {
+      const row = infoRow(s, esc(text), desc);
+      row.classList.add('log-row');
+      nav(row, async () => {
+        try { await copyToClipboard([text, ...(detail || [])].join('\n')); toast(t('Erreur copiée')); }
+        catch (e) { toast(t('Copie impossible : {a}', { a: e.message }), { error: true }); }
+      }, key);
+    };
+    const list = r.app.slice(0, 12);
+    if (!list.length) s.append(el('div', 'notice', t('Aucune erreur récente de KaneMode.')));
+    list.forEach((e, i) => entry(e.text, `${SOURCES[e.source] || ''} · ${day(e.at)}${times(e.count)}`, e.detail, 'log:' + i));
+    h2(s, 'i-stream', t('Dernière session de streaming'));
+    if (!r.engine.at) s.append(el('div', 'notice', t('Pas encore de journal du streaming : il est écrit à partir de la prochaine session.')));
+    else if (!r.engine.errors.length) s.append(el('div', 'notice', t('Aucune erreur pendant la session du {d}.', { d: day(r.engine.at) })));
+    r.engine.errors.slice(0, 8).forEach((e, i) => entry(e.text, esc(e.at) + times(e.count), null, 'elog:' + i));
+  },
 };
+
+/** Copie dans le presse-papiers (API du navigateur, sinon l'ancienne méthode). */
+async function copyToClipboard(text) {
+  try { await navigator.clipboard.writeText(text); return; } catch { /* non autorisé : ancienne méthode */ }
+  const area = el('textarea');
+  area.value = text;
+  area.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.append(area);
+  area.select();
+  const ok = document.execCommand('copy');
+  area.remove();
+  if (!ok) throw new Error(t('presse-papiers refusé'));
+}
 
 page = definePage('settings', {
   libBound: true,

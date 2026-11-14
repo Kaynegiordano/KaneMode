@@ -33,6 +33,10 @@ function tool(id) {
 
   function start() {
     proc = spawn(exe, [], { windowsHide: true });
+    // Outil fermé pendant une écriture (pilote graphique relancé, outil arrêté) : « write EPIPE ».
+    // Sans écouteur, cette erreur arrêtait l'hôte entier ; la fin de l'outil (« exit ») rejette déjà
+    // la commande en cours, et la suivante le relance.
+    proc.stdin.on('error', () => {});
     proc.stdout.setEncoding('utf8');
     ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`Réglages ${t.label} indisponibles`)), 15000);

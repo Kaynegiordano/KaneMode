@@ -444,6 +444,7 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 @keyframes blink { 50% { opacity: 0; } }
 #page-search { display: flex; flex-direction: column; overflow: hidden; padding-bottom: var(--bottom); }
 .settings-part { display: contents; }
+.set-row.log-row .txt b { font-weight: 500; font-size: 14px; word-break: break-word; }
 #page-search .search-shortcuts { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px var(--gutter) 6px; }
 #page-search .search-shortcuts .chip-btn span { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
 #page-search .search-shortcuts .chip-btn small { opacity: .6; font-size: 11px; font-weight: 500; }

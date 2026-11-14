@@ -1,0 +1,10 @@
+{
+  "name": "kanemode-dev-tools",
+  "private": true,
+  "description": "Outils de vérification de KaneMode (jamais embarqués dans l'app) : analyse TypeScript du JavaScript et test d'interface Chromium.",
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "playwright-core": "1.56.1",
+    "typescript": "5.9.3"
+  }
+}

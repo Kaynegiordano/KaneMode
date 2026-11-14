@@ -43,6 +43,7 @@ public sealed class HostProcess : IDisposable
         };
         psi.Environment["PORT"] = Port.ToString();
         psi.Environment["KANEMODE_DATA"] = Paths.Data;
+        psi.Environment["KANEMODE_LOGS"] = Paths.Logs; // Paramètres → Système → Journal
         psi.Environment["KANEMODE_NATIVE"] = "1";
         // Version de l'app installée : l'hôte la compare aux versions publiées (mises à jour)
         psi.Environment["KANEMODE_VERSION"] = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";

@@ -1698,5 +1698,19 @@
  "thème ambiance couleurs langue police animations profils démarrage vidéo intro taille": "theme mood colors language font animations profiles startup boot video intro size",
  "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.": "Each game can have its own choice: game menu, <b>Game HDR</b>. “Always” takes priority over excluding emulation.",
  "Exclure l’émulation": "Exclude emulation",
- "Jeux émulés, portages PC et émulateurs (RetroArch, Dolphin, Eden…), même lancés depuis Steam": "Emulated games, PC ports and emulators (RetroArch, Dolphin, Eden…), even when launched from Steam"
+ "Jeux émulés, portages PC et émulateurs (RetroArch, Dolphin, Eden…), même lancés depuis Steam": "Emulated games, PC ports and emulators (RetroArch, Dolphin, Eden…), even when launched from Steam",
+ "{n} fois": "{n} times",
+ "App": "App",
+ "Aucune erreur pendant la session du {d}.": "No error during the session of {d}.",
+ "Aucune erreur récente de KaneMode.": "No recent KaneMode error.",
+ "Copie impossible : {a}": "Copy failed: {a}",
+ "Copier le journal": "Copy the log",
+ "Dernière session de streaming": "Last streaming session",
+ "Erreur copiée": "Error copied",
+ "Journal": "Log",
+ "Journal copié": "Log copied",
+ "Journal illisible pour l’instant.": "The log can’t be read right now.",
+ "La fin des journaux de KaneMode et du streaming, à coller dans un message": "The end of the KaneMode and streaming logs, to paste in a message",
+ "Pas encore de journal du streaming : il est écrit à partir de la prochaine session.": "No streaming log yet: it is written from the next session on.",
+ "presse-papiers refusé": "clipboard refused"
 }

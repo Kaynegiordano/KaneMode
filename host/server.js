@@ -36,6 +36,7 @@ const wifi = require('./lib/wifi');
 const weatherLib = require('./lib/weather');
 const hostScaleLib = require('./lib/hostscale');
 const sunshineGamesLib = require('./lib/sunshine-games');
+const logs = require('./lib/logs');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -2397,6 +2398,12 @@ const routes = {
     if (!ids.length) return json(res, 400, { error: 'Aucune mise à jour choisie' });
     if (!driverJobs.install(ids)) return json(res, 409, { error: 'Installation déjà en cours' });
     json(res, 200, { ok: true });
+  },
+  // Journal (Paramètres → Système → Journal) : dernières erreurs, et la fin brute des journaux à copier
+  'GET /api/logs': (req, res, q) => {
+    if (q.get('copy') === '1') return json(res, 200, { text: logs.copyText() });
+    const engine = logs.engineErrors();
+    json(res, 200, { app: logs.appErrors(), engine: { at: engine.at, errors: engine.errors } });
   },
   'GET /api/storage': (req, res) => {
     const games = allEntries(false).games.filter(g => g.installed !== false && g.sizeOnDisk > 0 && str(g.installDir));

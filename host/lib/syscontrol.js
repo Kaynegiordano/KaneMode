@@ -17,9 +17,13 @@ function create(getVendor) {
   async function start() {
     const vendor = await getVendor();
     proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT, '-Vendor', vendor], { windowsHide: true });
+    // Même protection que gpuctl.js : une écriture vers un PowerShell déjà fermé ne doit pas arrêter l'hôte
+    proc.stdin.on('error', () => {});
     proc.stdout.setEncoding('utf8');
     ready = new Promise((resolve, reject) => {
       const t = setTimeout(() => reject(new Error('Réglages système indisponibles')), 20000);
+      // PowerShell introuvable ou refusé : la commande échoue, l'hôte continue
+      proc.on('error', e => { clearTimeout(t); proc = null; ready = null; reject(e); });
       proc.stdout.on('data', chunk => {
         buffer += chunk;
         let i;

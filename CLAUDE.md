@@ -4,6 +4,16 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.36.0 : journal dans les Paramètres, outils de vérification
+
+- Demande : cinq pistes de la revue (points de reprise visuels, journal, découpage de l’hôte, test d’interface, analyse automatique). L’utilisateur a arrêté en cours (« on arrête là ») puis demandé de publier ce qui était fait : **pas faits** les points de reprise visuels de l’émulation (étude commencée : RetroArch écrit `<jeu>.state.auto` et `.state.auto.png` dans `Sauvegardes/RetroArch/states/<cœur>/`) et le découpage de `server.js`.
+- Outils : `tools/dev/package.json` (typescript, @types/node, playwright-core ; `npm install` dans `tools/dev`, `node_modules` ignoré, jamais embarqué). `node tools/check-code.js` : TypeScript en `checkJs` sur `ui/js/main.js` + `widget.js` et `host/server.js`, ne garde que les vraies fautes (noms inconnus, doublons, usage avant déclaration, sans usage, syntaxe), code 1 s’il y en a, code 2 si TypeScript n’a rien analysé (piège rencontré : `--types ""` refusé, l’analyse rendait « rien à signaler » en 1 s).
+- `tools/verify-interface.cjs` : prend `playwright-core` de `tools/dev` et Microsoft Edge (`channel: 'msedge'`, pas de navigateur téléchargé) ; anciens noms de rubriques des Paramètres ramenés aux 10 rubriques (`SECTION_OF`), tuile de reprise cherchée dans Accueil. 20 étapes réussies.
+- Journal : `host/lib/logs.js` lit la fin de `kanemode.log` (dossier donné par l’app : `KANEMODE_LOGS`, nouveau dans `HostProcess.cs`) et du plus récent `KanePlay-*.log` du dossier temporaire ; erreurs filtrées (bruit : titres de fenêtres « Error »), traces de l’hôte regroupées (message `Error: …` en tête), répétitions comptées. `GET /api/logs` (`?copy=1` : texte brut). Bloc `logs` de la rubrique Système, lignes sélectionnables (A copie l’erreur).
+- Moteur : `main.cpp` écrit son journal sur disque aussi quand `KANEPLAY_EMBEDDED` est posé (lancé par l’hôte, sa sortie d’erreur va vers le périphérique nul, donc il n’écrivait jamais de fichier).
+- Plantage réel lu dans le journal de la console (11/11, 4.31.3) : `write EPIPE` sur `proc.stdin` de `gpuctl.js` sans écouteur `error` → Node arrêté. `proc.stdin.on('error')` dans `gpuctl.js` et `syscontrol.js` (+ `proc.on('error')` qui remet `proc` à zéro).
+- Tests : `tools/verify-logs.js` (7). Journal vérifié à l’écran avec le vrai `kanemode.log` (hôte de développement). Bouton « Copier » non cliqué (presse-papiers de l’utilisateur).
+
 ## Version 4.35.2 : revue de code (robustesse)
 
 - Demande : « Revoit entièrement le code, corrige et améliore ». Méthode : analyse statique par TypeScript en `checkJs` (celui de `C:\KaneOS\Scriba\node_modules\typescript`, types Node de `C:\KaneOS\KaneApp\node_modules\@types`, rien d’installé dans le dépôt) sur `ui/js/main.js` + `widget.js` et `host/server.js` : **aucun nom inconnu** (TS2304/2552), seulement des imports et variables sans usage (TS6133), retirés. `dotnet build` de l’app : 0 avertissement. Puis lecture ciblée : socle de l’hôte, lancements de programmes (guillemets PowerShell corrects partout), code de la 4.35, suivi du moteur dans l’app.

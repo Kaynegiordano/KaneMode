@@ -1,7 +1,12 @@
 // Essais Chromium avec bibliothèque et API simulées : aucune action sur Windows.
-// Playwright doit être disponible ; KANEMODE_PLAYWRIGHT / KANEMODE_BROWSER peuvent préciser les chemins.
+// Outils : « npm install » une fois dans tools/dev (playwright-core, sans navigateur téléchargé) ; le test
+// prend Microsoft Edge, installé avec Windows. KANEMODE_PLAYWRIGHT / KANEMODE_BROWSER peuvent préciser les chemins.
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), http=require('node:http');
-const {chromium}=require(process.env.KANEMODE_PLAYWRIGHT || 'playwright');
+const {chromium}=(()=>{
+  if(process.env.KANEMODE_PLAYWRIGHT) return require(process.env.KANEMODE_PLAYWRIGHT);
+  for(const name of ['playwright-core','playwright']){try{return require(require.resolve(name,{paths:[path.join(__dirname,'dev','node_modules')]}));}catch{/* suivant */}}
+  console.error('Playwright manquant : lancez « npm install » dans tools/dev');process.exit(2);
+})();
 const root=path.resolve(__dirname,'..'), dir=process.env.KANEMODE_UI_OUTPUT;
 let dolbyState={available:true,installed:false,appVersion:null,license:null,controllable:true,devices:[{id:'headset',name:'Casque de test',default:true,supported:['off','headphones','sonic'],selected:'off',active:'off'},{id:'tv',name:'TV de test',default:false,supported:['off','homeTheater'],selected:'off',active:'off'}]};
 let dolbyRefuse=false;const dolbyActions=[];
@@ -71,7 +76,7 @@ const server=http.createServer(async(req,res)=>{
 
 (async()=>{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
-  const browser=await chromium.launch({headless:true,...(process.env.KANEMODE_BROWSER ? {executablePath:process.env.KANEMODE_BROWSER} : {})});
+  const browser=await chromium.launch({headless:true,...(process.env.KANEMODE_BROWSER ? {executablePath:process.env.KANEMODE_BROWSER} : {channel:'msedge'})});
   const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
@@ -83,7 +88,10 @@ const server=http.createServer(async(req,res)=>{
   });
   const check=(label)=>console.log('PASS '+label);
   const settled=()=>page.waitForTimeout(300);
-  const settingsSection=async(section)=>{
+  // 4.35 : 19 rubriques regroupées en 10 ; un ancien nom mène à la rubrique qui contient ses réglages
+  const SECTION_OF={personal:'look',accounts:'library',power:'energy',dolby:'media',hdr:'media',sgdb:'library',boot:'look',qam:'pad',device:'system',storage:'system',xbox:'system'};
+  const settingsSection=async(asked)=>{
+    const section=SECTION_OF[asked]||asked;
     await page.evaluate(section=>navigation.go('settings',{section}),section);
     await page.waitForFunction(section=>{
       const p=navigation.page('settings'),s=p.wrap?.lastElementChild;
@@ -166,8 +174,8 @@ const server=http.createServer(async(req,res)=>{
     assert.equal(await page.evaluate(()=>testNativeMessages.filter(m=>m.type==='mouse-mode').length),before+1,'Un seul basculement par maintien');
     await page.evaluate(()=>{sendNative({type:'mouse-mode',on:false});mockPad.buttons[9].pressed=false;});await settled();
     assert.equal(await page.locator('#qam').getAttribute('aria-hidden'),'true','Start long ne devient pas un appui court');
-    await settingsSection('personal');
-    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});navigation.setFocus(document.querySelector('[data-key="sec:personal"]'));});await settled();
+    await settingsSection('look');
+    await page.evaluate(()=>{sendNative({type:'mouse-mode',on:true});navigation.setFocus(document.querySelector('[data-key="sec:look"]'));});await settled();
     await page.evaluate(()=>mockPad.buttons[13].pressed=true);await page.waitForTimeout(200);
     assert.notEqual(await page.evaluate(()=>navigation.focused.dataset.key),'sec:look','La croix continue de naviguer en mode souris');
     await page.evaluate(()=>{mockPad.buttons[13].pressed=false;sendNative({type:'mouse-mode',on:false});document.querySelector('[data-key="home-resume"]')._act=oldMouseAct;Object.defineProperty(navigator,'getGamepads',{value:()=>[]});navigation.go('home');});await settled();
@@ -238,11 +246,13 @@ const server=http.createServer(async(req,res)=>{
     await page.keyboard.press('Escape');await settingsSection('energy');
     assert.equal(await page.locator('[data-key="battery-mode-eco"]').getAttribute('aria-pressed'),'true');
     assert.equal(await page.locator('[data-key="ac-mode-performance"]').getAttribute('aria-pressed'),'true');
-    await settingsSection('personal');await page.evaluate(()=>navigation.page('settings').enter('personal'));await settled();
+    // Tuile de reprise : rubrique Accueil depuis la 4.35 ; animations : Apparence
+    await settingsSection('home');await page.evaluate(()=>navigation.page('settings').enter('home'));await settled();
     check('3.9 : choix batterie/secteur mémorisés depuis l’accès rapide et relus dans les paramètres');
     const sw=page.locator('[data-key="homeResume"]');
     await sw.click();assert.equal(await sw.getAttribute('aria-checked'),'false');await sw.click();
     assert.equal(await sw.getAttribute('aria-checked'),'true');
+    await settingsSection('look');
     assert.equal(await page.locator('[data-key="motionStyle-normal"]').getAttribute('aria-pressed'),'true');
     check('Contrôles : noms de jeux, interrupteurs et options exposent leur état accessible');
     await page.evaluate(()=>{

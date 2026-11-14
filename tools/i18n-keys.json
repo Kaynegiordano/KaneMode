@@ -232,6 +232,9 @@
  "{n} émulateurs détectés": [
   "ui/js/pages/settings.js"
  ],
+ "{n} fois": [
+  "ui/js/pages/settings.js"
+ ],
  "{n} gratuit": [
   "ui/js/deals.js"
  ],
@@ -835,6 +838,9 @@
  "Aperçu des ambiances": [
   "ui/js/personalization-settings.js"
  ],
+ "App": [
+  "ui/js/pages/settings.js"
+ ],
  "App installée": [
   "ui/js/pages/settings.js"
  ],
@@ -1027,6 +1033,12 @@
  ],
  "Aucune connexion à Internet": [
   "ui/js/statusbar.js"
+ ],
+ "Aucune erreur pendant la session du {d}.": [
+  "ui/js/pages/settings.js"
+ ],
+ "Aucune erreur récente de KaneMode.": [
+  "ui/js/pages/settings.js"
  ],
  "Aucune image (.png, .jpg, .webp) dans ce dossier.": [
   "ui/js/pages/add.js"
@@ -1666,6 +1678,12 @@
  "Coop canapé, À finir, Rétro…": [
   "ui/js/pages/game.js"
  ],
+ "Copie impossible : {a}": [
+  "ui/js/pages/settings.js"
+ ],
+ "Copier le journal": [
+  "ui/js/pages/settings.js"
+ ],
  "Couleur d’accent": [
   "ui/js/pages/settings.js"
  ],
@@ -1784,6 +1802,9 @@
  "Dernière session": [
   "ui/js/pages/game.js",
   "ui/js/pages/library.js"
+ ],
+ "Dernière session de streaming": [
+  "ui/js/pages/settings.js"
  ],
  "dernière version à vérifier sur le site": [
   "ui/js/pages/settings.js"
@@ -2074,6 +2095,9 @@
  ],
  "Erreur {status}": [
   "ui/js/core.js"
+ ],
+ "Erreur copiée": [
+  "ui/js/pages/settings.js"
  ],
  "Espace": [
   "ui/js/pages/search.js",
@@ -2693,6 +2717,15 @@
  "Jouez aux jeux de vos autres PC (Sunshine, Apollo, GeForce Experience) en plein écran": [
   "ui/js/pages/settings.js"
  ],
+ "Journal": [
+  "ui/js/pages/settings.js"
+ ],
+ "Journal copié": [
+  "ui/js/pages/settings.js"
+ ],
+ "Journal illisible pour l’instant.": [
+  "ui/js/pages/settings.js"
+ ],
  "KaneMode": [
   "ui/index.html",
   "ui/widget.html"
@@ -2741,6 +2774,9 @@
  ],
  "La fenêtre du jeu est introuvable": [
   "ui/js/pages/game.js"
+ ],
+ "La fin des journaux de KaneMode et du streaming, à coller dans un message": [
+  "ui/js/pages/settings.js"
  ],
  "La passerelle de comptes ne répond pas": [
   "host/lib/accounts.js"
@@ -3636,6 +3672,9 @@
  "Pas encore de favori ici : X sur un jeu l’ajoute.": [
   "ui/js/pages/emulation.js"
  ],
+ "Pas encore de journal du streaming : il est écrit à partir de la prochaine session.": [
+  "ui/js/pages/settings.js"
+ ],
  "Passerelle de comptes": [
   "ui/js/accounts-settings.js"
  ],
@@ -3771,6 +3810,9 @@
  ],
  "Preset IA": [
   "ui/js/pages/emulation.js"
+ ],
+ "presse-papiers refusé": [
+  "ui/js/pages/settings.js"
  ],
  "Prête": [
   "ui/js/pages/settings.js"
