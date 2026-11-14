@@ -330,7 +330,6 @@ function scanSystemDir(sys, dir, out, depth = 0, m3uDir = null) {
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
   const files = entries.filter(e => e.isFile()).map(e => e.name);
-  const lower = new Set(files.map(f => f.toLowerCase()));
   // Jeux multi-disques : un .m3u masque ses .cue/.chd ; un .cue masque ses .bin
   const hidden = new Set();
   for (const f of files) {

@@ -1,7 +1,7 @@
 // Démarrage : pages, menus latéraux, accès rapide, barre d'état, synchronisation avec l'hôte.
 import { t, locale, translateDom } from './i18n.js';
-import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, busy, on, getNotifications, esc, fmt, sfx, native, store } from './core.js';
-import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, setFocus, resetHistory, input, setNativePads } from './nav.js';
+import { $, $$, api, lib, settings, saveSettings, applyTheme, toast, on, fmt, native, store } from './core.js';
+import { state, go, refresh, openLayer, closeLayer, topLayer, currentPage, actions, hooks, focusIn, resetHistory, input, setNativePads } from './nav.js';
 import { swapArt } from './cards.js';
 import { confirmDialog } from './widgets.js';
 import { playBoot } from './boot.js';

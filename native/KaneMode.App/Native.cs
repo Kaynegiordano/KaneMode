@@ -522,9 +522,17 @@ public static class Native
     /// S'assure que le bureau Windows est chargé : en mode Xbox, l'Explorateur (le bureau)
     /// peut ne pas tourner ; le relancer le réaffiche.
     /// </summary>
+    /// <summary>Un programme de ce nom tourne-t-il ? Les objets Process sont rendus (pas de fuite de handles).</summary>
+    public static bool ProcessRunning(string name)
+    {
+        var list = Process.GetProcessesByName(name);
+        foreach (var p in list) p.Dispose();
+        return list.Length > 0;
+    }
+
     public static void EnsureDesktop()
     {
-        if (Process.GetProcessesByName("explorer").Length > 0) return;
+        if (ProcessRunning("explorer")) return;
         Log.Write("Bureau absent : démarrage de l'Explorateur");
         Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true });
     }

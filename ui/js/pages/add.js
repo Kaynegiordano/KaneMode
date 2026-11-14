@@ -1,7 +1,7 @@
 // Ajout de jeux / applis hors boutiques : programmes installés, fichiers, liens web.
 // Pages : add (choix), programs (liste), browse (fichiers), details (formulaire).
 import { t, tn } from '../i18n.js';
-import { $, el, esc, icon, api, lib, store, toast, busy, fmt } from '../core.js';
+import { el, esc, icon, api, lib, store, toast, busy, fmt } from '../core.js';
 import { definePage, nav, go, back, focusIn, dropHistory, glyph } from '../nav.js';
 import { art } from '../cards.js';
 import { openKeyboard, dialog, segmented } from '../widgets.js';

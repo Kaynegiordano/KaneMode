@@ -1,7 +1,6 @@
 // Commandes Dolby dans KaneMode ; options propriétaires dans l'application officielle.
 import { t } from './i18n.js';
 import { el, esc, api, toast } from './core.js';
-import { nav } from './nav.js';
 import { dialog } from './widgets.js';
 const names = () => ({ off: t('Désactivé'), headphones: 'Dolby Atmos for Headphones', homeTheater: 'Dolby Atmos for Home Theater',
   speakers: 'Dolby Atmos for Speakers', sonic: 'Windows Sonic', other: t('Autre format spatial') });

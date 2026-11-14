@@ -64,8 +64,8 @@ const RUN_EXT = ['.exe', '.lnk', '.bat', '.cmd', '.url'];
 const ART_KINDS = ['portrait', 'hero', 'logo', 'header', 'icon'];
 
 // ---------------------------------------------------------------- utilitaires
-const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8').replace(/^﻿/, '')); } catch { return d; } };
-const writeJson = (f, v) => fs.writeFileSync(f, JSON.stringify(v, null, 2));
+// Lecture et écriture sûres des fichiers de données (copie de secours, remplacement d'un coup)
+const { readJson, writeJson } = require('./lib/jsonfile');
 const str = v => (typeof v === 'string' && v ? v : null); // PowerShell sérialise parfois « rien » en {}
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 const safeId = id => String(id).replace(/[^\w.-]+/g, '_');
@@ -1924,7 +1924,7 @@ const routes = {
     const gm = (config().gameModes || {})[id];
     if (r.ok && !b.dry && e.installed !== false) fpsScope.game = id;
     if (r.ok && !b.dry && PERF_MODES.includes(gm) && config().perfMode !== gm) {
-      Object.assign(gamePerf, { id, prev: config().perfMode });
+      Object.assign(gamePerf, { id, prev: gamePerf.id ? gamePerf.prev : config().perfMode });
       try {
         keeperQuiet();
         const res2 = await sysctl.apply(await expandProfile({ mode: gm }));
@@ -2175,6 +2175,7 @@ const routes = {
       c.gameFps = f;
     }
     writeJson(FILES.config, c);
+    if (hasFps && fpsScope.game === b.id && !fpsScope.front) applyFpsScope().catch(() => {});
     json(res, 200, { id: b.id, mode: (c.gameModes || {})[b.id] ?? null, fps: (c.gameFps || {})[b.id] ?? null });
   },
   'GET /api/game-fps': (req, res) => json(res, 200, config().gameFps || {}),
@@ -2408,15 +2409,16 @@ const routes = {
 };
 
 http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://localhost');
-  const p = decodeURIComponent(url.pathname);
   try {
+    const url = new URL(req.url, 'http://localhost');
+    let p;
+    try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end(); }
     if (p.startsWith('/api/')) {
       if (!trusted(req)) return json(res, 403, { error: 'Requête refusée' });
       const h = routes[`${req.method} ${p}`];
       return h ? await h(req, res, url.searchParams) : json(res, 404, { error: 'Route inconnue' });
     }
-    if (!localHost(req)) { res.writeHead(403); return res.end(); }
+    if (!localHost(req) || req.headers['sec-fetch-site'] === 'cross-site') { res.writeHead(403); return res.end(); }
     if (p.startsWith('/art/')) {
       const [, , id, kind] = p.split('/');
       const e = findEntry(id);
@@ -2439,12 +2441,15 @@ http.createServer(async (req, res) => {
       return sendFile(res, v, req);
     }
     const file = path.join(UI, p === '/' ? 'index.html' : p);
-    if (!file.startsWith(UI)) { res.writeHead(403); return res.end(); }
+    if (file !== path.join(UI, 'index.html') && !file.startsWith(UI + path.sep)) { res.writeHead(403); return res.end(); }
     sendFile(res, file, req);
   } catch (e) {
     json(res, 500, { error: e.message });
   }
 }).listen(PORT, '127.0.0.1', () => console.log(`KaneMode : http://localhost:${PORT}`));
+
+// Erreur oubliée dans une tâche de fond : notée dans le journal, l'hôte continue
+process.on('unhandledRejection', e => console.error('Erreur non gérée :', e && e.stack ? e.stack : e));
 
 // Mises à jour : état de la dernière vérification et du téléchargement
 const PACKAGED = process.env.KANEMODE_PACKAGED === '1';

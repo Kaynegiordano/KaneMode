@@ -2,7 +2,6 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { execFile, spawn } = require('child_process');
 
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };

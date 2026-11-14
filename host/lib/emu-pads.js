@@ -6,6 +6,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { writeJson } = require('./jsonfile');
 
 const read = f => { try { return fs.readFileSync(f, 'utf8').replace(/^﻿/, ''); } catch { return ''; } };
 const mkdir = d => { fs.mkdirSync(d, { recursive: true }); return d; };
@@ -133,7 +134,7 @@ function yuzuController(file, pads = [], hid = []) {
     // Retenue pour cette manette (la dernière disposition vue gagne)
     if (JSON.stringify((saved[bound] || {}).keys) !== JSON.stringify(keys)) {
       saved[bound] = { guid, keys, at: new Date().toISOString() };
-      try { mkdir(path.dirname(store)); fs.writeFileSync(store, JSON.stringify(saved, null, 2)); } catch { /* sans mémoire */ }
+      try { mkdir(path.dirname(store)); writeJson(store, saved); } catch { /* sans mémoire */ }
     }
     if (connected.some(c => c.key === bound)) return false;
   }

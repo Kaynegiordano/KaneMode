@@ -455,7 +455,7 @@ public partial class MainWindow : Window
                     Native.ForceForeground(hwnd);
                 }
             }
-            else if (!seen && !lost && elapsed > 1.5 && System.Diagnostics.Process.GetProcessesByName("KanePlay").Length == 0)
+            else if (!seen && !lost && elapsed > 1.5 && !Native.ProcessRunning("KanePlay"))
             {
                 // Le lancement s'est perdu : on le signale une fois à l'interface, qui relance
                 lost = true;
@@ -490,9 +490,7 @@ public partial class MainWindow : Window
             IntPtr front = Native.GetForegroundWindow();
             if (front != Hwnd && Native.WindowTitle(front) == KanePlayTitle) { _kanePlayOpen = true; return; }
             if (!_kanePlayOpen) return;
-            var running = System.Diagnostics.Process.GetProcessesByName("KanePlay");
-            foreach (var p in running) p.Dispose();
-            if (running.Length > 0) return;
+            if (Native.ProcessRunning("KanePlay")) return;
             _kanePlayOpen = false;
             ReloadAfterKanePlay();
         };
@@ -535,13 +533,17 @@ public partial class MainWindow : Window
         Show();
         if (!Native.ForceForeground(Hwnd)) Activate();
         Web.Focus();
+        // Moteurs ouverts au moment du retour : seuls ceux-là peuvent être arrêtés ensuite. Un
+        // streaming relancé pendant l'attente n'a pas encore de fenêtre au démarrage : il est épargné.
+        var closing = new HashSet<int>();
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName("KanePlay")) { closing.Add(p.Id); p.Dispose(); }
         await Task.Delay(10000);
         foreach (var p in System.Diagnostics.Process.GetProcessesByName("KanePlay"))
         {
             try
             {
                 // Seulement un moteur sans fenêtre visible (celui qui se ferme), jamais une session relancée
-                if (p.MainWindowHandle == IntPtr.Zero) { Log.Write("Streaming : moteur encore ouvert 10 s après la fin, arrêté"); p.Kill(); }
+                if (closing.Contains(p.Id) && p.MainWindowHandle == IntPtr.Zero) { Log.Write("Streaming : moteur encore ouvert 10 s après la fin, arrêté"); p.Kill(); }
             }
             catch { /* déjà fermé */ }
             finally { p.Dispose(); }
@@ -619,7 +621,7 @@ public partial class MainWindow : Window
                 uint pid = Native.WindowProcessId(w);
                 if (pid == self) continue;
                 string title = Native.WindowTitle(w), process = "";
-                try { process = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
+                try { using var owner = System.Diagnostics.Process.GetProcessById((int)pid); process = owner.ProcessName; } catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { }
                 bool asus = System.Text.RegularExpressions.Regex.IsMatch(title + " " + process, "armou?ry|asus|rog live", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
                     || process.Equals("WinStore.App", StringComparison.OrdinalIgnoreCase);
                 Log.Write($"Fenêtre apparue après le bouton : « {title} » ({process}){(asus ? " : fermée" : "")}");
