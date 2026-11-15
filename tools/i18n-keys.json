@@ -625,6 +625,9 @@
  "À signaler": [
   "ui/js/statusbar.js"
  ],
+ "Accès à la passerelle refusé": [
+  "native/KaneMode.LibraryBridge/LibraryBridge.cs"
+ ],
  "Accès rapide": [
   "ui/index.html",
   "ui/js/pages/search.js",
@@ -652,6 +655,9 @@
  ],
  "Action": [
   "ui/js/pages/search.js"
+ ],
+ "Action de bibliothèque inconnue": [
+  "native/KaneMode.LibraryBridge/LibraryBridge.cs"
  ],
  "Action de compte invalide": [
   "host/lib/accounts.js"
@@ -802,6 +808,9 @@
  ],
  "Analyse de la bibliothèque…": [
   "ui/js/pages/settings.js"
+ ],
+ "Anglais": [
+  "ui/js/i18n.js"
  ],
  "Animation": [
   "ui/js/pages/settings.js"
@@ -1303,6 +1312,7 @@
   "host/lib/gpudrivers.js"
  ],
  "Ce connecteur ne propose pas l’installation de ce jeu sur Windows": [
+  "native/KaneMode.LibraryBridge/LibraryBridge.cs",
   "ui/js/pages/game.js"
  ],
  "Ce format spatial est indisponible sur cette sortie": [
@@ -1645,6 +1655,12 @@
  ],
  "Connexion aux bibliothèques…": [
   "ui/js/accounts-settings.js"
+ ],
+ "Connexion impossible": [
+  "host/lib/wifi.js"
+ ],
+ "Connexion impossible : mot de passe incorrect ?": [
+  "host/lib/wifi.js"
  ],
  "Conseillé sur secteur": [
   "ui/js/widget.js"
@@ -2255,6 +2271,9 @@
  "Format spatial vérifié dans Windows": [
   "ui/js/dolby-settings.js"
  ],
+ "Français": [
+  "ui/js/i18n.js"
+ ],
  "Fréquence": [
   "ui/js/widget.js"
  ],
@@ -2766,6 +2785,12 @@
  "L’entrée est retirée de la bibliothèque. Le programme lui-même n’est pas désinstallé.": [
   "ui/js/pages/game.js"
  ],
+ "L’installation du complément a échoué": [
+  "host/lib/hostscale.js"
+ ],
+ "La boutique a refusé cette action. Vérifiez sa connexion dans Playnite.": [
+  "native/KaneMode.LibraryBridge/LibraryBridge.cs"
+ ],
  "La cible ne désigne pas un exécutable": [
   "host/lib/launch.js"
  ],
@@ -2879,6 +2904,9 @@
  ],
  "Le pilote NVIDIA a refusé : {a} ({b})": [
   "native/KaneMode.Gpu/Nvidia.cpp"
+ ],
+ "Le retrait du complément a échoué": [
+  "host/lib/hostscale.js"
  ],
  "Le serveur ne répond plus": [
   "host/lib/emu-store.js"

@@ -1961,7 +1961,6 @@ const routes = {
     if (Date.now() - kpLast > 30e3) refreshKanePlay();
     json(res, 200, { ok: true });
   },
-  // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
   // Jeu quitté « complètement » (Select + Start maintenus 3 s) : la reprise automatique de RetroArch
   // est effacée, le jeu repart du début au prochain lancement (ses propres sauvegardes restent)
   'POST /api/emu/forget-resume': async (req, res) => {
@@ -1970,10 +1969,15 @@ const routes = {
     if (!e || e.source !== 'rom') return json(res, 404, { ok: false, error: 'Jeu inconnu' });
     json(res, 200, { ok: true, removed: forgetResume(e) });
   },
+  // Le jeu s'est fermé (KaneMode l'a vu) : on peut le relancer tout de suite
   'POST /api/launch/ended': async (req, res) => {
     const b = await readBody(req);
     const id = String(b.id || '');
     recentLaunch.delete(id);
+    // Image .iso d'un jeu Switch montée au lancement : démontée, sinon chaque jeu joué garde sa lettre
+    // de lecteur jusqu'au redémarrage (remontée au prochain lancement)
+    const played = findEntry(id);
+    if (played && played.archive === 'mount') emuMount.unmount(played.romPath);
     Promise.resolve(autoHdr.ended(id)).catch(err => console.error('HDR automatique :', err.message));
     if (fpsScope.game === id) fpsScope.game = null;
     // Mode de performance propre au jeu : celui d'avant revient, sauf s'il a été changé entre-temps

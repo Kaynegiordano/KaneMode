@@ -19,7 +19,6 @@ export const QAM_SECTIONS = [
   { id: 'shortcuts', label: t('Raccourcis'), desc: t('Alimentation, streaming, Dolby Atmos') },
   { id: 'monitor', label: t('Moniteur'), desc: t('Processeur et mémoire en direct') },
 ];
-export const QAM_DEFAULT = ['quick', 'perf', 'battery', 'shortcuts', 'monitor'];
 
 /** Sections affichées, dans l'ordre choisi. */
 export function qamOrder() {

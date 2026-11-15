@@ -61,6 +61,11 @@ for (const f of walk(path.join(ROOT, 'host'), /\.(js|ps1)$/)) {
     const lit = `'((?:[^'\\\\]|\\\\.)*)'|\`((?:[^\`\\\\]|\\\\.)*)\``;
     for (const m of s.matchAll(new RegExp(`(?:error|reason|note|detail):\\s*(?:${lit})`, 'g'))) add(m[1] != null ? unq(m[1]) : holes(unq(m[2]), /\$\{[^}]*\}/g), f);
     for (const m of s.matchAll(new RegExp(`new Error\\(\\s*(?:${lit})`, 'g'))) add(m[1] != null ? unq(m[1]) : holes(unq(m[2]), /\$\{[^}]*\}/g), f);
+    // Deux messages au choix : new Error(cond ? '…' : '…'), error: cond ? '…' : '…'
+    for (const m of s.matchAll(new RegExp(`(?:new Error\\(|(?:error|reason|note|detail):)\\s*[\\w.!()\\s&|=<>]+\\?\\s*(?:${lit})\\s*:\\s*(?:${lit})`, 'g'))) {
+      add(m[1] != null ? unq(m[1]) : holes(unq(m[2]), /\$\{[^}]*\}/g), f);
+      add(m[3] != null ? unq(m[3]) : holes(unq(m[4]), /\$\{[^}]*\}/g), f);
+    }
   } else {
     for (const m of s.matchAll(/throw\s+"((?:[^"`]|`.)*)"/g)) add(holes(m[1], /\$\([^)]*\)|\$[\w:.]+/g), f);
     for (const m of s.matchAll(/throw\s+'((?:[^']|'')*)'/g)) add(m[1].replace(/''/g, "'"), f);
@@ -73,8 +78,14 @@ for (const f of [...walk(path.join(ROOT, 'native', 'KaneMode.Amd'), /\.cpp$/), .
   }
 }
 
-// Textes affichés sans passer par t() (reconnus par tx() à l'affichage)
+// Passerelle des bibliothèques (Playnite) : ses erreurs remontent telles quelles à l'interface
+for (const f of walk(path.join(ROOT, 'native', 'KaneMode.LibraryBridge'), /\.cs$/)) {
+  for (const m of fs.readFileSync(f, 'utf8').matchAll(/\berror = "((?:[^"\\]|\\.)*)"/g)) add(unq(m[1]), f);
+}
+
+// Textes affichés sans passer par t() (reconnus par tx() à l'affichage), noms des langues (LANGS)
 for (const k of ['Manette XInput']) add(k, path.join(ROOT, 'ui', 'js', 'pages', 'settings.js'));
+for (const m of fs.readFileSync(path.join(ROOT, 'ui', 'js', 'i18n.js'), 'utf8').matchAll(/\['[a-z]{2}', '([^']+)'\]/g)) add(m[1], path.join(ROOT, 'ui', 'js', 'i18n.js'));
 
 // ------------------------------------------------------------------ résultat
 fs.mkdirSync(OUT, { recursive: true });

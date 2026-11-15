@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.36.1 : check-up, nettoyage
+
+- Demande : « fais un check up et vois s’il y a des corrections à apporter (nettoyage de code) ». Tests (17 suites), `check-code.js` et `verify-interface.cjs` étaient déjà verts.
+- Défaut réel : `emu-mount.js` montait l’image `.iso` d’un jeu Switch au lancement sans jamais la démonter (`unmount` exporté mais jamais appelé) → `POST /api/launch/ended` la démonte (`archive === 'mount'`). Pas essayé avec une vraie `.iso`.
+- `tools/i18n.js` ratait des textes affichés : messages au choix `new Error(cond ? '…' : '…')` (wifi.js, hostscale.js), erreurs de la passerelle Playnite (`native/KaneMode.LibraryBridge/*.cs`, `error = "…"`), noms des langues (`LANGS`). Ajoutés au relevé ; ensuite les 76 traductions « en trop » de `en.json` étaient vraiment mortes (anciennes formulations) → retirées. `en : 0 manquants, 0 en trop`.
+- Code mort retiré : `PROVIDERS` (accounts.js), `powerState` (power.js), `QAM_DEFAULT` (qam.js), styles `.notif`/`.notif-empty` (ancienne section Notifications du menu rapide, 4.35.0). Commentaire de `/api/launch/ended` remis au-dessus de sa route.
+- Vu et laissé : Rich Presence Discord du moteur (code Moonlight d’origine, réglage déjà caché : `hasDiscordIntegration = false`). Méthode pour retrouver le code mort : exports de `host/lib` et `ui/js` jamais cités ailleurs, classes CSS jamais citées (attention aux classes construites, `'f' + i`).
+
 ## Version 4.36.0 : journal dans les Paramètres, outils de vérification
 
 - Demande : cinq pistes de la revue (points de reprise visuels, journal, découpage de l’hôte, test d’interface, analyse automatique). L’utilisateur a arrêté en cours (« on arrête là ») puis demandé de publier ce qui était fait : **pas faits** les points de reprise visuels de l’émulation (étude commencée : RetroArch écrit `<jeu>.state.auto` et `.state.auto.png` dans `Sauvegardes/RetroArch/states/<cœur>/`) et le découpage de `server.js`.

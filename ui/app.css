@@ -633,9 +633,6 @@ h1.game-logo { font-size: clamp(32px, 4vw, 64px); margin: 0; font-weight: 800; l
 .segmented button.focused { background: #fff; color: #111; }
 .field.focused .segmented button:not(.focused) { color: #555; }
 .seg-label { font-size: 14px; margin: 14px 4px 8px; color: #cdd3db; }
-.notif-empty { color: var(--muted); font-size: 14px; padding: 4px 4px 8px; }
-.notif { padding: 10px 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.05); margin-bottom: 6px; font-size: 13px; color: #cdd3db; }
-.notif small { display: block; color: var(--muted); margin-top: 2px; }
 
 #dialog { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: var(--top) 0 var(--bottom); background: rgba(0, 0, 0, 0.6); opacity: 0; pointer-events: none; transition: opacity 180ms; }
 #dialog.open { opacity: 1; pointer-events: auto; }

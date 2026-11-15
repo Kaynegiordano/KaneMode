@@ -142,5 +142,3 @@ setInterval(() => {
     b.addEventListener('chargingchange', upd);
   } catch { /* pas de batterie */ }
 })();
-
-export const powerState = () => ({ state, onBattery, idle: Math.round((Date.now() - lastInput) / 1000) });

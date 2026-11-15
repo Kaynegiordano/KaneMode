@@ -1,7 +1,6 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),net=require('node:net');
 const GUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const PROVIDERS={steam:'Steam',epic:'Epic Games',gog:'GOG',ea:'EA',ubisoft:'Ubisoft Connect',battlenet:'Battle.net',xbox:'Xbox',amazon:'Amazon Games',riot:'Riot Games',itch:'itch.io',humble:'Humble Bundle'};
 const names={steam:'steam',epicgames:'epic',epicgamesstore:'epic',gog:'gog',goggalaxy:'gog',origin:'ea',eaapp:'ea',ea:'ea',ubisoftconnect:'ubisoft',uplay:'ubisoft',battlenet:'battlenet',xbox:'xbox',amazon:'amazon',amazongames:'amazon',riotgames:'riot',itchio:'itch',humble:'humble',humblebundle:'humble'};
 const clean=x=>typeof x==='string'?x.trim():'';
 const load=(file,fallback)=>{try{return JSON.parse(fs.readFileSync(file,'utf8'));}catch{return fallback;}};
@@ -140,4 +139,4 @@ function create(dataDir,{run,discover,root,onChange=()=>{},connect=net.createCon
   function sources(){return cfg.enabled?Object.fromEntries(cache.providers.map(p=>[p.source,{label:p.name,color:'#7c9eff'}])):{};}
   return {status,configure,open,sync,action,entries,sources};
 }
-module.exports={create,normalize,merge,gameKey,PROVIDERS};
+module.exports={create,normalize,merge,gameKey};
