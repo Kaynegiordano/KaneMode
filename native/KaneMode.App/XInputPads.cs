@@ -52,9 +52,10 @@ public sealed class XInputPads : IDisposable
     public event Action? Knock;
     /// <summary>
     /// Jeu d'émulateur en cours : Select + Start maintenus (ou Échap maintenu) le ferment et ramènent
-    /// à KaneMode, quel que soit l'émulateur. Lu même quand le jeu a la main. 1 s (petite vibration)
-    /// puis relâcher : la partie est gardée ; 3 s (longue vibration) : fermé « complètement », la reprise
-    /// automatique est oubliée (le jeu repart du début la prochaine fois).
+    /// à KaneMode, quel que soit l'émulateur. Lu même quand le jeu a la main. 5 s (petite vibration)
+    /// puis relâcher : la partie est gardée ; 8 s (longue vibration) : fermé « complètement », la reprise
+    /// automatique est oubliée (le jeu repart du début la prochaine fois). 5 s et pas 1 : Moins + Plus
+    /// (= Select + Start) ouvre le menu de certains portages PC (NX2navi), un appui un peu long fermait le jeu.
     /// </summary>
     public volatile bool QuitArmed;
     /// <summary>(comment, complètement)</summary>
@@ -62,7 +63,7 @@ public sealed class XInputPads : IDisposable
     private long _quitPadSince, _quitKeySince;
     private bool _quitFired, _quitReady;
     private int _quitSlot = -1;
-    private const int QUIT_MS = 900, QUIT_FULL_MS = 3000;
+    private const int QUIT_MS = 5000, QUIT_FULL_MS = 8000;
     /// <summary>Mode souris activé ou désactivé.</summary>
     public event Action<bool>? MouseModeChanged;
     public event Action<string>? MouseDiagnosticChanged;
@@ -273,8 +274,8 @@ public sealed class XInputPads : IDisposable
     private static string Axis(short v) => (Math.Round(v / 32767.0, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Select + Start (ou Échap) maintenus : 1 s → prêt (petite vibration), fermé au relâchement en
-    /// gardant la partie ; 3 s → fermé tout de suite, partie oubliée (longue vibration). Une fois par appui.
+    /// Select + Start (ou Échap) maintenus : 5 s → prêt (petite vibration), fermé au relâchement en
+    /// gardant la partie ; 8 s → fermé tout de suite, partie oubliée (longue vibration). Une fois par appui.
     /// </summary>
     private void CheckQuit(long t)
     {
@@ -301,13 +302,13 @@ public sealed class XInputPads : IDisposable
         }
         if (_quitFired) return;
         long held = pad ? t - _quitPadSince : t - _quitKeySince;
-        int ready = pad ? QUIT_MS : 1000;
+        int ready = QUIT_MS;
         if (!_quitReady && held >= ready) { _quitReady = true; _quitSlot = slot; Rumble(slot, 120, 0.45); }
         if (held >= QUIT_FULL_MS)
         {
             _quitFired = true;
             Rumble(slot, 450, 1.0);
-            QuitRequested?.Invoke(pad ? "Select + Start (3 s)" : "Échap (3 s)", true);
+            QuitRequested?.Invoke(pad ? "Select + Start (8 s)" : "Échap (8 s)", true);
         }
     }
 

@@ -1961,7 +1961,7 @@ const routes = {
     if (Date.now() - kpLast > 30e3) refreshKanePlay();
     json(res, 200, { ok: true });
   },
-  // Jeu quitté « complètement » (Select + Start maintenus 3 s) : la reprise automatique de RetroArch
+  // Jeu quitté « complètement » (Select + Start maintenus 8 s) : la reprise automatique de RetroArch
   // est effacée, le jeu repart du début au prochain lancement (ses propres sauvegardes restent)
   'POST /api/emu/forget-resume': async (req, res) => {
     const b = await readBody(req);

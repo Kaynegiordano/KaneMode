@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.37.0 : Select + Start maintenus 5 s pour quitter
+
+- Demande : des parties de Zelda Ocarina of Time (portage PC NX2navi, `.lnk` dans Jeux\Nintendo Switch 2) se fermaient en cours de jeu. Journal KaneMode : deux « Quitter le jeu (Select + Start) » (14/11 13:42, 15/11 14:18) ; Moins + Plus (= Select + Start) ouvre le menu de NX2navi, un appui de plus de 0,9 s fermait le jeu. Les autres fermetures étaient des « device lost » du jeu lui-même (nvlddmkm 153), pas KaneMode. L’utilisateur a demandé « passe à 5 secondes les appuis ».
+- `XInputPads.CheckQuit` : `QUIT_MS = 5000` (prêt, fermeture au relâchement, partie gardée), `QUIT_FULL_MS = 8000` (sortie complète) ; Échap suit `QUIT_MS` (était 1000). Textes : `#launch-hint` (game.js), notice streaming (settings.js), en.json, i18n-keys.json ; commentaires emu-setup.js, server.js, game.js.
+- Vérifié : `dotnet build` de KaneMode.App (0 erreur), `node --check`, `node tools/i18n.js` (en : 0 manquant). Pas essayé : l’appui réel sur une manette.
+
 ## Version 4.36.2 : Lichii en version PGO
 
 - Demande : l’utilisateur a montré la build 228 de Lichii (déjà au catalogue et installée), puis a demandé de « passer en pgo ». Lichii publie `lichii-windows-x86_64-pgo.zip` à côté de `lichii-windows-x86_64.zip`.

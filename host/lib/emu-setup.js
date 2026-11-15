@@ -104,7 +104,7 @@ const SETUP = {
       // Pilote xinput (celui de RetroArch sous Windows) : toute manette XInput (ROG Ally, Xbox) a son
       // profil « XInput Controller » ; les autres passent par DirectInput
       input_autodetect_enable: 'true', input_joypad_driver: 'xinput',
-      // Select + Start et Échap : c'est KaneMode qui ferme le jeu (maintenus 1 s : partie gardée, 3 s :
+      // Select + Start et Échap : c'est KaneMode qui ferme le jeu (maintenus 5 s : partie gardée, 8 s :
       // partie oubliée), RetroArch ne doit pas quitter dès l'appui. Secours : L1 + R1 + Select + Start.
       // L3 + R3 ouvre le menu.
       input_quit_gamepad_combo: '3', input_exit_emulator: 'nul', input_menu_toggle_gamepad_combo: '2', quit_press_twice: 'false', confirm_quit: 'false',
