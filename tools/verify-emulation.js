@@ -604,6 +604,19 @@ test('Eden-NS2 retiré (image figée sur Donkey Kong) : plus proposé, choix des
   assert.ok(!fs.readFileSync(path.join(__dirname, '..', 'host', 'lib', 'emu-store.js'), 'utf8').includes('nightly.link'));
 });
 
+test('Lichii : version PGO prise quand elle est publiée, sinon la normale ; Eden ROG Ally d’abord sur l’Ally', () => {
+  const a = n => ({ name: n });
+  const lichii = store.CATALOG.lichii.source;
+  const build228 = ['lichii-linux-x86_64-pgo.AppImage', 'lichii-windows-x86_64-pgo.zip', 'lichii-windows-x86_64.zip', 'lichii-macos-arm64.zip'].map(a);
+  assert.equal(store.pickAsset(lichii, build228).name, 'lichii-windows-x86_64-pgo.zip');
+  assert.equal(store.pickAsset(lichii, [a('lichii-windows-x86_64.zip')]).name, 'lichii-windows-x86_64.zip');
+  assert.equal(store.pickAsset(lichii, [a('lichii-linux-x86_64-pgo.tar.gz')]), null);
+  const eden = store.CATALOG.eden.source;
+  const edenFiles = [a('Eden-Windows-v0.1-amd64-msvc-standard.zip'), a('Eden-Windows-v0.1-rog-ally-clang-pgo.zip')];
+  assert.match(store.pickAsset(eden, edenFiles, true).name, /rog-ally/);
+  assert.match(store.pickAsset(eden, edenFiles, false).name, /msvc-standard/);
+});
+
 test('Eglantine (Switch 2) : version du jour d’abord, mêmes réglages que Lichii, D’origine par défaut', () => {
   const c = store.CATALOG.eglantine;
   assert.equal(c.source.repo, 'Djihads80/Eglantine');

@@ -25,8 +25,9 @@ const CATALOG = {
   cemu: { name: 'Cemu', source: { type: 'github', repo: 'cemu-project/Cemu', asset: /windows-x64\.zip$/i }, exe: /^Cemu\.exe$/i, portable: ['portable/'], size: 15 },
   rpcs3: { name: 'RPCS3', source: { type: 'github', repo: 'RPCS3/rpcs3-binaries-win', asset: /_win64_msvc\.7z$/i }, exe: /^rpcs3\.exe$/i, size: 35 },
   eden: { name: 'Eden', source: { type: 'forgejo', api: 'https://git.eden-emu.dev/api/v1/repos/eden-emu/eden', asset: /-amd64-msvc-standard\.zip$/i, ally: /-rog-ally-clang-pgo\.zip$/i }, exe: /^eden\.exe$/i, portable: ['user/'], size: 40 },
-  // Switch 2 : Lichii (suite d'Eglantine, une version par jour) ; from : reprend le dossier user/ d'Eglantine
-  lichii: { name: 'Lichii', source: { type: 'github', repo: 'zortos293/Lichii', pre: true, tags: [/^build-\d+$/], asset: /^lichii-windows-x86_64\.zip$/i }, exe: /^lichii\.exe$/i, portable: ['user/'], from: 'eglantine', size: 116, experimental: true },
+  // Switch 2 : Lichii (suite d'Eglantine, une version par jour) ; from : reprend le dossier user/ d'Eglantine.
+  // prefer : sa version PGO (compilée d'après des parties réelles, plus rapide côté processeur), sinon la normale
+  lichii: { name: 'Lichii', source: { type: 'github', repo: 'zortos293/Lichii', pre: true, tags: [/^build-\d+$/], asset: /^lichii-windows-x86_64\.zip$/i, prefer: /^lichii-windows-x86_64-pgo\.zip$/i }, exe: /^lichii\.exe$/i, portable: ['user/'], from: 'eglantine', size: 116, experimental: true },
   // Eglantine, de nouveau proposé en 4.25 (choisi jeu par jeu) : version du jour (daily-AAAAMMJJ),
   // sinon la dernière vX. Son dossier user garde les sauvegardes et les mods (Lichii y pointe aussi).
   eglantine: { name: 'Eglantine', source: { type: 'github', repo: 'Djihads80/Eglantine', pre: true, tags: [/^daily-\d{8}$/, /^v\d/], asset: /^eglantine-windows-x86_64\.zip$/i }, exe: /^eglantine\.exe$/i, portable: ['user/'], size: 116, experimental: true },
@@ -111,6 +112,12 @@ function findExe(dir, re, depth = 0) {
 }
 
 // ---------- Dernière version ----------
+/** Fichier à installer : version ROG Ally sur l'Ally, sinon la version préférée (PGO), sinon la normale. */
+function pickAsset(s, assets, ally = false) {
+  const find = re => re && assets.find(a => re.test(a.name));
+  return (ally && find(s.ally)) || find(s.prefer) || find(s.asset) || null;
+}
+
 async function latest(id, { ally = false } = {}) {
   const c = CATALOG[id];
   const s = c.source;
@@ -134,7 +141,7 @@ async function latest(id, { ally = false } = {}) {
     for (const re of s.tags || [/./]) { rel = list.find(r => re.test(r.tag_name) && r.assets.some(a => s.asset.test(a.name))); if (rel) break; }
   } else rel = await get(`https://api.github.com/repos/${s.repo}/releases/latest`, { json: true });
   if (!rel) throw new Error(`${c.name} : aucune version publiée`);
-  const asset = (ally && s.ally && rel.assets.find(a => s.ally.test(a.name))) || rel.assets.find(a => s.asset.test(a.name));
+  const asset = pickAsset(s, rel.assets, ally);
   if (!asset) throw new Error(`${c.name} : pas de fichier Windows dans la version ${rel.tag_name}`);
   // Tags qui ne changent pas (« latest », « continuous ») : la date de publication sert de version
   const version = /^(latest|continuous|preview)$/i.test(rel.tag_name) ? (asset.updated_at || rel.published_at || '').slice(0, 10) : rel.tag_name;
@@ -324,7 +331,7 @@ function create({ home, isAlly = async () => false, onInstalled = async () => {}
       const m = installed(id);
       const row = { id, name: (m && m.label) || c.name, size: c.size, experimental: !!c.experimental, installed: !!m, version: m ? m.version : null, dir: m ? dirOf(id) : null, local: !!c.local };
       if (check && m && !c.local) {
-        try { const v = await latestCached(id); row.latest = v.version; row.update = v.version !== m.version; }
+        try { const v = await latestCached(id); row.latest = v.version; row.update = v.version !== m.version || !!(c.source.prefer && m.source && v.url !== m.source); }
         catch (e) { row.checkError = e.message; }
       }
       out.push(row);
@@ -340,4 +347,4 @@ function create({ home, isAlly = async () => false, onInstalled = async () => {}
   return { CATALOG, installed, emulators, install, installLocal, ensureCore, list, jobs: jobList, dirOf, root, pending };
 }
 
-module.exports = { create, CATALOG, latest, download };
+module.exports = { create, CATALOG, latest, download, pickAsset };

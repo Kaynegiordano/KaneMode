@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.36.2 : Lichii en version PGO
+
+- Demande : l’utilisateur a montré la build 228 de Lichii (déjà au catalogue et installée), puis a demandé de « passer en pgo ». Lichii publie `lichii-windows-x86_64-pgo.zip` à côté de `lichii-windows-x86_64.zip`.
+- `emu-store.js` : `source.prefer` (expression du fichier préféré) ; `pickAsset(s, assets, ally)` = `ally` sur l’Ally (Eden), sinon `prefer`, sinon `asset` (exporté, testé dans `verify-emulation.js`). La recherche de la version (`pre` + `tags`) filtre toujours sur `asset`.
+- Mise à jour : `row.update` est aussi vrai quand `source.prefer` existe et que l’URL installée (`kanemode.json` → `source`) diffère de celle qui serait prise : la build 228 normale est remplacée par la PGO sans attendre la 229. Seulement pour les entrées avec `prefer`, pour ne pas réinstaller Eden si la détection de l’Ally échoue une fois.
+- Vérifié : `latest('lichii')` sur GitHub rend `build-228 lichii-windows-x86_64-pgo.zip`. Pas essayé : l’installation réelle et un jeu avec la version PGO.
+
 ## Version 4.36.1 : check-up, nettoyage
 
 - Demande : « fais un check up et vois s’il y a des corrections à apporter (nettoyage de code) ». Tests (17 suites), `check-code.js` et `verify-interface.cjs` étaient déjà verts.
