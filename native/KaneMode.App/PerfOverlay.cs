@@ -38,7 +38,8 @@ public sealed class PerfOverlay : IDisposable
     private readonly Func<string?> _hostUrl;
     private readonly Func<bool> _gameInFront;
     private readonly System.Windows.Threading.DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private readonly Queue<int> _fps = new();
+    private readonly Queue<int> _fps = new(); // images/s, ou utilisation du GPU sans source d'images/s
+    private bool _graphGpu;
     private Window? _window;
     private StackPanel? _rows;
     private IntPtr _hwnd;
@@ -98,8 +99,13 @@ public sealed class PerfOverlay : IDisposable
         int? battery = null;
         if (GetSystemPowerStatus(out var ps) && ps.BatteryLifePercent <= 100 && (ps.BatteryFlag & 128) == 0) battery = ps.BatteryLifePercent;
 
-        if (fps is double f) { _fps.Enqueue((int)Math.Round(f)); while (_fps.Count > HistorySize) _fps.Dequeue(); }
-        string fpsText = fps is double v ? F0(v) : "—";
+        // Images/s : seul le pilote AMD les donne (« — » quand aucun jeu 3D n'est devant). Sans source
+        // (NVIDIA, Intel), pas de compteur figé : le GPU et le processeur prennent sa place
+        bool hasFps = !(r.TryGetProperty("fps", out var src) && src.ValueKind == JsonValueKind.False);
+        if (hasFps == _graphGpu) { _fps.Clear(); _graphGpu = !hasFps; }
+        double? sample = hasFps ? fps : gpuUse;
+        if (sample is double f) { _fps.Enqueue((int)Math.Round(f)); while (_fps.Count > HistorySize) _fps.Dequeue(); }
+        string? fpsText = !hasFps ? null : fps is double v ? F0(v) : "—";
         string? bat = battery is int b ? $"{b} %" : null;
         string? drain = discharging && watts is double w ? $"{F1(w)} W" : null;
 
@@ -109,7 +115,8 @@ public sealed class PerfOverlay : IDisposable
         switch (_level)
         {
             case 1:
-                rows.Children.Add(Row(("FPS", fpsText)));
+                if (fpsText != null) rows.Children.Add(Row(("FPS", fpsText)));
+                else rows.Children.Add(Row(("GPU", gpuUse is double g1 ? $"{F0(g1)} %" : "—"), ("CPU", cpuLoad is double c1 ? $"{F0(c1)} %" : null)));
                 break;
             case 2:
                 rows.Children.Add(Row(("FPS", fpsText),
@@ -119,7 +126,7 @@ public sealed class PerfOverlay : IDisposable
                     ("BAT", bat)));
                 break;
             default:
-                rows.Children.Add(Row(("FPS", fpsText)));
+                if (fpsText != null) rows.Children.Add(Row(("FPS", fpsText)));
                 rows.Children.Add(Row(("GPU", Join(gpuUse is double g3 ? $"{F0(g3)} %" : null, gpuTemp is double t ? $"{F0(t)} °C" : null,
                     gpuClock is double ck ? $"{F0(ck)} MHz" : null, gpuPower is double gp ? $"{F1(gp)} W" : null))));
                 rows.Children.Add(Row(("CPU", Join(cpuLoad is double c3 ? $"{F0(c3)} %" : null, cpuMhz is double m ? $"{F1(m / 1000)} GHz" : null))));
@@ -153,7 +160,7 @@ public sealed class PerfOverlay : IDisposable
         return text;
     }
 
-    /// <summary>Images par seconde de la dernière minute, avec le plus bas et le plus haut.</summary>
+    /// <summary>Images par seconde (sinon utilisation du GPU) de la dernière minute, avec le plus bas et le plus haut.</summary>
     private UIElement Graph()
     {
         const double W = 180, H = 40;
@@ -166,12 +173,14 @@ public sealed class PerfOverlay : IDisposable
             int max = values.Max(), min = values.Min();
             // Échelle resserrée autour des valeurs (au moins 20 i/s de haut) : les baisses se voient
             double top = Math.Max(max + 5, min + 20), bottom = Math.Max(0, Math.Min(min - 5, top - 20));
+            if (_graphGpu) { top = 100; bottom = 0; }
             var line = new Polyline { Stroke = GraphBrush, StrokeThickness = 1.5, StrokeLineJoin = PenLineJoin.Round };
             for (int i = 0; i < values.Length; i++)
                 line.Points.Add(new Point(W - (values.Length - 1 - i) * (W / (HistorySize - 1)), H - 2 - (H - 4) * (values[i] - bottom) / (top - bottom)));
             canvas.Children.Add(line);
             panel.Children.Add(canvas);
-            panel.Children.Add(Row(("MIN", min.ToString(Fr)), ("MAX", max.ToString(Fr))));
+            string unit = _graphGpu ? " %" : "";
+            panel.Children.Add(Row((_graphGpu ? "GPU" : null, _graphGpu ? "1 min" : null), ("MIN", min.ToString(Fr) + unit), ("MAX", max.ToString(Fr) + unit)));
         }
         else panel.Children.Add(canvas);
         return panel;

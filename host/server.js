@@ -2252,7 +2252,10 @@ const routes = {
   // dans l'accès rapide, et les mesures seulement quand elle est affichée
   'GET /api/overlay': async (req, res) => {
     const level = overlayLevel();
-    json(res, 200, level ? { level, ...(await hudSample()) } : { level });
+    if (!level) return json(res, 200, { level });
+    // fps : le pilote donne-t-il les images par seconde (AMD seulement, voir gpuctl) ?
+    const st = await gfx.state().catch(() => null);
+    json(res, 200, { level, fps: !!(st && st.available && st.vendor === 'amd'), ...(await hudSample()) });
   },
   'POST /api/overlay': async (req, res) => {
     const b = await readBody(req);

@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const autohdr = require('../host/lib/autohdr.js');
 
 function setup({ cfg = {}, screen = 0, procs = [], games = [] } = {}) {
-  const env = { cfg, screen, procs, games, log: [] };
+  const env = { cfg, screen, procs, games, log: [], clock: 1e6 };
   env.ctl = autohdr.create({
     read: () => JSON.parse(JSON.stringify(env.cfg)),
     write: c => { env.cfg = c; },
@@ -14,6 +14,7 @@ function setup({ cfg = {}, screen = 0, procs = [], games = [] } = {}) {
     setHdr: async on => { env.screen = on ? 1 : 0; env.log.push(on ? 'on' : 'off'); },
     paths: async () => env.procs,
     games: async () => env.games,
+    now: () => env.clock,
   });
   return env;
 }
@@ -131,7 +132,9 @@ test('« Exclure l’émulation » coupé : l’émulation suit le réglage des 
   assert.strictEqual(e.screen, 1);
   e.cfg.gameHdr = { 'rom:2': 'off' };
   await e.ctl.started({ id: 'rom:2', name: 'Mario', type: 'game', source: 'rom' });
-  assert.deepStrictEqual(e.ctl.state().active, ['Zelda']);
+  // Mario « jamais » : pas de HDR pour lui (et un seul jeu à la fois : Zelda ne le garde plus)
+  assert.deepStrictEqual(e.ctl.state().active, []);
+  assert.strictEqual(e.screen, 0);
 });
 
 test('émulateur de la bibliothèque ouvert ailleurs : ignoré tant que l’émulation est exclue', async () => {
@@ -148,4 +151,51 @@ test('émulateur de la bibliothèque ouvert ailleurs : ignoré tant que l’ému
 test('dossiers suivis : l’émulation y est marquée', () => {
   const [g] = autohdr.trackable([{ id: 'a', type: 'game', dir: 'D:\\Jeux\\RetroArch', source: 'steam', emulation: true }]);
   assert.strictEqual(g.emulation, true);
+});
+
+// 4.38.1 : Anno lancé par KaneMode ne démarrait jamais (Ubisoft Connect), puis Party Animals lancé :
+// le HDR d'Anno restait allumé, son « jeu fermé » n'arrivant jamais.
+const anno = { id: 'ubisoft:921', name: 'Anno 117', type: 'game', source: 'ubisoft', dir: 'D:\\Jeux\\Anno 117 - Pax Romana' };
+
+test('jeu suivant lancé : le HDR du jeu d’avant (jamais démarré) ne reste pas', async () => {
+  const e = setup({ cfg: { gameHdr: { 'steam:1': 'off' } } });
+  await e.ctl.started(anno);
+  assert.strictEqual(e.screen, 1);
+  await e.ctl.started(game); // jeu suivant sans HDR
+  assert.strictEqual(e.screen, 0);
+  assert.deepStrictEqual(e.log, ['on', 'off']);
+});
+
+test('jeu jamais démarré : HDR rendu après 3 minutes sans programme dans son dossier', async () => {
+  const e = setup();
+  await e.ctl.started(anno);
+  e.procs = ['C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\upc.exe'];
+  e.clock += 60e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1, 'encore en lancement');
+  e.clock += 3 * 60e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0);
+});
+
+test('jeu fermé sans que KaneMode le voie : HDR rendu dès que son dossier ne tourne plus', async () => {
+  const e = setup();
+  await e.ctl.started(anno);
+  e.procs = ['D:\\Jeux\\Anno 117 - Pax Romana\\Bin\\Win64\\Anno117.exe'];
+  e.clock += 20 * 60e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1, 'le jeu tourne : HDR gardé, même longtemps après');
+  e.procs = [];
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0);
+});
+
+test('jeu sans dossier propre (bibliothèque entière) : seul « jeu fermé » rend le HDR', async () => {
+  const e = setup();
+  await e.ctl.started({ ...game, dir: 'D:\\SteamLibrary\\steamapps\\common' });
+  e.clock += 10 * 60e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1);
+  await e.ctl.ended(game.id);
+  assert.strictEqual(e.screen, 0);
 });

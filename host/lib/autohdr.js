@@ -9,6 +9,9 @@ const OBS = ['obs64.exe', 'obs32.exe'];
 // noEmulation : jeux émulés, portages PC et émulateurs jamais en HDR (sauf choix « HDR du jeu »)
 const DEFAULTS = { games: true, outside: false, videos: false, obs: true, noEmulation: true };
 const GAME_MODES = ['on', 'off'];
+// Jeu lancé dont aucun programme n'est apparu dans son dossier : HDR rendu après ce délai (lanceur
+// qui ne démarre pas le jeu, mise à jour, connexion refusée…)
+const LAUNCH_GRACE = 3 * 60e3;
 
 const base = p => String(p).split('\\').pop().toLowerCase();
 const norm = d => String(d || '').replace(/[\\/]+$/, '').toLowerCase();
@@ -36,8 +39,9 @@ function emulationTest(exes = []) {
  * paths() : chemins des programmes ouverts ; games() : jeux de la bibliothèque [{ id, name, dir }] ;
  * log(message).
  */
-function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulationTest(), log = () => {} }) {
+function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulationTest(), log = () => {}, now = Date.now }) {
   const reasons = new Map(); // cause → libellé (journal)
+  const launched = new Map(); // id → { dir, at, seen } : jeux lancés par KaneMode, suivis par leur dossier
   let owned = !!read().autoHdrOwned; // KaneMode a allumé le HDR (gardé si l'hôte redémarre)
   let blocked = false, pending = Promise.resolve();
   const serial = work => (pending = pending.catch(() => {}).then(work));
@@ -72,17 +76,23 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
     /** Jeu lancé par KaneMode (route /api/launch). */
     started(entry) {
       if (!entry || entry.source === 'kaneplay' || entry.streamHost || String(entry.id).startsWith('launcher:')) return;
+      // Un seul jeu lancé par KaneMode à la fois : celui d'avant (qui n'a peut-être jamais démarré,
+      // donc jamais « fermé ») ne garde plus le HDR
+      let dropped = false;
+      for (const k of [...reasons.keys()]) if (k.startsWith('game:') && k !== 'game:' + entry.id) { reasons.delete(k); launched.delete(k.slice(5)); dropped = true; }
       const p = prefs(read());
       const mode = gameMode(entry.id);
       // Émulation exclue : seul un « Toujours » choisi pour ce jeu passe outre
       if (p.noEmulation && mode !== 'on' && isEmulation(entry)) return;
       const auto = p.games && entry.type !== 'app';
-      if (mode === 'off' || (mode !== 'on' && !auto)) return;
+      if (mode === 'off' || (mode !== 'on' && !auto)) return dropped ? apply() : undefined;
       reasons.set('game:' + entry.id, entry.name || entry.id);
+      launched.set(entry.id, { dir: ownDir(entry.dir), at: now(), seen: false });
       return apply();
     },
     /** Jeu fermé (route /api/launch/ended). */
     ended(id) {
+      launched.delete(id);
       if (!reasons.delete('game:' + id)) return;
       return apply();
     },
@@ -105,6 +115,16 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
         if (d && list.some(x => x.startsWith(d + '\\'))) { seen.add('outside:' + g.id); reasons.set('outside:' + g.id, g.name); }
       }
       for (const k of [...reasons.keys()]) if (k.startsWith('outside:') && !seen.has(k)) reasons.delete(k);
+      // Jeux lancés par KaneMode : HDR rendu quand plus rien ne tourne dans leur dossier (fermé sans que
+      // KaneMode le voie), ou s'il n'y a jamais rien eu après LAUNCH_GRACE (jeu qui n'a pas démarré)
+      for (const [id, g] of launched) {
+        if (!g.dir) continue;
+        if (list.some(x => x.startsWith(g.dir + '\\'))) { g.seen = true; continue; }
+        if (g.seen || now() - g.at > LAUNCH_GRACE) {
+          launched.delete(id);
+          if (reasons.delete('game:' + id)) log(`HDR : ${g.seen ? 'jeu fermé' : 'jeu jamais démarré'} (${id})`);
+        }
+      }
       const player = p.videos && PLAYERS.find(n => names.has(n));
       if (player) reasons.set('video', player); else reasons.delete('video');
       blocked = p.obs && OBS.some(n => names.has(n));
@@ -115,14 +135,18 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
   };
 }
 
+/** Dossier propre à un jeu (normalisé), ou null : au moins trois niveaux (C:\Jeux\Nom), pas une bibliothèque entière. */
+function ownDir(dir) {
+  const d = norm(dir);
+  return !d || d.split('\\').filter(Boolean).length < 3 || /\\(steamapps\\common|epic games|gog galaxy\\games|xboxgames)$/.test(d) ? null : d;
+}
+
 /** Jeux dont on peut reconnaître les programmes : dossier propre au jeu, jamais un dossier trop général. */
 function trackable(entries) {
   const out = [];
   for (const e of entries) {
     if (e.type !== 'game' || e.installed === false || e.demo || e.source === 'kaneplay' || e.streamHost || e.source === 'rom') continue;
-    const d = norm(e.dir);
-    // Au moins trois niveaux (C:\Jeux\Nom) et pas le dossier d'une bibliothèque entière
-    if (!d || d.split('\\').filter(Boolean).length < 3 || /\\(steamapps\\common|epic games|gog galaxy\\games|xboxgames)$/.test(d)) continue;
+    if (!ownDir(e.dir)) continue;
     out.push({ id: e.id, name: e.name, dir: e.dir, emulation: !!e.emulation });
   }
   return out;

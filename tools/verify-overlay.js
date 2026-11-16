@@ -15,7 +15,8 @@ test('Hôte : niveau gardé de 0 à 4, mesures seulement quand la surimpression 
   assert.match(server, /'GET \/api\/overlay'/);
   assert.match(server, /'POST \/api\/overlay'/);
   assert.match(server, /c\.perfOverlay = Math\.max\(0, Math\.min\(4,/);
-  assert.match(server, /level \? \{ level, \.\.\.\(await hudSample\(\)\) \} : \{ level \}/);
+  assert.match(server, /if \(!level\) return json\(res, 200, \{ level \}\);/);
+  assert.match(server, /fps: !!\(st && st\.available && st\.vendor === 'amd'\)/, 'images/s annoncées seulement avec le pilote AMD');
   assert.match(server, /perfOverlay: overlayLevel\(\)/, 'niveau lu par l’accès rapide avec /api/sys');
 });
 

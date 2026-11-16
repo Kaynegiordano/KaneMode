@@ -4,6 +4,12 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.38.1 : HDR d’un jeu jamais démarré, surimpression sans images/s
+
+- Signalé par l’utilisateur (PC, journal du 16/11) : Anno 117 lancé (Ubisoft Connect bloqué, jeu jamais apparu), puis Party Animals lancé → HDR d’Anno jamais rendu (`autoHdr.ended` attend l’id du jeu qui l’a allumé, et le suivi natif d’Anno a été remplacé sans « jeu fermé »).
+- `autohdr.js` : `started()` retire d’abord les causes `game:` des autres jeux (un seul jeu lancé par KaneMode à la fois ; `apply()` même si le nouveau jeu n’a pas de HDR) ; `launched` (id → dossier propre `ownDir`, heure, vu) suivi dans `poll()` : HDR rendu quand plus rien ne tourne dans le dossier après y avoir tourné, ou rien après `LAUNCH_GRACE` (3 min). Jeux sans dossier propre : seul « jeu fermé » compte. Horloge injectable (`now`) pour les tests ; 4 tests de plus dans `verify-autohdr.js` (17).
+- Surimpression : « il s’affiche mais ne fonctionne pas » = PC NVIDIA, images/s seulement par ADLX (AMD). `GET /api/overlay` ajoute `fps` (pilote AMD disponible) ; sans source, `PerfOverlay` montre GPU + CPU au niveau 1, pas de ligne FPS, graphique du GPU (0–100 %). Images/s NVIDIA possibles seulement par ETW (groupe « Utilisateurs du journal de performances », S-1-5-32-559, comme la Game Bar) : demande une autorisation administrateur, non fait, proposé à l’utilisateur.
+
 ## Version 4.38.0 : surimpression des performances façon SteamOS
 
 - Demande : « ressembler de plus en plus à SteamOS ? » → l’utilisateur a choisi la surimpression en jeu, propre à KaneMode (pas la Game Bar), à niveaux réglés dans l’accès rapide.
