@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     private readonly AllyButtons _buttons = new();
     private readonly XInputPads _pads;
     private readonly CursorOverlay _cursor = new();
+    // Surimpression des performances au-dessus du jeu (niveau choisi dans l'accès rapide)
+    private readonly PerfOverlay _perf;
     private IntPtr _hwnd; // fenêtre principale, lue par le fil des manettes
     private Dictionary<string, string> _buttonActions = new() { ["cc"] = "taskview", ["ac"] = "gamebar", ["ac-hold"] = "home" };
     private bool _blockAsusPrompt = true;
@@ -83,6 +85,7 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc); _displayPowerNotification = Native.WatchDisplayPower(_hwnd); };
         // Manettes XInput lues par l'app tant que KaneMode a la main (voir XInputPads), et mode souris
         _pads = new XInputPads(PadFocus);
+        _perf = new PerfOverlay(() => _ready ? _host.Url : null, () => _game is { Seen: true, Cover: false } && Native.GetForegroundWindow() != _hwnd);
         _pads.Changed += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson("{\"type\":\"xpad\",\"pads\":" + json + "}"); } catch (InvalidOperationException) { } });
         _pads.MouseDiagnosticChanged += json => Dispatcher.BeginInvoke(() => { try { Core?.PostWebMessageAsJson(json); } catch (InvalidOperationException) { } });
         _pads.Reclaim += () => Dispatcher.BeginInvoke(ReclaimForeground);
@@ -102,7 +105,7 @@ public partial class MainWindow : Window
         // que son moteur s'arrête, et KaneMode plantait en se fermant (violation d'accès). Plus aucun
         // message ne lui est envoyé ensuite (Deactivated arrivait après et levait ObjectDisposedException).
         Closing += (_, _) => { _closing = true; _idleTimer.Stop(); _idleProtection.Dispose(); if (_displayPowerNotification != IntPtr.Zero) { Native.UnregisterPowerSettingNotification(_displayPowerNotification); _displayPowerNotification = IntPtr.Zero; } _lighten.Stop(); try { Web.Dispose(); } catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException) { } };
-        Closed += (_, _) => { SystemEvents.SessionSwitch -= OnSessionSwitch; SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _cursor.Dispose(); _host.Dispose(); };
+        Closed += (_, _) => { SystemEvents.SessionSwitch -= OnSessionSwitch; SystemEvents.PowerModeChanged -= OnPowerModeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplayChanged; _buttons.Dispose(); _pads.Dispose(); _cursor.Dispose(); _perf.Dispose(); _host.Dispose(); };
         _buttons.Pressed += b => Dispatcher.BeginInvoke(() => OnDeviceButton(b));
         // Widget Game Bar : ses messages « natifs » passent par le même traitement que ceux de l'interface
         WidgetBridge.NativeMessage = json => Dispatcher.Invoke(() => HandleMessage(json, fromWidget: true));

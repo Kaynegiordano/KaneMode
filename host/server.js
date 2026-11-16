@@ -386,6 +386,17 @@ const deals = dealsLib.create(DATA, { lang: () => config().lang || 'fr' }); // b
 // Réglages graphiques du pilote : outil du fabricant de la carte (voir lib/gpuctl.js)
 const gfx = gpuctl.create({ vendors: async () => { const d = await device.info(); return d && d.ok ? (d.gpus || []).map(g => String(g.vendor || '').toUpperCase()) : null; } });
 const hudLive = { t: 0, p: null }; // mesures des widgets Game Bar (GET /api/hud/live)
+/** Processeur, batterie et GPU en une fois, partagés par les widgets et la surimpression (0,7 s). */
+function hudSample() {
+  if (!hudLive.p || Date.now() - hudLive.t > 700) {
+    hudLive.t = Date.now();
+    hudLive.p = Promise.all([
+      sysctl.live().catch(() => null),
+      gfx.state().then(s => (s && s.available ? gfx.live() : null)).catch(() => null),
+    ]).then(([live, gpu]) => ({ live, gpu }));
+  }
+  return hudLive.p;
+}
 
 // ---------------------------------------------------------------- limite d'images, jeux seulement
 // La limite d'images du pilote (AMD : Radeon Chill ; NVIDIA : « Max Frame Rate » ; Intel : Frame Limit)
@@ -417,6 +428,8 @@ async function applyFpsScope() {
 }
 const withFps = st => (st && st.available ? { ...st, fpsLimit: config().fpsLimit ?? (st.fps && st.fps.on ? st.fps.value : 0), kanemodeFront: fpsScope.front } : st);
 const losslessCheck = { t: 0, p: null }; // Lossless Scaling ouvert (GET /api/widget)
+/** Niveau de la surimpression des performances (0 : aucune, 1 à 4 comme SteamOS). */
+const overlayLevel = () => Math.max(0, Math.min(4, Math.round(Number(config().perfOverlay) || 0)));
 /** Un réglage vient d'être fait à la main ou par un mode : pas de vérification pendant 4 s. */
 const keeperQuiet = () => { keeper.quiet = Date.now(); };
 async function keepPerf(reason) {
@@ -2120,7 +2133,7 @@ const routes = {
   'GET /api/sys': async (req, res, q) => {
     try {
       const hh = (await device.info().catch(() => ({}))).handheld;
-      json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: config().customTdp ?? null });
+      json(res, 200, { ...(await sysctl.state(q.get('refresh') === '1')), mode: config().perfMode || null, handheld: hh ? hh.id : null, modeConflict: keeperConflict(), customTdp: config().customTdp ?? null, perfOverlay: overlayLevel() });
     }
     catch (e) { json(res, 500, { error: e.message }); }
   },
@@ -2234,15 +2247,19 @@ const routes = {
   },
   // Widgets Game Bar : toutes les mesures en direct en une requête (processeur, batterie, GPU), gardées
   // un court instant : le widget et le moniteur ouverts ensemble ne les demandent qu'une fois
-  'GET /api/hud/live': async (req, res) => {
-    if (!hudLive.p || Date.now() - hudLive.t > 700) {
-      hudLive.t = Date.now();
-      hudLive.p = Promise.all([
-        sysctl.live().catch(() => null),
-        gfx.state().then(s => (s && s.available ? gfx.live() : null)).catch(() => null),
-      ]).then(([live, gpu]) => ({ live, gpu }));
-    }
-    json(res, 200, await hudLive.p);
+  'GET /api/hud/live': async (req, res) => json(res, 200, await hudSample()),
+  // Surimpression des performances au-dessus du jeu (app native, PerfOverlay.cs) : niveau choisi
+  // dans l'accès rapide, et les mesures seulement quand elle est affichée
+  'GET /api/overlay': async (req, res) => {
+    const level = overlayLevel();
+    json(res, 200, level ? { level, ...(await hudSample()) } : { level });
+  },
+  'POST /api/overlay': async (req, res) => {
+    const b = await readBody(req);
+    const c = config();
+    c.perfOverlay = Math.max(0, Math.min(4, Math.round(Number(b.level) || 0)));
+    writeJson(FILES.config, c);
+    json(res, 200, { level: c.perfOverlay });
   },
   'POST /api/graphics': async (req, res) => {
     const b = await readBody(req);

@@ -135,6 +135,15 @@ async function applyMode(mode) {
   setTimeout(async () => { try { live = await api.get('/api/sys/live'); paintLive(); } catch { /* hôte occupé */ } }, 700);
 }
 
+// Ce que montre chaque niveau de la surimpression des performances (PerfOverlay.cs)
+const OVERLAY_LEVELS = [
+  t('Aucune mesure sur le jeu'),
+  t('Images par seconde, en haut à gauche du jeu'),
+  t('Une ligne : images/s, GPU, processeur, batterie'),
+  t('Détaillé : températures, fréquences et consommation'),
+  t('Complet : avec le graphique des images/s de la dernière minute'),
+];
+
 // ---------------------------------------------------------------- petits contrôles
 function segment(options, current, onPick, key) {
   const s = el('div', 'segmented');
@@ -248,6 +257,15 @@ const BUILD = {
     if (applied && applied.mode === sys.mode) {
       kids.push(el('ul', 'applied', applied.items.map(([ok, text]) => `<li class="${ok ? 'ok' : 'ko'}">${ok ? '✓' : '✕'} ${esc(text)}</li>`).join('')));
     }
+    // Surimpression des performances au-dessus du jeu (niveaux comme SteamOS), dessinée par l'app
+    const overlayNote = el('div', 'qam-note overlay-note', esc(OVERLAY_LEVELS[sys.perfOverlay || 0]));
+    kids.push(label(t('Surimpression des performances')),
+      segment([[0, t('Non')], [1, '1'], [2, '2'], [3, '3'], [4, '4']], sys.perfOverlay || 0, async v => {
+        const r = await api.post('/api/overlay', { level: +v }).catch(e => { toast(e.message, { error: true }); throw e; });
+        sys.perfOverlay = r.level;
+        overlayNote.textContent = OVERLAY_LEVELS[r.level];
+      }, 'overlay'),
+      overlayNote);
     const details = el('div', 'toggles');
     details.append(toggle('i-gear', t('Réglages détaillés'), settings.qamPerfDetails !== false, on => { settings.qamPerfDetails = on; saveSettings(); renderQam('perf-details', false); }, 'perf-details'));
     kids.push(details);

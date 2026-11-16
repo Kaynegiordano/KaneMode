@@ -4,6 +4,14 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.38.0 : surimpression des performances façon SteamOS
+
+- Demande : « ressembler de plus en plus à SteamOS ? » → l’utilisateur a choisi la surimpression en jeu, propre à KaneMode (pas la Game Bar), à niveaux réglés dans l’accès rapide.
+- `native/KaneMode.App/PerfOverlay.cs` : fenêtre WPF en haut à gauche (12, 12), toujours au-dessus, transparente aux clics, jamais activée (même modèle que `CursorOverlay`). Minuterie 1 s : si `_gameInFront()` (`_game` vu, pas d’écran de lancement, KaneMode pas au premier plan) et bureau interactif, `GET /api/overlay` ; sinon masquée, sans requête. Niveaux 1 FPS, 2 une ligne, 3 détaillé (GPU %, °C, MHz, W ; CPU %, GHz ; BAT % + W ou ⚡), 4 = 3 + graphique des 60 dernières secondes (échelle resserrée, MIN/MAX). Batterie par `GetSystemPowerStatus`. Libellés FPS/GPU/CPU/BAT non traduits (abréviations).
+- Hôte : `hudSample()` (cache 0,7 s partagé avec `/api/hud/live`), `GET /api/overlay` (`{level}` seul à 0, sinon `{level, live, gpu}`), `POST /api/overlay` (0–4 dans `config.perfOverlay`), `perfOverlay` ajouté à `GET /api/sys`. Accès rapide (`qam.js`, section Performance, toujours visible) : segment Non/1/2/3/4 + description (`OVERLAY_LEVELS`) ; marche aussi depuis le widget Game Bar (réglage côté hôte).
+- Vérification sans écran : `PerfOverlay.Preview(level, json, png)` dessine un niveau dans une image (projet de test dans le dossier temporaire qui référence `KaneMode.dll`, WPF, STA). Les 4 niveaux vus en image ; réglage vérifié dans l’accès rapide de l’hôte de développement (niveau 3 enregistré, mesures réelles). `tools/verify-overlay.js` (3).
+- Pas essayé : au-dessus d’un vrai jeu, sur l’Ally (images/s AMD, batterie), jeux en plein écran exclusif (passent au-dessus), effet éventuel d’une fenêtre au-dessus sur le mode de présentation du jeu.
+
 ## Version 4.37.0 : Select + Start maintenus 5 s pour quitter
 
 - Demande : des parties de Zelda Ocarina of Time (portage PC NX2navi, `.lnk` dans Jeux\Nintendo Switch 2) se fermaient en cours de jeu. Journal KaneMode : deux « Quitter le jeu (Select + Start) » (14/11 13:42, 15/11 14:18) ; Moins + Plus (= Select + Start) ouvre le menu de NX2navi, un appui de plus de 0,9 s fermait le jeu. Les autres fermetures étaient des « device lost » du jeu lui-même (nvlddmkm 153), pas KaneMode. L’utilisateur a demandé « passe à 5 secondes les appuis ».

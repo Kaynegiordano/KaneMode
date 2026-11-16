@@ -1058,6 +1058,9 @@
  "Aucune manette détectée": [
   "ui/js/pages/settings.js"
  ],
+ "Aucune mesure sur le jeu": [
+  "ui/js/qam.js"
+ ],
  "Aucune mise à jour": [
   "ui/js/pages/settings.js"
  ],
@@ -1585,6 +1588,9 @@
  "Complément retiré · Sunshine redémarré": [
   "ui/js/pages/settings.js"
  ],
+ "Complet : avec le graphique des images/s de la dernière minute": [
+  "ui/js/qam.js"
+ ],
  "Complète": [
   "ui/js/pages/settings.js"
  ],
@@ -1847,6 +1853,9 @@
  ],
  "Désinstaller {name} ?": [
   "ui/js/pages/game.js"
+ ],
+ "Détaillé : températures, fréquences et consommation": [
+  "ui/js/qam.js"
  ],
  "Détecte les jeux de toutes les boutiques et les ROMs{a}": [
   "ui/js/pages/settings.js"
@@ -2428,6 +2437,9 @@
  ],
  "Images ajoutées non comptées": [
   "ui/js/widget.js"
+ ],
+ "Images par seconde, en haut à gauche du jeu": [
+  "ui/js/qam.js"
  ],
  "Images/s": [
   "ui/js/hud.js"
@@ -3409,7 +3421,8 @@
  ],
  "Non": [
   "ui/js/pages/emulation.js",
-  "ui/js/pages/settings.js"
+  "ui/js/pages/settings.js",
+  "ui/js/qam.js"
  ],
  "Non appairé": [
   "ui/js/pages/settings.js"
@@ -4659,6 +4672,9 @@
  "Sur une {a}, préférez les pilotes graphiques proposés par {b} ({c}) : ils sont réglés pour la console (consommation, écran, boutons). La version générique d’AMD est indiquée sans notification.": [
   "ui/js/pages/settings.js"
  ],
+ "Surimpression des performances": [
+  "ui/js/qam.js"
+ ],
  "Symboles des boutons": [
   "ui/js/pages/settings.js"
  ],
@@ -4869,6 +4885,9 @@
  ],
  "Une collection": [
   "ui/js/personalization-settings.js"
+ ],
+ "Une ligne : images/s, GPU, processeur, batterie": [
+  "ui/js/qam.js"
  ],
  "Une notification signale une nouvelle version": [
   "ui/js/pages/settings.js"

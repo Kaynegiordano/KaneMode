@@ -1636,5 +1636,11 @@
  "Journal illisible pour l’instant.": "The log can’t be read right now.",
  "La fin des journaux de KaneMode et du streaming, à coller dans un message": "The end of the KaneMode and streaming logs, to paste in a message",
  "Pas encore de journal du streaming : il est écrit à partir de la prochaine session.": "No streaming log yet: it is written from the next session on.",
- "presse-papiers refusé": "clipboard refused"
+ "presse-papiers refusé": "clipboard refused",
+ "Aucune mesure sur le jeu": "No stats over the game",
+ "Complet : avec le graphique des images/s de la dernière minute": "Full: with a graph of the last minute’s frame rate",
+ "Détaillé : températures, fréquences et consommation": "Detailed: temperatures, clocks and power draw",
+ "Images par seconde, en haut à gauche du jeu": "Frame rate, at the top left of the game",
+ "Surimpression des performances": "Performance overlay",
+ "Une ligne : images/s, GPU, processeur, batterie": "One line: frame rate, GPU, CPU, battery"
 }
