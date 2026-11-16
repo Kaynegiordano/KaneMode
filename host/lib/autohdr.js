@@ -9,9 +9,12 @@ const OBS = ['obs64.exe', 'obs32.exe'];
 // noEmulation : jeux émulés, portages PC et émulateurs jamais en HDR (sauf choix « HDR du jeu »)
 const DEFAULTS = { games: true, outside: false, videos: false, obs: true, noEmulation: true };
 const GAME_MODES = ['on', 'off'];
-// Jeu lancé dont aucun programme n'est apparu dans son dossier : HDR rendu après ce délai (lanceur
-// qui ne démarre pas le jeu, mise à jour, connexion refusée…)
-const LAUNCH_GRACE = 3 * 60e3;
+// Jeu lancé dont aucun programme n'est apparu dans son dossier : HDR rendu après LAUNCH_GRACE (lanceur
+// qui ne démarre pas le jeu, mise à jour, connexion refusée…), ou dès le retour sur KaneMode passé
+// l'écran de lancement (BACK_HOME). Rallumé si le jeu apparaît ensuite (lanceur lent), pendant WATCH.
+const LAUNCH_GRACE = 60e3;
+const BACK_HOME = 30e3;
+const WATCH = 15 * 60e3;
 
 const base = p => String(p).split('\\').pop().toLowerCase();
 const norm = d => String(d || '').replace(/[\\/]+$/, '').toLowerCase();
@@ -41,7 +44,8 @@ function emulationTest(exes = []) {
  */
 function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulationTest(), log = () => {}, now = Date.now }) {
   const reasons = new Map(); // cause → libellé (journal)
-  const launched = new Map(); // id → { dir, at, seen } : jeux lancés par KaneMode, suivis par leur dossier
+  const launched = new Map(); // id → { dir, at, seen, released } : jeux lancés par KaneMode, suivis par leur dossier
+  let frontAt = 0; // dernier retour de KaneMode au premier plan
   let owned = !!read().autoHdrOwned; // KaneMode a allumé le HDR (gardé si l'hôte redémarre)
   let blocked = false, pending = Promise.resolve();
   const serial = work => (pending = pending.catch(() => {}).then(work));
@@ -87,7 +91,7 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
       const auto = p.games && entry.type !== 'app';
       if (mode === 'off' || (mode !== 'on' && !auto)) return dropped ? apply() : undefined;
       reasons.set('game:' + entry.id, entry.name || entry.id);
-      launched.set(entry.id, { dir: ownDir(entry.dir), at: now(), seen: false });
+      launched.set(entry.id, { dir: ownDir(entry.dir), name: entry.name || entry.id, at: now(), seen: false, released: false });
       return apply();
     },
     /** Jeu fermé (route /api/launch/ended). */
@@ -96,10 +100,12 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
       if (!reasons.delete('game:' + id)) return;
       return apply();
     },
+    /** KaneMode revient au premier plan (route /api/graphics/front). */
+    front() { frontAt = now(); },
     /** Faut-il regarder les programmes ouverts ? */
     needsPoll() {
       const p = prefs(read());
-      return p.outside || p.videos || owned || (p.obs && reasons.size > 0);
+      return p.outside || p.videos || owned || (p.obs && reasons.size > 0) || [...launched.values()].some(g => g.released);
     },
     /** Programmes ouverts : jeux lancés ailleurs, lecteurs vidéo, OBS. */
     poll: async () => {
@@ -119,10 +125,17 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
       // KaneMode le voie), ou s'il n'y a jamais rien eu après LAUNCH_GRACE (jeu qui n'a pas démarré)
       for (const [id, g] of launched) {
         if (!g.dir) continue;
-        if (list.some(x => x.startsWith(g.dir + '\\'))) { g.seen = true; continue; }
-        if (g.seen || now() - g.at > LAUNCH_GRACE) {
-          launched.delete(id);
-          if (reasons.delete('game:' + id)) log(`HDR : ${g.seen ? 'jeu fermé' : 'jeu jamais démarré'} (${id})`);
+        const age = now() - g.at;
+        if (list.some(x => x.startsWith(g.dir + '\\'))) {
+          g.seen = true;
+          // Jeu finalement démarré après un lancement lent : le HDR revient
+          if (g.released) { g.released = false; reasons.set('game:' + id, g.name); log(`HDR : jeu démarré après coup (${g.name})`); }
+          continue;
+        }
+        if (g.seen || (g.released && age > WATCH)) { launched.delete(id); reasons.delete('game:' + id); continue; }
+        if (!g.released && (age > LAUNCH_GRACE || frontAt - g.at > BACK_HOME)) {
+          g.released = true;
+          if (reasons.delete('game:' + id)) log(`HDR : ${g.name} n’a pas démarré, HDR rendu`);
         }
       }
       const player = p.videos && PLAYERS.find(n => names.has(n));

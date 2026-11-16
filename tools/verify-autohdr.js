@@ -166,16 +166,46 @@ test('jeu suivant lancé : le HDR du jeu d’avant (jamais démarré) ne reste p
   assert.deepStrictEqual(e.log, ['on', 'off']);
 });
 
-test('jeu jamais démarré : HDR rendu après 3 minutes sans programme dans son dossier', async () => {
+test('jeu jamais démarré : HDR rendu après une minute sans programme dans son dossier', async () => {
   const e = setup();
   await e.ctl.started(anno);
   e.procs = ['C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\upc.exe'];
-  e.clock += 60e3;
+  e.clock += 40e3;
   await e.ctl.poll();
   assert.strictEqual(e.screen, 1, 'encore en lancement');
-  e.clock += 3 * 60e3;
+  e.clock += 25e3;
   await e.ctl.poll();
   assert.strictEqual(e.screen, 0);
+});
+
+test('retour sur KaneMode sans que le jeu ait démarré : HDR rendu tout de suite', async () => {
+  const e = setup();
+  await e.ctl.started(anno);
+  e.clock += 10e3;
+  e.ctl.front(); // écran de lancement : KaneMode devant, mais trop tôt pour conclure
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1);
+  e.clock += 25e3;
+  e.ctl.front(); // l'utilisateur revient sur KaneMode
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0);
+});
+
+test('lanceur lent : HDR rendu puis rallumé quand le jeu apparaît enfin', async () => {
+  const e = setup();
+  await e.ctl.started(anno);
+  e.clock += 70e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0);
+  assert.ok(e.ctl.needsPoll(), 'toujours surveillé');
+  e.procs = ['D:\\Jeux\\Anno 117 - Pax Romana\\Bin\\Win64\\Anno117.exe'];
+  e.clock += 60e3;
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 1);
+  e.procs = [];
+  await e.ctl.poll();
+  assert.strictEqual(e.screen, 0, 'fermé ensuite : rendu');
+  assert.deepStrictEqual(e.log, ['on', 'off', 'on', 'off']);
 });
 
 test('jeu fermé sans que KaneMode le voie : HDR rendu dès que son dossier ne tourne plus', async () => {

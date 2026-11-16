@@ -4,6 +4,11 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.38.2 : HDR rendu plus vite pour un jeu qui ne démarre pas
+
+- L’utilisateur : « 3 minutes avant de désactiver c’est long ». Il a refusé PresentMon (images/s NVIDIA par ETW) : les images/s restent AMD seulement, ne pas le reproposer.
+- `autohdr.js` : `LAUNCH_GRACE` 60 s ; `front()` (appelé par `POST /api/graphics/front` quand KaneMode revient devant) → HDR rendu au passage suivant de `poll()` (4 s) si le retour arrive plus de `BACK_HOME` (30 s, après l’écran de lancement) après le lancement et que rien ne tourne dans le dossier du jeu. Un jeu rendu reste surveillé (`released`, `WATCH` 15 min, `needsPoll` vrai) : s’il apparaît, le HDR revient. 19 tests dans `verify-autohdr.js`.
+
 ## Version 4.38.1 : HDR d’un jeu jamais démarré, surimpression sans images/s
 
 - Signalé par l’utilisateur (PC, journal du 16/11) : Anno 117 lancé (Ubisoft Connect bloqué, jeu jamais apparu), puis Party Animals lancé → HDR d’Anno jamais rendu (`autoHdr.ended` attend l’id du jeu qui l’a allumé, et le suivi natif d’Anno a été remplacé sans « jeu fermé »).

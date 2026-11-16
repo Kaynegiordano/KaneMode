@@ -2242,6 +2242,8 @@ const routes = {
   'POST /api/graphics/front': async (req, res) => {
     const b = await readBody(req);
     fpsScope.front = !!b.front;
+    // Retour sur KaneMode : un jeu lancé qui n'a jamais démarré rend le HDR au passage suivant
+    if (fpsScope.front) autoHdr.front();
     try { json(res, 200, withFps(await applyFpsScope())); }
     catch (e) { json(res, 200, { error: e.message }); }
   },
