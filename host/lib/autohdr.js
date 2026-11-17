@@ -7,7 +7,10 @@
 const PLAYERS = ['vlc.exe', 'mpc-hc64.exe', 'mpc-hc.exe', 'mpc-be64.exe', 'mpc-be.exe', 'potplayermini64.exe', 'potplayermini.exe', 'potplayer64.exe', 'mpv.exe', 'mpvnet.exe'];
 const OBS = ['obs64.exe', 'obs32.exe'];
 // noEmulation : jeux émulés, portages PC et émulateurs jamais en HDR (sauf choix « HDR du jeu »)
-const DEFAULTS = { games: true, outside: false, videos: false, obs: true, noEmulation: true };
+// stream : HDR pendant le streaming (KanePlay) — auto : quand le PC envoie du HDR, on : toute la
+// session, off : jamais (comme le choix HDR de Remote Play)
+const DEFAULTS = { games: true, outside: false, videos: false, obs: true, noEmulation: true, stream: 'auto' };
+const STREAM_MODES = ['auto', 'on', 'off'];
 const GAME_MODES = ['on', 'off'];
 // Jeu lancé dont aucun programme n'est apparu dans son dossier : HDR rendu après LAUNCH_GRACE (lanceur
 // qui ne démarre pas le jeu, mise à jour, connexion refusée…), ou dès le retour sur KaneMode passé
@@ -46,6 +49,7 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
   const reasons = new Map(); // cause → libellé (journal)
   const launched = new Map(); // id → { dir, at, seen, released } : jeux lancés par KaneMode, suivis par leur dossier
   let frontAt = 0; // dernier retour de KaneMode au premier plan
+  let streaming = false; // session KanePlay en cours (message du moteur)
   let owned = !!read().autoHdrOwned; // KaneMode a allumé le HDR (gardé si l'hôte redémarre)
   let blocked = false, pending = Promise.resolve();
   const serial = work => (pending = pending.catch(() => {}).then(work));
@@ -100,6 +104,22 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
       if (!reasons.delete('game:' + id)) return;
       return apply();
     },
+    /**
+     * Streaming (messages du moteur KanePlay, route /api/hdr/stream) : event « stream » au début et à
+     * la fin d'une session, « hdr » quand le PC passe le flux en HDR ou en sort.
+     */
+    stream(event, on) {
+      const mode = prefs(read()).stream;
+      if (event === 'stream') {
+        streaming = !!on;
+        if (on && mode === 'on') reasons.set('stream', 'streaming');
+        if (!on) reasons.delete('stream');
+      } else if (event === 'hdr') {
+        if (on && mode === 'auto') reasons.set('stream', 'streaming HDR');
+        if (!on && mode !== 'on') reasons.delete('stream');
+      }
+      return apply();
+    },
     /** KaneMode revient au premier plan (route /api/graphics/front). */
     front() { frontAt = now(); },
     /** Faut-il regarder les programmes ouverts ? */
@@ -144,7 +164,7 @@ function create({ read, write, hdr, setHdr, paths, games, isEmulation = emulatio
       // HDR allumé avant un redémarrage de l'hôte et plus rien d'ouvert : on le rend
       return apply();
     },
-    state: () => ({ owned, blocked, active: [...reasons.values()] }),
+    state: () => ({ owned, blocked, streaming, active: [...reasons.values()] }),
   };
 }
 
@@ -165,4 +185,4 @@ function trackable(entries) {
   return out;
 }
 
-module.exports = { create, prefs, trackable, emulationTest, DEFAULTS, GAME_MODES, PLAYERS, OBS };
+module.exports = { create, prefs, trackable, emulationTest, DEFAULTS, GAME_MODES, STREAM_MODES, PLAYERS, OBS };

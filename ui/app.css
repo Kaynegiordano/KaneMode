@@ -217,6 +217,20 @@ body.bg-gradient .bg-layer, body.bg-dark .bg-layer { display: none; }
 .row-title { margin: 28px var(--gutter) 14px; font-size: 20px; font-weight: 600; display: flex; align-items: baseline; gap: 12px; }
 .row-title small { font-size: 14px; color: var(--muted); font-weight: 400; }
 .row-title:first-child { margin-top: 12px; }
+/* Succès Steam (fiche du jeu) */
+.achievements .ach-progress { margin: 0 var(--gutter) 14px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.achievements .ach-progress > div { height: 100%; background: var(--accent); border-radius: 3px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 0 var(--gutter); }
+.ach { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius); background: rgba(255, 255, 255, 0.05); cursor: pointer; min-width: 0; }
+.ach img, .ach .ach-ph { width: 52px; height: 52px; border-radius: 6px; flex: none; background: rgba(255, 255, 255, 0.08); display: grid; place-items: center; }
+.ach .ach-ph svg { width: 26px; height: 26px; fill: currentColor; opacity: .7; }
+.ach:not(.on):not(.ach-all) img { filter: grayscale(1); opacity: .55; }
+.ach div { min-width: 0; }
+.ach b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ach small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ach.focused { background: #fff; color: #111; transform: scale(1.02); }
+.ach.focused small { color: #555; }
+.ach-all { margin: 10px var(--gutter) 0; max-width: 260px; }
 .row {
   display: flex; gap: 18px; overflow-x: auto; overflow-y: hidden;
   padding: 14px var(--gutter) 22px; scroll-padding: 0 var(--gutter); scrollbar-width: none;
@@ -1022,6 +1036,22 @@ body.high-contrast .bg-layer { filter: blur(9.5px) brightness(0.25); }
 #boot.sleeping::after { content: attr(data-hint); position: absolute; bottom: 40px; left: 0; right: 0; text-align: center; color: #5b6472; font-size: 15px; }
 #dim-veil { position: fixed; inset: 0; z-index: 105; pointer-events: none; background: rgba(0, 0, 0, 0); transition: background 1.2s ease; display: grid; place-items: end center; padding-bottom: 60px; color: #cfd5dd; font-size: 18px; }
 body.dimmed #dim-veil { background: rgba(0, 0, 0, 0.72); }
+/* Écran de veille (screensaver.js) : illustrations en fondu et zoom lent, logo du jeu et heure */
+#screensaver { position: fixed; inset: 0; z-index: 104; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.2s ease; overflow: hidden; }
+#screensaver.open { opacity: 1; pointer-events: auto; cursor: none; }
+#screensaver .ss-slide { position: absolute; inset: -2%; background: center / cover no-repeat; opacity: 0; transform: scale(1); transition: opacity 2.4s ease; }
+#screensaver .ss-slide.on { opacity: 1; animation: ss-zoom 11s linear forwards; }
+@keyframes ss-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+#screensaver::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent 38%); }
+#screensaver .ss-info { position: absolute; left: 56px; right: 56px; bottom: 44px; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; color: #fff; }
+#screensaver .ss-title { opacity: 0; transition: opacity 1.6s ease .6s; max-width: 46%; }
+#screensaver .ss-title.in { opacity: 1; }
+#screensaver .ss-title img { max-height: 120px; max-width: 100%; object-fit: contain; filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.6)); }
+#screensaver .ss-title span { font-size: 34px; font-weight: 700; text-shadow: 0 3px 16px rgba(0, 0, 0, 0.7); }
+#screensaver .ss-clock { text-align: right; text-shadow: 0 3px 16px rgba(0, 0, 0, 0.7); }
+#screensaver .ss-clock b { display: block; font-size: 64px; font-weight: 300; line-height: 1; }
+#screensaver .ss-clock small { font-size: 18px; color: #d5dbe3; text-transform: capitalize; }
+body.reduce-motion #screensaver .ss-slide.on { animation: none; }
 /* Passage à l'écran de streaming : fondu au noir le temps qu'il prenne le relais */
 body.handoff::after { content: ""; position: fixed; inset: 0; z-index: 120; background: #000; animation: handoff 220ms ease both; pointer-events: none; }
 @keyframes handoff { from { opacity: 0; } to { opacity: 1; } }

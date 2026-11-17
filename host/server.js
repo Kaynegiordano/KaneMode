@@ -37,6 +37,8 @@ const weatherLib = require('./lib/weather');
 const hostScaleLib = require('./lib/hostscale');
 const sunshineGamesLib = require('./lib/sunshine-games');
 const logs = require('./lib/logs');
+const framePacing = require('./lib/frame-pacing');
+const steamAchievements = require('./lib/steam-achievements');
 
 const PORT = +process.env.PORT || 5173;
 const ROOT = path.join(__dirname, '..');
@@ -409,6 +411,8 @@ const fpsScope = { front: true, busy: null, game: null };
 const gameFpsLimit = c => { const own = (c.gameFps || {})[fpsScope.game]; return Number.isFinite(own) ? own : c.fpsLimit; };
 // Mode de performance changé pour un jeu : le mode d'avant, remis à sa fermeture
 const gamePerf = { id: null, prev: null };
+// Fréquence de l'écran propre à un jeu (limite d'images accordée à l'écran) : celle d'avant revient ensuite
+const gameScreen = { id: null, prev: null, hz: null };
 async function applyFpsScope() {
   const run = async () => {
     const st = await gfx.state(true).catch(() => null);
@@ -926,6 +930,30 @@ async function warmStores() {
 }
 // Dernier lancement de chaque entrée : un second appui (ou un événement en double) ne relance pas le jeu
 const recentLaunch = new Map();
+// Images/s mesurées sur cette console, par jeu et par mode (fiche du jeu, « Performance du jeu ») :
+// une mesure toutes les 5 s pendant un jeu lancé par KaneMode et au premier plan, avec le pilote AMD
+// (seul à les donner), passé les 30 premières secondes (chargement)
+const fpsStats = require('./lib/fps-stats').create({
+  read: () => readJson(path.join(DATA, 'game-fps-stats.json'), {}),
+  write: d => writeJson(path.join(DATA, 'game-fps-stats.json'), d),
+});
+const fpsSampler = { busy: false };
+setInterval(async () => {
+  const id = fpsScope.game;
+  if (!id || fpsScope.front || fpsSampler.busy) return;
+  const started = recentLaunch.get(id);
+  if (started && Date.now() - started < 30e3) return;
+  const e = findEntry(id);
+  if (!e || e.source === 'kaneplay' || e.streamHost) return;
+  fpsSampler.busy = true;
+  try {
+    const st = await gfx.state();
+    if (!st || !st.available || st.vendor !== 'amd') return;
+    const live = await gfx.live();
+    if (live && live.fps > 0) fpsStats.record(id, config().perfMode, live.fps);
+  } catch { /* pilote occupé : mesure suivante */ }
+  finally { fpsSampler.busy = false; }
+}, 5000);
 const LAUNCH_GUARD = 30e3;
 
 const run = launchLib.create();
@@ -1937,6 +1965,18 @@ const routes = {
     // Mode de performance propre au jeu (menu du jeu) : appliqué au lancement, il devient le mode en cours
     const gm = (config().gameModes || {})[id];
     if (r.ok && !b.dry && e.installed !== false) fpsScope.game = id;
+    // Fréquence de l'écran choisie avec la limite d'images du jeu (40 i/s → 120 Hz)
+    const ghz = (config().gameRefresh || {})[id];
+    if (r.ok && !b.dry && e.installed !== false && ghz) {
+      try {
+        const cur = ((await sysctl.state(true)).refresh || {}).current;
+        if (cur && cur !== ghz) {
+          await sysctl.call('refresh', { value: ghz });
+          Object.assign(gameScreen, { id, prev: gameScreen.id ? gameScreen.prev : cur, hz: ghz });
+          console.log(`Écran à ${ghz} Hz pour ${e.name} (avant : ${cur} Hz)`);
+        }
+      } catch (err) { console.error('Fréquence du jeu :', err.message); }
+    }
     if (r.ok && !b.dry && PERF_MODES.includes(gm) && config().perfMode !== gm) {
       Object.assign(gamePerf, { id, prev: gamePerf.id ? gamePerf.prev : config().perfMode });
       try {
@@ -1987,12 +2027,20 @@ const routes = {
     const b = await readBody(req);
     const id = String(b.id || '');
     recentLaunch.delete(id);
+    fpsStats.flush();
     // Image .iso d'un jeu Switch montée au lancement : démontée, sinon chaque jeu joué garde sa lettre
     // de lecteur jusqu'au redémarrage (remontée au prochain lancement)
     const played = findEntry(id);
     if (played && played.archive === 'mount') emuMount.unmount(played.romPath);
     Promise.resolve(autoHdr.ended(id)).catch(err => console.error('HDR automatique :', err.message));
     if (fpsScope.game === id) fpsScope.game = null;
+    // Fréquence de l'écran du jeu : celle d'avant revient, sauf si elle a été changée entre-temps
+    if (gameScreen.id === id) {
+      const { prev, hz } = gameScreen;
+      Object.assign(gameScreen, { id: null, prev: null, hz: null });
+      sysctl.state(true).then(st => ((st.refresh || {}).current === hz && prev ? sysctl.call('refresh', { value: prev }).then(() => console.log(`Écran remis à ${prev} Hz après le jeu`)) : null))
+        .catch(err => console.error('Fréquence après le jeu :', err.message));
+    }
     // Mode de performance propre au jeu : celui d'avant revient, sauf s'il a été changé entre-temps
     if (gamePerf.id === id) {
       const { prev } = gamePerf;
@@ -2181,6 +2229,9 @@ const routes = {
     // fps : limite d'images du jeu (0 : sans limite, null : la limite générale) ; absent : inchangée
     const hasFps = Object.hasOwn(b, 'fps');
     if (hasFps && b.fps != null && !(Number.isInteger(b.fps) && b.fps >= 0 && b.fps <= 360)) return json(res, 400, { error: 'Limite inconnue' });
+    // refresh : fréquence de l'écran pendant le jeu (accordée à la limite) ; null : celle en cours
+    const hasHz = Object.hasOwn(b, 'refresh');
+    if (hasHz && b.refresh != null && !(Number.isInteger(b.refresh) && b.refresh >= 24 && b.refresh <= 500)) return json(res, 400, { error: 'Fréquence inconnue' });
     const c = config();
     if (Object.hasOwn(b, 'mode')) {
       const m = { ...(c.gameModes || {}) };
@@ -2192,11 +2243,27 @@ const routes = {
       if (b.fps == null) delete f[b.id]; else f[b.id] = b.fps;
       c.gameFps = f;
     }
+    if (hasHz) {
+      const h = { ...(c.gameRefresh || {}) };
+      if (b.refresh == null) delete h[b.id]; else h[b.id] = b.refresh;
+      c.gameRefresh = h;
+    }
     writeJson(FILES.config, c);
     if (hasFps && fpsScope.game === b.id && !fpsScope.front) applyFpsScope().catch(() => {});
-    json(res, 200, { id: b.id, mode: (c.gameModes || {})[b.id] ?? null, fps: (c.gameFps || {})[b.id] ?? null });
+    json(res, 200, { id: b.id, mode: (c.gameModes || {})[b.id] ?? null, fps: (c.gameFps || {})[b.id] ?? null, refresh: (c.gameRefresh || {})[b.id] ?? null });
   },
   'GET /api/game-fps': (req, res) => json(res, 200, config().gameFps || {}),
+  // Images/s mesurées sur cette console pour un jeu, par mode de performance
+  'GET /api/game-fps/stats': async (req, res, q) => {
+    const id = String(q.get('id') || '');
+    // Limites accordées à l'écran (« Performance du jeu ») : fréquences proposées et celle en cours
+    const out = { ...fpsStats.summary(id), refresh: (config().gameRefresh || {})[id] ?? null };
+    if (q.get('limits') === '1') {
+      const scr = await sysctl.state().then(s => s.refresh).catch(() => null);
+      Object.assign(out, { screen: scr ? scr.current : null, limits: framePacing.alignedLimits(scr && scr.available, scr && scr.current) });
+    }
+    json(res, 200, out);
+  },
   'GET /api/game-mode': (req, res) => json(res, 200, config().gameModes || {}),
   // HDR automatique : réglages, état, choix par jeu (toujours / jamais)
   'GET /api/hdr/auto': async (req, res) => {
@@ -2207,10 +2274,27 @@ const routes = {
     const b = await readBody(req);
     const c = config(), p = autoHdr.prefs();
     for (const k of Object.keys(autoHdrLib.DEFAULTS)) if (typeof b[k] === 'boolean') p[k] = b[k];
+    if (autoHdrLib.STREAM_MODES.includes(b.stream)) p.stream = b.stream;
     c.autoHdr = p; writeJson(FILES.config, c);
     json(res, 200, p);
   },
+  // Moteur de streaming (via l'app) : début et fin de session, HDR envoyé par le PC
+  'POST /api/hdr/stream': async (req, res) => {
+    const b = await readBody(req);
+    if (!['stream', 'hdr'].includes(b.event)) return json(res, 400, { error: 'Événement inconnu' });
+    try { await autoHdr.stream(b.event, !!b.on); } catch (e) { console.error('HDR du streaming :', e.message); }
+    json(res, 200, { ok: true });
+  },
   'GET /api/game-hdr': (req, res) => json(res, 200, config().gameHdr || {}),
+  // Succès Steam d'un jeu (fiche du jeu), lus dans le cache de Steam pour le compte de la bibliothèque
+  'GET /api/achievements': (req, res, q) => {
+    const e = findEntry(String(q.get('id') || ''));
+    const ud = str(readJson(FILES.library, {}).steamUserdata);
+    if (!e || !e.steamAppId || !ud) return json(res, 200, null);
+    // steamUserdata : dossier userdata de Steam (dossier parent : Steam)
+    try { json(res, 200, steamAchievements.read(path.dirname(ud), e.steamAppId, config().lang || 'fr')); }
+    catch (err) { console.error('Succès :', err.message); json(res, 200, null); }
+  },
   'POST /api/game-hdr': async (req, res) => {
     const b = await readBody(req);
     if (typeof b.id !== 'string' || !b.id) return json(res, 400, { error: 'Jeu inconnu' });

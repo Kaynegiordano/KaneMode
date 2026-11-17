@@ -1,6 +1,6 @@
 // Fiche d'un jeu + actions partagées : lancement, favoris, fond d'écran, lanceurs.
 import { pinItem } from '../personalization-settings.js';
-import { t } from '../i18n.js';
+import { t, locale } from '../i18n.js';
 import { $, $$, el, esc, icon, api, lib, fmt, favs, saveFavs, sourceOf, toast, native, settings } from '../core.js';
 import { definePage, nav, go, back, openLayer, closeLayer, topLayer, currentPage, refresh, suspendNavigation, resumeNavigation } from '../nav.js';
 import { art, badges } from '../cards.js';
@@ -389,19 +389,25 @@ export async function removeFromLibrary(g) {
   } catch (error) { toast(error.message, { error: true }); return false; }
 }
 
-// Performance propre à un jeu : mode de performance et limite d'images. L'hôte les applique à
-// chaque lancement ; à la fermeture du jeu, le mode d'avant et la limite générale reviennent.
-const GAME_FPS = [30, 40, 45, 60, 90, 120];
+// Performance propre à un jeu : mode de performance et limite d'images (accordée à l'écran, avec sa
+// fréquence). L'hôte les applique à chaque lancement ; à la fermeture du jeu, les réglages d'avant
+// reviennent. Les images/s mesurées sur cette console (pilote AMD) sont rappelées par mode.
+const PERF_NAMES = { eco: t('Économie'), balanced: t('Équilibré'), performance: t('Performance'), custom: t('Personnalisé') };
+/** « 52 i/s en Performance · 41 i/s en Équilibré » : moyennes mesurées sur cette console. */
+const measured = modes => modes.map(m => t('{n} i/s en {mode}', { n: m.avg, mode: PERF_NAMES[m.mode] || m.mode })).join(' · ');
 async function gamePerfDialog(g) {
-  const [modes, limits] = await Promise.all([api.get('/api/game-mode').catch(() => ({})), api.get('/api/game-fps').catch(() => ({}))]);
+  const [modes, limits, stats] = await Promise.all([api.get('/api/game-mode').catch(() => ({})), api.get('/api/game-fps').catch(() => ({})),
+    api.get(`/api/game-fps/stats?id=${encodeURIComponent(g.id)}&limits=1`).catch(() => ({ modes: [], limits: [] }))]);
   const MODES = [['eco', t('Économie')], ['balanced', t('Équilibré')], ['performance', t('Performance')]];
   const mode = modes[g.id] || null;
   const fps = Number.isFinite(limits[g.id]) ? limits[g.id] : null;
-  const fpsLabel = v => (v === null ? t('Limite générale') : v === 0 ? t('Sans limite') : t('{n} i/s', { n: v }));
+  const hzNote = hz => (hz && hz !== stats.screen ? ' · ' + t('écran {hz} Hz', { hz }) : '');
+  const fpsLabel = v => (v === null ? t('Limite générale') : v === 0 ? t('Sans limite') : t('{n} i/s', { n: v }) + hzNote(stats.refresh));
   const mark = on => (on ? ' ✓' : '');
+  const seen = stats.modes && stats.modes.length ? '<br>' + t('Mesuré sur cette console : {list}.', { list: esc(measured(stats.modes)) }) : '';
   const choice = await dialog({
     title: t('Performance du jeu'),
-    text: t('Appliqué à chaque lancement de {name}. À sa fermeture, les réglages d’avant reviennent.', { name: esc(g.name) }),
+    text: t('Appliqué à chaque lancement de {name}. À sa fermeture, les réglages d’avant reviennent.', { name: esc(g.name) }) + seen,
     buttons: [
       { label: t('Mode de performance : {a}', { a: mode ? MODES.find(m => m[0] === mode)[1] : t('Mode en cours') }), value: 'mode', icon: 'i-cpu' },
       // La limite du pilote graphique vaut pour les jeux de cette machine, pas pour un jeu streamé
@@ -422,23 +428,59 @@ async function gamePerfDialog(g) {
     });
     if (pick) body.mode = pick === 'none' ? null : pick;
   } else {
+    // Limites qui divisent la fréquence de l'écran : rythme régulier ; une ancienne limite qui ne
+    // tombe pas juste (45 i/s sur 120 Hz) reste affichée, signalée
+    const aligned = stats.limits && stats.limits.length ? stats.limits : [30, 40, 45, 60, 90, 120].map(v => ({ fps: v, hz: null }));
+    const list = fps > 0 && !aligned.some(l => l.fps === fps) ? [...aligned, { fps, hz: null, odd: true }].sort((a, b) => a.fps - b.fps) : aligned;
     const pick = await dialog({
       title: t('Limite d’images du jeu'),
-      text: t('Moins d’images par seconde : moins de chaleur et plus d’autonomie.'),
+      text: t('Chaque limite tombe juste avec l’écran : toutes les images durent le même temps, sans saccade. Moins d’images : moins de chaleur et plus d’autonomie.') + seen,
       buttons: [
         { label: t('Limite générale') + mark(fps === null), value: 'general' },
         { label: t('Sans limite') + mark(fps === 0), value: 'f0' },
-        ...GAME_FPS.map(v => ({ label: t('{n} i/s', { n: v }) + mark(v === fps), value: 'f' + v })),
+        ...list.map(l => ({ label: t('{n} i/s', { n: l.fps }) + (l.odd ? ' · ' + t('irrégulière') : hzNote(l.hz)) + mark(l.fps === fps), value: 'f' + l.fps })),
         { label: t('Retour'), value: null },
       ],
     });
-    if (pick) body.fps = pick === 'general' ? null : +pick.slice(1);
+    if (pick) {
+      body.fps = pick === 'general' ? null : +pick.slice(1);
+      // Fréquence de l'écran pendant le jeu, accordée à la limite (aucune sans limite propre)
+      const l = list.find(x => x.fps === body.fps);
+      body.refresh = l && l.hz ? l.hz : null;
+    }
   }
   if (Object.keys(body).length > 1) {
     try { await api.post('/api/game-mode', body); toast(t('Réglage enregistré pour {name}', { name: g.name })); }
     catch (e) { toast(e.message, { error: true }); return; }
   }
   return gamePerfDialog(g);
+}
+
+/** Section « Succès » de la fiche : les 6 derniers débloqués et les 6 prochains, puis tout sur demande. */
+function achievementsSection(g, r) {
+  const box = el('section', 'achievements');
+  const pct = Math.round((100 * r.unlocked) / r.total);
+  box.append(el('h2', 'row-title', `${esc(t('Succès'))} <small>${esc(t('{a} sur {b} · {p} %', { a: r.unlocked, b: r.total, p: pct }))}</small>`));
+  box.append(el('div', 'ach-progress', `<div style="width:${pct}%"></div>`));
+  const grid = el('div', 'ach-grid');
+  const card = a => {
+    const c = el('div', 'ach' + (a.unlocked ? ' on' : ''), `${a.icon ? `<img src="${esc(a.icon)}" alt="" loading="lazy">` : '<span class="ach-ph"></span>'}
+      <div><b>${esc(a.hidden ? t('Succès caché') : a.name)}</b><small>${a.unlocked && a.at ? esc(new Date(a.at).toLocaleDateString(locale, { dateStyle: 'medium' })) : esc(a.hidden ? t('Il se dévoile en jouant') : t('À débloquer'))}</small></div>`);
+    return nav(c, () => dialog({
+      title: a.hidden ? t('Succès caché') : a.name,
+      text: (a.hidden ? esc(t('Sa description se dévoile une fois débloqué.')) : esc(a.desc || '')) + (a.unlocked && a.at ? '<br>' + esc(t('Débloqué le {d}', { d: new Date(a.at).toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short' }) })) : ''),
+      buttons: [{ label: t('Fermer'), value: null }],
+    }), 'ach:' + a.id);
+  };
+  const show = list => grid.replaceChildren(...list.map(card));
+  const first = [...r.list.filter(a => a.unlocked).slice(0, 6), ...r.list.filter(a => !a.unlocked && !a.hidden).slice(0, 6)];
+  show(first);
+  box.append(grid);
+  if (r.total > first.length) {
+    const all = nav(el('div', 'ach ach-all', `<span class="ach-ph">${icon('i-grid')}</span><div><b>${esc(t('Tous les succès'))}</b><small>${esc(t('{n} au total', { n: r.total }))}</small></div>`), () => { show(r.list); all.remove(); }, 'ach-all');
+    grid.after(all);
+  }
+  return box;
 }
 
 // HDR propre à un jeu : suit le réglage général (Paramètres → HDR automatique), toujours ou jamais
@@ -528,6 +570,13 @@ definePage('game', {
     if (isRunning) stats.insertAdjacentHTML('afterbegin', stat(t('État'), t('<span class="now-playing">En cours</span>')));
 
     root.replaceChildren(hero, bar);
+    // Succès Steam (cache de Steam sur ce PC) : progression, derniers débloqués, prochains à débloquer
+    if (g.steamAppId) api.get(`/api/achievements?id=${encodeURIComponent(g.id)}`).then(r => { if (r && r.total && this.g === g) bar.after(achievementsSection(g, r)); }).catch(() => {});
+    // Images/s mesurées sur cette console (pilote AMD), comme les moyennes des joueurs Steam Deck
+    if (!g.streamHost && g.type !== 'app') api.get(`/api/game-fps/stats?id=${encodeURIComponent(g.id)}`).then(r => {
+      const top = r && r.modes && r.modes[0];
+      if (top && this.g === g) stats.insertAdjacentHTML('beforeend', stat(t('Images/s sur cette console'), esc(t('{n} i/s en {mode}', { n: top.avg, mode: PERF_NAMES[top.mode] || top.mode }))));
+    }).catch(() => {});
 
     if (m.description || (m.genres && m.genres.length) || g.demo) {
       root.append(el('h2', 'row-title', t('À propos')));

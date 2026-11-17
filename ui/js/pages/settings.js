@@ -697,6 +697,10 @@ const BUILDERS = {
       ['videos', t('Lecteurs vidéo'), t('VLC, MPC-HC, MPC-BE, PotPlayer ou mpv ouverts')],
       ['obs', t('Pause pendant OBS'), t('Pas de HDR automatique tant qu’OBS est ouvert : couleurs justes à l’enregistrement')],
     ]) s.append(switchRow({ title, desc, on: p[k], key: 'hdr-' + k, onToggle: v => save({ [k]: v }) }));
+    // Streaming (comme le choix HDR de Remote Play) : suit le PC, toute la session, ou jamais
+    infoRow(s, t('Streaming'), t('Automatique : quand le PC envoie du HDR (HDR activé dans les réglages du streaming)'), segmented([
+      { value: 'auto', label: t('Automatique') }, { value: 'on', label: t('Toujours') }, { value: 'off', label: t('Jamais') },
+    ], p.stream || 'auto', v => save({ stream: v }), 'hdr-stream'));
     s.append(el('div', 'notice', t('Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.')));
   },
 
@@ -839,6 +843,7 @@ const BUILDERS = {
     toggle(s, 'preventIdleLock', t('Empêcher le verrouillage automatique de Windows'), t('Pendant KaneMode, le streaming et les jeux suivis · la veille choisie et le verrouillage manuel restent disponibles'));
     actionRow(s, 'i-moon', t('Mettre en veille maintenant'), native.available ? t('L’écran s’éteint en fondu ; au réveil, KaneMode revient là où vous étiez') : t('Simulée dans le navigateur : n’importe quel bouton réveille'), () => sleepNow(), 'sleep-now');
     const mins = (list, key, never = t('Jamais')) => segmented(list.map(v => ({ value: v, label: v ? `${v} min` : never })), settings[key], v => { settings[key] = +v; saveSettings(); }, key);
+    infoRow(s, t('Écran de veille après'), t('Les illustrations de vos jeux défilent · le premier bouton le ferme, sans rien lancer'), mins([0, 1, 2, 3, 5, 10], 'screensaverAfter'));
     infoRow(s, t('Atténuer l’écran après'), t('Sans activité dans KaneMode · le moindre bouton le rallume'), mins([0, 1, 2, 5, 10], 'dimAfter'));
     infoRow(s, t('Veille automatique sur batterie'), t('Consoles portables et PC portables · jamais pendant un jeu'), mins([0, 5, 10, 15, 30], 'sleepAfterBattery'));
     infoRow(s, t('Veille automatique sur secteur'), t('PC branché ou console en charge'), mins([0, 15, 30, 60], 'sleepAfterAC'));

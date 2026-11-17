@@ -104,6 +104,9 @@
  "{a} s’installe depuis son archive .zip (Émulation → Gérer)": [
   "host/lib/emu-store.js"
  ],
+ "{a} sur {b} · {p} %": [
+  "ui/js/pages/game.js"
+ ],
  "{a}<div>Ajouter un jeu ou une appli</div>": [
   "ui/js/pages/home.js"
  ],
@@ -188,6 +191,9 @@
  "{n} applications": [
   "ui/js/pages/settings.js"
  ],
+ "{n} au total": [
+  "ui/js/pages/game.js"
+ ],
  "{n} autre pilote publié": [
   "ui/js/pages/settings.js"
  ],
@@ -240,6 +246,9 @@
  ],
  "{n} gratuits": [
   "ui/js/deals.js"
+ ],
+ "{n} i/s en {mode}": [
+  "ui/js/pages/game.js"
  ],
  "{n} installations lancées": [
   "ui/js/pages/emulation.js"
@@ -612,6 +621,9 @@
  ],
  "À côté de l’icône, sur les consoles et PC portables": [
   "ui/js/pages/settings.js"
+ ],
+ "À débloquer": [
+  "ui/js/pages/game.js"
  ],
  "à jour": [
   "ui/js/pages/emulation.js"
@@ -1105,6 +1117,9 @@
  "Automatique : langue de Windows": [
   "ui/js/pages/settings.js"
  ],
+ "Automatique : quand le PC envoie du HDR (HDR activé dans les réglages du streaming)": [
+  "ui/js/pages/settings.js"
+ ],
  "Automatique : selon la manette utilisée": [
   "ui/js/pages/settings.js"
  ],
@@ -1356,6 +1371,9 @@
  ],
  "Chaque jeu peut avoir son propre choix : menu du jeu, <b>HDR du jeu</b>. « Toujours » passe avant l’exclusion de l’émulation.": [
   "ui/js/pages/settings.js"
+ ],
+ "Chaque limite tombe juste avec l’écran : toutes les images durent le même temps, sans saccade. Moins d’images : moins de chaleur et plus d’autonomie.": [
+  "ui/js/pages/game.js"
  ],
  "Charge du processeur": [
   "ui/js/qam.js"
@@ -1739,6 +1757,9 @@
  "de la console": [
   "ui/js/pages/settings.js"
  ],
+ "Débloqué le {d}": [
+  "ui/js/pages/game.js"
+ ],
  "Début": [
   "ui/js/nav.js"
  ],
@@ -1962,11 +1983,17 @@
  "Écran": [
   "ui/js/widget.js"
  ],
+ "écran {hz} Hz": [
+  "ui/js/pages/game.js"
+ ],
  "Écran actuel": [
   "ui/js/personalization-settings.js"
  ],
  "Écran CRT (télé d’époque)": [
   "ui/js/pages/emulation.js"
+ ],
+ "Écran de veille après": [
+  "ui/js/pages/settings.js"
  ],
  "Écran large (16:9)": [
   "ui/js/pages/emulation.js"
@@ -2148,6 +2175,9 @@
  "Ethernet · Internet": [
   "ui/js/statusbar.js"
  ],
+ "Événement inconnu": [
+  "host/server.js"
+ ],
  "Exclure l’émulation": [
   "ui/js/pages/settings.js"
  ],
@@ -2231,6 +2261,9 @@
  "Fin": [
   "ui/js/nav.js"
  ],
+ "fin de texte manquante": [
+  "host/lib/steam-achievements.js"
+ ],
  "Flou": [
   "ui/js/pages/settings.js"
  ],
@@ -2289,6 +2322,9 @@
  "Fréquence de l’écran": [
   "ui/js/pages/settings.js",
   "ui/js/qam.js"
+ ],
+ "Fréquence inconnue": [
+  "host/server.js"
  ],
  "Fréquence non proposée par l'écran : {a} Hz": [
   "host/syscontrol.ps1"
@@ -2420,6 +2456,9 @@
  "Il manque un fichier pour {system}": [
   "ui/js/pages/game.js"
  ],
+ "Il se dévoile en jouant": [
+  "ui/js/pages/game.js"
+ ],
  "Il y a {diff} jours": [
   "ui/js/core.js"
  ],
@@ -2443,6 +2482,9 @@
  ],
  "Images/s": [
   "ui/js/hud.js"
+ ],
+ "Images/s sur cette console": [
+  "ui/js/pages/game.js"
  ],
  "Importe la bibliothèque actuelle de Playnite ; les nouveaux achats doivent d’abord être synchronisés par leurs connecteurs": [
   "ui/js/accounts-settings.js"
@@ -2617,6 +2659,9 @@
  ],
  "Inutile au quotidien · utile seulement si l’accès public venait à changer": [
   "ui/js/pages/settings.js"
+ ],
+ "irrégulière": [
+  "ui/js/pages/game.js"
  ],
  "Jamais": [
   "ui/js/pages/settings.js"
@@ -2947,6 +2992,9 @@
  "Les consoles ne pourront plus changer l’échelle de ce PC pendant le streaming. Sunshine redémarre.": [
   "ui/js/pages/settings.js"
  ],
+ "Les illustrations de vos jeux défilent · le premier bouton le ferme, sans rien lancer": [
+  "ui/js/pages/settings.js"
+ ],
  "Les jeux cochés rejoignent votre bibliothèque avec un logo streaming : <b>Jouer</b> lance directement le jeu sur son PC, puis revient ici à la fin. Pour voir les jeux de KaneMode d’un PC, activez <b>Jeux proposés aux consoles</b> dans le KaneMode de ce PC.": [
   "ui/js/pages/settings.js"
  ],
@@ -3139,6 +3187,9 @@
  "Menu principal et accès rapide": [
   "ui/js/pages/settings.js"
  ],
+ "Mesuré sur cette console : {list}.": [
+  "ui/js/pages/game.js"
+ ],
  "Metacritic": [
   "ui/js/pages/game.js"
  ],
@@ -3318,9 +3369,6 @@
  ],
  "Mods installés <small>{t}</small>": [
   "ui/js/pages/emulation.js"
- ],
- "Moins d’images par seconde : moins de chaleur et plus d’autonomie.": [
-  "ui/js/pages/game.js"
  ],
  "Moins d’images par seconde : plus d’autonomie": [
   "ui/js/pages/settings.js"
@@ -3765,6 +3813,7 @@
  "Personnalisé": [
   "ui/js/monitor.js",
   "ui/js/pages/emulation.js",
+  "ui/js/pages/game.js",
   "ui/js/pages/settings.js",
   "ui/js/widget.js"
  ],
@@ -4394,6 +4443,9 @@
  "Route inconnue": [
   "host/server.js"
  ],
+ "Sa description se dévoile une fois débloqué.": [
+  "ui/js/pages/game.js"
+ ],
  "Saisir": [
   "ui/js/widgets.js"
  ],
@@ -4625,6 +4677,12 @@
  "Style préféré des jaquettes": [
   "ui/js/pages/settings.js"
  ],
+ "Succès": [
+  "ui/js/pages/game.js"
+ ],
+ "Succès caché": [
+  "ui/js/pages/game.js"
+ ],
  "Suggestions SteamGridDB prioritaires · les images personnalisées sont conservées": [
   "ui/js/personalization-settings.js"
  ],
@@ -4755,6 +4813,9 @@
  "Titres intégrés": [
   "ui/js/personalization-settings.js"
  ],
+ "Toujours": [
+  "ui/js/pages/settings.js"
+ ],
  "Toujours afficher la boutique": [
   "ui/js/pages/settings.js"
  ],
@@ -4771,6 +4832,9 @@
  ],
  "Tous les jeux renvoyés par les connecteurs, installés ou non · aucune sélection limitée aux jeux déjà joués": [
   "ui/js/accounts-settings.js"
+ ],
+ "Tous les succès": [
+  "ui/js/pages/game.js"
  ],
  "Tous les visuels": [
   "ui/js/pages/emulation.js"
@@ -4848,6 +4912,9 @@
  ],
  "Type": [
   "ui/js/pages/artpicker.js"
+ ],
+ "type {a} inconnu": [
+  "host/lib/steam-achievements.js"
  ],
  "Ubisoft": [
   "ui/js/core.js"

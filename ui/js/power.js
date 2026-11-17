@@ -4,6 +4,7 @@ import { t } from './i18n.js';
 import { $, api, lib, settings, toast, native } from './core.js';
 import { inputLock } from './nav.js';
 import { playBoot, sleepCurtain, clearCurtain } from './boot.js';
+import { showScreensaver, hideScreensaver, screensaverShown } from './screensaver.js';
 
 let state = 'awake'; // awake | sleeping | waking
 let lastInput = Date.now();
@@ -16,6 +17,7 @@ export async function sleepNow() {
   if (state !== 'awake') return;
   state = 'sleeping';
   undim();
+  hideScreensaver({ keepLock: true });
   inputLock.on = true;
   await sleepCurtain();
   if (native.available) native.send('power', { action: 'sleep' });
@@ -86,8 +88,11 @@ const padIds = () => pads().map(p => p.id);
 const padsDown = () => pads().some(p => p.buttons.some(b => b.pressed) || p.axes.some(a => Math.abs(a) > 0.5));
 
 // ---------------------------------------------------------------- inactivité
-const mark = () => { lastInput = Date.now(); if (document.body.classList.contains('dimmed')) undim(); };
-['keydown', 'pointerdown', 'wheel'].forEach(t => addEventListener(t, mark, { capture: true, passive: true }));
+const mark = () => { lastInput = Date.now(); hideScreensaver(); if (document.body.classList.contains('dimmed')) undim(); };
+// Écran de veille ouvert : la touche ou le clic qui le ferme s'arrête là
+const swallow = e => { if (screensaverShown()) { e.preventDefault(); e.stopImmediatePropagation(); } mark(); };
+['keydown', 'pointerdown'].forEach(t => addEventListener(t, swallow, { capture: true }));
+addEventListener('wheel', mark, { capture: true, passive: true });
 addEventListener('pointermove', e => {
   // La protection Windows peut envoyer un mouvement nul : il ne compte pas comme une activité.
   if (e.pointerType === 'mouse' && !e.movementX && !e.movementY) return;
@@ -119,11 +124,13 @@ setInterval(() => {
   if (snap !== lastPad) { lastPad = snap; mark(); }
   if (state !== 'awake') return;
   // KaneMode en arrière-plan (un jeu tourne) : c'est Windows qui gère l'inactivité
-  if (document.hidden || !document.hasFocus()) { lastInput = Date.now(); return; }
+  if (document.hidden || !document.hasFocus()) { lastInput = Date.now(); hideScreensaver(); return; }
   const idle = (Date.now() - lastInput) / 1000;
   const sleepSec = sleepAfter() * 60;
   const dimSec = (+settings.dimAfter || 0) * 60;
+  const ssSec = (+settings.screensaverAfter || 0) * 60;
   if (sleepSec && idle >= sleepSec) { sleepNow(); return; }
+  if (ssSec && idle >= ssSec && (!sleepSec || idle < sleepSec - 20)) showScreensaver();
   if (sleepSec && idle >= sleepSec - 20) return dim(Math.ceil(sleepSec - idle));
   if (dimSec && idle >= dimSec) return dim(null);
 }, 500);

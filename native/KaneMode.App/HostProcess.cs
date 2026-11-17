@@ -89,6 +89,23 @@ public sealed class HostProcess : IDisposable
         throw new TimeoutException("L'hôte KaneMode ne répond pas.");
     }
 
+    /// <summary>Requête POST à l'hôte sans attendre la réponse (erreurs au journal).</summary>
+    public void PostQuiet(string path, string json)
+    {
+        if (Port == 0) return;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                using var req = new HttpRequestMessage(HttpMethod.Post, Url + path) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };
+                req.Headers.Add("X-KaneMode", "1");
+                using var res = await http.SendAsync(req);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException) { Log.Write($"Hôte : {path} sans réponse ({ex.Message})"); }
+        });
+    }
+
     private static int FreePort()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);

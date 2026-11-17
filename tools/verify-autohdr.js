@@ -229,3 +229,32 @@ test('jeu sans dossier propre (bibliothèque entière) : seul « jeu fermé » r
   await e.ctl.ended(game.id);
   assert.strictEqual(e.screen, 0);
 });
+
+// 4.39 : HDR du streaming (messages du moteur KanePlay), comme le choix HDR de Remote Play
+test('streaming automatique : HDR quand le PC envoie du HDR, SDR à sa fin ou à la fin de la session', async () => {
+  const e = setup();
+  await e.ctl.stream('stream', true);
+  assert.strictEqual(e.screen, 0, 'flux SDR : rien');
+  await e.ctl.stream('hdr', true);
+  assert.strictEqual(e.screen, 1);
+  await e.ctl.stream('hdr', false);
+  assert.strictEqual(e.screen, 0);
+  await e.ctl.stream('hdr', true);
+  await e.ctl.stream('stream', false);
+  assert.strictEqual(e.screen, 0);
+});
+
+test('streaming « Toujours » : HDR pendant toute la session ; « Jamais » : rien', async () => {
+  let e = setup({ cfg: { autoHdr: { stream: 'on' } } });
+  await e.ctl.stream('stream', true);
+  assert.strictEqual(e.screen, 1);
+  await e.ctl.stream('hdr', false);
+  assert.strictEqual(e.screen, 1, 'le PC repasse en SDR : HDR gardé');
+  await e.ctl.stream('stream', false);
+  assert.strictEqual(e.screen, 0);
+  e = setup({ cfg: { autoHdr: { stream: 'off' } } });
+  await e.ctl.stream('stream', true);
+  await e.ctl.stream('hdr', true);
+  assert.deepStrictEqual(e.log, []);
+});
+

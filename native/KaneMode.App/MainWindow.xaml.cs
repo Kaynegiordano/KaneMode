@@ -406,6 +406,14 @@ public partial class MainWindow : Window
             OpenOverlay(parts[1], wParam);
             return (IntPtr)1;
         }
+        // Moteur de streaming : début et fin de session, HDR envoyé par le PC (HDR du streaming)
+        if (parts.Length == 2 && (parts[0] == "stream" || parts[0] == "hdr") && (parts[1] == "0" || parts[1] == "1"))
+        {
+            handled = true;
+            Log.Write($"Streaming : {(parts[0] == "hdr" ? "HDR du PC" : "session")} {(parts[1] == "1" ? "activé" : "terminé")}");
+            if (_ready) _host.PostQuiet("/api/hdr/stream", $"{{\"event\":\"{parts[0]}\",\"on\":{(parts[1] == "1" ? "true" : "false")}}}");
+            return (IntPtr)1;
+        }
         return IntPtr.Zero;
     }
 
