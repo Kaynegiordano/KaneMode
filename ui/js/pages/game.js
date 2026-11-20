@@ -174,7 +174,8 @@ export async function launch(g, opts = {}) {
   }
   const status = $('#launch-status');
   // Jeu d'émulateur : la façon de revenir ici est dite avant que le jeu ne prenne l'écran
-  $('#launch-hint').innerHTML = g.source === 'rom' && !opts.emuOnly ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 5 secondes. 8 secondes : quitter complètement, le jeu repartira du début.') : '';
+  $('#launch-hint').innerHTML = g.source === 'rom' && !opts.emuOnly ? t('Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 5 secondes. 8 secondes : quitter complètement, le jeu repartira du début.')
+    : g.streamHost ? t('Pour quitter le jeu : maintenez <b>LB + RB + Select + Y</b> 5 secondes. <b>LB + RB + Select + Start</b> ouvre le menu du streaming.') : '';
   status.textContent = g.streamHost ? t('Connexion à {streamHost}…', { streamHost: g.streamHost })
     : !g.installed ? t('Ouverture de {store} pour installer {name}…', { store: sourceOf(g.source).label, name: g.name })
     : opts.emuOnly ? t('Ouverture de {emulator}…', { emulator: g.emulator || t('l’émulateur') })

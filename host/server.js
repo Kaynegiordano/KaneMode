@@ -1967,7 +1967,8 @@ const routes = {
     if (r.ok && !b.dry && e.installed !== false) fpsScope.game = id;
     // Fréquence de l'écran choisie avec la limite d'images du jeu (40 i/s → 120 Hz)
     const ghz = (config().gameRefresh || {})[id];
-    if (r.ok && !b.dry && e.installed !== false && ghz) {
+    // (pas pour un jeu streamé : il tourne sur le PC, l'écran de la console n'a pas à changer)
+    if (r.ok && !b.dry && e.installed !== false && ghz && e.source !== 'kaneplay' && !e.streamHost) {
       try {
         const cur = ((await sysctl.state(true)).refresh || {}).current;
         if (cur && cur !== ghz) {

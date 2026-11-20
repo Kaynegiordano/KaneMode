@@ -30,3 +30,14 @@ test('Ménage : ancien lanceur par alias retiré, état du jeu streamé hors du 
   assert.ok(!read('native', 'package', 'AppxManifest.xml').includes('ExecutionAlias'));
   assert.match(read('native', 'KaneMode.App', 'MainWindow.xaml.cs'), /type != "stream-game-state"\) Log\.Write/);
 });
+
+test('Combinaison de fin de streaming : LB + RB + Select + Y maintenus 5 secondes', () => {
+  const fs = require('fs'), path = require('path');
+  const pad = fs.readFileSync(path.join(__dirname, '..', 'engine', 'KanePlay', 'app', 'streaming', 'input', 'gamepad.cpp'), 'utf8');
+  assert.match(pad, /#define GAMEPAD_QUIT_HOLD_MS 5000/);
+  // L'appui lance le minuteur, il ne quitte plus ; relâché trop tôt, rien ne se passe
+  assert.match(pad, /startGamepadComboTimer\(state, GAMEPAD_QUIT_HOLD_MS\)/);
+  assert.match(pad, /state->quitHoldSince != 0 && state->buttons != QUIT_COMBO_FLAGS/);
+  const timeout = pad.slice(pad.indexOf('void SdlInputHandler::handleGamepadComboTimeout'));
+  assert.match(timeout, /state->buttons == QUIT_COMBO_FLAGS &&[\s\S]{0,120}GAMEPAD_QUIT_HOLD_MS - 50[\s\S]{0,900}setQuitHostApp\(\)/);
+});

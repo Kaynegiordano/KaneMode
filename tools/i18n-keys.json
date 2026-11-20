@@ -2998,7 +2998,7 @@
  "Les jeux cochés rejoignent votre bibliothèque avec un logo streaming : <b>Jouer</b> lance directement le jeu sur son PC, puis revient ici à la fin. Pour voir les jeux de KaneMode d’un PC, activez <b>Jeux proposés aux consoles</b> dans le KaneMode de ce PC.": [
   "ui/js/pages/settings.js"
  ],
- "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>Select + Start</b> maintenus 5 secondes quittent un jeu d’émulation, comme sur le PC ; <b>LB + RB + Select + Start</b> ouvre le menu du streaming ; <b>LB + RB + Select + Y</b> quitte la session et ferme le jeu sur le PC ; <b>Déconnecter</b>, dans le menu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
+ "Les jeux de vos PC se choisissent dans le streaming, qui prend les couleurs de KaneMode (accent compris). Pendant un jeu, <b>Select + Start</b> maintenus 5 secondes quittent un jeu d’émulation, comme sur le PC ; <b>LB + RB + Select + Start</b> ouvre le menu du streaming ; <b>LB + RB + Select + Y</b> maintenus 5 secondes quittent la session et ferment le jeu sur le PC ; <b>Déconnecter</b>, dans le menu, le laisse ouvert pour le reprendre. Sur l’accueil du streaming, <b>B</b> revient à KaneMode.": [
   "ui/js/pages/settings.js"
  ],
  "Les jeux rangés dans une archive (.zip, .7z, .rar) que leur émulateur ne sait pas ouvrir sont décompressés au premier lancement, puis gardés pour les suivants. Les plus anciens partent tout seuls au-delà de 40 Go.": [
@@ -3876,6 +3876,9 @@
  ],
  "Pour les jeux présents sur Steam ; sinon SteamGridDB passe en premier": [
   "ui/js/pages/settings.js"
+ ],
+ "Pour quitter le jeu : maintenez <b>LB + RB + Select + Y</b> 5 secondes. <b>LB + RB + Select + Start</b> ouvre le menu du streaming.": [
+  "ui/js/pages/game.js"
  ],
  "Pour revenir à KaneMode : maintenez <b>Select + Start</b> ou <b>Échap</b> 5 secondes. 8 secondes : quitter complètement, le jeu repartira du début.": [
   "ui/js/pages/game.js"

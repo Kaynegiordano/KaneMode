@@ -14,8 +14,17 @@ function create({ read, write, now = Date.now }) {
   let data = null, dirty = false, lastSave = 0;
   const minute = new Map(); // jeu → { mode, sum, n, start } : minute en cours, pour « low »
   const load = () => (data ??= read() || {});
+  // Fin d'une minute de mesures : sa moyenne devient le « plus bas » du mode si elle est sous l'ancien
+  const closeMinute = cur => {
+    const s = cur && cur.n >= 6 && data && data[cur.id] && data[cur.id][cur.mode];
+    if (!s) return;
+    const avg = Math.round(cur.sum / cur.n);
+    if (s.low == null || avg < s.low) { s.low = avg; dirty = true; }
+  };
 
   function flush(force = false) {
+    // Fin de partie : la minute en cours compte aussi (une partie courte n'avait jamais de « plus bas »)
+    if (force) { for (const cur of minute.values()) closeMinute(cur); minute.clear(); }
     if (!dirty || (!force && now() - lastSave < SAVE_EVERY)) return;
     write(data);
     dirty = false;
@@ -36,8 +45,8 @@ function create({ read, write, now = Date.now }) {
       // Moyenne de chaque minute : la plus basse est gardée
       let cur = minute.get(id);
       if (!cur || cur.mode !== m || now() - cur.start >= 60e3) {
-        if (cur && cur.n >= 6) { const avg = cur.sum / cur.n, prev = all[id][cur.mode]; if (prev && (prev.low == null || avg < prev.low)) prev.low = Math.round(avg); }
-        cur = { mode: m, sum: 0, n: 0, start: now() };
+        closeMinute(cur);
+        cur = { id, mode: m, sum: 0, n: 0, start: now() };
         minute.set(id, cur);
       }
       cur.sum += fps;

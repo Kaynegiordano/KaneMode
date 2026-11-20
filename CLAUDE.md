@@ -4,6 +4,13 @@ Ce fichier résume le projet pour reprendre le travail sans contexte. **Répondr
 français.** Tout le texte visible (interface, messages, notes de version) et les commentaires du code
 sont en français. Les messages de commit sont en anglais.
 
+## Version 4.39.1 : combinaison de fin de streaming maintenue 5 s
+
+- Demande : « Possible que le combo pour couper le streaming LB+RB+View+Y passe à 5 s avant de couper ? »
+- Moteur (`streaming/input/gamepad.cpp`) : `GAMEPAD_QUIT_HOLD_MS` 5000, `GamepadState::quitHoldSince`. La combinaison lance le minuteur des combinaisons (`startGamepadComboTimer`) au lieu de quitter ; `handleGamepadComboTimeout` quitte si elle est toujours tenue ; relâchée avant, rien ne se passe (le Y n’est pas envoyé au PC). `Session::notifyQuitHold` : message dans la surimpression d’état (rendue au mode souris ensuite). Textes : `StreamSegue.qml`, `qml_fr.ts`, notice de Paramètres → Streaming, `#launch-hint` d’un jeu streamé (`game.js`).
+- Petites corrections : `fps-stats.js` `closeMinute` (la minute en cours compte à `flush(true)`, une partie courte n’avait jamais de « plus bas ») ; `config.gameRefresh` ignoré pour un jeu streamé (`/api/launch`).
+- Tests : `verify-stream-end.js` (4), `verify-4.39.js`. Moteur compilé. **Pas essayé** en vrai streaming.
+
 ## Version 4.39.0 : idées de SteamOS (écran de veille, images/s par jeu, limites accordées, HDR du streaming, succès)
 
 - Demande : « Qu’est-ce que je peux apporter sur KaneMode ? » après les nouveautés de SteamOS 3.9/3.10 et du client Steam de novembre → l’utilisateur a pris les cinq pistes (« Tout »).

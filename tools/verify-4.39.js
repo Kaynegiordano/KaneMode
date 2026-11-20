@@ -22,6 +22,7 @@ test('Images/s par jeu : moyenne par mode, au moins une minute de mesures, plus 
   const r = s.summary('steam:1');
   assert.deepEqual(r.modes.map(m => [m.mode, m.avg]), [['performance', 50]]);
   assert.equal(r.modes[0].samples, 24);
+  assert.equal(r.modes[0].low, 40, 'la dernière minute compte à la fin de la partie');
   assert.ok(saved && saved['steam:1'].performance.n === 24, 'écrit sur disque');
   assert.deepEqual(s.summary('inconnu'), { modes: [], at: null });
 });
